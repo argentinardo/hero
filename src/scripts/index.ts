@@ -10,6 +10,7 @@ import viperSpriteSrc from '../assets/sprites/serpiente_small.png';
 import minerSpriteSrc from '../assets/sprites/miner_small.png';
 import backgroundSpriteSrc from '../assets/sprites/background_small.png';
 import spiderSpriteSrc from '../assets/sprites/spider_small.png';
+import playerStandSpriteSrc from '../assets/sprites/hero_stand.png';
 
 
 // --- GENERAL SETUP ---
@@ -55,7 +56,7 @@ const TILE_TYPES: { [key: string]: { name: string, color: string } } = {
 const spriteSources: { [key: string]: string } = {
     '0': backgroundSpriteSrc, '1': wallSpriteSrc, '2': destructibleWallSpriteSrc,
     'C': destructibleWallSpriteSrc, 'P': playerSpriteSrc, '8': batSpriteSrc,
-    'S': spiderSpriteSrc, 'V': viperSpriteSrc, '9': minerSpriteSrc
+    'S': spiderSpriteSrc, 'V': viperSpriteSrc, '9': minerSpriteSrc, 'P_stand': playerStandSpriteSrc
 };
 const sprites: { [key: string]: HTMLImageElement } = {};
 
@@ -118,8 +119,9 @@ function checkCollision(a: GameObject, b: GameObject) {
 
 function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
     Object.assign(player, {
-        x: startX, y: startY, width: TILE_SIZE * 0.7, height: TILE_SIZE * 2,
+        x: startX, y: startY, width: TILE_SIZE, height: TILE_SIZE * 2,
         vx: 0, vy: 0, isFlying: false, isGrounded: false, direction: 1, shootCooldown: 0,
+        isIdle: false, idleFrame: 0, idleAnimationTick: 0
     });
     energy = MAX_ENERGY;
 }
@@ -242,6 +244,19 @@ function updatePlayer() {
     
     if (player.shootCooldown > 0) player.shootCooldown--;
     if (player.isGrounded) energy = Math.min(MAX_ENERGY, energy + 1);
+
+    player.isIdle = player.vx === 0 && player.isGrounded && !player.isFlying;
+
+    if (player.isIdle) {
+        player.idleAnimationTick = (player.idleAnimationTick || 0) + 1;
+        if (player.idleAnimationTick > 10) { // Animation speed
+            player.idleAnimationTick = 0;
+            player.idleFrame = ((player.idleFrame || 0) + 1) % 4; // 4 frames
+        }
+    } else {
+        player.idleFrame = 0;
+        player.idleAnimationTick = 0;
+    }
 }
 
 function updateEnemies() {
@@ -483,12 +498,26 @@ function drawGame() {
         if (sprite) ctx.drawImage(sprite, miner.x, miner.y, TILE_SIZE, TILE_SIZE);
     }
     
-    if (sprites['P']) {
-        const playerSprite = sprites['P'];
+    if (sprites['P'] && sprites['P_stand']) {
+        const playerSprite = player.isIdle ? sprites['P_stand'] : sprites['P'];
+        
         ctx.save();
         ctx.translate(player.x + player.width / 2, 0);
         if (player.direction === -1) ctx.scale(-1, 1);
-        ctx.drawImage(playerSprite, -player.width / 2, player.y, player.width, player.height);
+        
+        if (player.isIdle) {
+            const frameWidth = playerSprite.width / 4; // 4 frames for idle sprite
+            ctx.drawImage(
+                playerSprite,
+                player.idleFrame * frameWidth, 0, // Source X, Y
+                frameWidth, playerSprite.height,  // Source W, H
+                -player.width / 2, player.y,      // Dest X, Y
+                player.width, player.height       // Dest W, H
+            );
+        } else {
+            // Draw the regular, single-frame running sprite
+            ctx.drawImage(playerSprite, -player.width / 2, player.y, player.width, player.height);
+        }
         ctx.restore();
     } else {
         ctx.fillStyle = '#ff0000';
