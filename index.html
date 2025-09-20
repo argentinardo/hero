@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clon de H.E.R.O. + Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #111;
+            color: #fff;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #000;
+            display: block;
+            border: 4px solid #4a4a4a;
+            cursor: crosshair;
+        }
+        .ui-bar {
+            background-color: #222;
+            border: 4px solid #4a4a4a;
+            border-bottom: none;
+            padding: 10px 20px;
+        }
+        .editor-panel {
+            background-color: #222;
+            border: 4px solid #4a4a4a;
+            padding: 10px;
+        }
+        .tile-selector {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: #333;
+        }
+        .tile-selector.selected {
+            border-color: #ffcc00;
+            box-shadow: 0 0 10px #ffcc00;
+        }
+        textarea {
+            background-color: #111;
+            border: 2px solid #4a4a4a;
+            width: 100%;
+            height: 100px;
+            color: #fff;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center h-screen">
+
+    <div id="main-container" class="flex flex-col items-center justify-center">
+        <!-- Barra de Interfaz de Usuario (UI) del Juego -->
+        <div id="game-ui" class="ui-bar w-full max-w-4xl text-sm flex justify-between">
+            <span>LIVES: <span id="lives-count">3</span></span>
+            <span>LEVEL: <span id="level-count">1</span></span>
+            <div class="flex items-center gap-2">
+                <span>ENERGY:</span>
+                <div class="w-40 h-5 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400"></div></div>
+            </div>
+            <span>SCORE: <span id="score-count">0</span></span>
+        </div>
+
+        <div class="flex gap-4">
+            <!-- Canvas del Juego / Editor -->
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+            <!-- Panel del Editor -->
+            <div id="editor-panel" class="editor-panel flex-col gap-2 w-64 hidden">
+                <h2 class="text-center text-lg mb-2">EDITOR</h2>
+                <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4">Jugar Nivel</button>
+                
+                <div class="grid grid-cols-4 gap-2" id="tile-palette">
+                    <!-- Tiles se agregarán dinámicamente aquí -->
+                </div>
+                
+                <div class="mt-auto">
+                    <h3 class="text-center text-md my-2">Datos del Nivel</h3>
+                    <textarea id="level-data-textarea"></textarea>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button id="import-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white">Importar</button>
+                        <button id="export-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white">Exportar</button>
+                    </div>
+                    <button id="clean-level-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white mt-2">Limpiar Nivel</button>
+                </div>
+                 <button id="back-to-game-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4">Volver al Juego</button>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmación -->
+        <div id="confirmation-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-20">
+            <div class="bg-gray-800 p-8 border-4 border-white">
+                <h2 id="modal-title" class="text-2xl mb-6">¿Estás seguro?</h2>
+                <p id="modal-text" class="mb-8">Esta acción borrará todo el contenido del nivel actual. No se puede deshacer.</p>
+                <div class="flex justify-center gap-4">
+                    <button id="modal-confirm-btn" class="bg-red-600 hover:bg-red-700 p-3 w-32 border-2 border-white">Confirmar</button>
+                    <button id="modal-cancel-btn" class="bg-gray-600 hover:bg-gray-700 p-3 w-32 border-2 border-white">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de Mensajes (Inicio / Game Over) -->
+        <div id="message-overlay" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center items-center text-center">
+            <h1 id="message-title" class="text-4xl mb-4">H.E.R.O. CLONE</h1>
+            <p id="message-text" class="text-lg">Presiona ENTER para empezar</p>
+             <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 mt-8 border-2 border-white">Editor de Niveles</button>
+            <p class="mt-8 text-sm text-gray-400">Controles: Flechas (Mover/Volar) | Espacio (Láser) | Flecha Abajo (Bomba)</p>
+        </div>
+    </div>
+
+    <script>
+        // --- GENERAL SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let appState = 'menu'; // menu, playing, editing
+
+        // --- UI ELEMENTS ---
+        const livesCountEl = document.getElementById('lives-count');
+        const scoreCountEl = document.getElementById('score-count');
+        const energyBarEl = document.getElementById('energy-bar');
+        const levelCountEl = document.getElementById('level-count');
+        const messageOverlay = document.getElementById('message-overlay');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const gameUiEl = document.getElementById('game-ui');
+        const editorPanelEl = document.getElementById('editor-panel');
+        const paletteEl = document.getElementById('tile-palette');
+        const levelDataTextarea = document.getElementById('level-data-textarea');
+        const confirmationModalEl = document.getElementById('confirmation-modal');
+
+        // --- GAME CONSTANTS ---
+        const TILE_SIZE = 40;
+        const GRAVITY = 0.2;
+        const PLAYER_SPEED = 3;
+        const FLY_POWER = 0.3;
+        const MAX_ENERGY = 1000;
+        const LASER_SPEED = 7;
+        const BOMB_FUSE = 80;
+
+        // --- GAME STATE ---
+        let lives, score, energy, currentLevelIndex, cameraY;
+        let particles = [];
+        let walls = [], enemies = [], lasers = [], bombs = [], explosions = [], miner = null;
+
+        // --- PLAYER OBJECT ---
+        const player = {};
+
+        // --- LEVEL DATA ---
+        const initialLevels = [
+            // Nivel 1 - He añadido una columna de 'C' para demostrar la nueva mecánica
+            ["11111111111111111111","1P0S000000000000S001","10000000000000000001","10011121111121111001","10010000000000001001","10010000080000001001","1001000C000000001001","1221000C000000001221","1000000C111110000001","10000001000010000001","1V1111110000111111V1","10000000000000000001","10000000000000000001","10011111221111111001","10010000000000001001","100S000080000000S001","10010000000000001001","10011111111111111001","10000000000000000001","121111211V1121111121","10000000000000000001","10080000000000080001","10000000000000000001","11121111111111121111","1000000S0000S0000001","10000000000000000001","13333333333333333331","11111111111111111111","10000000000000000001","10011211111111211001","10010000V000V0001001","10010000000000001001","10010001111110001001","1000000S0000S0000001","10080000000000080001","10000000000000000001","12111111111111111121","10000000000000000001","13331113333311133331","10001110000011100001","10000000000000000001","1V1111111111111111V1","10000000000000000001","10000000090000000001","11111111111111111111"],
+            // Nivel 2
+            ["11111111111111111111","1P0S000000000000S001","10000000000000000001","10011121111121111001","10010000000000001001","10010000080000001001","10010000000000001001","12210000000000001221","10000001111110000001","10000001000010000001","1V1111110000111111V1","10000000000000000001","10000000000000000001","10011111221111111001","10010000000000001001","100S000080000000S001","10010000000000001001","10011111111111111001","10000000000000000001","121111211V1121111121","10000000000000000001","10080000000000080001","10000000000000000001","11121111111111121111","1000000S0000S0000001","10000000000000000001","13333333333333333331","11111111111111111111","10000000000000000001","10011211111111211001","10010000V000V0001001","10010000000000001001","10010001111110001001","1000000S0000S0000001","10080000000000080001","10000000000000000001","12111111111111111121","10000000000000000001","13331113333311133331","10001110000011100001","10000000000000000001","1V1111111111111111V1","10000000000000000001","10000000090000000001","11111111111111111111"]
+        ];
+        let levelDesigns = JSON.parse(JSON.stringify(initialLevels)); // Deep copy
+
+        // --- EDITOR STATE ---
+        let editorLevel;
+        let selectedTile = '1';
+        let mouse = { x: 0, y: 0, gridX: 0, gridY: 0, isDown: false };
+        const TILE_TYPES = {
+            '0': { name: 'Vacío', color: '#000' }, 'P': { name: 'Player', color: '#ff0000' },
+            '1': { name: 'Muro', color: '#6d6d6d' }, '2': { name: 'Muro Dest.', color: '#a5682a' },
+            'C': { name: 'Columna', color: '#c5853f' }, // Nuevo bloque
+            '3': { name: 'Lava', color: '#ff4500' }, '8': { name: 'Murciélago', color: '#9400d3' },
+            'S': { name: 'Araña C.', color: '#ff8c00' }, 'V': { name: 'Víbora', color: '#32cd32' },
+            '9': { name: 'Minero', color: '#4169e1' },
+        };
+        const FILLABLE_TILES = ['1', '2', 'C', '0']; // '0' (Vacío) añadido a los bloques rellenables
+        let isDefiningRect = false;
+        let rectStartPoint = null;
+
+        // --- INPUT HANDLER ---
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Enter' && appState === 'menu') {
+                startGame();
+            } else if (e.code === 'Enter' && (gameState === 'gameover' || gameState === 'win')) {
+                 backToMenu();
+            }
+        });
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // --- CORE FUNCTIONS (Parse, Reset, etc.) ---
+        function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
+            Object.assign(player, {
+                x: startX, y: startY, width: TILE_SIZE * 0.7, height: TILE_SIZE * 0.9,
+                vx: 0, vy: 0, isFlying: false, isGrounded: false, direction: 1, shootCooldown: 0,
+            });
+            energy = MAX_ENERGY;
+            lasers = []; bombs = []; explosions = []; particles = [];
+        }
+
+        function parseLevel(map) {
+            walls = []; enemies = []; miner = null;
+            let playerStartX, playerStartY;
+            map.forEach((row, y) => {
+                row.split('').forEach((tile, x) => {
+                    const objData = { x: x * TILE_SIZE, y: y * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE };
+                    if (tile === '1') walls.push({ ...objData, type: 'solid' });
+                    else if (tile === '2') walls.push({ ...objData, type: 'destructible' });
+                    else if (tile === 'C') walls.push({ ...objData, type: 'destructible_vertical' }); // Nuevo tipo de muro
+                    else if (tile === '3') walls.push({ ...objData, type: 'lava' });
+                    else if (tile === '8') enemies.push({ ...objData, vx: 1.5, vy: 1, type: 'bat', initialY: objData.y, verticalRange: TILE_SIZE });
+                    else if (tile === 'S') enemies.push({ ...objData, width: TILE_SIZE * 0.8, height: TILE_SIZE * 0.8, vy: 1, type: 'hanging_spider', initialY: objData.y, moveRange: TILE_SIZE * 2 });
+                    else if (tile === 'V') enemies.push({ ...objData, type: 'viper', initialX: objData.x, direction: 0, extendLength: 0, state: 'idle', stateTimer: 120 + Math.random() * 100 });
+                    else if (tile === '9') miner = { ...objData };
+                    else if (tile === 'P') { playerStartX = objData.x; playerStartY = objData.y; }
+                });
+            });
+            resetPlayer(playerStartX, playerStartY);
+        }
+
+        // --- STATE CHANGE FUNCTIONS ---
+        function startGame(levelMap = null) {
+            appState = 'playing';
+            gameState = 'playing';
+            messageOverlay.style.display = 'none';
+            gameUiEl.style.display = 'flex';
+            editorPanelEl.style.display = 'none';
+            lives = 3;
+            score = 0;
+            currentLevelIndex = 0;
+            if (levelMap) {
+                levelDesigns = [levelMap]; // Play test a single level
+            } else {
+                levelDesigns = JSON.parse(JSON.stringify(initialLevels));
+            }
+            loadLevel();
+        }
+
+        function startEditor() {
+            appState = 'editing';
+            messageOverlay.style.display = 'none';
+            gameUiEl.style.display = 'none';
+            editorPanelEl.style.display = 'flex';
+            editorLevel = levelDesigns[0].map(row => row.split(''));
+            cameraY = 0;
+            exportLevelData();
+        }
+        
+        function backToMenu() {
+            appState = 'menu';
+            gameState = 'start';
+            messageOverlay.style.display = 'flex';
+            gameUiEl.style.display = 'none';
+            editorPanelEl.style.display = 'none';
+            messageTitle.textContent = "H.E.R.O. CLONE";
+            messageText.innerHTML = "Presiona ENTER para empezar";
+        }
+
+        function loadLevel() {
+            if (currentLevelIndex >= levelDesigns.length) {
+                 gameState = 'win';
+                 messageTitle.textContent = '¡HAS GANADO!';
+                 messageText.textContent = `Puntuación final: ${score}. Presiona ENTER para volver al menú.`;
+                 messageOverlay.style.display = 'flex';
+                 return;
+            }
+            parseLevel(levelDesigns[currentLevelIndex]);
+            cameraY = 0;
+            levelCountEl.textContent = currentLevelIndex + 1;
+        }
+
+        function playerDie() {
+            lives--;
+            if (lives <= 0) {
+                gameState = 'gameover';
+                messageTitle.textContent = 'GAME OVER';
+                messageText.textContent = `Puntuación final: ${score}. Presiona ENTER para volver al menú.`;
+                messageOverlay.style.display = 'flex';
+            } else {
+                resetPlayer(player.x, TILE_SIZE * 1.5); // Reset near top of current view
+                cameraY = 0;
+            }
+        }
+        
+        function checkCollision(a, b) {
+            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        function createDebris(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x + TILE_SIZE / 2, y: y + TILE_SIZE / 2,
+                    vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5 - 2,
+                    life: 30 + Math.random() * 20, color: color, size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        function updatePlayer() {
+            // Horizontal Movement
+            player.vx = 0;
+            if (keys.ArrowLeft) {
+                player.vx = -PLAYER_SPEED;
+                player.direction = -1;
+            }
+            if (keys.ArrowRight) {
+                player.vx = PLAYER_SPEED;
+                player.direction = 1;
+            }
+            player.x += player.vx;
+            
+            // Horizontal Collision
+            walls.forEach(wall => {
+                if(checkCollision(player, wall)) {
+                    if (player.vx > 0) player.x = wall.x - player.width;
+                    if (player.vx < 0) player.x = wall.x + wall.width;
+                }
+            });
+
+            // Vertical Movement & Gravity
+            player.isFlying = keys.ArrowUp && energy > 0;
+            if (player.isFlying) {
+                player.vy -= FLY_POWER;
+                energy -= 2;
+            } else {
+                player.vy += GRAVITY;
+            }
+            player.y += player.vy;
+
+            // Vertical Collision
+            player.isGrounded = false;
+            walls.forEach(wall => {
+                if(checkCollision(player, wall)) {
+                    if (wall.type === 'lava') {
+                        playerDie();
+                        return;
+                    }
+                    if (player.vy > 0) {
+                        player.y = wall.y - player.height;
+                        player.vy = 0;
+                        player.isGrounded = true;
+                    }
+                    if (player.vy < 0) {
+                        player.y = wall.y + wall.height;
+                        player.vy = 0;
+                    }
+                }
+            });
+            
+            // Out of bounds check
+            if (player.y > levelDesigns[currentLevelIndex].length * TILE_SIZE) {
+                 playerDie();
+            }
+
+            // Energy & Ground
+            if (player.isGrounded) {
+                energy = Math.min(MAX_ENERGY, energy + 5);
+            }
+
+            // Shooting
+            if (player.shootCooldown > 0) player.shootCooldown--;
+            if (keys.Space && player.shootCooldown === 0) {
+                lasers.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    width: 15,
+                    height: 5,
+                    vx: LASER_SPEED * player.direction,
+                    life: 25,
+                });
+                player.shootCooldown = 10;
+            }
+
+            // Bombing
+            if (keys.ArrowDown && player.isGrounded && bombs.length === 0) {
+                bombs.push({
+                    x: player.x,
+                    y: player.y + player.height,
+                    width: TILE_SIZE * 0.4,
+                    height: TILE_SIZE * 0.4,
+                    fuse: BOMB_FUSE,
+                });
+            }
+        }
+        
+        function updateLasers() {
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                laser.x += laser.vx;
+                if(laser.life) laser.life--;
+
+                if ((laser.life && laser.life <= 0) || laser.x > canvas.width || laser.x < 0) {
+                    lasers.splice(i, 1);
+                    continue;
+                }
+
+                let hitSomething = false;
+                for (let j = walls.length - 1; j >= 0; j--) {
+                    const wall = walls[j];
+                    if (checkCollision(laser, wall)) {
+                        if (wall.type === 'destructible' || wall.type === 'destructible_vertical') {
+                            createDebris(wall.x, wall.y, wall.type === 'destructible' ? '#a5682a' : TILE_TYPES['C'].color);
+                            walls.splice(j, 1);
+                            score += 10;
+                        }
+                        hitSomething = true;
+                        break; 
+                    }
+                }
+
+                if (hitSomething) {
+                    lasers.splice(i, 1);
+                }
+            }
+        }
+
+        function updateBombs() {
+            bombs.forEach((b, i) => {
+                b.fuse--;
+                if (b.fuse <= 0) {
+                    explosions.push({ x: b.x, y: b.y, radius: 1.5 * TILE_SIZE, timer: 20 });
+                    if (Math.hypot(player.x + player.width / 2 - (b.x + b.width / 2), player.y + player.height / 2 - (b.y + b.height / 2)) < 1.5 * TILE_SIZE) playerDie();
+                    
+                    const wallsToRemove = new Set();
+                    const columnsToDestroy = new Set();
+
+                    walls.forEach(wall => {
+                        if (wall.type === 'destructible' || wall.type === 'destructible_vertical') {
+                            const dist = Math.hypot(b.x + (b.width/2) - (wall.x + TILE_SIZE/2), b.y + (b.height/2) - (wall.y + TILE_SIZE/2));
+                            if (dist < TILE_SIZE * 1.5) {
+                                wallsToRemove.add(wall);
+                                if (wall.type === 'destructible_vertical') {
+                                    columnsToDestroy.add(wall.x);
+                                }
+                            }
+                        }
+                    });
+
+                    if (columnsToDestroy.size > 0) {
+                        walls.forEach(wall => {
+                            if (wall.type === 'destructible_vertical' && columnsToDestroy.has(wall.x)) {
+                                wallsToRemove.add(wall);
+                            }
+                        });
+                    }
+
+                    if (wallsToRemove.size > 0) {
+                        walls = walls.filter(wall => !wallsToRemove.has(wall));
+                        wallsToRemove.forEach(wall => {
+                            score += 50;
+                            createDebris(wall.x, wall.y, wall.type === 'destructible' ? TILE_TYPES['2'].color : TILE_TYPES['C'].color);
+                        });
+                    }
+                    
+                    enemies = enemies.filter(e => {
+                        let h = { ...e };
+                        if (e.type === "viper") 1 === e.direction ? (h.x = e.initialX, h.width = e.extendLength) : (h.x = e.initialX + TILE_SIZE - e.extendLength, h.width = e.extendLength);
+                        if (Math.hypot(h.x + h.width / 2 - (b.x + b.width / 2), h.y + h.height / 2 - (b.y + b.height / 2)) < 1.5 * TILE_SIZE) return score += 150, createDebris(e.x, e.y, getEnemyColor(e.type)), false;
+                        return true;
+                    });
+
+                    bombs.splice(i, 1);
+                }
+            });
+        }
+
+        function updateEnemies() {
+            for (let e = enemies.length - 1; e >= 0; e--) {
+                let n = enemies[e];
+                let t = { ...n };
+                switch (n.type) {
+                    case "bat":
+                        n.x += n.vx;
+                        n.y += n.vy;
+                        walls.forEach(w => { if (checkCollision(n, w)) { n.vx *= -1; n.x += 2 * n.vx; } });
+                        if ((n.y <= n.initialY - n.verticalRange || n.y >= n.initialY + n.verticalRange)) n.vy *= -1;
+                        break;
+                    case "hanging_spider":
+                        n.y += n.vy;
+                        if ((n.y <= n.initialY || n.y >= n.initialY + n.moveRange)) n.vy *= -1;
+                        break;
+                    case "viper":
+                        n.stateTimer--;
+                        if (n.direction === 0) {
+                            let l = walls.find(w => w.x === n.x - TILE_SIZE && w.y === n.y);
+                            let r = walls.find(w => w.x === n.x + TILE_SIZE && w.y === n.y);
+                            if (!l) n.direction = -1;
+                            if (!r) n.direction = 1;
+                        }
+                        if (n.stateTimer <= 0) {
+                            if (n.state === "idle") { n.state = "extending"; n.stateTimer = 60; }
+                            else if (n.state === "extending") { n.state = "out"; n.stateTimer = 120; }
+                            else if (n.state === "out") { n.state = "retracting"; n.stateTimer = 60; }
+                            else if (n.state === "retracting") { n.state = "idle"; n.stateTimer = 120 + 100 * Math.random(); }
+                        }
+                        if (n.state === "extending") n.extendLength = Math.min(TILE_SIZE, n.extendLength + 2);
+                        else if (n.state === "retracting") n.extendLength = Math.max(0, n.extendLength - 2);
+                        
+                        if (n.direction === 1) {
+                             t.x = n.initialX;
+                             t.width = n.extendLength;
+                        } else {
+                             t.x = n.initialX + TILE_SIZE - n.extendLength;
+                             t.width = n.extendLength;
+                        }
+                        break;
+                }
+
+                if (checkCollision(player, t)) playerDie();
+
+                for (let a = lasers.length - 1; a >= 0; a--) {
+                    let o = lasers[a];
+                    if (checkCollision(o, t)) {
+                        createDebris(n.x, n.y, getEnemyColor(n.type));
+                        enemies.splice(e, 1);
+                        lasers.splice(a, 1);
+                        score += 150;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += GRAVITY;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+        
+        function getEnemyColor(type) {
+            switch (type) {
+                case "bat": return "#9400d3";
+                case "hanging_spider": return "#ff8c00";
+                case "viper": return "#32cd32";
+                default: return "#fff";
+            }
+        }
+        
+        function gameLoop() {
+            if (gameState !== 'playing') return;
+            // Update all game elements
+            updatePlayer();
+            updateLasers();
+            updateBombs();
+            updateEnemies();
+            updateParticles();
+            explosions.forEach((exp, i) => { exp.timer--; if (exp.timer <= 0) explosions.splice(i, 1); });
+
+            // Update Camera
+            const cameraDeadzone = canvas.height / 3;
+            if (player.y < cameraY + cameraDeadzone) cameraY = player.y - cameraDeadzone;
+            if (player.y + player.height > cameraY + canvas.height - cameraDeadzone) cameraY = player.y + player.height - canvas.height + cameraDeadzone;
+            const levelHeight = levelDesigns[currentLevelIndex].length * TILE_SIZE;
+            cameraY = Math.max(0, Math.min(levelHeight - canvas.height, cameraY));
+
+            // Check win condition
+            if (miner && checkCollision(player, miner)) {
+                score += 1000;
+                currentLevelIndex++;
+                loadLevel(); // This will handle the win screen if it's the last level
+                return;
+            }
+
+            // Draw everything
+            drawGame();
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(0, -cameraY);
+
+            // Draw walls, enemies, player, etc.
+            walls.forEach(wall => {
+                if (wall.type === 'solid') ctx.fillStyle = '#6d6d6d';
+                else if (wall.type === 'destructible') ctx.fillStyle = '#a5682a';
+                else if (wall.type === 'destructible_vertical') ctx.fillStyle = TILE_TYPES['C'].color;
+                else if (wall.type === 'lava') {
+                    const brightness = 0.8 + Math.sin(Date.now() / 150) * 0.2;
+                    const red = Math.floor(255 * brightness);
+                    const green = Math.floor(69 * brightness);
+                    ctx.fillStyle = `rgb(${red}, ${green}, 0)`;
+                }
+                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+            });
+            if (miner) { ctx.fillStyle = '#4169e1'; ctx.fillRect(miner.x, miner.y, miner.width, miner.height); }
+            ctx.fillStyle = '#ff0000'; ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = '#cccccc'; ctx.fillRect(player.x + player.width/4, player.y - TILE_SIZE*0.2, player.width/2, TILE_SIZE*0.2);
+            
+            enemies.forEach(enemy => {
+                switch(enemy.type){
+                    case 'bat':
+                        ctx.fillStyle='#9400d3';
+                        ctx.fillRect(enemy.x,enemy.y+enemy.height/2,enemy.width,enemy.height/2);
+                        ctx.beginPath();
+                        ctx.arc(enemy.x+enemy.width/2,enemy.y+enemy.height/2,enemy.width/2,0,Math.PI,true);
+                        ctx.fill();
+                        break;
+                    case 'hanging_spider':
+                        ctx.fillStyle='#ff8c00';
+                        ctx.fillRect(enemy.x+enemy.width/2-1,enemy.initialY,2,enemy.y-enemy.initialY+enemy.height/2);
+                        ctx.beginPath();
+                        ctx.arc(enemy.x+enemy.width/2,enemy.y+enemy.height/2,enemy.width/2,0,2*Math.PI);
+                        ctx.fill();
+                        break;
+                    case 'viper':
+                        ctx.fillStyle='#32cd32';
+                        if (enemy.direction === 1) {
+                            ctx.fillRect(enemy.initialX,enemy.y,enemy.extendLength,TILE_SIZE);
+                        } else {
+                            ctx.fillRect(enemy.initialX+TILE_SIZE-enemy.extendLength,enemy.y,enemy.extendLength,TILE_SIZE);
+                        }
+                        break;
+                }
+            });
+
+            ctx.fillStyle = '#00ff00'; lasers.forEach(l => ctx.fillRect(l.x, l.y, l.width, l.height));
+            bombs.forEach(b => { ctx.fillStyle = (b.fuse % 20 < 10) ? '#ff0000' : '#ffffff'; ctx.fillRect(b.x, b.y, b.width, b.height); });
+            explosions.forEach(e => { ctx.fillStyle = `rgba(255, 165, 0, ${e.timer/20})`; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius * (1 - e.timer/20), 0, Math.PI * 2); ctx.fill(); });
+            particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life / 40); ctx.fillRect(p.x, p.y, p.size, p.size); });
+            ctx.globalAlpha = 1.0;
+            
+            ctx.restore();
+
+            // Update UI
+            livesCountEl.textContent = lives;
+            scoreCountEl.textContent = score;
+            energyBarEl.style.width = `${(energy / MAX_ENERGY) * 100}%`;
+        }
+
+        // --- EDITOR LOGIC ---
+        function setupEditor() {
+            // Populate Palette
+            Object.entries(TILE_TYPES).forEach(([key, {name, color}]) => {
+                const tileDiv = document.createElement('div');
+                tileDiv.className = 'tile-selector flex-col text-xs text-center';
+                tileDiv.dataset.tileKey = key;
+                tileDiv.style.backgroundColor = color;
+                tileDiv.textContent = name;
+                if (key === selectedTile) tileDiv.classList.add('selected');
+                tileDiv.addEventListener('click', () => {
+                    document.querySelector('.tile-selector.selected').classList.remove('selected');
+                    tileDiv.classList.add('selected');
+                    selectedTile = key;
+                    // Cancelar el modo de rectángulo si se cambia de tile
+                    isDefiningRect = false;
+                    rectStartPoint = null;
+                });
+                paletteEl.appendChild(tileDiv);
+            });
+
+            // Canvas Listeners
+            canvas.addEventListener('mousemove', e => {
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = e.clientX - rect.left;
+                mouse.y = e.clientY - rect.top;
+                mouse.gridX = Math.floor(mouse.x / TILE_SIZE);
+                mouse.gridY = Math.floor((mouse.y + cameraY) / TILE_SIZE);
+                if (mouse.isDown && appState === 'editing' && !isDefiningRect) placeTile();
+            });
+             canvas.addEventListener('mousedown', e => {
+                mouse.isDown = true;
+                if (appState === 'editing') {
+                    // Si estamos definiendo un rectángulo, este click lo completa.
+                    if (isDefiningRect && e.button === 0) {
+                        fillRectangle(rectStartPoint, { x: mouse.gridX, y: mouse.gridY });
+                        isDefiningRect = false;
+                        rectStartPoint = null;
+                        mouse.isDown = false; // Evitar que se coloque un tile extra
+                        return;
+                    }
+
+                    // Cualquier otro click cancela el modo rectángulo.
+                    isDefiningRect = false;
+                    rectStartPoint = null;
+
+                    if (e.button === 2) { // Clic derecho para borrar
+                         const originalTile = selectedTile;
+                         selectedTile = '0'; 
+                         placeTile();
+                         selectedTile = originalTile;
+                    } else {
+                        placeTile();
+                    }
+                }
+            });
+
+            canvas.addEventListener('dblclick', e => {
+                if (appState !== 'editing') return;
+                // Iniciar modo de definición de rectángulo con doble click si el tile es rellenable
+                if (FILLABLE_TILES.includes(selectedTile)) {
+                    isDefiningRect = true;
+                    rectStartPoint = { x: mouse.gridX, y: mouse.gridY };
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => mouse.isDown = false);
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+            
+            canvas.addEventListener('wheel', e => {
+                if (appState !== 'editing') return;
+                e.preventDefault();
+
+                cameraY += e.deltaY;
+
+                if (editorLevel && editorLevel.length > 0) {
+                    const levelHeight = editorLevel.length * TILE_SIZE;
+                    if (cameraY + 600 > levelHeight - TILE_SIZE) { // 600 is canvas height
+                        if (editorLevel[0].length > 0) {
+                            const width = editorLevel[0].length;
+                            const newRow = Array(width).fill('0');
+                            newRow[0] = '1';
+                            newRow[width - 1] = '1';
+                            editorLevel.push(newRow);
+                        }
+                    }
+
+                    const newLevelHeight = editorLevel.length * TILE_SIZE;
+                    const maxCameraY = Math.max(0, newLevelHeight - 600);
+                    cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
+                }
+
+            }, { passive: false });
+            
+            // Button listeners
+            document.getElementById('level-editor-btn').addEventListener('click', startEditor);
+            document.getElementById('play-test-btn').addEventListener('click', () => {
+                if(editorLevel && editorLevel.length > 0) {
+                    startGame(editorLevel.map(row => row.join('')))
+                }
+            });
+            document.getElementById('back-to-game-btn').addEventListener('click', backToMenu);
+            document.getElementById('export-btn').addEventListener('click', exportLevelData);
+            document.getElementById('import-btn').addEventListener('click', importLevelData);
+            
+            // Show confirmation modal instead of cleaning directly
+            document.getElementById('clean-level-btn').addEventListener('click', () => {
+                confirmationModalEl.classList.remove('hidden');
+            });
+            
+            // Modal button listeners
+            document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+                confirmationModalEl.classList.add('hidden');
+            });
+
+            document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+                cleanLevel();
+                confirmationModalEl.classList.add('hidden');
+            });
+        }
+
+        function exportLevelData() {
+            if (!editorLevel || editorLevel.length === 0) return;
+            const levelString = '[\n' + editorLevel.map(row => `    "${row.join('')}"`).join(',\n') + '\n]';
+            levelDataTextarea.value = levelString;
+        }
+
+        function importLevelData() {
+            try {
+                if (levelDataTextarea.value.trim() === '') throw new Error("El campo de datos está vacío.");
+                const data = JSON.parse(levelDataTextarea.value.replace(/'/g, '"'));
+                if (Array.isArray(data) && data.length > 0 && data.every(r => typeof r === 'string')) {
+                    editorLevel = data.map(row => row.split(''));
+                    canvas.height = Math.max(600, editorLevel.length * TILE_SIZE);
+                } else {
+                    throw new Error("Formato de nivel inválido.");
+                }
+            } catch (e) {
+                alert("Error al importar el nivel: " + e.message);
+            }
+        }
+
+        function cleanLevel() {
+            if (!editorLevel || editorLevel.length < 2) return;
+
+            const width = editorLevel[0].length;
+            const emptyMiddleRow = ['1', ...Array(width - 2).fill('0'), '1'];
+
+            for (let y = 1; y < editorLevel.length - 1; y++) {
+                editorLevel[y] = [...emptyMiddleRow];
+            }
+        }
+
+        function placeTile() {
+            if (!editorLevel || editorLevel.length === 0 || !editorLevel[0]) return;
+            if (mouse.gridX < 0 || mouse.gridX >= editorLevel[0].length || mouse.gridY < 0 || mouse.gridY >= editorLevel.length) return;
+            
+            if (selectedTile === 'P' || selectedTile === '9') {
+                for(let y=0; y<editorLevel.length; y++) {
+                    for(let x=0; x<editorLevel[0].length; x++) {
+                        if (editorLevel[y][x] === selectedTile) editorLevel[y][x] = '0';
+                    }
+                }
+            }
+            editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
+        }
+
+        function fillRectangle(start, end) {
+            if (!FILLABLE_TILES.includes(selectedTile)) return;
+
+            const startX = Math.min(start.x, end.x);
+            const endX = Math.max(start.x, end.x);
+            const startY = Math.min(start.y, end.y);
+            const endY = Math.max(start.y, end.y);
+
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    if (x < 0 || x >= editorLevel[0].length || y < 0 || y >= editorLevel.length) continue;
+                    editorLevel[y][x] = selectedTile;
+                }
+            }
+        }
+
+        function editorLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(0, -cameraY);
+
+            if (editorLevel && editorLevel.length > 0 && editorLevel[0]) {
+                for (let y = 0; y < editorLevel.length; y++) {
+                    for (let x = 0; x < editorLevel[0].length; x++) {
+                        const tileKey = editorLevel[y][x];
+                        if (TILE_TYPES[tileKey]) {
+                            ctx.fillStyle = TILE_TYPES[tileKey].color;
+                            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        }
+                        ctx.strokeStyle = '#333';
+                        ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+            
+            // --- Lógica de dibujado del modo rectángulo ---
+            if (isDefiningRect && rectStartPoint) {
+                // Dibujar punto de inicio parpadeante
+                const blinkOn = Math.floor(Date.now() / 400) % 2 === 0;
+                if (blinkOn) {
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+                    ctx.fillRect(rectStartPoint.x * TILE_SIZE, rectStartPoint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+
+                // Dibujar vista previa del rectángulo
+                const startX = Math.min(rectStartPoint.x, mouse.gridX);
+                const endX = Math.max(rectStartPoint.x, mouse.gridX);
+                const startY = Math.min(rectStartPoint.y, mouse.gridY);
+                const endY = Math.max(rectStartPoint.y, mouse.gridY);
+
+                const previewColor = TILE_TYPES[selectedTile] ? TILE_TYPES[selectedTile].color : '#fff';
+                ctx.fillStyle = previewColor;
+                ctx.globalAlpha = 0.4;
+                for (let y = startY; y <= endY; y++) {
+                    for (let x = startX; x <= endX; x++) {
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            // No mostrar el cursor de celda normal si estamos definiendo un rectángulo
+            if (!isDefiningRect) {
+                ctx.strokeRect(mouse.gridX * TILE_SIZE, mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+            ctx.lineWidth = 1;
+
+            ctx.restore();
+        }
+
+        // --- MAIN APP LOOP ---
+        function mainLoop() {
+            if (appState === 'playing') {
+                gameLoop();
+            } else if (appState === 'editing') {
+                editorLoop();
+            }
+            requestAnimationFrame(mainLoop);
+        }
+
+        // --- INITIALIZATION ---
+        setupEditor();
+        backToMenu();
+        mainLoop();
+    </script>
+</body>
+</html>
+
