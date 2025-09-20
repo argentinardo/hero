@@ -1,19 +1,23 @@
 {
   "compilerOptions": {
     "target": "es6",
-    "module": "commonjs",
+    "lib": [
+      "es2017",
+      "dom"
+    ],
+    "module": "esnext",
     "strict": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "outDir": "dist",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "allowSyntheticDefaultImports": true
   },
   "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
+    "src/scripts/**/*.ts",
+    "declarations.d.ts"
   ]
 }
