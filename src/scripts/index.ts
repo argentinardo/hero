@@ -61,7 +61,7 @@ interface AnimationData {
 const ANIMATION_DATA: { [key: string]: AnimationData } = {
     'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc },
     'P_stand': { frames: 4, speed: 10, sprite: playerStandSrc },
-    'P_jump': { frames: 4, speed: 5, sprite: playerJumpSrc, loop: false },
+    'P_jump': { frames: 4, speed: 10, sprite: playerJumpSrc, loop: false },
     '8': { frames: 6, speed: 5, sprite: batSrc },      // Bat
     'S': { frames: 15, speed: 4, sprite: spiderSrc },   // Spider
     'bomb': { frames: 4, speed: 10, sprite: bombSrc },
@@ -94,7 +94,8 @@ interface Enemy {
     state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended';
     idleTimer?: number;
     waitTimer?: number;
-    animationTick: number;
+    spriteTick: number;
+    movementTick?: number;
     currentFrame: number;
 }
 interface Wall {
@@ -165,7 +166,10 @@ function parseLevel(map: string[]) {
                         x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
                         vx: Math.random() > 0.5 ? 1.5 : -1.5, vy: 0, 
                         type: 'bat', tile: char,
-                        initialY: tileY, animationTick: Math.random() * 100, currentFrame: 0
+                        initialY: tileY, 
+                        spriteTick: 0, 
+                        movementTick: Math.random() * 100, // Start movement cycle at a random point
+                        currentFrame: 0
                     }); 
                     break;
                 case 'S': 
@@ -173,12 +177,12 @@ function parseLevel(map: string[]) {
                         x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
                         vx: 0, vy: 1, type: 'spider', tile: char,
                         initialY: tileY, maxLength: TILE_SIZE * 2,
-                        animationTick: 0, currentFrame: 0
+                        spriteTick: 0, currentFrame: 0
                     }); 
                     break;
                 case 'V':
                     const wallOnLeft = j > 0 && map[i][j - 1] === '1';
-                    enemies.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, vx: 0, vy: 0, type: 'viper', tile: char, initialX: tileX, direction: wallOnLeft ? 1 : -1, state: 'idle', idleTimer: Math.random() * 120 + 60, extendLength: 0, animationTick: 0, currentFrame: 0 });
+                    enemies.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, vx: 0, vy: 0, type: 'viper', tile: char, initialX: tileX, direction: wallOnLeft ? 1 : -1, state: 'idle', idleTimer: Math.random() * 120 + 60, extendLength: 0, spriteTick: 0, currentFrame: 0 });
                     break;
                 case '9': miner = { x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, tile: char }; break;
             }
@@ -302,8 +306,9 @@ function updateEnemies() {
         // Update animation for all enemies that have one
         const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
         if (anim) {
-            enemy.animationTick = (enemy.animationTick + 1) % anim.speed;
-            if (enemy.animationTick === 0) {
+            enemy.spriteTick = (enemy.spriteTick + 1);
+            if (enemy.spriteTick >= anim.speed) {
+                enemy.spriteTick = 0;
                 enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;
             }
         }
@@ -311,8 +316,8 @@ function updateEnemies() {
         switch (enemy.type) {
             case 'bat':
                 enemy.x += enemy.vx;
-                enemy.animationTick = (enemy.animationTick || 0) + 0.05; // Increment angle for sinewave
-                enemy.y = enemy.initialY! + Math.sin(enemy.animationTick) * TILE_SIZE * 0.5; // Oscillate vertically
+                enemy.movementTick = (enemy.movementTick || 0) + 0.05; // Use dedicated movement tick
+                enemy.y = enemy.initialY! + Math.sin(enemy.movementTick) * TILE_SIZE * 0.5; // Oscillate vertically
 
                 // Wall collision for horizontal movement
                 const gridX = Math.floor(enemy.x / TILE_SIZE);
