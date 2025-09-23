@@ -1,21 +1,26 @@
+// --- IMPORTS ---
 import '../styles/main.scss';
 import initialLevels from '../assets/levels.json';
 
-// Import sprites
-import wallSpriteSrc from '../assets/sprites/wall_small.png';
-import destructibleWallSpriteSrc from '../assets/sprites/tierra_small.png';
-import playerSpriteSrc from '../assets/sprites/hero_small.png';
-import batSpriteSrc from '../assets/sprites/bat_small.png';
-import viperSpriteSrc from '../assets/sprites/serpiente_small.png';
-import minerSpriteSrc from '../assets/sprites/miner_small.png';
-import backgroundSpriteSrc from '../assets/sprites/background_small.png';
-import spiderSpriteSrc from '../assets/sprites/spider_small.png';
-import playerStandSpriteSrc from '../assets/sprites/hero_stand.png';
-
+// Import all sprite assets
+import playerWalkSrc from '../assets/sprites/hero_small.png';
+import playerStandSrc from '../assets/sprites/hero_stand.png';
+import playerJumpSrc from '../assets/sprites/hero_jump.png';
+import batSrc from '../assets/sprites/bat_small.png';
+import spiderSrc from '../assets/sprites/spider_small.png'; // 15 frames
+import viperSrc from '../assets/sprites/serpiente_small.png';
+import minerSrc from '../assets/sprites/miner_small.png';
+import bombSrc from '../assets/sprites/bomba.png';
+import explosionSrc from '../assets/sprites/boooom.png';
+import wallSrc from '../assets/sprites/wall_small.png';
+import dirtSrc from '../assets/sprites/tierra_small.png';
+import columnSrc from '../assets/sprites/wall_small.png';// Using wall sprite as placeholder for column
+import lavaSrc from '../assets/sprites/lava.png';
 
 // --- GENERAL SETUP ---
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
+const gameWorldEl = document.getElementById('game-world') as HTMLElement;
 let appState = 'menu'; // menu, playing, editing
 let gameState: string;
 
@@ -42,47 +47,46 @@ const LASER_SPEED = 8;
 const MAX_ENERGY = 100;
 const BOMB_FUSE = 80;
 const TOTAL_LEVELS = 10;
-const TILE_TYPES: { [key: string]: { name: string, color: string } } = {
-    '0': { name: 'Vacío', color: '#000' }, 'P': { name: 'Player', color: '#ff0000' },
-    '1': { name: 'Muro', color: '#6d6d6d' }, '2': { name: 'Tierra', color: '#a5682a' },
-    'C': { name: 'Columna', color: '#c5853f' },
-    '3': { name: 'Lava', color: '#ff4500' }, '8': { name: 'Murciélago', color: '#9400d3' },
-    'S': { name: 'Araña', color: '#ff8c00' }, 'V': { name: 'Víbora', color: '#32cd32' },
-    '9': { name: 'Minero', color: '#4169e1' },
-};
 
-
-// --- SPRITE MANAGEMENT ---
-const spriteSources: { [key: string]: string } = {
-    '0': backgroundSpriteSrc, '1': wallSpriteSrc, '2': destructibleWallSpriteSrc,
-    'C': destructibleWallSpriteSrc, 'P': playerSpriteSrc, '8': batSpriteSrc,
-    'S': spiderSpriteSrc, 'V': viperSpriteSrc, '9': minerSpriteSrc, 'P_stand': playerStandSpriteSrc
-};
+// --- SPRITE & ANIMATION DATA ---
 const sprites: { [key: string]: HTMLImageElement } = {};
 
-function preloadSprites(): Promise<void> {
-    let loadedCount = 0;
-    const totalSprites = Object.keys(spriteSources).length;
-    return new Promise((resolve, reject) => {
-        if (totalSprites === 0) return resolve();
-        for (const key in spriteSources) {
-            const img = new Image();
-            img.src = spriteSources[key];
-            img.onload = () => {
-                sprites[key] = img;
-                loadedCount++;
-                if (loadedCount === totalSprites) resolve();
-            };
-            img.onerror = (err) => reject(err);
-        }
-    });
+interface AnimationData {
+    frames: number;
+    speed: number;
+    sprite: string;
+    loop?: boolean;
 }
+
+const ANIMATION_DATA: { [key: string]: AnimationData } = {
+    'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc },
+    'P_stand': { frames: 4, speed: 10, sprite: playerStandSrc },
+    'P_jump': { frames: 4, speed: 5, sprite: playerJumpSrc, loop: false },
+    '8': { frames: 6, speed: 5, sprite: batSrc },      // Bat
+    'S': { frames: 15, speed: 4, sprite: spiderSrc },   // Spider
+    'bomb': { frames: 4, speed: 10, sprite: bombSrc },
+    'explosion': { frames: 5, speed: 5, sprite: explosionSrc, loop: false }
+};
+
+const TILE_TYPES: { [key: string]: { name: string, color: string, class: string, sprite?: string } } = {
+    '0': { name: 'Vacío', color: '#000', class: '' },
+    'P': { name: 'Player', color: '#ff0000', class: 'player' },
+    '1': { name: 'Muro', color: '#6d6d6d', class: 'wall', sprite: wallSrc },
+    '2': { name: 'Tierra', color: '#a5682a', class: 'destructible-wall', sprite: dirtSrc },
+    'C': { name: 'Columna', color: '#c5853f', class: 'destructible-wall', sprite: columnSrc },
+    '3': { name: 'Lava', color: '#ff4500', class: 'lava', sprite: lavaSrc },
+    '8': { name: 'Murciélago', color: '#9400d3', class: 'bat', sprite: batSrc },
+    'S': { name: 'Araña', color: '#ff8c00', class: 'spider', sprite: spiderSrc },
+    'V': { name: 'Víbora', color: '#32cd32', class: 'viper', sprite: viperSrc },
+    '9': { name: 'Minero', color: '#4169e1', class: 'miner', sprite: minerSrc },
+};
 
 // --- TYPE DEFINITIONS ---
 interface Enemy {
     x: number; y: number; width: number; height: number; vx: number; vy: number;
     type: 'bat' | 'viper' | 'spider' | 'miner';
     tile: string;
+    // element: HTMLElement; <--- REMOVED
     direction?: number;
     initialX?: number; initialY?: number;
     extendLength?: number;
@@ -90,16 +94,25 @@ interface Enemy {
     state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended';
     idleTimer?: number;
     waitTimer?: number;
-    currentFrame?: number; frameCount?: number; animationTick?: number; animationSpeed?: number;
+    animationTick: number;
+    currentFrame: number;
 }
+interface Wall {
+    x: number; y: number; width: number; height: number; type: string; tile: string; // element: HTMLElement; <--- REMOVED
+}
+interface Laser { x: number; y: number; width: number; height: number; vx: number; } // element: HTMLElement; <--- REMOVED
+interface Bomb { x: number; y: number; width: number; height: number; fuse: number; animationTick: number; currentFrame: number; } // element: HTMLElement; <--- REMOVED
+interface Explosion { x: number; y: number; width: number; height: number; timer: number; animationTick: number; currentFrame: number; }
+interface Miner { x: number; y: number; width: number; height: number; tile: string; } // element: HTMLElement; <--- REMOVED
 interface GameObject { x: number; y: number; width: number; height: number; }
 
 // --- GAME STATE ---
 let lives = 0, score = 0, energy = 0, currentLevelIndex = 0, cameraY = 0;
-let particles: any[] = [];
-let walls: any[] = [], enemies: Enemy[] = [], lasers: any[] = [], bombs: any[] = [], explosions: any[] = [], miner: any = null;
+let walls: Wall[] = [], enemies: Enemy[] = [], lasers: Laser[] = [], bombs: Bomb[] = [], explosions: Explosion[] = [], miner: Miner | null = null;
 let levelDesigns = JSON.parse(JSON.stringify(initialLevels));
 let levelDataStore: string[][][] = [];
+
+/* REMOVED createGameObject FUNCTION */
 
 // --- PLAYER OBJECT ---
 const player: any = {};
@@ -118,22 +131,29 @@ function checkCollision(a: GameObject, b: GameObject) {
 }
 
 function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
+    // if (player.element) player.element.remove(); <--- REMOVED
     Object.assign(player, {
         x: startX, y: startY, width: TILE_SIZE, height: TILE_SIZE * 2,
         vx: 0, vy: 0, isFlying: false, isGrounded: false, direction: 1, shootCooldown: 0,
-        isIdle: false, idleFrame: 0, idleAnimationTick: 0
+        isIdle: false,
+        animationState: 'stand', // 'stand', 'walk', 'jump'
+        animationTick: 0,
+        currentFrame: 0
+        // element: createGameObject('player', startX, startY) <--- REMOVED
     });
     energy = MAX_ENERGY;
 }
 
 function parseLevel(map: string[]) {
-    walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = []; particles = [];
+    // gameWorldEl.innerHTML = ''; <--- REMOVED
+    walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = [];
     let playerStartX = TILE_SIZE * 1.5, playerStartY = TILE_SIZE * 1.5;
 
     map.forEach((row, i) => {
         for (let j = 0; j < row.length; j++) {
             const char = row[j];
             const tileX = j * TILE_SIZE, tileY = i * TILE_SIZE;
+            
             switch (char) {
                 case '1': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: char }); break;
                 case '2': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible', tile: char }); break;
@@ -142,28 +162,23 @@ function parseLevel(map: string[]) {
                 case 'P': playerStartX = tileX; playerStartY = tileY; break;
                 case '8': 
                     enemies.push({ 
-                        x: tileX, y: tileY, 
-                        width: TILE_SIZE, height: TILE_SIZE, 
+                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
                         vx: Math.random() > 0.5 ? 1.5 : -1.5, vy: 0, 
-                        type: 'bat', tile: char, 
-                        initialY: tileY, 
-                        animationTick: Math.random() * 100 // Sinewave offset
+                        type: 'bat', tile: char,
+                        initialY: tileY, animationTick: Math.random() * 100, currentFrame: 0
                     }); 
                     break;
                 case 'S': 
                     enemies.push({ 
-                        x: tileX, y: tileY, 
-                        width: TILE_SIZE, height: TILE_SIZE, 
-                        vx: 0, vy: 1, // Start moving down
-                        type: 'spider', tile: char, 
-                        initialY: tileY, 
-                        maxLength: TILE_SIZE * 2, // How far down it goes
-                        currentFrame: 0, frameCount: 15, animationTick: 0, animationSpeed: 4 
+                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
+                        vx: 0, vy: 1, type: 'spider', tile: char,
+                        initialY: tileY, maxLength: TILE_SIZE * 2,
+                        animationTick: 0, currentFrame: 0
                     }); 
                     break;
                 case 'V':
                     const wallOnLeft = j > 0 && map[i][j - 1] === '1';
-                    enemies.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, vx: 0, vy: 0, type: 'viper', tile: char, initialX: tileX, direction: wallOnLeft ? 1 : -1, state: 'idle', idleTimer: Math.random() * 120 + 60, extendLength: 0 });
+                    enemies.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, vx: 0, vy: 0, type: 'viper', tile: char, initialX: tileX, direction: wallOnLeft ? 1 : -1, state: 'idle', idleTimer: Math.random() * 120 + 60, extendLength: 0, animationTick: 0, currentFrame: 0 });
                     break;
                 case '9': miner = { x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, tile: char }; break;
             }
@@ -225,12 +240,16 @@ function handleInput() {
     else { player.isFlying = false; }
     
     if (keys['Space'] && player.shootCooldown === 0) {
-        lasers.push({ x: player.x + player.width / 2, y: player.y + player.height / 4, width: 30, height: 5, vx: LASER_SPEED * player.direction });
+        const laserX = player.direction === 1 ? player.x + player.width : player.x - 30;
+        const laserY = player.y + player.height / 4;
+        lasers.push({ x: laserX, y: laserY, width: 30, height: 5, vx: LASER_SPEED * player.direction });
         player.shootCooldown = 15;
     }
     
     if (keys['ArrowDown'] && player.isGrounded && bombs.length === 0) {
-        bombs.push({ x: player.x, y: player.y + player.height - TILE_SIZE, width: TILE_SIZE * 0.5, height: TILE_SIZE, fuse: BOMB_FUSE });
+        const bombX = player.x;
+        const bombY = player.y + player.height - TILE_SIZE;
+        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0 });
     }
 }
 
@@ -240,27 +259,55 @@ function updatePlayer() {
     player.x += player.vx;
 
     if (player.x < 0) player.x = 0;
-    if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+    const levelWidth = levelDesigns[currentLevelIndex][0].length * TILE_SIZE;
+    if (player.x + player.width > levelWidth) player.x = levelWidth - player.width;
     
     if (player.shootCooldown > 0) player.shootCooldown--;
     if (player.isGrounded) energy = Math.min(MAX_ENERGY, energy + 1);
 
     player.isIdle = player.vx === 0 && player.isGrounded && !player.isFlying;
 
-    if (player.isIdle) {
-        player.idleAnimationTick = (player.idleAnimationTick || 0) + 1;
-        if (player.idleAnimationTick > 10) { // Animation speed
-            player.idleAnimationTick = 0;
-            player.idleFrame = ((player.idleFrame || 0) + 1) % 4; // 4 frames
+    // Animation state machine
+    let newState = 'stand';
+    if (!player.isGrounded) {
+        newState = 'jump';
+    } else if (player.vx !== 0) {
+        newState = 'walk';
+    }
+
+    if (player.animationState !== newState) {
+        player.animationState = newState;
+        player.currentFrame = 0;
+        player.animationTick = 0;
+    }
+
+    // Update animation frame
+    const animKey = 'P_' + player.animationState;
+    const anim = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
+    if (anim) {
+        player.animationTick++;
+        if (player.animationTick >= anim.speed) {
+            player.animationTick = 0;
+            if (anim.loop !== false) {
+                player.currentFrame = (player.currentFrame + 1) % anim.frames;
+            } else {
+                player.currentFrame = Math.min(player.currentFrame + 1, anim.frames - 1);
+            }
         }
-    } else {
-        player.idleFrame = 0;
-        player.idleAnimationTick = 0;
     }
 }
 
 function updateEnemies() {
     enemies.forEach((enemy) => {
+        // Update animation for all enemies that have one
+        const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
+        if (anim) {
+            enemy.animationTick = (enemy.animationTick + 1) % anim.speed;
+            if (enemy.animationTick === 0) {
+                enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;
+            }
+        }
+
         switch (enemy.type) {
             case 'bat':
                 enemy.x += enemy.vx;
@@ -273,8 +320,8 @@ function updateEnemies() {
                 const gridXRight = Math.floor((enemy.x + enemy.width) / TILE_SIZE);
                 const wallLeft = walls.find(w => w.x === gridX * TILE_SIZE && w.y === gridY * TILE_SIZE);
                 const wallRight = walls.find(w => w.x === gridXRight * TILE_SIZE && w.y === gridY * TILE_SIZE);
-                if (enemy.vx < 0 && (wallLeft || enemy.x < 0)) enemy.vx *= -1;
-                if (enemy.vx > 0 && (wallRight || (enemy.x + enemy.width) > canvas.width)) enemy.vx *= -1;
+                if (enemy.vx < 0 && (wallLeft || enemy.x < 0)) { enemy.vx *= -1; }
+                if (enemy.vx > 0 && (wallRight || (enemy.x + enemy.width) > canvas.width)) { enemy.vx *= -1; }
                 break;
             case 'spider':
                 enemy.y += enemy.vy;
@@ -287,13 +334,7 @@ function updateEnemies() {
                     enemy.vy *= -1;
                 }
 
-                if (enemy.animationTick !== undefined && enemy.animationSpeed !== undefined && enemy.currentFrame !== undefined && enemy.frameCount !== undefined) {
-                    enemy.animationTick++;
-                    if (enemy.animationTick >= enemy.animationSpeed) {
-                        enemy.animationTick = 0;
-                        enemy.currentFrame = (enemy.currentFrame + 1) % enemy.frameCount;
-                    }
-                }
+
                 break;
             case 'viper':
                 if (enemy.state === 'idle') {
@@ -329,42 +370,54 @@ function updateEnemies() {
 function updateLasers() {
     lasers.forEach((laser, i) => {
         laser.x += laser.vx;
-        if (laser.x < 0 || laser.x > canvas.width) lasers.splice(i, 1);
+        const levelWidth = levelDesigns[currentLevelIndex][0].length * TILE_SIZE;
+        if (laser.x < 0 || laser.x > levelWidth) {
+            lasers.splice(i, 1);
+        }
     });
 }
 
 function updateBombs() {
-    bombs.forEach((bomb, i) => {
+    bombs.forEach((bomb, index) => {
         bomb.fuse--;
+
+        // Update bomb animation
+        const anim = ANIMATION_DATA['bomb'];
+        bomb.animationTick = (bomb.animationTick + 1) % anim.speed;
+        if (bomb.animationTick === 0) {
+            bomb.currentFrame = (bomb.currentFrame + 1) % anim.frames;
+        }
+
         if (bomb.fuse <= 0) {
-            bombs.splice(i, 1);
+            bombs.splice(index, 1);
+            // bomb.element.remove(); <--- REMOVED
 
-            const explosionX = bomb.x + bomb.width / 2;
-            const explosionY = bomb.y + bomb.height / 2;
-            const explosionRadius = TILE_SIZE * 2;
+            const explosionX = bomb.x - TILE_SIZE; // Center 180px explosion on 60px bomb
+            const explosionY = bomb.y - TILE_SIZE;
+            explosions.push({ x: explosionX, y: explosionY, width: TILE_SIZE * 3, height: TILE_SIZE * 3, timer: 20, animationTick: 0, currentFrame: 0 });
 
-            explosions.push({ x: explosionX, y: explosionY, radius: explosionRadius, timer: 30 });
-
+            const explosionRadius = 120;
+            const explosionCenterX = explosionX + (TILE_SIZE * 3) / 2;
+            const explosionCenterY = explosionY + (TILE_SIZE * 3) / 2;
+            
+            const wallsToRemove = new Set<Wall>();
             const columnsHit = new Set<number>();
-            const wallsToRemove = new Set<GameObject>();
 
-            // Find walls within explosion radius
             walls.forEach(wall => {
                 if (wall.type.startsWith('destructible')) {
                     const wallCenterX = wall.x + TILE_SIZE / 2;
                     const wallCenterY = wall.y + TILE_SIZE / 2;
-                    const dist = Math.hypot(explosionX - wallCenterX, explosionY - wallCenterY);
+                    const dist = Math.hypot(explosionCenterX - wallCenterX, explosionCenterY - wallCenterY);
 
                     if (dist < explosionRadius) {
                         wallsToRemove.add(wall);
-                        if (wall.type === 'destructible_v') { // 'C' tile
+                        if (wall.type === 'destructible_v') {
                             columnsHit.add(wall.x);
                         }
                     }
                 }
             });
 
-            // If a column was hit, remove all parts of it
             if (columnsHit.size > 0) {
                 walls.forEach(wall => {
                     if (wall.type === 'destructible_v' && columnsHit.has(wall.x)) {
@@ -373,8 +426,8 @@ function updateBombs() {
                 });
             }
 
-            // Rebuild walls array without the removed ones
             if (wallsToRemove.size > 0) {
+                // wallsToRemove.forEach(wall => wall.element.remove()); <--- REMOVED
                 walls = walls.filter(wall => !wallsToRemove.has(wall));
             }
         }
@@ -382,12 +435,18 @@ function updateBombs() {
 }
 
 function updateParticles() {
-    particles.forEach((p, i) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.1;
-        p.life--;
-        if (p.life <= 0) particles.splice(i, 1);
+    // This is for explosions animation now
+    explosions.forEach((exp, i) => {
+        exp.timer--;
+        if (exp.timer <= 0) {
+            explosions.splice(i, 1);
+            return;
+        }
+        const anim = ANIMATION_DATA['explosion'];
+        exp.animationTick = (exp.animationTick + 1) % anim.speed;
+        if (exp.animationTick === 0) {
+            exp.currentFrame = Math.min(exp.currentFrame + 1, anim.frames - 1);
+        }
     });
 }
 
@@ -412,18 +471,12 @@ function checkCollisions() {
 
     enemies.forEach(enemy => { if (checkCollision(player, enemy)) playerDie(); });
 
-    explosions.forEach(explosion => {
-        const dist = Math.hypot(
-            (player.x + player.width / 2) - explosion.x,
-            (player.y + player.height / 2) - explosion.y
-        );
-        if (dist < explosion.radius) {
-            playerDie();
-        }
-    });
-
     lasers.forEach((laser, i) => {
-        walls.forEach(wall => { if (checkCollision(laser, wall)) lasers.splice(i, 1); });
+        walls.forEach(wall => { 
+            if (checkCollision(laser, wall)) {
+                lasers.splice(i, 1); 
+            }
+        });
         enemies.forEach((enemy, j) => {
             if (checkCollision(laser, enemy)) {
                 lasers.splice(i, 1);
@@ -431,6 +484,13 @@ function checkCollisions() {
                 score += 100;
             }
         });
+    });
+
+    explosions.forEach(exp => {
+        const explosionHitbox = { x: exp.x, y: exp.y, width: exp.width, height: exp.height };
+        if (checkCollision(player, explosionHitbox)) {
+            playerDie();
+        }
     });
 }
 
@@ -449,8 +509,7 @@ function updateGame() {
     updateEnemies();
     updateLasers();
     updateBombs();
-    updateParticles();
-    explosions.forEach((exp, i) => { exp.timer--; if (exp.timer <= 0) explosions.splice(i, 1); });
+    updateParticles(); // Now updates explosions
     checkCollisions();
     updateCamera();
     if (miner && checkCollision(player, miner)) {
@@ -467,117 +526,117 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// --- DRAWING FUNCTIONS ---
+// --- RENDER FUNCTION (replaces renderGame) ---
 function drawGame() {
-    // Update UI elements
-    livesCountEl.textContent = lives.toString();
-    scoreCountEl.textContent = score.toString();
-    energyBarEl.style.width = `${(energy / MAX_ENERGY) * 100}%`;
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(0, -cameraY);
 
-    const bgSprite = sprites['0'];
-    if (bgSprite) {
-        for (let y = 0; y < levelDesigns[currentLevelIndex].length; y++) {
-            for (let x = 0; x < levelDesigns[currentLevelIndex][y].length; x++) {
-                ctx.drawImage(bgSprite, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            }
-        }
-    }
-
+    // Draw walls
     walls.forEach(wall => {
         const sprite = sprites[wall.tile];
-        if (sprite) ctx.drawImage(sprite, wall.x, wall.y, TILE_SIZE, TILE_SIZE);
-        else { ctx.fillStyle = TILE_TYPES[wall.tile]?.color || '#fff'; ctx.fillRect(wall.x, wall.y, TILE_SIZE, TILE_SIZE); }
+        if (sprite) {
+            ctx.drawImage(sprite, wall.x, wall.y, wall.width, wall.height);
+        } else { // Fallback for unloaded sprites
+            ctx.fillStyle = TILE_TYPES[wall.tile]?.color || '#fff';
+            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        }
     });
 
+    // Draw miner
     if (miner) {
-        const sprite = sprites[miner.tile];
-        if (sprite) ctx.drawImage(sprite, miner.x, miner.y, TILE_SIZE, TILE_SIZE);
+        ctx.drawImage(sprites['9'], miner.x, miner.y, miner.width, miner.height);
     }
     
-    if (sprites['P'] && sprites['P_stand']) {
-        const playerSprite = player.isIdle ? sprites['P_stand'] : sprites['P'];
-        
-        ctx.save();
-        ctx.translate(player.x + player.width / 2, 0);
-        if (player.direction === -1) ctx.scale(-1, 1);
-        
-        if (player.isIdle) {
-            const frameWidth = playerSprite.width / 4; // 4 frames for idle sprite
-            ctx.drawImage(
-                playerSprite,
-                player.idleFrame * frameWidth, 0, // Source X, Y
-                frameWidth, playerSprite.height,  // Source W, H
-                -player.width / 2, player.y,      // Dest X, Y
-                player.width, player.height       // Dest W, H
-            );
-        } else {
-            // Draw the regular, single-frame running sprite
-            ctx.drawImage(playerSprite, -player.width / 2, player.y, player.width, player.height);
-        }
-        ctx.restore();
-    } else {
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-    }
-   
+    // Draw enemies
     enemies.forEach(enemy => {
         const sprite = sprites[enemy.tile];
-        if (sprite) {
-            switch (enemy.type) {
-                case 'bat':
-                    ctx.save();
-                    ctx.translate(enemy.x + enemy.width / 2, 0);
-                    if (enemy.vx < 0) ctx.scale(-1, 1);
-                    ctx.drawImage(sprite, -enemy.width / 2, enemy.y, enemy.width, enemy.height);
-                    ctx.restore();
-                    break;
-                case 'spider':
-                    ctx.fillStyle = '#cccccc55';
-                    ctx.fillRect(enemy.x + enemy.width / 2 - 1, enemy.initialY!, 2, 20 + enemy.y - enemy.initialY!);
-                    if (enemy.currentFrame !== undefined && enemy.frameCount !== undefined) {
-                        const frameWidth = sprite.width / enemy.frameCount;
-                        ctx.drawImage(sprite, enemy.currentFrame * frameWidth, 0, frameWidth, sprite.height, enemy.x, enemy.y, enemy.width, enemy.height);
-                    } else {
-                        ctx.drawImage(sprite, enemy.x, enemy.y, enemy.width, enemy.height);
-                    }
-                    break;
-                case 'viper':
-                    const isFlipped = enemy.direction === -1;
-                    const sWidth = (enemy.extendLength! / TILE_SIZE) * sprite.width;
-                    const dWidth = enemy.extendLength!;
-                    if (isFlipped) {
-                        const dX = enemy.initialX! + TILE_SIZE - dWidth;
-                        ctx.save();
-                        ctx.translate(dX + dWidth / 2, enemy.y + TILE_SIZE / 2);
-                        ctx.scale(-1, 1);
-                        ctx.drawImage(sprite, 0, 0, sWidth, sprite.height, -dWidth / 2, -TILE_SIZE / 2, dWidth, TILE_SIZE);
-                        ctx.restore();
-                    } else {
-                        const dX = enemy.initialX!;
-                        ctx.drawImage(sprite, 0, 0, sWidth, sprite.height, dX, enemy.y, dWidth, TILE_SIZE);
-                    }
-                    break;
+        if (!sprite) return;
+
+        ctx.save();
+        
+        let flip = enemy.vx < 0; // Bat flipping
+        if (enemy.type === 'viper') flip = enemy.direction === -1;
+
+        if (flip) {
+            ctx.translate(enemy.x + enemy.width, enemy.y);
+            ctx.scale(-1, 1);
+        } else {
+            ctx.translate(enemy.x, enemy.y);
+        }
+        
+        if (enemy.type === 'spider') {
+            // Draw web thread
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(enemy.width / 2, 0);
+            ctx.lineTo(enemy.width / 2, enemy.initialY! - enemy.y);
+            ctx.stroke();
+        }
+        
+        const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
+        if (anim) {
+            const frameWidth = sprite.width / anim.frames;
+            ctx.drawImage(sprite, enemy.currentFrame * frameWidth, 0, frameWidth, sprite.height, 0, 0, enemy.width, enemy.height);
+        } else if (enemy.type === 'viper') {
+            const headSprite = sprites['V'];
+            const segmentWidth = enemy.extendLength || 0;
+            if (segmentWidth > 0) {
+                ctx.drawImage(headSprite, 0, 0, headSprite.width, headSprite.height, 0, 0, segmentWidth, enemy.height);
             }
         }
+        else {
+            ctx.drawImage(sprite, 0, 0, enemy.width, enemy.height);
+        }
+        
+        ctx.restore();
     });
+
+    // Draw bombs
+    bombs.forEach(bomb => {
+        const sprite = sprites['bomb'];
+        const anim = ANIMATION_DATA['bomb'];
+        const frameWidth = sprite.width / anim.frames;
+        ctx.drawImage(sprite, bomb.currentFrame * frameWidth, 0, frameWidth, sprite.height, bomb.x, bomb.y, bomb.width, bomb.height);
+    });
+
+    // Draw explosions
+    explosions.forEach(exp => {
+        const sprite = sprites['explosion'];
+        const anim = ANIMATION_DATA['explosion'];
+        const frameWidth = sprite.width / anim.frames;
+        ctx.drawImage(sprite, exp.currentFrame * frameWidth, 0, frameWidth, sprite.height, exp.x, exp.y, exp.width, exp.height);
+    });
+
+    // Draw Player
+    const animKey = 'P_' + player.animationState;
+    const animData = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
+    const playerSprite = sprites[animKey];
+    if (playerSprite) {
+        const frameWidth = playerSprite.width / animData.frames;
+        ctx.save();
+        ctx.translate(player.x + player.width / 2, player.y);
+        ctx.scale(player.direction, 1);
+        ctx.drawImage(playerSprite, player.currentFrame * frameWidth, 0, frameWidth, playerSprite.height, -player.width / 2, 0, player.width, player.height);
+        ctx.restore();
+    }
     
+    // Draw Lasers
+    ctx.fillStyle = 'yellow';
     lasers.forEach(laser => {
-        // Creamos un degradé vertical de rojo a blanco para cada láser
-        const grad = ctx.createLinearGradient(laser.x, laser.y, laser.x, laser.y + laser.height);
-        grad.addColorStop(0, '#ff0000'); // Rojo arriba
-        grad.addColorStop(1, '#ffffff'); // Blanco abajo
-        ctx.fillStyle = grad;
         ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
     });
-    bombs.forEach(bomb => { ctx.fillStyle = '#ff0000'; ctx.fillRect(bomb.x, bomb.y, bomb.width, bomb.height); });
-    explosions.forEach(exp => { ctx.fillStyle = `rgba(255, 165, 0, ${exp.timer / 30})`; ctx.beginPath(); ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2); ctx.fill(); });
-    particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); });
-
+    
     ctx.restore();
+
+    // Update UI (this still uses DOM)
+    livesCountEl.textContent = lives.toString();
+    levelCountEl.textContent = (currentLevelIndex + 1).toString();
+    scoreCountEl.textContent = score.toString();
+    energyBarEl.style.width = `${(energy / MAX_ENERGY) * 100}%`;
 }
 
 // --- UI & MENU & EDITOR LOGIC ---
@@ -594,6 +653,7 @@ function setupUI() {
 function showMenu() {
     appState = 'menu';
     gameState = 'start';
+    document.body.className = 'state-menu';
     messageOverlay.style.display = 'flex';
     gameUiEl.style.display = 'none';
     editorPanelEl.style.display = 'none';
@@ -604,6 +664,7 @@ function showMenu() {
 function startGame(levelMap: string[] | null = null) {
     appState = 'playing';
     gameState = 'playing';
+    document.body.className = 'state-playing';
     messageOverlay.style.display = 'none';
     gameUiEl.style.display = 'flex';
     editorPanelEl.style.display = 'none';
@@ -616,6 +677,7 @@ function startGame(levelMap: string[] | null = null) {
 
 function startEditor() {
     appState = 'editing';
+    document.body.className = 'state-editing';
     messageOverlay.style.display = 'none';
     gameUiEl.style.display = 'none';
     editorPanelEl.style.display = 'flex';
@@ -625,31 +687,64 @@ function startEditor() {
 }
 
 function editorLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawEditor();
+}
+
+function drawEditor() {
+    ctx.fillStyle = '#1a1a1a'; // Dark background for editor
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     ctx.save();
     ctx.translate(0, -cameraY);
 
+    // Draw level tiles
     if (editorLevel) {
-        const bgSprite = sprites['0'];
-        editorLevel.forEach((row, y) => {
-            row.forEach((tile, x) => {
-                if (bgSprite) ctx.drawImage(bgSprite, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                const sprite = sprites[tile];
-                if (sprite && tile !== '0') {
-                    ctx.drawImage(sprite, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                } else if (tile !== '0') {
-                    ctx.fillStyle = TILE_TYPES[tile]?.color || '#fff';
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        editorLevel.forEach((row, i) => {
+            row.forEach((char, j) => {
+                const sprite = sprites[char];
+                if (sprite) {
+                    ctx.drawImage(sprite, j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                } else if (char === 'P') { // Draw player start position
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                    ctx.fillRect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
                 }
             });
         });
     }
 
-    for (let x = 0; x <= canvas.width; x += TILE_SIZE) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, editorLevel.length * TILE_SIZE); ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.stroke(); }
-    for (let y = 0; y <= editorLevel.length * TILE_SIZE; y += TILE_SIZE) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.stroke(); }
+    // Draw grid
+    const gridColor = '#444';
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    const levelWidth = editorLevel && editorLevel.length > 0 ? editorLevel[0].length * TILE_SIZE : canvas.width;
+    const levelHeight = editorLevel ? editorLevel.length * TILE_SIZE : canvas.height;
+    for (let x = 0; x <= levelWidth; x += TILE_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, levelHeight);
+        ctx.stroke();
+    }
+    for (let y = 0; y <= levelHeight; y += TILE_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(levelWidth, y);
+        ctx.stroke();
+    }
 
-    ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2;
-    ctx.strokeRect(mouse.gridX * TILE_SIZE, mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    // Draw selected tile preview at mouse position
+    const selectedSprite = sprites[selectedTile];
+    if (selectedSprite) {
+        ctx.globalAlpha = 0.5;
+        const previewX = mouse.gridX * TILE_SIZE;
+        const previewY = mouse.gridY * TILE_SIZE;
+        if (selectedTile === 'P') {
+             ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+             ctx.fillRect(previewX, previewY, TILE_SIZE, TILE_SIZE * 2);
+        } else {
+            ctx.drawImage(selectedSprite, previewX, previewY, TILE_SIZE, TILE_SIZE);
+        }
+        ctx.globalAlpha = 1.0;
+    }
 
     ctx.restore();
 }
@@ -659,15 +754,6 @@ function setupEditor() {
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile-selector flex-col text-xs text-center';
         tileDiv.dataset.tile = key;
-        const sprite = sprites[key];
-        if (sprite) {
-            tileDiv.style.backgroundImage = `url(${sprite.src})`;
-            tileDiv.style.backgroundSize = 'contain';
-            tileDiv.style.backgroundRepeat = 'no-repeat';
-            tileDiv.style.backgroundPosition = 'center';
-        } else {
-            tileDiv.style.backgroundColor = color;
-        }
         tileDiv.textContent = name;
         if (key === selectedTile) tileDiv.classList.add('selected');
         tileDiv.addEventListener('click', () => {
@@ -688,19 +774,36 @@ function setupEditor() {
     }
 
     canvas.addEventListener('mousemove', e => {
+        if (appState !== 'editing') return;
         const rect = canvas.getBoundingClientRect();
         mouse.x = e.clientX - rect.left;
-        mouse.y = e.clientY - rect.top + cameraY;
+        mouse.y = e.clientY - rect.top;
+        const worldMouseY = mouse.y + cameraY;
         mouse.gridX = Math.floor(mouse.x / TILE_SIZE);
-        mouse.gridY = Math.floor(mouse.y / TILE_SIZE);
+        mouse.gridY = Math.floor(worldMouseY / TILE_SIZE);
+
         if (mouse.isDown && editorLevel && editorLevel[mouse.gridY] && editorLevel[mouse.gridY][mouse.gridX] !== undefined) {
-            editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
+            // Prevent placing 'P' if one already exists
+            if (selectedTile === 'P') {
+                let pExists = false;
+                editorLevel.forEach(row => { if (row.includes('P')) pExists = true; });
+                if (!pExists) editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
+            } else {
+                 editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
+            }
         }
     });
-    canvas.addEventListener('mousedown', () => {
-        if (appState !== 'editing') return;
+    canvas.addEventListener('mousedown', (e) => {
+        if (appState !== 'editing' || e.button !== 0) return;
         mouse.isDown = true;
         if (editorLevel && editorLevel[mouse.gridY] && editorLevel[mouse.gridY][mouse.gridX] !== undefined) {
+            if (selectedTile === 'P') {
+                 // Remove existing 'P' before placing a new one
+                editorLevel.forEach((row, i) => {
+                    const pIndex = row.indexOf('P');
+                    if (pIndex !== -1) editorLevel[i][pIndex] = '0';
+                });
+            }
             editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
         }
     });
@@ -781,12 +884,40 @@ async function saveAllLevelsToFile() {
     }
 }
 
-// --- INITIALIZATION ---
+// --- PRELOAD & INITIALIZATION ---
+function preloadAssets(callback: () => void) {
+    const sources = {
+        'P_walk': playerWalkSrc, 'P_stand': playerStandSrc, 'P_jump': playerJumpSrc,
+        '8': batSrc, 'S': spiderSrc, 'V': viperSrc, '9': minerSrc,
+        'bomb': bombSrc, 'explosion': explosionSrc,
+        '1': wallSrc, '2': dirtSrc, 'C': columnSrc, '3': lavaSrc,
+    };
+    let loaded = 0;
+    const total = Object.keys(sources).length;
+    for (const [key, src] of Object.entries(sources)) {
+        sprites[key] = new Image();
+        sprites[key].src = src;
+        sprites[key].onload = () => {
+            loaded++;
+            if (loaded === total) {
+                callback();
+            }
+        };
+        sprites[key].onerror = () => {
+             console.error(`Failed to load sprite: ${key} at ${src}`);
+             loaded++;
+            if (loaded === total) {
+                callback();
+            }
+        }
+    }
+}
+
 window.onload = () => {
-    preloadSprites().then(() => {
-        setupUI();
-        setupEditor();
-        showMenu();
+    setupUI();
+    setupEditor();
+    showMenu();
+    preloadAssets(() => {
         gameLoop();
-    }).catch(err => console.error("Failed to preload sprites:", err));
+    });
 };

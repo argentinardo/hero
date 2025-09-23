@@ -1,0 +1,24 @@
+/* Bat: 6 frames, element width 60px, total spritesheet width 360px */
+.bat { width: 60px; height: 60px; }
+
+/* Spider: 15 frames, 900px x 60px */
+.spider { width: 60px; height: 60px; }
+
+/* Viper (static sprite for body; width mutates via script) */
+.viper { height: 60px; background: url('../assets/sprites/serpiente_small.png') repeat-x; background-size: 60px 60px; }
+
+/* Miner */
+.miner { width: 60px; height: 60px; }
+
+/* Bomb: sprite from bomba.png (4 frames) */
+.bomb {
+    width: 60px;
+    height: 60px;
+}
+
+/* Explosion: sprite from boooom.png (5 frames) */
+.explosion {
+    width: 180px;
+    height: 180px;
+    pointer-events: none;
+}
