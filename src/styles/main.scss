@@ -1,9 +1,9 @@
 // Core styles
-@import 'core/base';
+@use 'core/base';
 
 // Component styles
-@import 'components/ui';
-@import 'components/editor';
-@import 'components/world';
-@import 'components/player';
-@import 'components/enemies';
+@use 'components/ui';
+@use 'components/editor';
+@use 'components/world';
+@use 'components/player';
+@use 'components/enemies';

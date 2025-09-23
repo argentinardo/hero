@@ -3,7 +3,7 @@ import '../styles/main.scss';
 import initialLevels from '../assets/levels.json';
 
 // Import all sprite assets
-import playerWalkSrc from '../assets/sprites/hero_small.png';
+import playerWalkSrc from '../assets/sprites/hero_walk.png';
 import playerStandSrc from '../assets/sprites/hero_stand.png';
 import playerJumpSrc from '../assets/sprites/hero_jump.png';
 import batSrc from '../assets/sprites/bat_small.png';
@@ -61,7 +61,7 @@ interface AnimationData {
 const ANIMATION_DATA: { [key: string]: AnimationData } = {
     'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc },
     'P_stand': { frames: 4, speed: 10, sprite: playerStandSrc },
-    'P_jump': { frames: 4, speed: 10, sprite: playerJumpSrc, loop: false },
+    'P_jump': { frames: 4, speed: 1, sprite: playerJumpSrc, loop: false },
     '8': { frames: 6, speed: 5, sprite: batSrc },      // Bat
     'S': { frames: 15, speed: 4, sprite: spiderSrc },   // Spider
     'bomb': { frames: 4, speed: 10, sprite: bombSrc },
@@ -168,7 +168,7 @@ function parseLevel(map: string[]) {
                         type: 'bat', tile: char,
                         initialY: tileY, 
                         spriteTick: 0, 
-                        movementTick: Math.random() * 100, // Start movement cycle at a random point
+                        movementTick: Math.random() * 100, 
                         currentFrame: 0
                     }); 
                     break;
@@ -306,7 +306,7 @@ function updateEnemies() {
         // Update animation for all enemies that have one
         const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
         if (anim) {
-            enemy.spriteTick = (enemy.spriteTick + 1);
+            enemy.spriteTick++;
             if (enemy.spriteTick >= anim.speed) {
                 enemy.spriteTick = 0;
                 enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;

@@ -8,9 +8,13 @@ module.exports = {
   entry: './src/scripts/index.ts',
   devtool: 'inline-source-map',
   devServer: {
-    static: './dist',
-    hot: true, // Habilita Hot Module Replacement
-    watchFiles: ['src/**/*'], // Observa cambios en todos los archivos de src
+    static: './dist', // Serve files from the dist directory
+    hot: true,
+    liveReload: true,
+    watchFiles: ['src/**/*'],
+    devMiddleware: {
+      writeToDisk: true, // Force webpack to write files to disk
+    },
     setupMiddlewares: (middlewares, devServer) => {
       if (!devServer) {
         throw new Error('webpack-dev-server is not defined');
@@ -66,5 +70,14 @@ module.exports = {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
     clean: true,
+  },
+  performance: {
+    hints: 'warning',
+    maxAssetSize: 1024 * 1024, // 1 MB
+    maxEntrypointSize: 1024 * 1024, // 1 MB
+  },
+  watchOptions: {
+    poll: 1000, // Check for changes every second
+    ignored: /node_modules/,
   },
 };
