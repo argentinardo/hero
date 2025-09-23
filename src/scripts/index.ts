@@ -56,16 +56,18 @@ interface AnimationData {
     speed: number;
     sprite: string;
     loop?: boolean;
+    reverse?: boolean;
 }
 
 const ANIMATION_DATA: { [key: string]: AnimationData } = {
-    'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc },
-    'P_stand': { frames: 4, speed: 10, sprite: playerStandSrc },
+    'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc, reverse: true },
+    'P_stand': { frames: 4, speed: 20, sprite: playerStandSrc },
     'P_jump': { frames: 4, speed: 1, sprite: playerJumpSrc, loop: false },
-    '8': { frames: 6, speed: 5, sprite: batSrc },      // Bat
-    'S': { frames: 15, speed: 4, sprite: spiderSrc },   // Spider
-    'bomb': { frames: 4, speed: 10, sprite: bombSrc },
-    'explosion': { frames: 5, speed: 5, sprite: explosionSrc, loop: false }
+    '8': { frames: 6, speed: 2, sprite: batSrc },      // Bat
+    'S': { frames: 15, speed: 9, sprite: spiderSrc },   // Spider
+    '3': { frames: 16, speed: 20, sprite: lavaSrc },     // Lava
+    'bomb': { frames: 6, speed: 11, sprite: bombSrc, loop: false  },
+    'explosion': { frames: 6, speed: 2, sprite: explosionSrc, loop: false }
 };
 
 const TILE_TYPES: { [key: string]: { name: string, color: string, class: string, sprite?: string } } = {
@@ -100,6 +102,8 @@ interface Enemy {
 }
 interface Wall {
     x: number; y: number; width: number; height: number; type: string; tile: string; // element: HTMLElement; <--- REMOVED
+    spriteTick?: number;
+    currentFrame?: number;
 }
 interface Laser { x: number; y: number; width: number; height: number; vx: number; } // element: HTMLElement; <--- REMOVED
 interface Bomb { x: number; y: number; width: number; height: number; fuse: number; animationTick: number; currentFrame: number; } // element: HTMLElement; <--- REMOVED
@@ -159,7 +163,7 @@ function parseLevel(map: string[]) {
                 case '1': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: char }); break;
                 case '2': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible', tile: char }); break;
                 case 'C': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible_v', tile: char }); break;
-                case '3': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'lava', tile: char }); break;
+                case '3': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'lava', tile: char, spriteTick: Math.floor(Math.random() * 50), currentFrame: Math.floor(Math.random() * 11) }); break;
                 case 'P': playerStartX = tileX; playerStartY = tileY; break;
                 case '8': 
                     enemies.push({ 
@@ -190,6 +194,19 @@ function parseLevel(map: string[]) {
     });
     resetPlayer(playerStartX, playerStartY);
     cameraY = player.y - canvas.height / 2;
+}
+
+function updateWalls() {
+    walls.forEach(wall => {
+        const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
+        if (anim && wall.spriteTick !== undefined && wall.currentFrame !== undefined) {
+            wall.spriteTick++;
+            if (wall.spriteTick >= anim.speed) {
+                wall.spriteTick = 0;
+                wall.currentFrame = (wall.currentFrame + 1) % anim.frames;
+            }
+        }
+    });
 }
 
 // --- STATE CHANGE FUNCTIONS ---
@@ -251,27 +268,58 @@ function handleInput() {
     }
     
     if (keys['ArrowDown'] && player.isGrounded && bombs.length === 0) {
-        const bombX = player.x;
+        const bombX = player.x + TILE_SIZE/2.5;
         const bombY = player.y + player.height - TILE_SIZE;
-        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0 });
+        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE/1.5, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0 });
     }
 }
 
 function updatePlayer() {
-    if (!player.isGrounded && !player.isFlying) player.vy += GRAVITY;
-    player.y += player.vy;
+    // --- 1. APPLY PHYSICS & MOVEMENT ---
+    if (!player.isFlying) player.vy += GRAVITY;
     player.x += player.vx;
+    player.y += player.vy;
 
+    // --- 2. CHECK & RESOLVE COLLISIONS ---
+    player.isGrounded = false; // Assume we are in the air, until a collision proves otherwise.
+    walls.forEach(wall => {
+        if (checkCollision(player, wall)) {
+            if (wall.type === 'lava') return playerDie();
+            
+            const overlapX = (player.x + player.width / 2) - (wall.x + TILE_SIZE / 2);
+            const overlapY = (player.y + player.height / 2) - (wall.y + TILE_SIZE / 2);
+            const combinedHalfWidths = player.width / 2 + TILE_SIZE / 2;
+            const combinedHalfHeights = player.height / 2 + TILE_SIZE / 2;
+
+            if (Math.abs(overlapX) / combinedHalfWidths > Math.abs(overlapY) / combinedHalfHeights) {
+                 // Horizontal collision
+                if (overlapX > 0) player.x = wall.x + TILE_SIZE;
+                else player.x = wall.x - player.width;
+                player.vx = 0;
+            } else {
+                // Vertical collision
+                if (overlapY > 0) { 
+                    player.y = wall.y + TILE_SIZE; 
+                    player.vy = 0; 
+                } else { 
+                    player.y = wall.y - player.height; 
+                    player.isGrounded = true; 
+                    player.vy = 0; 
+                }
+            }
+        }
+    });
+
+    // --- 3. BOUNDARY CHECKS ---
     if (player.x < 0) player.x = 0;
     const levelWidth = levelDesigns[currentLevelIndex][0].length * TILE_SIZE;
     if (player.x + player.width > levelWidth) player.x = levelWidth - player.width;
     
+    // --- 4. UPDATE OTHER PLAYER STATE ---
     if (player.shootCooldown > 0) player.shootCooldown--;
     if (player.isGrounded) energy = Math.min(MAX_ENERGY, energy + 1);
-
-    player.isIdle = player.vx === 0 && player.isGrounded && !player.isFlying;
-
-    // Animation state machine
+    
+    // --- 5. DETERMINE ANIMATION STATE (NOW WITH CORRECT isGrounded) ---
     let newState = 'stand';
     if (!player.isGrounded) {
         newState = 'jump';
@@ -285,17 +333,26 @@ function updatePlayer() {
         player.animationTick = 0;
     }
 
-    // Update animation frame
+    // --- 6. UPDATE ANIMATION FRAME ---
     const animKey = 'P_' + player.animationState;
     const anim = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
     if (anim) {
         player.animationTick++;
         if (player.animationTick >= anim.speed) {
             player.animationTick = 0;
-            if (anim.loop !== false) {
-                player.currentFrame = (player.currentFrame + 1) % anim.frames;
+            
+            // Handle looping and reversing
+            if (anim.reverse) {
+                player.currentFrame--;
+                if (player.currentFrame < 0) {
+                    player.currentFrame = anim.frames - 1;
+                }
             } else {
-                player.currentFrame = Math.min(player.currentFrame + 1, anim.frames - 1);
+                if (anim.loop !== false) {
+                    player.currentFrame = (player.currentFrame + 1) % anim.frames;
+                } else {
+                    player.currentFrame = Math.min(player.currentFrame + 1, anim.frames - 1);
+                }
             }
         }
     }
@@ -456,24 +513,8 @@ function updateParticles() {
 }
 
 function checkCollisions() {
-    player.isGrounded = false;
-    walls.forEach(wall => {
-        if (checkCollision(player, wall)) {
-            if (wall.type === 'lava') return playerDie();
-            const overlapX = (player.x + player.width / 2) - (wall.x + TILE_SIZE / 2);
-            const overlapY = (player.y + player.height / 2) - (wall.y + TILE_SIZE / 2);
-            const combinedHalfWidths = player.width / 2 + TILE_SIZE / 2;
-            const combinedHalfHeights = player.height / 2 + TILE_SIZE / 2;
-            if (Math.abs(overlapX) > Math.abs(overlapY)) {
-                if (overlapX > 0) player.x = wall.x + TILE_SIZE;
-                else player.x = wall.x - player.width;
-            } else {
-                if (overlapY > 0) { player.y = wall.y + TILE_SIZE; player.vy = 0; }
-                else { player.y = wall.y - player.height; player.isGrounded = true; player.vy = 0; }
-            }
-        }
-    });
-
+    // Player-wall collision is now handled inside updatePlayer()
+    
     enemies.forEach(enemy => { if (checkCollision(player, enemy)) playerDie(); });
 
     lasers.forEach((laser, i) => {
@@ -511,6 +552,7 @@ function updateGame() {
     if (gameState !== 'playing') return;
     handleInput();
     updatePlayer();
+    updateWalls();
     updateEnemies();
     updateLasers();
     updateBombs();
@@ -543,7 +585,13 @@ function drawGame() {
     walls.forEach(wall => {
         const sprite = sprites[wall.tile];
         if (sprite) {
-            ctx.drawImage(sprite, wall.x, wall.y, wall.width, wall.height);
+            const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
+            if (anim && wall.currentFrame !== undefined) {
+                const frameWidth = sprite.width / anim.frames;
+                ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, wall.x, wall.y, wall.width, wall.height);
+            } else {
+                ctx.drawImage(sprite, wall.x, wall.y, wall.width, wall.height);
+            }
         } else { // Fallback for unloaded sprites
             ctx.fillStyle = TILE_TYPES[wall.tile]?.color || '#fff';
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);

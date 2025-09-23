@@ -73,8 +73,8 @@ module.exports = {
   },
   performance: {
     hints: 'warning',
-    maxAssetSize: 1024 * 1024, // 1 MB
-    maxEntrypointSize: 1024 * 1024, // 1 MB
+    maxAssetSize: 2 * 1024 * 1024, // 2 MB
+    maxEntrypointSize: 2 * 1024 * 1024, // 2 MB
   },
   watchOptions: {
     poll: 1000, // Check for changes every second
