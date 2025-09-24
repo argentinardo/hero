@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-900 flex items-center justify-center h-screen">
+<body class="bg-gray-900 flex justify-center items-start h-screen pt-8">
 
     <div id="main-container" class="flex flex-col items-center justify-center">
         <!-- Barra de Interfaz de Usuario (UI) del Juego -->
@@ -25,7 +25,7 @@
 
         <div class="flex gap-4">
             <!-- Canvas del Juego / Editor -->
-            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <canvas id="gameCanvas" width="1200" height="900"></canvas>
 
             <!-- Panel del Editor -->
             <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden">
@@ -77,17 +77,18 @@
         <!-- Pantalla de Mensajes (Inicio / Game Over) -->
         <div id="message-overlay" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center items-center text-center">
             <h1 id="message-title" class="text-4xl mb-4">H.E.R.O. CLONE</h1>
-            <p id="message-text" class="text-lg">Presiona ENTER para empezar</p>
-             <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 mt-8 border-2 border-white">Editor de Niveles</button>
+            <p id="message-text" class="text-lg">Presiona ENTER o el botón para empezar</p>
+            <div class="flex gap-4">
+                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 mt-8 border-2 border-white">Empezar Juego</button>
+                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 mt-8 border-2 border-white">Editor de Niveles</button>
+            </div>
             <p class="mt-8 text-sm text-gray-400">Controles: Flechas (Mover/Volar) | Espacio (Láser) | Flecha Abajo (Bomba)</p>
         </div>
 
         <!-- Controles Móviles -->
         <div id="mobile-controls" class="hidden">
             <div id="joystick-zone" class="absolute bottom-0 left-0 w-1/2 h-1/2"></div>
-            <div id="action-zone" class="absolute bottom-0 right-0 w-1/2 h-1/2 flex justify-center items-center">
-                <button id="fire-btn" class="w-20 h-20 bg-red-500 rounded-full opacity-50"></button>
-            </div>
+            <div id="action-zone" class="absolute bottom-0 right-0 w-1/2 h-1/2"></div>
         </div>
     </div>
 </body>

@@ -143,6 +143,9 @@ let walls: Wall[] = [], enemies: Enemy[] = [], lasers: Laser[] = [], bombs: Bomb
 let levelDesigns = JSON.parse(JSON.stringify(initialLevels));
 let levelDataStore: string[][][] = [];
 
+// --- NippleJS Joystick Manager ---
+let joystickManager: nipplejs.JoystickManager | null = null;
+
 /* REMOVED createGameObject FUNCTION */
 
 // --- PLAYER OBJECT ---
@@ -822,6 +825,7 @@ function drawGame() {
 // --- UI & MENU & EDITOR LOGIC ---
 function setupUI() {
     document.getElementById('level-editor-btn')!.addEventListener('click', () => startEditor());
+    document.getElementById('start-game-btn')!.addEventListener('click', () => startGame());
     window.addEventListener('keydown', (e) => {
         keys[e.code] = true;
         if (e.code === 'Enter' && appState === 'menu') startGame();
@@ -836,62 +840,14 @@ function setupUI() {
 }
 
 function setupMobileControls() {
-    const mobileControlsEl = document.getElementById('mobile-controls')!;
-    mobileControlsEl.classList.remove('hidden');
-
-    const fireBtn = document.getElementById('fire-btn')!;
-    fireBtn.addEventListener('touchstart', (e) => {
+    const actionZone = document.getElementById('action-zone')!;
+    actionZone.addEventListener('touchstart', (e) => {
         e.preventDefault();
         keys['Space'] = true;
     });
-    fireBtn.addEventListener('touchend', (e) => {
+    actionZone.addEventListener('touchend', (e) => {
         e.preventDefault();
         keys['Space'] = false;
-    });
-
-    const joystickZone = document.getElementById('joystick-zone')!;
-    const joystickManager = nipplejs.create({
-        zone: joystickZone,
-        mode: 'dynamic',
-        position: { left: '50%', top: '50%' },
-        color: 'white',
-        catchforce: true
-    });
-
-    joystickManager.on('move', (evt, data) => {
-        const angle = data.angle.radian;
-        const force = data.force;
-
-        if (force > 0.2) {
-            const up = Math.sin(angle);
-            const right = Math.cos(angle);
-
-            if (up > 0.5) {
-                keys['ArrowUp'] = true;
-            } else {
-                keys['ArrowUp'] = false;
-            }
-
-            if (Math.abs(right) > 0.3) {
-                 if (right > 0) {
-                    keys['ArrowRight'] = true;
-                    keys['ArrowLeft'] = false;
-                } else {
-                    keys['ArrowLeft'] = true;
-                    keys['ArrowRight'] = false;
-                }
-            } else {
-                 keys['ArrowLeft'] = false;
-                 keys['ArrowRight'] = false;
-            }
-
-        }
-    });
-
-    joystickManager.on('end', () => {
-        keys['ArrowUp'] = false;
-        keys['ArrowLeft'] = false;
-        keys['ArrowRight'] = false;
     });
 }
 
@@ -902,8 +858,15 @@ function showMenu() {
     messageOverlay.style.display = 'flex';
     gameUiEl.style.display = 'none';
     editorPanelEl.style.display = 'none';
+    if ('ontouchstart' in window) {
+        document.getElementById('mobile-controls')!.dataset.active = 'false';
+        if (joystickManager) {
+            joystickManager.destroy();
+            joystickManager = null;
+        }
+    }
     messageTitle.textContent = "H.E.R.O. CLONE";
-    messageText.innerHTML = "Usa las flechas para moverte, Espacio para disparar.<br>Presiona un botón para empezar.";
+    messageText.innerHTML = "Presiona ENTER o el botón para empezar";
 }
 
 function startGame(levelMap: string[] | null = null) {
@@ -913,6 +876,63 @@ function startGame(levelMap: string[] | null = null) {
     messageOverlay.style.display = 'none';
     gameUiEl.style.display = 'flex';
     editorPanelEl.style.display = 'none';
+    if ('ontouchstart' in window) {
+        document.getElementById('mobile-controls')!.dataset.active = 'true';
+        if (!joystickManager) {
+            const joystickZone = document.getElementById('joystick-zone')!;
+            joystickManager = nipplejs.create({
+                zone: joystickZone,
+                mode: 'dynamic',
+                position: { left: '50%', top: '50%' },
+                color: 'white',
+                catchforce: true
+            });
+
+            joystickManager.on('move', (evt, data) => {
+                const angle = data.angle.radian;
+                const force = data.force;
+
+                if (force > 0.2) {
+                    const up = Math.sin(angle);
+                    const right = Math.cos(angle);
+
+                    if (up > 0.5) {
+                        keys['ArrowUp'] = true;
+                    } else {
+                        keys['ArrowUp'] = false;
+                    }
+
+                    // Lógica para plantar la bomba
+                    if (up < -0.5) {
+                        keys['ArrowDown'] = true;
+                    } else {
+                        keys['ArrowDown'] = false;
+                    }
+
+                    if (Math.abs(right) > 0.3) {
+                         if (right > 0) {
+                            keys['ArrowRight'] = true;
+                            keys['ArrowLeft'] = false;
+                        } else {
+                            keys['ArrowLeft'] = true;
+                            keys['ArrowRight'] = false;
+                        }
+                    } else {
+                         keys['ArrowLeft'] = false;
+                         keys['ArrowRight'] = false;
+                    }
+
+                }
+            });
+
+            joystickManager.on('end', () => {
+                keys['ArrowUp'] = false;
+                keys['ArrowLeft'] = false;
+                keys['ArrowRight'] = false;
+                keys['ArrowDown'] = false;
+            });
+        }
+    }
     lives = 3; score = 0;
     currentLevelIndex = 0;
     if (levelMap) levelDesigns = [levelMap];
@@ -1158,22 +1178,6 @@ function preloadAssets(callback: () => void) {
     }
 }
 
-function scaleCanvas() {
-    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-    const mainContainer = document.getElementById('main-container') as HTMLElement;
-    const aspectRatio = 800 / 600;
-    const containerWidth = mainContainer.offsetWidth;
-    const containerHeight = mainContainer.offsetHeight;
-
-    if (containerWidth / containerHeight > aspectRatio) {
-        canvas.style.height = `${containerHeight}px`;
-        canvas.style.width = `${containerHeight * aspectRatio}px`;
-    } else {
-        canvas.style.width = `${containerWidth}px`;
-        canvas.style.height = `${containerWidth / aspectRatio}px`;
-    }
-}
-
 window.onload = () => {
     setupUI();
     setupEditor();
@@ -1181,6 +1185,4 @@ window.onload = () => {
     preloadAssets(() => {
         gameLoop();
     });
-    window.addEventListener('resize', scaleCanvas);
-    scaleCanvas();
 };

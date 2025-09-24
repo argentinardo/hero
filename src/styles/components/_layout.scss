@@ -1,0 +1,13 @@
+#main-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#gameCanvas {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 800 / 600;
+    image-rendering: pixelated; /* Mantiene los pixeles nítidos al escalar */
+}

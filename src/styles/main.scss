@@ -1,6 +1,9 @@
 // Core styles
 @use 'core/base';
 
+// Layout styles
+@use 'components/layout';
+
 // Component styles
 @use 'components/ui';
 @use 'components/editor';

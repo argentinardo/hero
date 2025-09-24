@@ -11,10 +11,11 @@
         height: 100vh;
         padding: 0;
         margin: 0;
+        max-width: none;
     }
 
     #gameCanvas {
-        object-fit: contain;
+        /* El escalado ahora se controla desde _layout.scss con aspect-ratio */
     }
     
     #game-ui {
@@ -36,6 +37,16 @@
     }
 
     #mobile-controls {
+        display: none; /* Oculto por defecto */
+        z-index: 20; /* Asegura que los controles estén por encima del canvas */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    #mobile-controls[data-active="true"] {
         display: block;
     }
 }
