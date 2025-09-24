@@ -1,11 +1,28 @@
 // --- IMPORTS ---
 import '../styles/main.scss';
 import initialLevels from '../assets/levels.json';
+import nipplejs from 'nipplejs';
+
+// --- TYPE DECLARATIONS for nipplejs ---
+declare module 'nipplejs' {
+    interface JoystickManager {
+        on(event: 'move', listener: (evt: EventData, data: Joystick) => void): this;
+        on(event: 'end', listener: (evt: EventData, data: Joystick) => void): this;
+    }
+    interface Joystick {
+        angle: {
+            radian: number;
+        };
+        force: number;
+    }
+}
+
 
 // Import all sprite assets
 import playerWalkSrc from '../assets/sprites/hero_walk.png';
 import playerStandSrc from '../assets/sprites/hero_stand.png';
 import playerJumpSrc from '../assets/sprites/hero_jump.png';
+import playerFlySrc from '../assets/sprites/hero_fly.png';
 import batSrc from '../assets/sprites/bat_small.png';
 import spiderSrc from '../assets/sprites/spider_small.png'; // 15 frames
 import viperSrc from '../assets/sprites/serpiente_small.png';
@@ -43,7 +60,7 @@ const levelSelectorEl = document.getElementById('level-selector') as HTMLSelectE
 const TILE_SIZE = 60;
 const GRAVITY = 0.4;
 const PLAYER_SPEED = 3;
-const LASER_SPEED = 8;
+const LASER_SPEED = 12;
 const MAX_ENERGY = 100;
 const BOMB_FUSE = 80;
 const TOTAL_LEVELS = 10;
@@ -63,10 +80,14 @@ const ANIMATION_DATA: { [key: string]: AnimationData } = {
     'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc, reverse: true },
     'P_stand': { frames: 4, speed: 20, sprite: playerStandSrc },
     'P_jump': { frames: 4, speed: 1, sprite: playerJumpSrc, loop: false },
+    'P_fly': { frames: 5, speed: 10, sprite: playerFlySrc },
     '8': { frames: 6, speed: 2, sprite: batSrc },      // Bat
-    'S': { frames: 15, speed: 9, sprite: spiderSrc },   // Spider
-    '3': { frames: 16, speed: 20, sprite: lavaSrc },     // Lava
-    'bomb': { frames: 6, speed: 11, sprite: bombSrc, loop: false  },
+    'S': { frames: 15, speed: 7, sprite: spiderSrc },   // Spider
+    '3': { frames: 16, speed: 19, sprite: lavaSrc },     // Lava
+    'bomb': { frames: 6, speed: 15
+        
+        
+        , sprite: bombSrc, loop: false  },
     'explosion': { frames: 6, speed: 2, sprite: explosionSrc, loop: false }
 };
 
@@ -104,8 +125,11 @@ interface Wall {
     x: number; y: number; width: number; height: number; type: string; tile: string; // element: HTMLElement; <--- REMOVED
     spriteTick?: number;
     currentFrame?: number;
+    health?: number;
+    isDamaged?: boolean;
+    columnId?: number;
 }
-interface Laser { x: number; y: number; width: number; height: number; vx: number; } // element: HTMLElement; <--- REMOVED
+interface Laser { x: number; y: number; width: number; height: number; vx: number; startX: number; } // element: HTMLElement; <--- REMOVED
 interface Bomb { x: number; y: number; width: number; height: number; fuse: number; animationTick: number; currentFrame: number; } // element: HTMLElement; <--- REMOVED
 interface Explosion { x: number; y: number; width: number; height: number; timer: number; animationTick: number; currentFrame: number; }
 interface Miner { x: number; y: number; width: number; height: number; tile: string; } // element: HTMLElement; <--- REMOVED
@@ -161,8 +185,8 @@ function parseLevel(map: string[]) {
             
             switch (char) {
                 case '1': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: char }); break;
-                case '2': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible', tile: char }); break;
-                case 'C': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible_v', tile: char }); break;
+                case '2': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible', tile: char, health: 60, isDamaged: false }); break;
+                case 'C': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible_v', tile: char, health: 60, isDamaged: false, columnId: tileX }); break;
                 case '3': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'lava', tile: char, spriteTick: Math.floor(Math.random() * 50), currentFrame: Math.floor(Math.random() * 11) }); break;
                 case 'P': playerStartX = tileX; playerStartY = tileY; break;
                 case '8': 
@@ -261,16 +285,18 @@ function handleInput() {
     else { player.isFlying = false; }
     
     if (keys['Space'] && player.shootCooldown === 0) {
-        const laserX = player.direction === 1 ? player.x + player.width : player.x - 30;
+        const laserX = player.direction === 1 ? player.x + player.width/2 : player.x;
         const laserY = player.y + player.height / 4;
-        lasers.push({ x: laserX, y: laserY, width: 30, height: 5, vx: LASER_SPEED * player.direction });
-        player.shootCooldown = 15;
+        lasers.push({ x: laserX, y: laserY, width: 30, height: 5, vx: LASER_SPEED * player.direction, startX: laserX - 20 });
+        player.shootCooldown = 6;
     }
     
     if (keys['ArrowDown'] && player.isGrounded && bombs.length === 0) {
-        const bombX = player.x + TILE_SIZE/2.5;
+        const bombX = player.x + TILE_SIZE/4;
         const bombY = player.y + player.height - TILE_SIZE;
-        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE/1.5, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0 });
+
+
+        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE/1.5, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0});
     }
 }
 
@@ -320,11 +346,14 @@ function updatePlayer() {
     if (player.isGrounded) energy = Math.min(MAX_ENERGY, energy + 1);
     
     // --- 5. DETERMINE ANIMATION STATE (NOW WITH CORRECT isGrounded) ---
-    let newState = 'stand';
-    if (!player.isGrounded) {
-        newState = 'jump';
-    } else if (player.vx !== 0) {
-        newState = 'walk';
+    let newState = player.animationState;
+    if (player.isGrounded) {
+        newState = player.vx === 0 ? 'stand' : 'walk';
+    } else {
+        // In the air
+        if (player.animationState !== 'jump' && player.animationState !== 'fly') {
+            newState = 'jump';
+        }
     }
 
     if (player.animationState !== newState) {
@@ -352,6 +381,12 @@ function updatePlayer() {
                     player.currentFrame = (player.currentFrame + 1) % anim.frames;
                 } else {
                     player.currentFrame = Math.min(player.currentFrame + 1, anim.frames - 1);
+                    // If jump animation finishes, switch to fly
+                    if (player.animationState === 'jump' && player.currentFrame === anim.frames - 1) {
+                        player.animationState = 'fly';
+                        player.currentFrame = 0;
+                        player.animationTick = 0;
+                    }
                 }
             }
         }
@@ -430,17 +465,21 @@ function updateEnemies() {
 }
 
 function updateLasers() {
-    lasers.forEach((laser, i) => {
+    for (let i = lasers.length - 1; i >= 0; i--) {
+        const laser = lasers[i];
         laser.x += laser.vx;
         const levelWidth = levelDesigns[currentLevelIndex][0].length * TILE_SIZE;
-        if (laser.x < 0 || laser.x > levelWidth) {
+        const distance = Math.abs(laser.x - laser.startX);
+
+        if (laser.x < 0 || laser.x > levelWidth || distance > 4 * TILE_SIZE) {
             lasers.splice(i, 1);
         }
-    });
+    }
 }
 
 function updateBombs() {
-    bombs.forEach((bomb, index) => {
+    for (let i = bombs.length - 1; i >= 0; i--) {
+        const bomb = bombs[i];
         bomb.fuse--;
 
         // Update bomb animation
@@ -451,7 +490,7 @@ function updateBombs() {
         }
 
         if (bomb.fuse <= 0) {
-            bombs.splice(index, 1);
+            bombs.splice(i, 1);
             // bomb.element.remove(); <--- REMOVED
 
             const explosionX = bomb.x - TILE_SIZE; // Center 180px explosion on 60px bomb
@@ -463,7 +502,8 @@ function updateBombs() {
             const explosionCenterY = explosionY + (TILE_SIZE * 3) / 2;
             
             const wallsToRemove = new Set<Wall>();
-            const columnsHit = new Set<number>();
+            const columnsToDestroy = new Set<number>();
+            const enemiesToRemove = new Set<Enemy>();
 
             walls.forEach(wall => {
                 if (wall.type.startsWith('destructible')) {
@@ -472,44 +512,61 @@ function updateBombs() {
                     const dist = Math.hypot(explosionCenterX - wallCenterX, explosionCenterY - wallCenterY);
 
                     if (dist < explosionRadius) {
-                        wallsToRemove.add(wall);
-                        if (wall.type === 'destructible_v') {
-                            columnsHit.add(wall.x);
+                        if (wall.type === 'destructible_v' && wall.columnId !== undefined) {
+                            columnsToDestroy.add(wall.columnId);
+                        } else {
+                            wallsToRemove.add(wall);
                         }
                     }
                 }
             });
 
-            if (columnsHit.size > 0) {
+            if (columnsToDestroy.size > 0) {
                 walls.forEach(wall => {
-                    if (wall.type === 'destructible_v' && columnsHit.has(wall.x)) {
+                    if (wall.columnId !== undefined && columnsToDestroy.has(wall.columnId)) {
                         wallsToRemove.add(wall);
                     }
                 });
             }
 
+            enemies.forEach(enemy => {
+                const enemyCenterX = enemy.x + enemy.width / 2;
+                const enemyCenterY = enemy.y + enemy.height / 2;
+                const dist = Math.hypot(explosionCenterX - enemyCenterX, explosionCenterY - enemyCenterY);
+
+                if (dist < explosionRadius) {
+                    enemiesToRemove.add(enemy);
+                }
+            });
+
             if (wallsToRemove.size > 0) {
                 // wallsToRemove.forEach(wall => wall.element.remove()); <--- REMOVED
                 walls = walls.filter(wall => !wallsToRemove.has(wall));
             }
+
+            if (enemiesToRemove.size > 0) {
+                enemies = enemies.filter(enemy => !enemiesToRemove.has(enemy));
+                score += enemiesToRemove.size * 100;
+            }
         }
-    });
+    }
 }
 
 function updateParticles() {
     // This is for explosions animation now
-    explosions.forEach((exp, i) => {
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const exp = explosions[i];
         exp.timer--;
         if (exp.timer <= 0) {
             explosions.splice(i, 1);
-            return;
+            continue;
         }
         const anim = ANIMATION_DATA['explosion'];
         exp.animationTick = (exp.animationTick + 1) % anim.speed;
         if (exp.animationTick === 0) {
             exp.currentFrame = Math.min(exp.currentFrame + 1, anim.frames - 1);
         }
-    });
+    }
 }
 
 function checkCollisions() {
@@ -517,20 +574,45 @@ function checkCollisions() {
     
     enemies.forEach(enemy => { if (checkCollision(player, enemy)) playerDie(); });
 
-    lasers.forEach((laser, i) => {
-        walls.forEach(wall => { 
+    for (let i = lasers.length - 1; i >= 0; i--) {
+        const laser = lasers[i];
+        let laserRemoved = false;
+
+        for (let j = walls.length - 1; j >= 0; j--) {
+            const wall = walls[j];
             if (checkCollision(laser, wall)) {
-                lasers.splice(i, 1); 
+                if (wall.type.startsWith('destructible') && wall.health !== undefined) {
+                    wall.health--;
+                    if (wall.health <= 30) {
+                        wall.isDamaged = true;
+                    }
+                    if (wall.health <= 0) {
+                        if (wall.type === 'destructible_v' && wall.columnId !== undefined) {
+                            const columnId = wall.columnId;
+                            walls = walls.filter(w => w.columnId !== columnId);
+                        } else {
+                            walls.splice(j, 1);
+                        }
+                    }
+                }
+                lasers.splice(i, 1);
+                laserRemoved = true;
+                break;
             }
-        });
-        enemies.forEach((enemy, j) => {
+        }
+
+        if (laserRemoved) continue;
+
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            const enemy = enemies[j];
             if (checkCollision(laser, enemy)) {
                 lasers.splice(i, 1);
                 enemies.splice(j, 1);
                 score += 100;
+                break;
             }
-        });
-    });
+        }
+    }
 
     explosions.forEach(exp => {
         const explosionHitbox = { x: exp.x, y: exp.y, width: exp.width, height: exp.height };
@@ -583,6 +665,10 @@ function drawGame() {
 
     // Draw walls
     walls.forEach(wall => {
+        if (wall.isDamaged) {
+            ctx.globalAlpha = 0.5;
+        }
+
         const sprite = sprites[wall.tile];
         if (sprite) {
             const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
@@ -595,6 +681,10 @@ function drawGame() {
         } else { // Fallback for unloaded sprites
             ctx.fillStyle = TILE_TYPES[wall.tile]?.color || '#fff';
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        }
+
+        if (wall.isDamaged) {
+            ctx.globalAlpha = 1.0;
         }
     });
 
@@ -637,8 +727,23 @@ function drawGame() {
         } else if (enemy.type === 'viper') {
             const headSprite = sprites['V'];
             const segmentWidth = enemy.extendLength || 0;
+            
+            // Calculate the correct drawing position based on direction
+            const drawX = enemy.direction === 1 ? 0 : -segmentWidth;
+
             if (segmentWidth > 0) {
-                ctx.drawImage(headSprite, 0, 0, headSprite.width, headSprite.height, 0, 0, segmentWidth, enemy.height);
+                // Draw a clipped image, revealing more as it extends
+                ctx.drawImage(
+                    headSprite, 
+                    enemy.direction === 1 ? 0 : headSprite.width - segmentWidth, // sourceX
+                    0,                                                         // sourceY
+                    segmentWidth,                                              // sourceWidth
+                    headSprite.height,                                         // sourceHeight
+                    drawX,                                                     // destinationX
+                    0,                                                         // destinationY
+                    segmentWidth,                                              // destinationWidth
+                    enemy.height                                               // destinationHeight
+                );
             }
         }
         else {
@@ -701,6 +806,70 @@ function setupUI() {
         else if (e.code === 'Enter' && (gameState === 'gameover' || gameState === 'win')) showMenu();
     });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    // Mobile controls
+    if ('ontouchstart' in window) {
+        setupMobileControls();
+    }
+}
+
+function setupMobileControls() {
+    const mobileControlsEl = document.getElementById('mobile-controls')!;
+    mobileControlsEl.classList.remove('hidden');
+
+    const fireBtn = document.getElementById('fire-btn')!;
+    fireBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys['Space'] = true;
+    });
+    fireBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        keys['Space'] = false;
+    });
+
+    const joystickZone = document.getElementById('joystick-zone')!;
+    const joystickManager = nipplejs.create({
+        zone: joystickZone,
+        mode: 'dynamic',
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+    });
+
+    joystickManager.on('move', (evt, data) => {
+        const angle = data.angle.radian;
+        const force = data.force;
+
+        if (force > 0.2) {
+            const up = Math.sin(angle);
+            const right = Math.cos(angle);
+
+            if (up > 0.5) {
+                keys['ArrowUp'] = true;
+            } else {
+                keys['ArrowUp'] = false;
+            }
+
+            if (Math.abs(right) > 0.3) {
+                 if (right > 0) {
+                    keys['ArrowRight'] = true;
+                    keys['ArrowLeft'] = false;
+                } else {
+                    keys['ArrowLeft'] = true;
+                    keys['ArrowRight'] = false;
+                }
+            } else {
+                 keys['ArrowLeft'] = false;
+                 keys['ArrowRight'] = false;
+            }
+
+        }
+    });
+
+    joystickManager.on('end', () => {
+        keys['ArrowUp'] = false;
+        keys['ArrowLeft'] = false;
+        keys['ArrowRight'] = false;
+    });
 }
 
 function showMenu() {
@@ -940,7 +1109,7 @@ async function saveAllLevelsToFile() {
 // --- PRELOAD & INITIALIZATION ---
 function preloadAssets(callback: () => void) {
     const sources = {
-        'P_walk': playerWalkSrc, 'P_stand': playerStandSrc, 'P_jump': playerJumpSrc,
+        'P_walk': playerWalkSrc, 'P_stand': playerStandSrc, 'P_jump': playerJumpSrc, 'P_fly': playerFlySrc,
         '8': batSrc, 'S': spiderSrc, 'V': viperSrc, '9': minerSrc,
         'bomb': bombSrc, 'explosion': explosionSrc,
         '1': wallSrc, '2': dirtSrc, 'C': columnSrc, '3': lavaSrc,
@@ -966,6 +1135,22 @@ function preloadAssets(callback: () => void) {
     }
 }
 
+function scaleCanvas() {
+    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+    const mainContainer = document.getElementById('main-container') as HTMLElement;
+    const aspectRatio = 800 / 600;
+    const containerWidth = mainContainer.offsetWidth;
+    const containerHeight = mainContainer.offsetHeight;
+
+    if (containerWidth / containerHeight > aspectRatio) {
+        canvas.style.height = `${containerHeight}px`;
+        canvas.style.width = `${containerHeight * aspectRatio}px`;
+    } else {
+        canvas.style.width = `${containerWidth}px`;
+        canvas.style.height = `${containerWidth / aspectRatio}px`;
+    }
+}
+
 window.onload = () => {
     setupUI();
     setupEditor();
@@ -973,4 +1158,6 @@ window.onload = () => {
     preloadAssets(() => {
         gameLoop();
     });
+    window.addEventListener('resize', scaleCanvas);
+    scaleCanvas();
 };
