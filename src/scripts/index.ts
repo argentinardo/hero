@@ -966,13 +966,44 @@ function setupUI() {
 
 function setupMobileControls() {
     const actionZone = document.getElementById('action-zone')!;
+    const joystickZone = document.getElementById('joystick-zone')!;
+    
+    let bombTimer: ReturnType<typeof setTimeout> | null = null;
+    
+    // Configurar zona de acción para láser y bomba
     actionZone.addEventListener('touchstart', (e) => {
         e.preventDefault();
         keys['Space'] = true;
+        
+        // Feedback visual para bomba
+        actionZone.style.background = 'rgba(255, 165, 0, 0.3)'; // Naranja cuando se presiona
+        
+        // Iniciar timer para bomba después de 500ms
+        bombTimer = setTimeout(() => {
+            keys['ArrowDown'] = true;
+            actionZone.style.background = 'rgba(255, 0, 0, 0.5)'; // Rojo cuando está listo para bomba
+            actionZone.classList.add('bomb-mode');
+            
+            // Feedback de vibración si está disponible
+            if (navigator.vibrate) {
+                navigator.vibrate(100);
+            }
+        }, 500);
     });
+    
     actionZone.addEventListener('touchend', (e) => {
         e.preventDefault();
         keys['Space'] = false;
+        
+        // Restaurar estado visual
+        actionZone.style.background = 'rgba(255, 0, 0, 0.2)';
+        actionZone.classList.remove('bomb-mode');
+        
+        if (bombTimer) {
+            clearTimeout(bombTimer);
+            bombTimer = null;
+        }
+        keys['ArrowDown'] = false;
     });
 }
 
@@ -984,7 +1015,9 @@ function showMenu() {
     gameUiEl.style.display = 'none';
     editorPanelEl.style.display = 'none';
     if ('ontouchstart' in window) {
-        document.getElementById('mobile-controls')!.dataset.active = 'false';
+        const mobileControls = document.getElementById('mobile-controls')!;
+        mobileControls.dataset.active = 'false';
+        mobileControls.style.display = 'none';
         if (joystickManager) {
             joystickManager.destroy();
             joystickManager = null;
@@ -992,6 +1025,14 @@ function showMenu() {
     }
     messageTitle.textContent = "H.E.R.O. CLONE";
     messageText.innerHTML = "Presiona ENTER o el botón para empezar";
+    
+    // Actualizar instrucciones de controles para móvil
+    const controlsText = document.getElementById('controls-text')!;
+    if ('ontouchstart' in window) {
+        controlsText.textContent = "Controles móviles: Joystick (Mover/Volar) | Botón LASER (Tocar=Láser, Mantener=Bomba)";
+    } else {
+        controlsText.textContent = "Controles: Flechas (Mover/Volar) | Espacio (Láser) | Flecha Abajo (Bomba)";
+    }
 }
 
 function startGame(levelMap: string[] | null = null) {
@@ -1002,7 +1043,10 @@ function startGame(levelMap: string[] | null = null) {
     gameUiEl.style.display = 'flex';
     editorPanelEl.style.display = 'none';
     if ('ontouchstart' in window) {
-        document.getElementById('mobile-controls')!.dataset.active = 'true';
+        const mobileControls = document.getElementById('mobile-controls')!;
+        mobileControls.dataset.active = 'true';
+        mobileControls.style.display = 'block';
+        
         if (!joystickManager) {
             const joystickZone = document.getElementById('joystick-zone')!;
             joystickManager = nipplejs.create({
@@ -1010,7 +1054,10 @@ function startGame(levelMap: string[] | null = null) {
                 mode: 'dynamic',
                 position: { left: '50%', top: '50%' },
                 color: 'white',
-                catchforce: true
+                catchforce: true,
+                size: 120,
+                threshold: 0.1,
+                fadeTime: 250
             });
 
             joystickManager.on('move', (evt, data) => {
@@ -1021,19 +1068,14 @@ function startGame(levelMap: string[] | null = null) {
                     const up = Math.sin(angle);
                     const right = Math.cos(angle);
 
-                    if (up > 0.5) {
+                    // Volar hacia arriba
+                    if (up < -0.5) {
                         keys['ArrowUp'] = true;
                     } else {
                         keys['ArrowUp'] = false;
                     }
 
-                    // Lógica para plantar la bomba
-                    if (up < -0.5) {
-                        keys['ArrowDown'] = true;
-                    } else {
-                        keys['ArrowDown'] = false;
-                    }
-
+                    // Movimiento horizontal
                     if (Math.abs(right) > 0.3) {
                          if (right > 0) {
                             keys['ArrowRight'] = true;
@@ -1046,7 +1088,6 @@ function startGame(levelMap: string[] | null = null) {
                          keys['ArrowLeft'] = false;
                          keys['ArrowRight'] = false;
                     }
-
                 }
             });
 
@@ -1054,7 +1095,6 @@ function startGame(levelMap: string[] | null = null) {
                 keys['ArrowUp'] = false;
                 keys['ArrowLeft'] = false;
                 keys['ArrowRight'] = false;
-                keys['ArrowDown'] = false;
             });
         }
     }
