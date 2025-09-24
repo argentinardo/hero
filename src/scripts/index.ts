@@ -1021,14 +1021,14 @@ function startGame(levelMap: string[] | null = null) {
                     const up = Math.sin(angle);
                     const right = Math.cos(angle);
 
-                    if (up > 0.5) {
+                    if (up < -0.5) {
                         keys['ArrowUp'] = true;
                     } else {
                         keys['ArrowUp'] = false;
                     }
 
                     // Lógica para plantar la bomba
-                    if (up < -0.5) {
+                    if (up > 0.5) {
                         keys['ArrowDown'] = true;
                     } else {
                         keys['ArrowDown'] = false;
