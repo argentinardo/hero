@@ -5,6 +5,9 @@ import nipplejs from 'nipplejs';
 
 // --- TYPE DECLARATIONS for nipplejs ---
 declare module 'nipplejs' {
+    interface JoystickManagerOptions {
+        catchforce?: boolean;
+    }
     interface JoystickManager {
         on(event: 'move', listener: (evt: EventData, data: Joystick) => void): this;
         on(event: 'end', listener: (evt: EventData, data: Joystick) => void): this;
@@ -127,7 +130,6 @@ interface Wall {
     currentFrame?: number;
     health?: number;
     isDamaged?: boolean;
-    columnId?: number;
 }
 interface Laser { x: number; y: number; width: number; height: number; vx: number; startX: number; } // element: HTMLElement; <--- REMOVED
 interface Bomb { x: number; y: number; width: number; height: number; fuse: number; animationTick: number; currentFrame: number; } // element: HTMLElement; <--- REMOVED
@@ -186,7 +188,7 @@ function parseLevel(map: string[]) {
             switch (char) {
                 case '1': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: char }); break;
                 case '2': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible', tile: char, health: 60, isDamaged: false }); break;
-                case 'C': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible_v', tile: char, health: 60, isDamaged: false, columnId: tileX }); break;
+                case 'C': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible_v', tile: char, health: 60, isDamaged: false }); break;
                 case '3': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'lava', tile: char, spriteTick: Math.floor(Math.random() * 50), currentFrame: Math.floor(Math.random() * 11) }); break;
                 case 'P': playerStartX = tileX; playerStartY = tileY; break;
                 case '8': 
@@ -501,33 +503,38 @@ function updateBombs() {
             const explosionCenterX = explosionX + (TILE_SIZE * 3) / 2;
             const explosionCenterY = explosionY + (TILE_SIZE * 3) / 2;
             
-            const wallsToRemove = new Set<Wall>();
-            const columnsToDestroy = new Set<number>();
+            const allWallsToRemove = new Set<Wall>();
             const enemiesToRemove = new Set<Enemy>();
 
             walls.forEach(wall => {
-                if (wall.type.startsWith('destructible')) {
-                    const wallCenterX = wall.x + TILE_SIZE / 2;
-                    const wallCenterY = wall.y + TILE_SIZE / 2;
-                    const dist = Math.hypot(explosionCenterX - wallCenterX, explosionCenterY - wallCenterY);
+                const wallCenterX = wall.x + TILE_SIZE / 2;
+                const wallCenterY = wall.y + TILE_SIZE / 2;
+                const dist = Math.hypot(explosionCenterX - wallCenterX, explosionCenterY - wallCenterY);
 
-                    if (dist < explosionRadius) {
-                        if (wall.type === 'destructible_v' && wall.columnId !== undefined) {
-                            columnsToDestroy.add(wall.columnId);
-                        } else {
-                            wallsToRemove.add(wall);
+                if (dist < explosionRadius) {
+                    if (wall.type === 'destructible') {
+                        allWallsToRemove.add(wall);
+                    } else if (wall.type === 'destructible_v') {
+                        if (!allWallsToRemove.has(wall)) {
+                            const queue: Wall[] = [wall];
+                            allWallsToRemove.add(wall);
+                            while(queue.length > 0) {
+                                const current = queue.shift()!;
+                                const above = walls.find(w => w.type === 'destructible_v' && w.x === current.x && w.y === current.y - TILE_SIZE);
+                                if (above && !allWallsToRemove.has(above)) {
+                                    allWallsToRemove.add(above);
+                                    queue.push(above);
+                                }
+                                const below = walls.find(w => w.type === 'destructible_v' && w.x === current.x && w.y === current.y + TILE_SIZE);
+                                if (below && !allWallsToRemove.has(below)) {
+                                    allWallsToRemove.add(below);
+                                    queue.push(below);
+                                }
+                            }
                         }
                     }
                 }
             });
-
-            if (columnsToDestroy.size > 0) {
-                walls.forEach(wall => {
-                    if (wall.columnId !== undefined && columnsToDestroy.has(wall.columnId)) {
-                        wallsToRemove.add(wall);
-                    }
-                });
-            }
 
             enemies.forEach(enemy => {
                 const enemyCenterX = enemy.x + enemy.width / 2;
@@ -539,9 +546,8 @@ function updateBombs() {
                 }
             });
 
-            if (wallsToRemove.size > 0) {
-                // wallsToRemove.forEach(wall => wall.element.remove()); <--- REMOVED
-                walls = walls.filter(wall => !wallsToRemove.has(wall));
+            if (allWallsToRemove.size > 0) {
+                walls = walls.filter(wall => !allWallsToRemove.has(wall));
             }
 
             if (enemiesToRemove.size > 0) {
@@ -587,9 +593,25 @@ function checkCollisions() {
                         wall.isDamaged = true;
                     }
                     if (wall.health <= 0) {
-                        if (wall.type === 'destructible_v' && wall.columnId !== undefined) {
-                            const columnId = wall.columnId;
-                            walls = walls.filter(w => w.columnId !== columnId);
+                        if (wall.type === 'destructible_v') {
+                            const toDestroy = new Set<Wall>();
+                            const queue: Wall[] = [wall];
+                            toDestroy.add(wall);
+
+                            while (queue.length > 0) {
+                                const currentWall = queue.shift()!;
+                                const wallAbove = walls.find(w => w.x === currentWall.x && w.y === currentWall.y - TILE_SIZE && w.type === 'destructible_v');
+                                if (wallAbove && !toDestroy.has(wallAbove)) {
+                                    toDestroy.add(wallAbove);
+                                    queue.push(wallAbove);
+                                }
+                                const wallBelow = walls.find(w => w.x === currentWall.x && w.y === currentWall.y + TILE_SIZE && w.type === 'destructible_v');
+                                if (wallBelow && !toDestroy.has(wallBelow)) {
+                                    toDestroy.add(wallBelow);
+                                    queue.push(wallBelow);
+                                }
+                            }
+                            walls = walls.filter(w => !toDestroy.has(w));
                         } else {
                             walls.splice(j, 1);
                         }
@@ -833,6 +855,7 @@ function setupMobileControls() {
         mode: 'dynamic',
         position: { left: '50%', top: '50%' },
         color: 'white',
+        catchforce: true
     });
 
     joystickManager.on('move', (evt, data) => {
