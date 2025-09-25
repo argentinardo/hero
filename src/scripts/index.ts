@@ -516,7 +516,7 @@ function updatePlayer() {
             if (anim.reverse) {
                 player.currentFrame--;
                 if (player.currentFrame < 0) {
-                    player.currentFrame = anim.frames - 1;
+                    player.currentFrame = anim.frames - 2; // Start from second-to-last frame to avoid extra frame
                 }
             } else {
                 if (anim.loop !== false) {
