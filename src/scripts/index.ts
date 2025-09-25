@@ -61,8 +61,8 @@ const levelSelectorEl = document.getElementById('level-selector') as HTMLSelectE
 
 // --- GAME CONSTANTS ---
 const TILE_SIZE = 60;
-const GRAVITY = 0.4;
-const PLAYER_SPEED = 3;
+const GRAVITY = 0.3;
+const PLAYER_SPEED = 6;
 const THRUST_POWER = 0.6; // Mayor que la gravedad para poder ascender
 const MAX_UPWARD_SPEED = 5;
 const LASER_SPEED = 12;
@@ -89,6 +89,8 @@ const ANIMATION_DATA: { [key: string]: AnimationData } = {
     '8': { frames: 6, speed: 2, sprite: batSrc },      // Bat
     'S': { frames: 15, speed: 7, sprite: spiderSrc },   // Spider
     'V': { frames: 1, speed: 1, sprite: viperSrc },      // Viper
+    '9_idle': { frames: 2, speed: 120, sprite: minerSrc }, // 2 segundos por ciclo de ping-pong
+    '9_rescued': { frames: 6, speed: 20, sprite: minerSrc, loop: false }, // 3fps = 60/3 = 20 ticks/frame
     '3': { frames: 16, speed: 19, sprite: lavaSrc },     // Lava
     'bomb': { frames: 6, speed: 15
         
@@ -138,7 +140,14 @@ interface Wall {
 interface Laser { x: number; y: number; width: number; height: number; vx: number; startX: number; } // element: HTMLElement; <--- REMOVED
 interface Bomb { x: number; y: number; width: number; height: number; fuse: number; animationTick: number; currentFrame: number; } // element: HTMLElement; <--- REMOVED
 interface Explosion { x: number; y: number; width: number; height: number; timer: number; animationTick: number; currentFrame: number; }
-interface Miner { x: number; y: number; width: number; height: number; tile: string; } // element: HTMLElement; <--- REMOVED
+interface Miner {
+    x: number; y: number; width: number; height: number;
+    tile: string;
+    animationState: 'idle' | 'rescued';
+    currentFrame: number;
+    animationTick: number;
+    animationDirection: number;
+}
 interface GameObject { x: number; y: number; width: number; height: number; }
 interface FallingEntity {
     x: number; y: number; width: number; height: number;
@@ -154,10 +163,16 @@ interface Particle {
     life: number;
     color: string;
 }
+interface FloatingScore {
+    x: number; y: number;
+    text: string;
+    life: number;
+    opacity: number;
+}
 
 // --- GAME STATE ---
 let lives = 0, score = 0, energy = 0, currentLevelIndex = 0, cameraY = 0;
-let walls: Wall[] = [], enemies: Enemy[] = [], lasers: Laser[] = [], bombs: Bomb[] = [], explosions: Explosion[] = [], miner: Miner | null = null, fallingEntities: FallingEntity[] = [], particles: Particle[] = [];
+let walls: Wall[] = [], enemies: Enemy[] = [], lasers: Laser[] = [], bombs: Bomb[] = [], explosions: Explosion[] = [], miner: Miner | null = null, fallingEntities: FallingEntity[] = [], particles: Particle[] = [], floatingScores: FloatingScore[] = [];
 let levelDesigns = JSON.parse(JSON.stringify(initialLevels));
 let levelDataStore: string[][][] = [];
 
@@ -187,11 +202,11 @@ function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
     Object.assign(player, {
         x: startX, y: startY, width: TILE_SIZE, height: TILE_SIZE * 2,
         hitbox: { x: startX + TILE_SIZE / 4, y: startY, width: TILE_SIZE / 2, height: TILE_SIZE * 2 },
-        vx: 0, vy: 0, 
+        vx: 0, vy: 0,
         isApplyingThrust: false,
         isChargingFly: false,
-        wantsToFly: false, 
-        flyChargeTimer: 0, 
+        wantsToFly: false,
+        flyChargeTimer: 0,
         isGrounded: false, direction: 1, shootCooldown: 0,
         animationState: 'stand', // 'stand', 'walk', 'jump'
         animationTick: 0,
@@ -204,38 +219,38 @@ function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
 
 function parseLevel(map: string[]) {
     // gameWorldEl.innerHTML = ''; <--- REMOVED
-    walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = []; fallingEntities = []; particles = [];
+    walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = []; fallingEntities = []; particles = []; floatingScores = [];
     let playerStartX = TILE_SIZE * 1.5, playerStartY = TILE_SIZE * 1.5;
 
     map.forEach((row, i) => {
         for (let j = 0; j < row.length; j++) {
             const char = row[j];
             const tileX = j * TILE_SIZE, tileY = i * TILE_SIZE;
-            
+
             switch (char) {
                 case '1': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: char }); break;
                 case '2': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible', tile: char, health: 60, isDamaged: false }); break;
                 case 'C': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'destructible_v', tile: char, health: 60, isDamaged: false }); break;
                 case '3': walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'lava', tile: char, spriteTick: Math.floor(Math.random() * 50), currentFrame: Math.floor(Math.random() * 11) }); break;
                 case 'P': playerStartX = tileX; playerStartY = tileY; break;
-                case '8': 
-                    enemies.push({ 
-                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
-                        vx: Math.random() > 0.5 ? 1.5 : -1.5, vy: 0, 
+                case '8':
+                    enemies.push({
+                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE,
+                        vx: Math.random() > 0.5 ? 1.5 : -1.5, vy: 0,
                         type: 'bat', tile: char,
-                        initialY: tileY, 
-                        spriteTick: 0, 
-                        movementTick: Math.random() * 100, 
+                        initialY: tileY,
+                        spriteTick: 0,
+                        movementTick: Math.random() * 100,
                         currentFrame: 0
-                    }); 
+                    });
                     break;
-                case 'S': 
-                    enemies.push({ 
-                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
+                case 'S':
+                    enemies.push({
+                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE,
                         vx: 0, vy: 1, type: 'spider', tile: char,
                         initialY: tileY, maxLength: TILE_SIZE * 2,
                         spriteTick: 0, currentFrame: 0
-                    }); 
+                    });
                     break;
                 case 'V':
                     const wallOnLeft = j > 0 && map[i][j - 1] === '1';
@@ -245,7 +260,16 @@ function parseLevel(map: string[]) {
                     // Se añade un muro en la misma posición
                     walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: '1' });
                     break;
-                case '9': miner = { x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, tile: char }; break;
+                case '9': 
+                    miner = { 
+                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
+                        tile: char,
+                        animationState: 'idle',
+                        currentFrame: 0,
+                        animationTick: 0,
+                        animationDirection: 1 
+                    }; 
+                    break;
             }
         }
     });
@@ -269,11 +293,11 @@ function updateWalls() {
 // --- STATE CHANGE FUNCTIONS ---
 function loadLevel() {
     if (currentLevelIndex >= levelDesigns.length) {
-         gameState = 'win';
-         messageTitle.textContent = '¡HAS GANADO!';
-         messageText.textContent = `Puntuación final: ${score}. Presiona ENTER para volver al menú.`;
-         messageOverlay.style.display = 'flex';
-         return;
+        gameState = 'win';
+        messageTitle.textContent = '¡HAS GANADO!';
+        messageText.textContent = `Puntuación final: ${score}. Presiona ENTER para volver al menú.`;
+        messageOverlay.style.display = 'flex';
+        return;
     }
     parseLevel(levelDesigns[currentLevelIndex]);
     cameraY = 0;
@@ -282,7 +306,7 @@ function loadLevel() {
 
 function playerDie() {
     if (gameState === 'respawning' || gameState === 'gameover') return;
-    
+
     emitParticles(player.x + player.width / 2, player.y + player.height / 2, 20, 'white');
     player.deathTimer = 60; // 1 segundo de efecto de muerte
 
@@ -323,20 +347,20 @@ function handleInput() {
     } else {
         player.wantsToFly = false;
     }
-    
+
     if (keys['Space'] && player.shootCooldown === 0) {
-        const laserX = player.direction === 1 ? player.x + player.width/2 : player.x;
+        const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
         const laserY = player.y + player.height / 4;
         lasers.push({ x: laserX, y: laserY, width: 30, height: 5, vx: LASER_SPEED * player.direction, startX: laserX - 20 });
         player.shootCooldown = 6;
     }
-    
+
     if (keys['ArrowDown'] && player.isGrounded && bombs.length === 0) {
         const bombX = player.x + (player.width / 2) - (TILE_SIZE / 1.5 / 2);
         const bombY = player.y + player.height - TILE_SIZE;
 
 
-        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE/1.5, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0});
+        bombs.push({ x: bombX, y: bombY, width: TILE_SIZE / 1.5, height: TILE_SIZE, fuse: BOMB_FUSE, animationTick: 0, currentFrame: 0 });
     }
 }
 
@@ -390,16 +414,17 @@ function updatePlayer() {
             if (player.direction === -1) {
                 offsetX = player.width - offsetX;
             }
-            emitParticles(player.x + offsetX, player.y + player.height / 1.3, 50, 'yellow');        }
+            emitParticles(player.x + offsetX, player.y + player.height / 1.3, 50, 'yellow');
+        }
     } else {
         player.isApplyingThrust = false;
     }
-    
+
     // Aplicar gravedad solo si no estamos cargando el vuelo
     if (!player.isChargingFly) {
         player.vy += GRAVITY;
     }
-    
+
     // Limitar velocidad de ascenso
     if (player.vy < -MAX_UPWARD_SPEED) {
         player.vy = -MAX_UPWARD_SPEED;
@@ -417,7 +442,7 @@ function updatePlayer() {
     walls.forEach(wall => {
         if (checkCollision(player.hitbox, wall)) {
             if (wall.type === 'lava') return playerDie();
-            
+
             const overlapX = (player.hitbox.x + player.hitbox.width / 2) - (wall.x + TILE_SIZE / 2);
             const overlapY = (player.hitbox.y + player.hitbox.height / 2) - (wall.y + TILE_SIZE / 2);
             const combinedHalfWidths = player.hitbox.width / 2 + TILE_SIZE / 2;
@@ -448,11 +473,11 @@ function updatePlayer() {
     if (player.x < 0) player.x = 0;
     const levelWidth = levelDesigns[currentLevelIndex][0].length * TILE_SIZE;
     if (player.x + player.width > levelWidth) player.x = levelWidth - player.width;
-    
+
     // --- 5. UPDATE OTHER PLAYER STATE ---
     if (player.shootCooldown > 0) player.shootCooldown--;
     if (player.isGrounded) energy = Math.min(MAX_ENERGY, energy + 1);
-    
+
     // --- 6. DETERMINE ANIMATION STATE (NOW WITH CORRECT isGrounded) ---
     let newState = player.animationState;
     if (player.isGrounded) {
@@ -463,13 +488,13 @@ function updatePlayer() {
         }
     } else {
         if (player.isApplyingThrust || player.isChargingFly) {
-             if (player.animationState === 'jump' && player.currentFrame === ANIMATION_DATA['P_jump'].frames - 1) {
-                 newState = 'fly';
-             } else if (player.animationState !== 'fly') {
-                 newState = 'jump';
-             }
+            if (player.animationState === 'jump' && player.currentFrame === ANIMATION_DATA['P_jump'].frames - 1) {
+                newState = 'fly';
+            } else if (player.animationState !== 'fly') {
+                newState = 'jump';
+            }
         } else {
-             newState = 'jump'; // cayendo
+            newState = 'jump'; // cayendo
         }
     }
 
@@ -486,7 +511,7 @@ function updatePlayer() {
         player.animationTick++;
         if (player.animationTick >= anim.speed) {
             player.animationTick = 0;
-            
+
             // Handle looping and reversing
             if (anim.reverse) {
                 player.currentFrame--;
@@ -568,10 +593,10 @@ function updateEnemies() {
                 } else if (enemy.state === 'retracting') {
                     enemy.x -= enemy.direction! * speed;
                     if ((enemy.direction === 1 && enemy.x <= enemy.initialX!) || (enemy.direction === -1 && enemy.x >= enemy.initialX!)) {
-                         enemy.x = enemy.initialX!; // Clamp
-                         enemy.state = 'idle';
-                         enemy.idleTimer = 60 + Math.random() * 60;
-                         enemy.isHidden = true; // La vibora se oculta
+                        enemy.x = enemy.initialX!; // Clamp
+                        enemy.state = 'idle';
+                        enemy.idleTimer = 60 + Math.random() * 60;
+                        enemy.isHidden = true; // La vibora se oculta
                     }
                 }
                 break;
@@ -615,7 +640,7 @@ function updateBombs() {
             const explosionRadius = 70;
             const explosionCenterX = explosionX + (TILE_SIZE * 3) / 2;
             const explosionCenterY = explosionY + (TILE_SIZE * 3) / 2;
-            
+
             const allWallsToRemove = new Set<Wall>();
             const enemiesToRemove = new Set<Enemy>();
 
@@ -631,7 +656,7 @@ function updateBombs() {
                         if (!allWallsToRemove.has(wall)) {
                             const queue: Wall[] = [wall];
                             allWallsToRemove.add(wall);
-                            while(queue.length > 0) {
+                            while (queue.length > 0) {
                                 const current = queue.shift()!;
                                 const above = walls.find(w => w.type === 'destructible_v' && w.x === current.x && w.y === current.y - TILE_SIZE);
                                 if (above && !allWallsToRemove.has(above)) {
@@ -680,7 +705,7 @@ function updateBombs() {
 
             if (enemiesToRemove.size > 0) {
                 enemiesToRemove.forEach(enemy => {
-                     fallingEntities.push({
+                    fallingEntities.push({
                         x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height,
                         vy: -5, // Mario-style pop-up
                         vx: 0,
@@ -688,6 +713,7 @@ function updateBombs() {
                         rotation: 0,
                         rotationSpeed: 0.1
                     });
+                    floatingScores.push({ x: enemy.x, y: enemy.y, text: '+100', life: 60, opacity: 1 });
                 });
                 enemies = enemies.filter(enemy => !enemiesToRemove.has(enemy));
                 score += enemiesToRemove.size * 100;
@@ -751,8 +777,8 @@ function updateFallingEntities() {
 
 function checkCollisions() {
     // Player-wall collision is now handled inside updatePlayer()
-    
-    enemies.forEach(enemy => { 
+
+    enemies.forEach(enemy => {
         if (enemy.type === 'viper' && !enemy.isHidden && enemy.initialX !== undefined) {
             let headHitbox;
             if (enemy.direction === 1) { // Moviéndose a la derecha
@@ -831,7 +857,7 @@ function checkCollisions() {
                             walls = walls.filter(w => !toDestroy.has(w));
                         } else {
                             const wall = walls[j]; // get the wall before removing
-                             const quarterWidth = TILE_SIZE / 2;
+                            const quarterWidth = TILE_SIZE / 2;
                             const quarterHeight = TILE_SIZE / 2;
                             for (let i = 0; i < 4; i++) {
                                 fallingEntities.push({
@@ -865,6 +891,7 @@ function checkCollisions() {
                     x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height,
                     vy: -5, vx: 0, tile: enemy.tile, rotation: 0, rotationSpeed: 0.1
                 });
+                floatingScores.push({ x: enemy.x, y: enemy.y, text: '+100', life: 60, opacity: 1 });
                 enemies.splice(j, 1);
                 score += 100;
                 break;
@@ -894,16 +921,58 @@ function updateGame() {
     updatePlayer();
     updateWalls();
     updateEnemies();
+    updateMiner();
     updateLasers();
     updateBombs();
     updateParticles(); // Now updates explosions
     updateFallingEntities();
     checkCollisions();
     updateCamera();
-    if (miner && checkCollision(player.hitbox, miner)) {
+    if (miner && miner.animationState !== 'rescued' && checkCollision(player.hitbox, miner)) {
         score += 1000;
-        currentLevelIndex++;
-        loadLevel();
+        floatingScores.push({ x: miner.x, y: miner.y, text: '+1000', life: 90, opacity: 1 });
+        miner.animationState = 'rescued';
+        miner.currentFrame = 2; // Empezar desde el frame 3 (indice 2)
+        miner.animationTick = 0;
+    }
+}
+
+function updateMiner() {
+    if (!miner) return;
+
+    const rescuedAnimData = ANIMATION_DATA['9_rescued'];
+    if (miner.animationState === 'rescued' && miner.currentFrame === rescuedAnimData.frames - 1) {
+        return; // Detener la animación en el último fotograma
+    }
+
+    miner.animationTick++;
+
+    if (miner.animationState === 'idle') {
+        const anim = ANIMATION_DATA['9_idle'];
+        if (miner.animationTick >= anim.speed) {
+            miner.animationTick = 0;
+            miner.currentFrame += miner.animationDirection;
+
+            if (miner.currentFrame >= anim.frames - 1 || miner.currentFrame <= 0) {
+                miner.animationDirection *= -1; // Invertir dirección para el ping-pong
+            }
+        }
+    } else if (miner.animationState === 'rescued') {
+        const anim = ANIMATION_DATA['9_rescued'];
+        if (miner.animationTick >= anim.speed) {
+            miner.animationTick = 0;
+            if (miner.currentFrame < anim.frames - 1) {
+                miner.currentFrame++;
+            }
+            
+            if (miner.currentFrame >= anim.frames - 1) {
+                // La animación ha terminado, cargar el siguiente nivel tras un breve retraso
+                setTimeout(() => {
+                    currentLevelIndex++;
+                    loadLevel();
+                }, 500);
+            }
+        }
     }
 }
 
@@ -940,15 +1009,15 @@ function drawWall(wall: Wall) {
 
 function drawEnemy(enemy: Enemy) {
     if (enemy.isHidden) {
-        return; 
+        return;
     }
 
     const sprite = sprites[enemy.tile];
     if (!sprite) return;
 
     ctx.save();
-    
-    let flip = enemy.vx < 0; 
+
+    let flip = enemy.vx < 0;
     if (enemy.type === 'viper') flip = enemy.direction === -1;
 
     if (flip) {
@@ -957,7 +1026,7 @@ function drawEnemy(enemy: Enemy) {
     } else {
         ctx.translate(enemy.x, enemy.y);
     }
-    
+
     if (enemy.type === 'spider') {
         // Draw web thread
         ctx.strokeStyle = '#ccc';
@@ -967,7 +1036,7 @@ function drawEnemy(enemy: Enemy) {
         ctx.lineTo(enemy.width / 2, enemy.initialY! - enemy.y);
         ctx.stroke();
     }
-    
+
     const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
     if (anim) {
         const frameWidth = sprite.width / anim.frames;
@@ -976,7 +1045,7 @@ function drawEnemy(enemy: Enemy) {
     else {
         ctx.drawImage(sprite, 0, 0, enemy.width, enemy.height);
     }
-    
+
     ctx.restore();
 }
 
@@ -993,6 +1062,25 @@ function emitParticles(x: number, y: number, count: number, color: string) {
     }
 }
 
+function updateAndDrawFloatingScores() {
+    ctx.font = "24px 'Press Start 2P'";
+    ctx.fillStyle = 'white';
+    for (let i = floatingScores.length - 1; i >= 0; i--) {
+        const fs = floatingScores[i];
+        fs.life--;
+        if (fs.life <= 0) {
+            floatingScores.splice(i, 1);
+            continue;
+        }
+        fs.y -= 0.5;
+        fs.opacity = fs.life / 60;
+
+        ctx.globalAlpha = fs.opacity;
+        ctx.fillText(fs.text, fs.x, fs.y);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
 // --- RENDER FUNCTION (replaces renderGame) ---
 function drawGame() {
     ctx.fillStyle = 'black';
@@ -1006,7 +1094,24 @@ function drawGame() {
 
     // Draw miner
     if (miner) {
-        ctx.drawImage(sprites['9'], miner.x, miner.y, miner.width, miner.height);
+        const sprite = sprites[miner.tile];
+        if(sprite) {
+            const animKey = `9_${miner.animationState}`;
+            const animData = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
+            const frameWidth = sprite.width / 6; // El spritesheet completo tiene 6 frames
+
+            ctx.drawImage(
+                sprite,
+                miner.currentFrame * frameWidth,
+                0,
+                frameWidth,
+                sprite.height,
+                miner.x,
+                miner.y,
+                miner.width,
+                miner.height
+            );
+        }
     }
     
     // Separar enemigos para controlar el orden de dibujado
@@ -1036,7 +1141,7 @@ function drawGame() {
             }
             // Flip sprite if vx is negative, like Mario
             if (entity.vx < 0) {
-                 ctx.scale(-1, 1);
+                ctx.scale(-1, 1);
             }
 
             const anim = ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA];
@@ -1053,6 +1158,9 @@ function drawGame() {
     // Update and Draw Particles
     updateAndDrawParticles();
 
+    // Update and Draw Floating Scores
+    updateAndDrawFloatingScores();
+
     // Draw Player
     if (player.deathTimer > 0) {
         player.deathTimer--;
@@ -1067,19 +1175,19 @@ function drawGame() {
             ctx.save();
             ctx.translate(player.x + player.width / 2, player.y);
             ctx.scale(player.direction, 1);
-            
+
             ctx.drawImage(playerSprite, player.currentFrame * frameWidth, 0, frameWidth, playerSprite.height, -player.width / 2, 0, player.width, player.height);
-            
+
             if (player.deathTimer > 0) {
                 ctx.globalAlpha = player.deathTimer / 60;
                 ctx.fillStyle = 'white';
                 ctx.fillRect(-player.width / 2, 0, player.width, player.height);
             }
-            
+
             ctx.restore();
         }
     }
-    
+
     // Draw bombs
     bombs.forEach(bomb => {
         const sprite = sprites['bomb'];
@@ -1107,7 +1215,7 @@ function drawGame() {
             }
             // Flip sprite if vx is negative, like Mario
             if (entity.vx < 0) {
-                 ctx.scale(-1, 1);
+                ctx.scale(-1, 1);
             }
 
             const anim = ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA];
@@ -1126,7 +1234,7 @@ function drawGame() {
     lasers.forEach(laser => {
         ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
     });
-    
+
     ctx.restore();
 
     // Update UI (this still uses DOM)
@@ -1224,7 +1332,7 @@ function startGame(levelMap: string[] | null = null) {
                     }
 
                     if (Math.abs(right) > 0.3) {
-                         if (right > 0) {
+                        if (right > 0) {
                             keys['ArrowRight'] = true;
                             keys['ArrowLeft'] = false;
                         } else {
@@ -1232,8 +1340,8 @@ function startGame(levelMap: string[] | null = null) {
                             keys['ArrowRight'] = false;
                         }
                     } else {
-                         keys['ArrowLeft'] = false;
-                         keys['ArrowRight'] = false;
+                        keys['ArrowLeft'] = false;
+                        keys['ArrowRight'] = false;
                     }
 
                 }
@@ -1317,8 +1425,8 @@ function drawEditor() {
         const previewX = mouse.gridX * TILE_SIZE;
         const previewY = mouse.gridY * TILE_SIZE;
         if (selectedTile === 'P') {
-             ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-             ctx.fillRect(previewX, previewY, TILE_SIZE, TILE_SIZE * 2);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.fillRect(previewX, previewY, TILE_SIZE, TILE_SIZE * 2);
         } else {
             ctx.drawImage(selectedSprite, previewX, previewY, TILE_SIZE, TILE_SIZE);
         }
@@ -1368,7 +1476,7 @@ function setupEditor() {
                 editorLevel.forEach(row => { if (row.includes('P')) pExists = true; });
                 if (!pExists) editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
             } else {
-                 editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
+                editorLevel[mouse.gridY][mouse.gridX] = selectedTile;
             }
         }
     });
@@ -1377,7 +1485,7 @@ function setupEditor() {
         mouse.isDown = true;
         if (editorLevel && editorLevel[mouse.gridY] && editorLevel[mouse.gridY][mouse.gridX] !== undefined) {
             if (selectedTile === 'P') {
-                 // Remove existing 'P' before placing a new one
+                // Remove existing 'P' before placing a new one
                 editorLevel.forEach((row, i) => {
                     const pIndex = row.indexOf('P');
                     if (pIndex !== -1) editorLevel[i][pIndex] = '0';
@@ -1483,8 +1591,8 @@ function preloadAssets(callback: () => void) {
             }
         };
         sprites[key].onerror = () => {
-             console.error(`Failed to load sprite: ${key} at ${src}`);
-             loaded++;
+            console.error(`Failed to load sprite: ${key} at ${src}`);
+            loaded++;
             if (loaded === total) {
                 callback();
             }
