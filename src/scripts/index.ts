@@ -34,7 +34,7 @@ import bombSrc from '../assets/sprites/bomba.png';
 import explosionSrc from '../assets/sprites/boooom.png';
 import wallSrc from '../assets/sprites/wall_small.png';
 import dirtSrc from '../assets/sprites/tierra_small.png';
-import columnSrc from '../assets/sprites/wall_small.png';// Using wall sprite as placeholder for column
+import columnSrc from '../assets/sprites/tierra_small.png';// Using wall sprite as placeholder for column
 import lavaSrc from '../assets/sprites/lava.png';
 
 // --- GENERAL SETUP ---
@@ -66,7 +66,7 @@ const PLAYER_SPEED = 3;
 const THRUST_POWER = 0.6; // Mayor que la gravedad para poder ascender
 const MAX_UPWARD_SPEED = 5;
 const LASER_SPEED = 12;
-const MAX_ENERGY = 100;
+const MAX_ENERGY = 200;
 const BOMB_FUSE = 80;
 const TOTAL_LEVELS = 10;
 
@@ -118,7 +118,6 @@ interface Enemy {
     // element: HTMLElement; <--- REMOVED
     direction?: number;
     initialX?: number; initialY?: number;
-    extendLength?: number;
     maxLength?: number;
     state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended';
     idleTimer?: number;
@@ -126,6 +125,8 @@ interface Enemy {
     spriteTick: number;
     movementTick?: number;
     currentFrame: number;
+    isDead?: boolean;
+    isHidden?: boolean;
 }
 interface Wall {
     x: number; y: number; width: number; height: number; type: string; tile: string; // element: HTMLElement; <--- REMOVED
@@ -146,10 +147,17 @@ interface FallingEntity {
     rotation?: number;
     rotationSpeed?: number;
 }
+interface Particle {
+    x: number; y: number;
+    vx: number; vy: number;
+    size: number;
+    life: number;
+    color: string;
+}
 
 // --- GAME STATE ---
 let lives = 0, score = 0, energy = 0, currentLevelIndex = 0, cameraY = 0;
-let walls: Wall[] = [], enemies: Enemy[] = [], lasers: Laser[] = [], bombs: Bomb[] = [], explosions: Explosion[] = [], miner: Miner | null = null, fallingEntities: FallingEntity[] = [];
+let walls: Wall[] = [], enemies: Enemy[] = [], lasers: Laser[] = [], bombs: Bomb[] = [], explosions: Explosion[] = [], miner: Miner | null = null, fallingEntities: FallingEntity[] = [], particles: Particle[] = [];
 let levelDesigns = JSON.parse(JSON.stringify(initialLevels));
 let levelDataStore: string[][][] = [];
 
@@ -178,15 +186,17 @@ function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
     // if (player.element) player.element.remove(); <--- REMOVED
     Object.assign(player, {
         x: startX, y: startY, width: TILE_SIZE, height: TILE_SIZE * 2,
+        hitbox: { x: startX + TILE_SIZE / 4, y: startY, width: TILE_SIZE / 2, height: TILE_SIZE * 2 },
         vx: 0, vy: 0, 
-        isApplyingThrust: false, 
+        isApplyingThrust: false,
+        isChargingFly: false,
         wantsToFly: false, 
         flyChargeTimer: 0, 
         isGrounded: false, direction: 1, shootCooldown: 0,
-        isIdle: false,
         animationState: 'stand', // 'stand', 'walk', 'jump'
         animationTick: 0,
-        currentFrame: 0
+        currentFrame: 0,
+        deathTimer: 0
         // element: createGameObject('player', startX, startY) <--- REMOVED
     });
     energy = MAX_ENERGY;
@@ -194,7 +204,7 @@ function resetPlayer(startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) {
 
 function parseLevel(map: string[]) {
     // gameWorldEl.innerHTML = ''; <--- REMOVED
-    walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = []; fallingEntities = [];
+    walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = []; fallingEntities = []; particles = [];
     let playerStartX = TILE_SIZE * 1.5, playerStartY = TILE_SIZE * 1.5;
 
     map.forEach((row, i) => {
@@ -229,7 +239,11 @@ function parseLevel(map: string[]) {
                     break;
                 case 'V':
                     const wallOnLeft = j > 0 && map[i][j - 1] === '1';
-                    enemies.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, vx: 0, vy: 0, type: 'viper', tile: char, initialX: tileX, direction: wallOnLeft ? 1 : -1, state: 'idle', idleTimer: Math.random() * 120 + 60, spriteTick: 0, currentFrame: 0 });
+                    const direction = wallOnLeft ? 1 : -1;
+                    // La vibora empieza en la misma celda que el muro, pero oculta
+                    enemies.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, vx: 0, vy: 0, type: 'viper', tile: char, initialX: tileX, direction: direction, state: 'idle', idleTimer: Math.random() * 120 + 60, spriteTick: 0, currentFrame: 0, isHidden: true });
+                    // Se añade un muro en la misma posición
+                    walls.push({ x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, type: 'solid', tile: '1' });
                     break;
                 case '9': miner = { x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, tile: char }; break;
             }
@@ -268,6 +282,10 @@ function loadLevel() {
 
 function playerDie() {
     if (gameState === 'respawning' || gameState === 'gameover') return;
+    
+    emitParticles(player.x + player.width / 2, player.y + player.height / 2, 20, 'white');
+    player.deathTimer = 60; // 1 segundo de efecto de muerte
+
     lives--;
     gameState = 'respawning';
 
@@ -300,9 +318,8 @@ function handleInput() {
     else if (keys['ArrowRight']) { player.vx = PLAYER_SPEED; player.direction = 1; }
     else { player.vx = 0; }
 
-    if (keys['ArrowUp'] && energy > 0) {
+    if (keys['ArrowUp']) {
         player.wantsToFly = true;
-        energy -= 0.5;
     } else {
         player.wantsToFly = false;
     }
@@ -324,27 +341,64 @@ function handleInput() {
 }
 
 function updatePlayer() {
-    // --- 1. HANDLE FLY CHARGING & THRUST ---
-    if (player.wantsToFly && player.isGrounded && player.flyChargeTimer < 80) {
-        player.flyChargeTimer++;
+    // --- 1. Flight State Machine ---
+    const canStartCharging = player.wantsToFly && player.isGrounded && !player.isApplyingThrust && !player.isChargingFly;
+
+    if (canStartCharging) {
+        player.isChargingFly = true;
+        player.vy = -1; // Impulso inicial para el "salto" de 1px
+    }
+
+    if (!player.wantsToFly) {
+        player.isChargingFly = false;
+        player.flyChargeTimer = 0;
         player.isApplyingThrust = false;
-        player.vy = 0; // Prevent small gravity bounces
-    } else if (player.wantsToFly && (!player.isGrounded || player.flyChargeTimer >= 80)) {
+    }
+
+    // --- 2. Physics based on state ---
+    if (player.isChargingFly) {
+        player.flyChargeTimer++;
+        player.vy = 0; // Levitar, contrarrestando la gravedad
+        if (player.flyChargeTimer >= 30) {
+            player.isChargingFly = false;
+            player.flyChargeTimer = 0;
+            player.isApplyingThrust = true;
+        }
+    } else if (player.wantsToFly && !player.isGrounded && energy > 0) {
         player.isApplyingThrust = true;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if (player.isApplyingThrust && energy > 0) {
+        player.vy -= THRUST_POWER;
+        energy = Math.max(0, energy - 0.5);
+        if (Math.random() > 0.5) {
+            let offsetX = player.width / 10;
+            if (player.direction === -1) {
+                offsetX = player.width - offsetX;
+            }
+            emitParticles(player.x + offsetX, player.y + player.height / 1.3, 50, 'yellow');        }
     } else {
         player.isApplyingThrust = false;
-        if (player.isGrounded) {
-            player.flyChargeTimer = 0;
-        }
     }
-
-    // --- 2. APPLY PHYSICS & MOVEMENT ---
-    if (player.isApplyingThrust) {
-        player.vy -= THRUST_POWER;
+    
+    // Aplicar gravedad solo si no estamos cargando el vuelo
+    if (!player.isChargingFly) {
+        player.vy += GRAVITY;
     }
-
-    // La gravedad siempre aplica
-    player.vy += GRAVITY;
     
     // Limitar velocidad de ascenso
     if (player.vy < -MAX_UPWARD_SPEED) {
@@ -354,21 +408,25 @@ function updatePlayer() {
     player.x += player.vx;
     player.y += player.vy;
 
+    // Actualizar hitbox
+    player.hitbox.x = player.x + TILE_SIZE / 4;
+    player.hitbox.y = player.y;
+
     // --- 3. CHECK & RESOLVE COLLISIONS ---
     player.isGrounded = false; // Assume we are in the air, until a collision proves otherwise.
     walls.forEach(wall => {
-        if (checkCollision(player, wall)) {
+        if (checkCollision(player.hitbox, wall)) {
             if (wall.type === 'lava') return playerDie();
             
-            const overlapX = (player.x + player.width / 2) - (wall.x + TILE_SIZE / 2);
-            const overlapY = (player.y + player.height / 2) - (wall.y + TILE_SIZE / 2);
-            const combinedHalfWidths = player.width / 2 + TILE_SIZE / 2;
-            const combinedHalfHeights = player.height / 2 + TILE_SIZE / 2;
+            const overlapX = (player.hitbox.x + player.hitbox.width / 2) - (wall.x + TILE_SIZE / 2);
+            const overlapY = (player.hitbox.y + player.hitbox.height / 2) - (wall.y + TILE_SIZE / 2);
+            const combinedHalfWidths = player.hitbox.width / 2 + TILE_SIZE / 2;
+            const combinedHalfHeights = player.hitbox.height / 2 + TILE_SIZE / 2;
 
             if (Math.abs(overlapX) / combinedHalfWidths > Math.abs(overlapY) / combinedHalfHeights) {
                  // Horizontal collision
-                if (overlapX > 0) player.x = wall.x + TILE_SIZE;
-                else player.x = wall.x - player.width;
+                if (overlapX > 0) player.x = wall.x + TILE_SIZE - (TILE_SIZE / 4);
+                else player.x = wall.x - player.width + (TILE_SIZE / 4);
                 player.vx = 0;
             } else {
                 // Vertical collision
@@ -376,15 +434,17 @@ function updatePlayer() {
                     player.y = wall.y + TILE_SIZE; 
                     player.vy = 0; 
                 } else { 
-                    player.y = wall.y - player.height; 
-                    player.isGrounded = true; 
-                    player.vy = 0; 
+                    player.y = wall.y - player.height;
+                    if (!player.isApplyingThrust) { // Solo aterriza si no está volando activamente
+                        player.isGrounded = true; 
+                        player.vy = 0; 
+                    }
                 }
             }
         }
     });
 
-    // --- 4. BOUNDARY CHECKS ---
+    // --- 4. CHEQUEO DE LÍMITES ---
     if (player.x < 0) player.x = 0;
     const levelWidth = levelDesigns[currentLevelIndex][0].length * TILE_SIZE;
     if (player.x + player.width > levelWidth) player.x = levelWidth - player.width;
@@ -396,17 +456,20 @@ function updatePlayer() {
     // --- 6. DETERMINE ANIMATION STATE (NOW WITH CORRECT isGrounded) ---
     let newState = player.animationState;
     if (player.isGrounded) {
-        if (player.wantsToFly) {
+        if (player.isChargingFly) {
             newState = 'jump';
         } else {
             newState = player.vx === 0 ? 'stand' : 'walk';
         }
     } else {
-        // In the air
-        if (player.animationState === 'charging' || player.animationState === 'stand' || player.animationState === 'walk') {
-            newState = 'jump';
-        } else if (player.animationState === 'jump' && player.currentFrame === ANIMATION_DATA['P_jump'].frames - 1) {
-             newState = 'fly';
+        if (player.isApplyingThrust || player.isChargingFly) {
+             if (player.animationState === 'jump' && player.currentFrame === ANIMATION_DATA['P_jump'].frames - 1) {
+                 newState = 'fly';
+             } else if (player.animationState !== 'fly') {
+                 newState = 'jump';
+             }
+        } else {
+             newState = 'jump'; // cayendo
         }
     }
 
@@ -434,6 +497,7 @@ function updatePlayer() {
                 if (anim.loop !== false) {
                     player.currentFrame = (player.currentFrame + 1) % anim.frames;
                 } else {
+                    // Si la animación no se repite, se queda en el último fotograma
                     player.currentFrame = Math.min(player.currentFrame + 1, anim.frames - 1);
                 }
             }
@@ -487,6 +551,7 @@ function updateEnemies() {
                     enemy.idleTimer!--;
                     if (enemy.idleTimer! <= 0) {
                         enemy.state = 'extending';
+                        enemy.isHidden = false; // La vibora se muestra
                     }
                 } else if (enemy.state === 'extending') {
                     enemy.x += enemy.direction! * speed;
@@ -506,6 +571,7 @@ function updateEnemies() {
                          enemy.x = enemy.initialX!; // Clamp
                          enemy.state = 'idle';
                          enemy.idleTimer = 60 + Math.random() * 60;
+                         enemy.isHidden = true; // La vibora se oculta
                     }
                 }
                 break;
@@ -546,7 +612,7 @@ function updateBombs() {
             const explosionY = bomb.y - TILE_SIZE;
             explosions.push({ x: explosionX, y: explosionY, width: TILE_SIZE * 3, height: TILE_SIZE * 3, timer: 20, animationTick: 0, currentFrame: 0 });
 
-            const explosionRadius = 120;
+            const explosionRadius = 70;
             const explosionCenterX = explosionX + (TILE_SIZE * 3) / 2;
             const explosionCenterY = explosionY + (TILE_SIZE * 3) / 2;
             
@@ -647,6 +713,25 @@ function updateParticles() {
     }
 }
 
+function updateAndDrawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life--;
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+            continue;
+        }
+        p.vy += 0.05; // ligera gravedad
+        p.x += p.vx;
+        p.y += p.vy;
+
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life / 60; // Desvanecer
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
 function updateFallingEntities() {
     for (let i = fallingEntities.length - 1; i >= 0; i--) {
         const entity = fallingEntities[i];
@@ -667,7 +752,35 @@ function updateFallingEntities() {
 function checkCollisions() {
     // Player-wall collision is now handled inside updatePlayer()
     
-    enemies.forEach(enemy => { if (checkCollision(player, enemy)) playerDie(); });
+    enemies.forEach(enemy => { 
+        if (enemy.type === 'viper' && !enemy.isHidden && enemy.initialX !== undefined) {
+            let headHitbox;
+            if (enemy.direction === 1) { // Moviéndose a la derecha
+                headHitbox = {
+                    x: enemy.initialX + TILE_SIZE,
+                    y: enemy.y,
+                    width: enemy.x - enemy.initialX,
+                    height: TILE_SIZE
+                };
+            } else { // Moviéndose a la izquierda
+                headHitbox = {
+                    x: enemy.x,
+                    y: enemy.y,
+                    width: enemy.initialX - enemy.x,
+                    height: TILE_SIZE
+                };
+            }
+            // Ajustar la hitbox a 30px de alto y centrarla verticalmente
+            headHitbox.height = 30;
+            headHitbox.y = enemy.y + (TILE_SIZE - 30) / 2;
+
+            if (headHitbox.width > 0 && checkCollision(player.hitbox, headHitbox)) {
+                playerDie();
+            }
+        } else if (!enemy.isHidden && checkCollision(player.hitbox, enemy)) {
+            playerDie();
+        }
+    });
 
     for (let i = lasers.length - 1; i >= 0; i--) {
         const laser = lasers[i];
@@ -745,7 +858,7 @@ function checkCollisions() {
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             const enemy = enemies[j];
-            if (checkCollision(laser, enemy)) {
+            if (!enemy.isHidden && checkCollision(laser, enemy)) {
                 lasers.splice(i, 1);
                 const enemy = enemies[j];
                 fallingEntities.push({
@@ -761,7 +874,7 @@ function checkCollisions() {
 
     explosions.forEach(exp => {
         const explosionHitbox = { x: exp.x, y: exp.y, width: exp.width, height: exp.height };
-        if (checkCollision(player, explosionHitbox)) {
+        if (checkCollision(player.hitbox, explosionHitbox)) {
             playerDie();
         }
     });
@@ -787,7 +900,7 @@ function updateGame() {
     updateFallingEntities();
     checkCollisions();
     updateCamera();
-    if (miner && checkCollision(player, miner)) {
+    if (miner && checkCollision(player.hitbox, miner)) {
         score += 1000;
         currentLevelIndex++;
         loadLevel();
@@ -801,6 +914,85 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+function drawWall(wall: Wall) {
+    if (wall.isDamaged) {
+        ctx.globalAlpha = 0.5;
+    }
+
+    const sprite = sprites[wall.tile];
+    if (sprite) {
+        const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
+        if (anim && wall.currentFrame !== undefined) {
+            const frameWidth = sprite.width / anim.frames;
+            ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, wall.x, wall.y, wall.width, wall.height);
+        } else {
+            ctx.drawImage(sprite, wall.x, wall.y, wall.width, wall.height);
+        }
+    } else { // Fallback for unloaded sprites
+        ctx.fillStyle = TILE_TYPES[wall.tile]?.color || '#fff';
+        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+    }
+
+    if (wall.isDamaged) {
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+function drawEnemy(enemy: Enemy) {
+    if (enemy.isHidden) {
+        return; 
+    }
+
+    const sprite = sprites[enemy.tile];
+    if (!sprite) return;
+
+    ctx.save();
+    
+    let flip = enemy.vx < 0; 
+    if (enemy.type === 'viper') flip = enemy.direction === -1;
+
+    if (flip) {
+        ctx.translate(enemy.x + enemy.width, enemy.y);
+        ctx.scale(-1, 1);
+    } else {
+        ctx.translate(enemy.x, enemy.y);
+    }
+    
+    if (enemy.type === 'spider') {
+        // Draw web thread
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(enemy.width / 2, 0);
+        ctx.lineTo(enemy.width / 2, enemy.initialY! - enemy.y);
+        ctx.stroke();
+    }
+    
+    const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
+    if (anim) {
+        const frameWidth = sprite.width / anim.frames;
+        ctx.drawImage(sprite, enemy.currentFrame * frameWidth, 0, frameWidth, sprite.height, 0, 0, enemy.width, enemy.height);
+    }
+    else {
+        ctx.drawImage(sprite, 0, 0, enemy.width, enemy.height);
+    }
+    
+    ctx.restore();
+}
+
+function emitParticles(x: number, y: number, count: number, color: string) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * (color === 'white' ? 8 : 2),
+            vy: (Math.random() - 0.5) * (color === 'white' ? 8 : 2) + (color === 'yellow' ? 4 : 0),
+            size: Math.random() * 3 + 2,
+            life: Math.random() * 30,
+            color
+        });
+    }
+}
+
 // --- RENDER FUNCTION (replaces renderGame) ---
 function drawGame() {
     ctx.fillStyle = 'black';
@@ -810,87 +1002,84 @@ function drawGame() {
     ctx.translate(0, -cameraY);
 
     // Draw walls
-    walls.forEach(wall => {
-        if (wall.isDamaged) {
-            ctx.globalAlpha = 0.5;
-        }
-
-        const sprite = sprites[wall.tile];
-        if (sprite) {
-            const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
-            if (anim && wall.currentFrame !== undefined) {
-                const frameWidth = sprite.width / anim.frames;
-                ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, wall.x, wall.y, wall.width, wall.height);
-            } else {
-                ctx.drawImage(sprite, wall.x, wall.y, wall.width, wall.height);
-            }
-        } else { // Fallback for unloaded sprites
-            ctx.fillStyle = TILE_TYPES[wall.tile]?.color || '#fff';
-            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-        }
-
-        if (wall.isDamaged) {
-            ctx.globalAlpha = 1.0;
-        }
-    });
+    walls.forEach(drawWall);
 
     // Draw miner
     if (miner) {
         ctx.drawImage(sprites['9'], miner.x, miner.y, miner.width, miner.height);
     }
     
-    // Draw enemies
-    enemies.forEach(enemy => {
-        const sprite = sprites[enemy.tile];
-        if (!sprite) return;
+    // Separar enemigos para controlar el orden de dibujado
+    const vipers = enemies.filter(e => e.type === 'viper');
+    const otherEnemies = enemies.filter(e => e.type !== 'viper');
 
-        ctx.save();
-        
-        let flip = enemy.vx < 0; // Bat flipping
-        if (enemy.type === 'viper') flip = enemy.direction === -1;
+    // Dibujar otros enemigos
+    otherEnemies.forEach(drawEnemy);
 
-        if (flip) {
-            ctx.translate(enemy.x + enemy.width, enemy.y);
-            ctx.scale(-1, 1);
-        } else {
-            ctx.translate(enemy.x, enemy.y);
+    // Dibujar viboras y sus muros encima para el efecto de profundidad
+    vipers.forEach(enemy => {
+        drawEnemy(enemy);
+        const wall = walls.find(w => w.x === enemy.initialX && w.y === enemy.initialY);
+        if (wall) {
+            drawWall(wall);
         }
-        
-        if (enemy.type === 'spider') {
-            // Draw web thread
-            ctx.strokeStyle = '#ccc';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(enemy.width / 2, 0);
-            ctx.lineTo(enemy.width / 2, enemy.initialY! - enemy.y);
-            ctx.stroke();
-        }
-        
-        const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
-        if (anim) {
-            const frameWidth = sprite.width / anim.frames;
-            ctx.drawImage(sprite, enemy.currentFrame * frameWidth, 0, frameWidth, sprite.height, 0, 0, enemy.width, enemy.height);
-        }
-        else {
-            ctx.drawImage(sprite, 0, 0, enemy.width, enemy.height);
-        }
-        
-        ctx.restore();
     });
 
+    // Draw Falling Entities
+    fallingEntities.forEach(entity => {
+        const sprite = sprites[entity.tile];
+        if (sprite) {
+            ctx.save();
+            ctx.translate(entity.x + entity.width / 2, entity.y + entity.height / 2);
+            if (entity.rotation) {
+                ctx.rotate(entity.rotation);
+            }
+            // Flip sprite if vx is negative, like Mario
+            if (entity.vx < 0) {
+                 ctx.scale(-1, 1);
+            }
+
+            const anim = ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA];
+            if (anim && anim.frames > 1) {
+                const frameWidth = sprite.width / anim.frames;
+                ctx.drawImage(sprite, 0, 0, frameWidth, sprite.height, -entity.width / 2, -entity.height / 2, entity.width, entity.height);
+            } else {
+                ctx.drawImage(sprite, -entity.width / 2, -entity.height / 2, entity.width, entity.height);
+            }
+            ctx.restore();
+        }
+    });
+
+    // Update and Draw Particles
+    updateAndDrawParticles();
+
     // Draw Player
-    const animKey = 'P_' + player.animationState;
-    const animData = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
-    const playerSprite = sprites[animKey];
-    if (playerSprite) {
-        const frameWidth = playerSprite.width / animData.frames;
-        ctx.save();
-        ctx.translate(player.x + player.width / 2, player.y);
-        ctx.scale(player.direction, 1);
-        ctx.drawImage(playerSprite, player.currentFrame * frameWidth, 0, frameWidth, playerSprite.height, -player.width / 2, 0, player.width, player.height);
-        ctx.restore();
+    if (player.deathTimer > 0) {
+        player.deathTimer--;
     }
 
+    if (gameState !== 'respawning' || player.deathTimer > 0) {
+        const animKey = 'P_' + player.animationState;
+        const animData = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
+        const playerSprite = sprites[animKey];
+        if (playerSprite) {
+            const frameWidth = playerSprite.width / animData.frames;
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y);
+            ctx.scale(player.direction, 1);
+            
+            ctx.drawImage(playerSprite, player.currentFrame * frameWidth, 0, frameWidth, playerSprite.height, -player.width / 2, 0, player.width, player.height);
+            
+            if (player.deathTimer > 0) {
+                ctx.globalAlpha = player.deathTimer / 60;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(-player.width / 2, 0, player.width, player.height);
+            }
+            
+            ctx.restore();
+        }
+    }
+    
     // Draw bombs
     bombs.forEach(bomb => {
         const sprite = sprites['bomb'];
