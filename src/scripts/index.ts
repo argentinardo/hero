@@ -82,15 +82,15 @@ interface AnimationData {
 }
 
 const ANIMATION_DATA: { [key: string]: AnimationData } = {
-    'P_walk': { frames: 6, speed: 5, sprite: playerWalkSrc, reverse: true },
+    'P_walk': { frames: 5, speed: 5, sprite: playerWalkSrc, reverse: true },
     'P_stand': { frames: 4, speed: 20, sprite: playerStandSrc },
     'P_jump': { frames: 4, speed: 10, sprite: playerJumpSrc, loop: false },
     'P_fly': { frames: 5, speed: 10, sprite: playerFlySrc },
     '8': { frames: 6, speed: 2, sprite: batSrc },      // Bat
     'S': { frames: 15, speed: 7, sprite: spiderSrc },   // Spider
     'V': { frames: 1, speed: 1, sprite: viperSrc },      // Viper
-    '9_idle': { frames: 2, speed: 120, sprite: minerSrc }, // 2 segundos por ciclo de ping-pong
-    '9_rescued': { frames: 6, speed: 20, sprite: minerSrc, loop: false }, // 3fps = 60/3 = 20 ticks/frame
+    '9_idle': { frames: 2, speed: 60, sprite: minerSrc }, // 2 segundos por ciclo de ping-pong
+    '9_rescued': { frames: 6, speed: 10,sprite: minerSrc, loop: false }, // 3fps = 60/3 = 20 ticks/frame
     '3': { frames: 16, speed: 19, sprite: lavaSrc },     // Lava
     'bomb': { frames: 6, speed: 15
         
@@ -147,6 +147,7 @@ interface Miner {
     currentFrame: number;
     animationTick: number;
     animationDirection: number;
+    isFlipped: boolean;
 }
 interface GameObject { x: number; y: number; width: number; height: number; }
 interface FallingEntity {
@@ -221,6 +222,7 @@ function parseLevel(map: string[]) {
     // gameWorldEl.innerHTML = ''; <--- REMOVED
     walls = []; enemies = []; miner = null; lasers = []; bombs = []; explosions = []; fallingEntities = []; particles = []; floatingScores = [];
     let playerStartX = TILE_SIZE * 1.5, playerStartY = TILE_SIZE * 1.5;
+    const levelPixelWidth = map[0].length * TILE_SIZE;
 
     map.forEach((row, i) => {
         for (let j = 0; j < row.length; j++) {
@@ -262,12 +264,13 @@ function parseLevel(map: string[]) {
                     break;
                 case '9': 
                     miner = { 
-                        x: tileX, y: tileY, width: TILE_SIZE, height: TILE_SIZE, 
+                        x: tileX, y: tileY-13, width: 78*1.3, height: TILE_SIZE*1.3, 
                         tile: char,
                         animationState: 'idle',
                         currentFrame: 0,
                         animationTick: 0,
-                        animationDirection: 1 
+                        animationDirection: 1,
+                        isFlipped: tileX > levelPixelWidth / 2,
                     }; 
                     break;
             }
@@ -468,6 +471,41 @@ function updatePlayer() {
             }
         }
     });
+
+    if (miner && miner.animationState !== 'rescued') {
+        if (checkCollision(player.hitbox, miner)) {
+            // Same collision resolution as with walls
+            const overlapX = (player.hitbox.x + player.hitbox.width / 2) - (miner.x + miner.width / 2);
+            const overlapY = (player.hitbox.y + player.hitbox.height / 2) - (miner.y + miner.height / 2);
+            const combinedHalfWidths = player.hitbox.width / 2 + miner.width / 2;
+            const combinedHalfHeights = player.hitbox.height / 2 + miner.height / 2;
+
+            if (Math.abs(overlapX) / combinedHalfWidths > Math.abs(overlapY) / combinedHalfHeights) {
+                // Horizontal collision
+                if (overlapX > 0) { // Player is to the right of the miner
+                    player.x = miner.x + miner.width - (TILE_SIZE / 4); // Adjust player.x, hitbox will follow
+                } else { // Player is to the left
+                    player.x = miner.x - player.hitbox.width - (TILE_SIZE / 4);
+                }
+                player.vx = 0;
+            } else {
+                // Vertical collision
+                if (overlapY > 0) { // Player is below
+                    player.y = miner.y + miner.height;
+                    player.vy = 0;
+                } else { // Player is above
+                    player.y = miner.y - player.height;
+                    if (!player.isApplyingThrust) {
+                        player.isGrounded = true;
+                        player.vy = 0;
+                    }
+                }
+            }
+            // re-update hitbox after position correction
+            player.hitbox.x = player.x + TILE_SIZE / 4;
+            player.hitbox.y = player.y;
+        }
+    }
 
     // --- 4. CHEQUEO DE LÍMITES ---
     if (player.x < 0) player.x = 0;
@@ -928,12 +966,21 @@ function updateGame() {
     updateFallingEntities();
     checkCollisions();
     updateCamera();
-    if (miner && miner.animationState !== 'rescued' && checkCollision(player.hitbox, miner)) {
-        score += 1000;
-        floatingScores.push({ x: miner.x, y: miner.y, text: '+1000', life: 90, opacity: 1 });
-        miner.animationState = 'rescued';
-        miner.currentFrame = 2; // Empezar desde el frame 3 (indice 2)
-        miner.animationTick = 0;
+    if (miner && miner.animationState !== 'rescued') {
+        const rescueZone = {
+            x: miner.x - 10,
+            y: miner.y - 10,
+            width: miner.width + 20,
+            height: miner.height + 20
+        };
+
+        if (checkCollision(player.hitbox, rescueZone)) {
+            score += 1000;
+            floatingScores.push({ x: miner.x, y: miner.y, text: '+1000', life: 90, opacity: 1 });
+            miner.animationState = 'rescued';
+            miner.currentFrame = 2; // Empezar desde el frame 3 (indice 2)
+            miner.animationTick = 0;
+        }
     }
 }
 
@@ -1100,17 +1147,26 @@ function drawGame() {
             const animData = ANIMATION_DATA[animKey as keyof typeof ANIMATION_DATA];
             const frameWidth = sprite.width / 6; // El spritesheet completo tiene 6 frames
 
+            ctx.save();
+            if (miner.isFlipped) {
+                ctx.scale(-1, 1);
+                ctx.translate(-(miner.x + miner.width), miner.y);
+            } else {
+                ctx.translate(miner.x, miner.y);
+            }
+
             ctx.drawImage(
                 sprite,
                 miner.currentFrame * frameWidth,
                 0,
                 frameWidth,
                 sprite.height,
-                miner.x,
-                miner.y,
+                0,
+                0,
                 miner.width,
                 miner.height
             );
+            ctx.restore();
         }
     }
     
