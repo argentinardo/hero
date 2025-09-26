@@ -1017,7 +1017,7 @@ function updateMiner() {
                 setTimeout(() => {
                     currentLevelIndex++;
                     loadLevel();
-                }, 500);
+                }, 2000);
             }
         }
     }
@@ -1150,7 +1150,7 @@ function drawGame() {
             ctx.save();
             if (miner.isFlipped) {
                 ctx.scale(-1, 1);
-                ctx.translate(-(miner.x + miner.width), miner.y);
+                ctx.translate(-(miner.x + miner.width*0.6), miner.y);
             } else {
                 ctx.translate(miner.x, miner.y);
             }
