@@ -5,7 +5,7 @@ const express = require('express');
 
 module.exports = {
   mode: 'development',
-  entry: './src/scripts/index.ts',
+  entry: './src/scripts/main.ts',
   devtool: 'inline-source-map',
   devServer: {
     static: './dist', // Serve files from the dist directory

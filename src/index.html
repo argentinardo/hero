@@ -13,7 +13,7 @@
 
     <div id="main-container" class="flex flex-col items-center justify-center">
         <!-- Barra de Interfaz de Usuario (UI) del Juego -->
-        <div id="game-ui" class="ui-bar w-full max-w-4xl text-sm flex justify-between">
+        <div id="game-ui" class="ui-bar w-full max-w-4xl text-sm flex items-center justify-between gap-4">
             <span>LIVES: <span id="lives-count">3</span></span>
             <span>LEVEL: <span id="level-count">1</span></span>
             <div class="flex items-center gap-2">
@@ -21,6 +21,7 @@
                 <div class="w-40 h-5 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400"></div></div>
             </div>
             <span>SCORE: <span id="score-count">0</span></span>
+            <button id="resume-editor-btn" class="hidden bg-indigo-600 hover:bg-indigo-700 px-3 py-1 border-2 border-white">Volver al Editor</button>
         </div>
 
         <div class="flex gap-4">
