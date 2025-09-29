@@ -259,6 +259,9 @@ const populatePalette = (store: GameStore) => {
     paletteEntries.length = 0;
     stopPaletteAnimation();
     Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
+        if (key === 'P') {
+            return;
+        }
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile-selector flex flex-col items-center gap-1 text-xs text-center';
         tileDiv.dataset.tile = key;
