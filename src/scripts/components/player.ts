@@ -126,12 +126,16 @@ export const handlePlayerInput = (store: GameStore) => {
     }
 
     if (keys.ArrowDown && player.isGrounded && bombs.length === 0) {
-        const bombX = player.x + player.width / 2 - TILE_SIZE / 3;
+        const offsetX = player.direction === 1 ? TILE_SIZE / 2 : -(TILE_SIZE / 2);
+        const bombWidth = TILE_SIZE / 1.5;
+        const bombX = player.direction === 1
+            ? player.x
+            : player.x
         const bombY = player.y + player.height - TILE_SIZE;
         bombs.push({
             x: bombX,
             y: bombY,
-            width: TILE_SIZE / 1.5,
+            width: bombWidth,
             height: TILE_SIZE,
             fuse: BOMB_FUSE,
             animationTick: 0,

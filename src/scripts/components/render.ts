@@ -259,10 +259,10 @@ const drawGameWorld = (store: GameStore) => {
     });
 
     store.fallingEntities.forEach(entity => drawFallingEntity(store, entity));
-    drawBombs(store);
-    drawExplosions(store);
     drawLasers(store);
     drawPlayer(store);
+    drawBombs(store);
+    drawExplosions(store);
     ctx.restore();
 };
 

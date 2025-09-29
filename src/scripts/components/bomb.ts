@@ -1,7 +1,7 @@
 import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE, BOMB_FUSE } from '../core/constants';
 import type { Enemy, GameStore, Wall } from '../core/types';
-import { emitParticles } from './player';
+import { emitParticles, playerDie } from './player';
 
 const createExplosion = (store: GameStore, x: number, y: number) => {
     store.explosions.push({
@@ -130,6 +130,13 @@ export const updateBombs = (store: GameStore) => {
         const explosionRadius = 70;
         destroyWallsInRadius(store, centerX, centerY, explosionRadius);
         destroyEnemiesInRadius(store, centerX, centerY, explosionRadius);
+        const player = store.player;
+        const playerCenterX = player.x + player.hitbox.width / 2;
+        const playerCenterY = player.y + player.hitbox.height / 2;
+        const playerDistance = Math.hypot(centerX - playerCenterX, centerY - playerCenterY);
+        if (playerDistance < explosionRadius) {
+            playerDie(store);
+        }
     }
 };
 
