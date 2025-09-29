@@ -100,6 +100,13 @@ export const updateEditorLevelFromSelector = (store: GameStore) => {
     store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index] ?? []));
 };
 
+const getAnimationData = (tile: string, spriteKey?: string) => {
+    if (tile === '9') {
+        return ANIMATION_DATA['9_idle'];
+    }
+    return ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
+};
+
 export const drawEditor = (store: GameStore) => {
     const ctx = store.dom.ctx;
     const canvas = store.dom.canvas;
@@ -120,7 +127,7 @@ export const drawEditor = (store: GameStore) => {
             const spriteKey = TILE_TYPES[tile]?.sprite;
             const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
             if (sprite) {
-                const anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA];
+                const anim = getAnimationData(tile, spriteKey);
                 if (anim && anim.frames > 1) {
                     const frameDuration = Math.max(1, anim.speed) * msPerTick;
                     const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
@@ -168,7 +175,7 @@ export const drawEditor = (store: GameStore) => {
         const sprite = store.sprites[selectedSpriteKey];
         if (sprite) {
             ctx.globalAlpha = 0.5;
-            const anim = ANIMATION_DATA[store.selectedTile as keyof typeof ANIMATION_DATA] ?? ANIMATION_DATA[selectedSpriteKey as keyof typeof ANIMATION_DATA];
+            const anim = getAnimationData(store.selectedTile, selectedSpriteKey);
             if (anim && anim.frames > 1) {
                 const frameDuration = Math.max(1, anim.speed) * msPerTick;
                 const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;

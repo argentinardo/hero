@@ -2,8 +2,8 @@ import nipplejs from 'nipplejs';
 import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nipplejs';
 
 import type { GameStore } from '../core/types';
-import { TILE_TYPES, preloadAssets } from '../core/assets';
-import { TOTAL_LEVELS } from '../core/constants';
+import { TILE_TYPES, preloadAssets, ANIMATION_DATA } from '../core/assets';
+import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 
 export const attachDomReferences = (store: GameStore) => {
@@ -197,20 +197,90 @@ export const updateUiBar = (store: GameStore) => {
     }
 };
 
+const paletteEntries: Array<{ tile: string; canvas: HTMLCanvasElement }> = [];
+let paletteAnimationId: number | null = null;
+
+const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElement, timestamp: number) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const spriteKey = TILE_TYPES[tile]?.sprite;
+    const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
+    if (sprite && sprite.naturalWidth > 0 && sprite.naturalHeight > 0) {
+    let anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
+    if (tile === '9') {
+        anim = ANIMATION_DATA['9_idle'];
+    }
+        if (anim && anim.frames > 1) {
+            const frameDuration = Math.max(1, anim.speed) * (1000 / 60);
+            const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
+            const frameWidth = sprite.width / anim.frames;
+            ctx.drawImage(sprite, frameIndex * frameWidth, 0, frameWidth, sprite.height, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.drawImage(sprite, 0, 0, sprite.width, sprite.height, 0, 0, canvas.width, canvas.height);
+        }
+    } else {
+        const color = TILE_TYPES[tile]?.color ?? '#666';
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#111';
+        ctx.fillRect(2, 2, canvas.width - 4, canvas.height - 4);
+    }
+};
+
+const stopPaletteAnimation = () => {
+    if (paletteAnimationId !== null) {
+        cancelAnimationFrame(paletteAnimationId);
+        paletteAnimationId = null;
+    }
+};
+
+const startPaletteAnimation = (store: GameStore) => {
+    const animate = (timestamp: number) => {
+        paletteEntries.forEach(entry => drawPaletteEntry(store, entry.tile, entry.canvas, timestamp));
+        paletteAnimationId = requestAnimationFrame(animate);
+    };
+    paletteAnimationId = requestAnimationFrame(animate);
+};
+
 const populatePalette = (store: GameStore) => {
     const { paletteEl } = store.dom.ui;
     if (!paletteEl) {
         return;
     }
     paletteEl.innerHTML = '';
-    Object.entries(TILE_TYPES).forEach(([key, { name }]) => {
+    paletteEntries.length = 0;
+    stopPaletteAnimation();
+    Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
         const tileDiv = document.createElement('div');
-        tileDiv.className = 'tile-selector flex-col text-xs text-center';
+        tileDiv.className = 'tile-selector flex flex-col items-center gap-1 text-xs text-center';
         tileDiv.dataset.tile = key;
-        tileDiv.textContent = name;
         if (key === store.selectedTile) {
             tileDiv.classList.add('selected');
         }
+        const preview = document.createElement('canvas');
+        preview.width = TILE_SIZE;
+        preview.height = TILE_SIZE;
+        preview.className = 'tile-thumb border border-white/40';
+
+        const spriteKey = TILE_TYPES[key]?.sprite;
+        const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
+        if (sprite) {
+            if (!sprite.complete || sprite.naturalWidth === 0) {
+                sprite.addEventListener('load', () => drawPaletteEntry(store, key, preview, performance.now()), { once: true });
+            }
+        }
+        drawPaletteEntry(store, key, preview, performance.now());
+        paletteEntries.push({ tile: key, canvas: preview });
+
+        const label = document.createElement('span');
+        label.textContent = name;
+
+        tileDiv.appendChild(preview);
+        tileDiv.appendChild(label);
         tileDiv.addEventListener('click', () => {
             const selected = paletteEl.querySelector('.tile-selector.selected');
             if (selected) {
@@ -221,6 +291,7 @@ const populatePalette = (store: GameStore) => {
         });
         paletteEl.appendChild(tileDiv);
     });
+    startPaletteAnimation(store);
 };
 
 const syncLevelSelector = (store: GameStore) => {
@@ -239,11 +310,11 @@ const syncLevelSelector = (store: GameStore) => {
 
 export const setupUI = (store: GameStore) => {
     attachDomReferences(store);
-    populatePalette(store);
     syncLevelSelector(store);
     setupLevelData(store);
     setupMenuButtons(store);
     preloadAssets(store, () => {
+        populatePalette(store);
         showMenu(store);
         requestAnimationFrame(() => {
             const ctx = store.dom.ctx;
