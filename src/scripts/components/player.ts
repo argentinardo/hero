@@ -229,13 +229,10 @@ const updateFlightState = (store: GameStore) => {
     if (player.isApplyingThrust && store.energy > 0) {
         player.vy -= THRUST_POWER;
         store.energy = Math.max(0, store.energy - 0.5);
-        if (Math.random() > 0.5) {
-            let offsetX = player.width / 10;
-            if (player.direction === -1) {
-                offsetX = player.width - offsetX;
-            }
-            emitParticles(store, player.x + offsetX, player.y + player.height / 1.3, 50, 'yellow');
-        }
+        const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
+        const jetX = player.x + baseOffsetX;
+        const jetY = player.y + player.height - 42;
+        emitParticles(store, jetX, jetY, 15, 'yellow');
     } else {
         player.isApplyingThrust = false;
     }

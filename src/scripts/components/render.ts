@@ -263,13 +263,13 @@ const drawGameWorld = (store: GameStore) => {
     drawPlayer(store);
     drawBombs(store);
     drawExplosions(store);
+    drawParticles(store);
+    drawFloatingScores(store);
     ctx.restore();
 };
 
 export const renderGame = (store: GameStore) => {
     drawGameWorld(store);
-    drawParticles(store);
-    drawFloatingScores(store);
     drawHud(store);
 };
 
