@@ -40,7 +40,7 @@ export const ANIMATION_DATA: AnimationMap = {
     '8': { frames: 6, speed: 2, sprite: '8' },
     S: { frames: 15, speed: 7, sprite: 'S' },
     V: { frames: 1, speed: 1, sprite: 'V' },
-    '9_idle': { frames: 6, speed: 10, sprite: '9' },
+    '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
     '3': { frames: 16, speed: 19, sprite: '3' },
     bomb: { frames: 6, speed: 15, sprite: 'bomb', loop: false },

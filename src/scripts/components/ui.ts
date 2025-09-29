@@ -210,14 +210,18 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
     const spriteKey = TILE_TYPES[tile]?.sprite;
     const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
     if (sprite && sprite.naturalWidth > 0 && sprite.naturalHeight > 0) {
-    let anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
-    if (tile === '9') {
-        anim = ANIMATION_DATA['9_idle'];
-    }
-        if (anim && anim.frames > 1) {
+        let anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
+        let effectiveFrames = anim?.frames ?? 0;
+        let totalFrames = anim?.frames ?? 0;
+        if (tile === '9') {
+            anim = ANIMATION_DATA['9_idle'];
+            effectiveFrames = Math.min(anim.frames, 2);
+            totalFrames = 6;
+        }
+        if (anim && effectiveFrames > 0 && totalFrames > 0) {
             const frameDuration = Math.max(1, anim.speed) * (1000 / 60);
-            const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
-            const frameWidth = sprite.width / anim.frames;
+            const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+            const frameWidth = sprite.width / totalFrames;
             ctx.drawImage(sprite, frameIndex * frameWidth, 0, frameWidth, sprite.height, 0, 0, canvas.width, canvas.height);
         } else {
             ctx.drawImage(sprite, 0, 0, sprite.width, sprite.height, 0, 0, canvas.width, canvas.height);

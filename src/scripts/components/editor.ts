@@ -100,11 +100,20 @@ export const updateEditorLevelFromSelector = (store: GameStore) => {
     store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index] ?? []));
 };
 
-const getAnimationData = (tile: string, spriteKey?: string) => {
+const MINER_TOTAL_FRAMES = 6;
+
+const resolveAnimation = (tile: string, spriteKey?: string) => {
+    let anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
+    let effectiveFrames = anim?.frames ?? 0;
+    let totalFrames = anim?.frames ?? 0;
+
     if (tile === '9') {
-        return ANIMATION_DATA['9_idle'];
+        anim = ANIMATION_DATA['9_idle'];
+        effectiveFrames = Math.min(anim.frames, 2);
+        totalFrames = MINER_TOTAL_FRAMES;
     }
-    return ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
+
+    return { anim, effectiveFrames, totalFrames };
 };
 
 export const drawEditor = (store: GameStore) => {
@@ -127,11 +136,11 @@ export const drawEditor = (store: GameStore) => {
             const spriteKey = TILE_TYPES[tile]?.sprite;
             const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
             if (sprite) {
-                const anim = getAnimationData(tile, spriteKey);
-                if (anim && anim.frames > 1) {
+                const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, spriteKey);
+                if (anim && effectiveFrames > 0 && totalFrames > 0) {
                     const frameDuration = Math.max(1, anim.speed) * msPerTick;
-                    const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
-                    const frameWidth = sprite.width / anim.frames;
+                    const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                    const frameWidth = sprite.width / totalFrames;
                     ctx.drawImage(
                         sprite,
                         frameIndex * frameWidth,
@@ -175,11 +184,11 @@ export const drawEditor = (store: GameStore) => {
         const sprite = store.sprites[selectedSpriteKey];
         if (sprite) {
             ctx.globalAlpha = 0.5;
-            const anim = getAnimationData(store.selectedTile, selectedSpriteKey);
-            if (anim && anim.frames > 1) {
+            const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, selectedSpriteKey);
+            if (anim && effectiveFrames > 0 && totalFrames > 0) {
                 const frameDuration = Math.max(1, anim.speed) * msPerTick;
-                const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
-                const frameWidth = sprite.width / anim.frames;
+                const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                const frameWidth = sprite.width / totalFrames;
                 ctx.drawImage(
                     sprite,
                     frameIndex * frameWidth,
