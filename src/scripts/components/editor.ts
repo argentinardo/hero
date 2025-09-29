@@ -1,5 +1,5 @@
 import { TILE_SIZE, TOTAL_LEVELS } from '../core/constants';
-import { TILE_TYPES } from '../core/assets';
+import { TILE_TYPES, ANIMATION_DATA } from '../core/assets';
 import type { GameStore } from '../core/types';
 
 const ensurePlayerUnique = (level: string[][], tile: string, x: number, y: number) => {
@@ -112,12 +112,33 @@ export const drawEditor = (store: GameStore) => {
     ctx.save();
     ctx.translate(0, -store.cameraY);
 
+    const timestamp = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const msPerTick = 1000 / 60;
+
     store.editorLevel.forEach((row, rowIndex) => {
         row.forEach((tile, colIndex) => {
             const spriteKey = TILE_TYPES[tile]?.sprite;
             const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
             if (sprite) {
-                ctx.drawImage(sprite, colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                const anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA];
+                if (anim && anim.frames > 1) {
+                    const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                    const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
+                    const frameWidth = sprite.width / anim.frames;
+                    ctx.drawImage(
+                        sprite,
+                        frameIndex * frameWidth,
+                        0,
+                        frameWidth,
+                        sprite.height,
+                        colIndex * TILE_SIZE,
+                        rowIndex * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                    );
+                } else {
+                    ctx.drawImage(sprite, colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
             } else if (tile === 'P') {
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
                 ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
@@ -147,7 +168,25 @@ export const drawEditor = (store: GameStore) => {
         const sprite = store.sprites[selectedSpriteKey];
         if (sprite) {
             ctx.globalAlpha = 0.5;
-            ctx.drawImage(sprite, store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            const anim = ANIMATION_DATA[store.selectedTile as keyof typeof ANIMATION_DATA] ?? ANIMATION_DATA[selectedSpriteKey as keyof typeof ANIMATION_DATA];
+            if (anim && anim.frames > 1) {
+                const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
+                const frameWidth = sprite.width / anim.frames;
+                ctx.drawImage(
+                    sprite,
+                    frameIndex * frameWidth,
+                    0,
+                    frameWidth,
+                    sprite.height,
+                    store.mouse.gridX * TILE_SIZE,
+                    store.mouse.gridY * TILE_SIZE,
+                    TILE_SIZE,
+                    TILE_SIZE,
+                );
+            } else {
+                ctx.drawImage(sprite, store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
             ctx.globalAlpha = 1;
         }
     } else if (store.selectedTile === 'P') {

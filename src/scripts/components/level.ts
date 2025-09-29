@@ -120,13 +120,15 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     let playerStartY = TILE_SIZE * 1.5;
     const levelPixelWidth = map[0].length * TILE_SIZE;
 
+    const STATIC_TILES = new Set(['1', '2', '3', 'C']);
+
     map.forEach((row, rowIndex) => {
         for (let colIndex = 0; colIndex < row.length; colIndex++) {
             const tile = row[colIndex];
             const tileX = colIndex * TILE_SIZE;
             const tileY = rowIndex * TILE_SIZE;
 
-            if (TILE_TYPES[tile]?.sprite) {
+            if (STATIC_TILES.has(tile)) {
                 const wall = createWall(tileX, tileY, tile);
                 store.walls.push(wall);
             }
