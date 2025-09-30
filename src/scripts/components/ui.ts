@@ -61,6 +61,7 @@ export const showMenu = (store: GameStore) => {
     if (editorPanelEl) {
         editorPanelEl.style.display = 'none';
     }
+    store.dom.ui.resumeEditorBtn?.classList.add('hidden');
 
     if (messageTitle) {
         messageTitle.textContent = 'H.E.R.O. CLONE';
@@ -149,7 +150,11 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     if (gameUiEl) {
         gameUiEl.style.display = 'flex';
     }
-    store.dom.ui.resumeEditorBtn?.classList.remove('hidden');
+    if (levelOverride) {
+        store.dom.ui.resumeEditorBtn?.classList.remove('hidden');
+    } else {
+        store.dom.ui.resumeEditorBtn?.classList.add('hidden');
+    }
     if (editorPanelEl) {
         editorPanelEl.style.display = 'none';
     }
@@ -359,6 +364,11 @@ const setupLevelData = (store: GameStore) => {
         playTestBtn,
         resumeEditorBtn,
         backToMenuBtn,
+        saveAllBtn,
+        cleanLevelBtn,
+        confirmSaveBtn,
+        cancelSaveBtn,
+        confirmationModalEl,
     } = store.dom.ui;
     if (!levelDataTextarea) {
         return;
@@ -406,5 +416,46 @@ const setupLevelData = (store: GameStore) => {
     });
 
     backToMenuBtn?.addEventListener('click', () => showMenu(store));
+
+    cleanLevelBtn?.addEventListener('click', () => {
+        if (store.editorLevel.length === 0) {
+            return;
+        }
+        store.editorLevel = store.editorLevel.map(row => row.map(() => '0'));
+        levelDataTextarea.value = JSON.stringify(store.editorLevel.map(row => row.join('')), null, 4);
+    });
+
+    const saveAllLevelsToFile = async () => {
+        const payload = store.levelDataStore.map(level => level.map(row => row.join('')));
+        try {
+            const response = await fetch('/api/save-levels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            window.alert('¡Todos los niveles se han guardado en levels.json!');
+        } catch (error) {
+            console.error('Error saving levels:', error);
+            window.alert('Error al guardar los niveles. Revisa la consola para más detalles.');
+        }
+    };
+
+    saveAllBtn?.addEventListener('click', () => {
+        confirmationModalEl?.classList.remove('hidden');
+    });
+
+    confirmSaveBtn?.addEventListener('click', async () => {
+        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
+        confirmationModalEl?.classList.add('hidden');
+        await saveAllLevelsToFile();
+    });
+
+    cancelSaveBtn?.addEventListener('click', () => {
+        confirmationModalEl?.classList.add('hidden');
+    });
 };
 
