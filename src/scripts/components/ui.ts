@@ -427,19 +427,35 @@ const setupLevelData = (store: GameStore) => {
 
     const saveAllLevelsToFile = async () => {
         const payload = store.levelDataStore.map(level => level.map(row => row.join('')));
+
+        const downloadFallback = () => {
+            const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'levels.json';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+            window.alert('No se pudo guardar automáticamente. Se descargó un archivo levels.json con los datos.');
+        };
+
         try {
             const response = await fetch('/api/save-levels', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
+
             window.alert('¡Todos los niveles se han guardado en levels.json!');
         } catch (error) {
             console.error('Error saving levels:', error);
-            window.alert('Error al guardar los niveles. Revisa la consola para más detalles.');
+            downloadFallback();
         }
     };
 
