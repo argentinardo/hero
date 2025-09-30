@@ -31,7 +31,7 @@
             <!-- Panel del Editor -->
             <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden">
                 <h2 class="text-center text-lg mb-2">EDITOR</h2>
-                <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4">Jugar Nivel</button>
+                <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
                 
                 <div class="grid grid-cols-3 gap-1" id="tile-palette">
                     <!-- Tiles se agregarán dinámicamente aquí -->
@@ -44,8 +44,8 @@
                         <select id="level-selector" class="flex-grow bg-gray-700 border-2 border-white p-1 text-sm"></select>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-2">
-                        <button id="load-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white">Cargar</button>
-                        <button id="save-level-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 p-2 border-2 border-white">Guardar</button>
+                        <button id="load-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Cargar</button>
+                        <button id="save-level-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 p-2 border-2 border-white text-xs">Guardar</button>
                     </div>
                 </div>
                 
@@ -53,13 +53,13 @@
                     <h3 class="text-center text-md my-2">Datos del Nivel (JSON)</h3>
                     <textarea id="level-data-textarea"></textarea>
                     <div class="grid grid-cols-2 gap-2 mt-2">
-                        <button id="import-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white">Copiar</button>
-                        <button id="export-level-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white">Pegar</button>
+                        <button id="import-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Copiar</button>
+                        <button id="export-level-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white text-xs">Pegar</button>
                     </div>
-                    <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2">Guardar TODO en Archivo</button>
-                    <button id="clean-level-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white mt-2">Limpiar Nivel</button>
+                    <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar TODO en Archivo</button>
+                    <button id="clean-level-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white mt-2 text-xs">Limpiar Nivel</button>
                 </div>
-                 <button id="back-to-menu-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4">Volver al Menú</button>
+                 <button id="back-to-menu-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>
             </div>
         </div>
 

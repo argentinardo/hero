@@ -45,9 +45,9 @@ const resolvePlayerMinerCollision = (store: GameStore, miner: Miner) => {
 
     if (Math.abs(overlapX) / combinedHalfWidths > Math.abs(overlapY) / combinedHalfHeights) {
         if (overlapX > 0) {
-            player.x = miner.x + miner.width - TILE_SIZE / 4;
+            player.x = miner.x + miner.width;
         } else {
-            player.x = miner.x - player.hitbox.width - TILE_SIZE / 4;
+            player.x = miner.x - player.width;
         }
         player.vx = 0;
     } else {
