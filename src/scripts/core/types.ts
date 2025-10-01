@@ -59,6 +59,7 @@ export interface Enemy extends GameObject {
     currentFrame: number;
     isDead?: boolean;
     isHidden?: boolean;
+    affectedByDark?: boolean;
 }
 
 export interface Wall extends GameObject {
@@ -94,6 +95,7 @@ export interface Miner extends GameObject {
     animationTick: number;
     animationDirection: number;
     isFlipped: boolean;
+    affectedByDark?: boolean;
 }
 
 export interface FallingEntity extends GameObject {

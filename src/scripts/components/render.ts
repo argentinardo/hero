@@ -266,14 +266,36 @@ const drawGameWorld = (store: GameStore) => {
             }
         });
 
-        // Enemigos en gris
-        ctx.save();
-        ctx.filter = 'grayscale(100%) brightness(0.9)';
-        drawMiner(store);
+        // Separar enemigos afectados y no afectados
         const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
         const otherEnemies = store.enemies.filter(enemy => enemy.type !== 'viper');
-        otherEnemies.forEach(enemy => drawEnemy(store, enemy));
-        vipers.forEach(enemy => {
+        
+        const affectedVipers = vipers.filter(enemy => enemy.affectedByDark);
+        const unaffectedVipers = vipers.filter(enemy => !enemy.affectedByDark);
+        const affectedOtherEnemies = otherEnemies.filter(enemy => enemy.affectedByDark);
+        const unaffectedOtherEnemies = otherEnemies.filter(enemy => !enemy.affectedByDark);
+
+        // Dibujar minero afectado en gris
+        if (store.miner?.affectedByDark) {
+            ctx.save();
+            ctx.filter = 'grayscale(100%) brightness(0.9)';
+            drawMiner(store);
+            ctx.restore();
+        } else {
+            drawMiner(store);
+        }
+
+        // Dibujar enemigos no afectados en color normal
+        unaffectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
+        unaffectedVipers.forEach(enemy => {
+            drawEnemy(store, enemy);
+        });
+
+        // Dibujar enemigos afectados en gris
+        ctx.save();
+        ctx.filter = 'grayscale(100%) brightness(0.9)';
+        affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
+        affectedVipers.forEach(enemy => {
             drawEnemy(store, enemy);
         });
         ctx.restore();
