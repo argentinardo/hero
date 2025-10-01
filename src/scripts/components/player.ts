@@ -92,12 +92,18 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
         animationTick: 0,
         currentFrame: 0,
         deathTimer: 0,
+        isFrozen: false,
     });
     store.energy = MAX_ENERGY;
 };
 
 export const handlePlayerInput = (store: GameStore) => {
     const { player, keys, bombs, lasers } = store;
+
+    // Si el jugador está congelado, no procesar input
+    if (player.isFrozen) {
+        return;
+    }
 
     if (keys.ArrowLeft) {
         player.vx = -PLAYER_SPEED;

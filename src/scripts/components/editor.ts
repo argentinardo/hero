@@ -158,6 +158,15 @@ export const drawEditor = (store: GameStore) => {
             } else if (tile === 'P') {
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
                 ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+            } else if (tile === 'L') {
+                // Dibujar luz en el editor
+                const centerX = colIndex * TILE_SIZE + TILE_SIZE / 2;
+                const centerY = rowIndex * TILE_SIZE + TILE_SIZE / 2;
+                const radius = TILE_SIZE / 3;
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fill();
             }
         });
     });
@@ -209,6 +218,16 @@ export const drawEditor = (store: GameStore) => {
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+        ctx.globalAlpha = 1;
+    } else if (store.selectedTile === 'L') {
+        ctx.globalAlpha = 0.5;
+        const centerX = store.mouse.gridX * TILE_SIZE + TILE_SIZE / 2;
+        const centerY = store.mouse.gridY * TILE_SIZE + TILE_SIZE / 2;
+        const radius = TILE_SIZE / 3;
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
         ctx.globalAlpha = 1;
     }
 

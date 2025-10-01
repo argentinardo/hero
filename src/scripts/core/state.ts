@@ -25,6 +25,7 @@ const createInitialPlayer = (): Player => ({
     animationTick: 0,
     currentFrame: 0,
     deathTimer: 0,
+    isFrozen: false,
 });
 
 export const createInitialStore = (): GameStore => ({
@@ -42,6 +43,8 @@ export const createInitialStore = (): GameStore => ({
     bombs: [],
     explosions: [],
     miner: null,
+    lights: [],
+    isDark: false,
     fallingEntities: [],
     particles: [],
     floatingScores: [],

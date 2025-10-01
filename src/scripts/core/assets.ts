@@ -58,6 +58,7 @@ export const TILE_TYPES: TileDictionary = {
     S: { name: 'Araña', color: '#ff8c00', class: 'spider', sprite: 'S' },
     V: { name: 'Víbora', color: '#32cd32', class: 'viper', sprite: 'V' },
     '9': { name: 'Minero', color: '#4169e1', class: 'miner', sprite: '9' },
+    L: { name: 'Luz', color: '#ffff00', class: 'light' },
 };
 
 export const preloadAssets = (store: GameStore, callback: () => void) => {

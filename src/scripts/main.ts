@@ -14,6 +14,7 @@ import { updateLasers } from './components/laser';
 import { updateBombs, updateExplosions } from './components/bomb';
 import { updateParticles, updateFallingEntities, updateFloatingScores } from './components/effects';
 import { renderGame, renderEditor } from './components/render';
+import { updateLights } from './components/light';
 
 const store = createInitialStore();
 store.initialLevels = initialLevels;
@@ -69,6 +70,7 @@ const updateGameState = () => {
     updateEnemies(store);
     updateMiner(store);
     updateLasers(store);
+    updateLights(store);
     updateBombs(store);
     updateExplosions(store);
     updateParticles(store);

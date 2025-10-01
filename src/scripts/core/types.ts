@@ -37,6 +37,7 @@ export interface Player extends GameObject {
     animationTick: number;
     currentFrame: number;
     deathTimer: number;
+    isFrozen: boolean;
 }
 
 export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner';
@@ -121,6 +122,11 @@ export interface FloatingScore {
     opacity: number;
 }
 
+export interface Light extends GameObject {
+    tile: string;
+    isOn: boolean;
+}
+
 export interface MouseState {
     x: number;
     y: number;
@@ -191,6 +197,8 @@ export interface GameStore {
     bombs: Bomb[];
     explosions: Explosion[];
     miner: Miner | null;
+    lights: Light[];
+    isDark: boolean;
     fallingEntities: FallingEntity[];
     particles: Particle[];
     floatingScores: FloatingScore[];

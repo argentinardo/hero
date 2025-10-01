@@ -6,6 +6,7 @@ import {
 import type { GameStore, Wall, Enemy, FallingEntity } from '../core/types';
 import { checkCollision } from '../core/collision';
 import { updateParticles, updateFallingEntities, updateFloatingScores } from './effects';
+import { drawLight } from './light';
 
 const drawWall = (store: GameStore, wall: Wall) => {
     const ctx = store.dom.ctx;
@@ -57,7 +58,7 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
 
     if (enemy.type === 'spider') {
         ctx.strokeStyle = '#ccc';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(enemy.width / 2, 0);
         ctx.lineTo(enemy.width / 2, (enemy.initialY ?? enemy.y) - enemy.y);
@@ -244,19 +245,54 @@ const drawGameWorld = (store: GameStore) => {
     ctx.save();
     ctx.translate(0, -store.cameraY);
 
-    store.walls.forEach(wall => drawWall(store, wall));
-    drawMiner(store);
+    // Dibujar luces primero
+    store.lights.forEach(light => drawLight(store, light));
 
-    const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
-    const otherEnemies = store.enemies.filter(enemy => enemy.type !== 'viper');
+    if (store.isDark) {
+        // Modo oscuro: solo lava visible, enemigos y luces en gris
+        ctx.save();
+        ctx.globalAlpha = 0;
+        store.walls.forEach(wall => {
+            if (wall.tile !== '3') { // No lava
+                drawWall(store, wall);
+            }
+        });
+        ctx.restore();
 
-    otherEnemies.forEach(enemy => drawEnemy(store, enemy));
+        // Lava siempre visible
+        store.walls.forEach(wall => {
+            if (wall.tile === '3') {
+                drawWall(store, wall);
+            }
+        });
 
-    vipers.forEach(enemy => {
-        drawEnemy(store, enemy);
-        const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
-        if (wall) drawWall(store, wall);
-    });
+        // Enemigos en gris
+        ctx.save();
+        ctx.filter = 'grayscale(100%) brightness(0.9)';
+        drawMiner(store);
+        const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
+        const otherEnemies = store.enemies.filter(enemy => enemy.type !== 'viper');
+        otherEnemies.forEach(enemy => drawEnemy(store, enemy));
+        vipers.forEach(enemy => {
+            drawEnemy(store, enemy);
+        });
+        ctx.restore();
+    } else {
+        // Modo normal
+        store.walls.forEach(wall => drawWall(store, wall));
+        drawMiner(store);
+
+        const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
+        const otherEnemies = store.enemies.filter(enemy => enemy.type !== 'viper');
+
+        otherEnemies.forEach(enemy => drawEnemy(store, enemy));
+
+        vipers.forEach(enemy => {
+            drawEnemy(store, enemy);
+            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
+            if (wall) drawWall(store, wall);
+        });
+    }
 
     store.fallingEntities.forEach(entity => drawFallingEntity(store, entity));
     drawLasers(store);

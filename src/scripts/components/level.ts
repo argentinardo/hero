@@ -109,6 +109,8 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     store.walls = [];
     store.enemies = [];
     store.miner = null;
+    store.lights = [];
+    store.isDark = false;
     store.lasers = [];
     store.bombs = [];
     store.explosions = [];
@@ -153,6 +155,18 @@ export const parseLevel = (store: GameStore, map: string[]) => {
 
             if (tile === '9') {
                 store.miner = createMiner(tileX, tileY, levelPixelWidth);
+                continue;
+            }
+
+            if (tile === 'L') {
+                store.lights.push({
+                    x: tileX,
+                    y: tileY,
+                    width: TILE_SIZE,
+                    height: TILE_SIZE,
+                    tile: 'L',
+                    isOn: true,
+                });
             }
         }
     });
@@ -211,6 +225,11 @@ export const awardMinerRescue = (store: GameStore) => {
     miner.animationState = 'rescued';
     miner.currentFrame = 2;
     miner.animationTick = 0;
+    
+    // Congelar al jugador inmediatamente
+    store.player.isFrozen = true;
+    store.player.vx = 0;
+    store.player.vy = 0;
 };
 
 export const replenishEnergyOnGround = (store: GameStore) => {
