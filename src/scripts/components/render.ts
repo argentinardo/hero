@@ -5,7 +5,7 @@ import {
 } from '../core/constants';
 import type { GameStore, Wall, Enemy, FallingEntity } from '../core/types';
 import { checkCollision } from '../core/collision';
-import { updateParticles, updateFallingEntities, updateFloatingScores } from './effects';
+import { updateParticles, updateFallingEntities, updateFloatingScores, updateBackgroundFlash } from './effects';
 import { drawLight } from './light';
 
 const drawWall = (store: GameStore, wall: Wall) => {
@@ -240,7 +240,14 @@ const drawGameWorld = (store: GameStore) => {
     const canvas = store.dom.canvas;
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'black';
+    // Apply background flash if active
+    if (store.backgroundFlash > 0) {
+        const flashIntensity = store.backgroundFlash / 15;
+        const gray = Math.floor(flashIntensity * 200);
+        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+    } else {
+        ctx.fillStyle = 'black';
+    }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(0, -store.cameraY);
@@ -327,5 +334,6 @@ export const runEffects = (store: GameStore) => {
     updateParticles(store);
     updateFallingEntities(store);
     updateFloatingScores(store);
+    updateBackgroundFlash(store);
 };
 

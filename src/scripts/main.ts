@@ -12,7 +12,7 @@ import { loadLevel, updateWalls, replenishEnergyOnGround, awardMinerRescue } fro
 import { updateEnemies, updateMiner } from './components/enemy';
 import { updateLasers } from './components/laser';
 import { updateBombs, updateExplosions } from './components/bomb';
-import { updateParticles, updateFallingEntities, updateFloatingScores } from './components/effects';
+import { updateParticles, updateFallingEntities, updateFloatingScores, updateBackgroundFlash } from './components/effects';
 import { renderGame, renderEditor } from './components/render';
 import { updateLights } from './components/light';
 
@@ -76,6 +76,7 @@ const updateGameState = () => {
     updateParticles(store);
     updateFallingEntities(store);
     updateFloatingScores(store);
+    updateBackgroundFlash(store);
     checkEnemyCollision(store);
     checkMinerRescue();
     updateCamera();

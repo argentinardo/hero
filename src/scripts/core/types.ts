@@ -212,5 +212,6 @@ export interface GameStore {
     joystickManager: JoystickManager | null;
     initialLevels: string[][];
     dom: DomReferences;
+    backgroundFlash: number;
 }
 

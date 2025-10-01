@@ -92,5 +92,6 @@ export const createInitialStore = (): GameStore => ({
             cancelSaveBtn: null,
         },
     },
+    backgroundFlash: 0,
 });
 

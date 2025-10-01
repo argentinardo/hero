@@ -127,6 +127,8 @@ export const updateBombs = (store: GameStore) => {
         const centerY = bomb.y + bomb.height / 2;
         createExplosion(store, bomb.x, bomb.y);
         emitParticles(store, centerX, centerY, 30, 'white');
+        // Trigger background flash effect
+        store.backgroundFlash = 15;
         const explosionRadius = 70;
         destroyWallsInRadius(store, centerX, centerY, explosionRadius);
         destroyEnemiesInRadius(store, centerX, centerY, explosionRadius);

@@ -44,3 +44,9 @@ export const updateFloatingScores = (store: GameStore) => {
     }
 };
 
+export const updateBackgroundFlash = (store: GameStore) => {
+    if (store.backgroundFlash > 0) {
+        store.backgroundFlash -= 1;
+    }
+};
+
