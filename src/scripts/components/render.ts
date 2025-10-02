@@ -57,12 +57,16 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
     }
 
     if (enemy.type === 'spider') {
+        // La soga se dibuja igual que antes
         ctx.strokeStyle = '#ccc';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(enemy.width / 2, 0);
         ctx.lineTo(enemy.width / 2, (enemy.initialY ?? enemy.y) - enemy.y);
         ctx.stroke();
+
+        // Subir la araña 20 píxeles (aprox 20cm en escala de juego)
+        ctx.translate(0, -20);
     }
 
     const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
@@ -351,6 +355,34 @@ const drawGameWorld = (store: GameStore) => {
                 ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
             }
         });
+        ctx.restore();
+        
+        // Aplicar gradiente suave en los bordes para transición entre zona oscura e iluminada
+        ctx.save();
+        
+        // Crear gradientes en los bordes superior e inferior del viewport
+        const gradientHeight = 200; // Altura del gradiente de transición
+        const screenTop = store.cameraY;
+        const screenBottom = store.cameraY + canvas.height;
+        
+        // Gradiente superior (de oscuro a transparente hacia abajo)
+        const topGradient = ctx.createLinearGradient(0, screenTop, 0, screenTop + gradientHeight);
+        topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+        topGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+        topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = topGradient;
+        ctx.fillRect(0, screenTop, canvas.width, gradientHeight);
+        
+        // Gradiente inferior (de transparente a oscuro hacia abajo)
+        const bottomGradient = ctx.createLinearGradient(0, screenBottom - gradientHeight, 0, screenBottom);
+        bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        bottomGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+        bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+        
+        ctx.fillStyle = bottomGradient;
+        ctx.fillRect(0, screenBottom - gradientHeight, canvas.width, gradientHeight);
+        
         ctx.restore();
     } else {
         // Modo normal

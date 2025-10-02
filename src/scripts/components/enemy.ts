@@ -36,7 +36,8 @@ export const updateEnemies = (store: GameStore) => {
             }
             case 'spider': {
                 enemy.y += enemy.vy;
-                const initialY = enemy.initialY ?? enemy.y;
+                // El initialY real se ajusta 20px hacia arriba
+                const initialY = (enemy.initialY ?? enemy.y);
                 const maxLength = enemy.maxLength ?? TILE_SIZE * 2;
                 if (enemy.vy > 0 && enemy.y >= initialY + maxLength) {
                     enemy.y = initialY + maxLength;
