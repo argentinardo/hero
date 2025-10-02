@@ -1,7 +1,7 @@
 import type { GameStore, Light } from '../core/types';
 import { checkCollision } from '../core/collision';
 
-const markCharactersOnScreen = (store: GameStore) => {
+const markCharactersInViewport = (store: GameStore) => {
     const canvas = store.dom.canvas;
     if (!canvas) return;
 
@@ -11,23 +11,30 @@ const markCharactersOnScreen = (store: GameStore) => {
     const screenLeft = 0;
     const screenRight = canvas.width;
 
-    // Función para verificar si un objeto está visible en pantalla
-    const isOnScreen = (obj: { x: number; y: number; width: number; height: number }) => {
+    // Función para verificar si un objeto está visible en el viewport
+    const isInViewport = (obj: { x: number; y: number; width: number; height: number }) => {
         return obj.x + obj.width > screenLeft &&
                obj.x < screenRight &&
                obj.y + obj.height > screenTop &&
                obj.y < screenBottom;
     };
 
-    // Marcar enemigos que están en pantalla
+    // Marcar SOLO las paredes que están en el viewport (excepto lava)
+    store.walls.forEach(wall => {
+        if (wall.tile !== '3' && isInViewport(wall)) {
+            wall.affectedByDark = true;
+        }
+    });
+
+    // Marcar SOLO los enemigos que están en el viewport
     store.enemies.forEach(enemy => {
-        if (!enemy.isHidden && isOnScreen(enemy)) {
+        if (!enemy.isHidden && isInViewport(enemy)) {
             enemy.affectedByDark = true;
         }
     });
 
-    // Marcar minero si está en pantalla
-    if (store.miner && isOnScreen(store.miner)) {
+    // Marcar minero SOLO si está en el viewport
+    if (store.miner && isInViewport(store.miner)) {
         store.miner.affectedByDark = true;
     }
 };
@@ -43,7 +50,7 @@ export const updateLights = (store: GameStore) => {
             if (checkCollision(light, laser)) {
                 light.isOn = false;
                 store.isDark = true;
-                markCharactersOnScreen(store);
+                markCharactersInViewport(store);
             }
         });
 
@@ -51,7 +58,7 @@ export const updateLights = (store: GameStore) => {
         if (checkCollision(light, player.hitbox)) {
             light.isOn = false;
             store.isDark = true;
-            markCharactersOnScreen(store);
+            markCharactersInViewport(store);
         }
     });
 
@@ -59,7 +66,10 @@ export const updateLights = (store: GameStore) => {
     const allLightsOn = lights.length > 0 && lights.every(light => light.isOn);
     if (allLightsOn && store.isDark) {
         store.isDark = false;
-        // Limpiar las marcas de personajes afectados
+        // Limpiar las marcas de todos los elementos afectados
+        store.walls.forEach(wall => {
+            wall.affectedByDark = false;
+        });
         store.enemies.forEach(enemy => {
             enemy.affectedByDark = false;
         });

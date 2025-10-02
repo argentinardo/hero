@@ -45,6 +45,7 @@ export const createInitialStore = (): GameStore => ({
     miner: null,
     lights: [],
     isDark: false,
+    explosionFlash: 0,
     fallingEntities: [],
     particles: [],
     floatingScores: [],

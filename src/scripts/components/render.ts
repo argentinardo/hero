@@ -240,7 +240,13 @@ const drawGameWorld = (store: GameStore) => {
     const canvas = store.dom.canvas;
     if (!ctx || !canvas) return;
 
-    ctx.fillStyle = 'black';
+    // Fondo con efecto de destello de explosión
+    if (store.explosionFlash > 0) {
+        const flashIntensity = Math.floor(store.explosionFlash * 255);
+        ctx.fillStyle = `rgb(${flashIntensity}, ${flashIntensity}, ${flashIntensity})`;
+    } else {
+        ctx.fillStyle = 'black';
+    }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(0, -store.cameraY);
@@ -249,22 +255,26 @@ const drawGameWorld = (store: GameStore) => {
     store.lights.forEach(light => drawLight(store, light));
 
     if (store.isDark) {
-        // Modo oscuro: solo lava visible, enemigos y luces en gris
+        // Modo oscuro: paredes y personajes afectados en gris, no afectados en color normal
+        
+        // Separar paredes afectadas y no afectadas
+        const affectedWalls = store.walls.filter(wall => wall.tile !== '3' && wall.affectedByDark);
+        const unaffectedWalls = store.walls.filter(wall => wall.tile !== '3' && !wall.affectedByDark);
+        const lavaWalls = store.walls.filter(wall => wall.tile === '3');
+
+        // Dibujar paredes no afectadas en color normal
+        unaffectedWalls.forEach(wall => drawWall(store, wall));
+
+        // Dibujar paredes afectadas siempre en negro (invisibles en fondo negro, visibles en flash blanco)
         ctx.save();
-        ctx.globalAlpha = 0;
-        store.walls.forEach(wall => {
-            if (wall.tile !== '3') { // No lava
-                drawWall(store, wall);
-            }
+        ctx.fillStyle = 'black';
+        affectedWalls.forEach(wall => {
+            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
         });
         ctx.restore();
 
         // Lava siempre visible
-        store.walls.forEach(wall => {
-            if (wall.tile === '3') {
-                drawWall(store, wall);
-            }
-        });
+        lavaWalls.forEach(wall => drawWall(store, wall));
 
         // Separar enemigos afectados y no afectados
         const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
@@ -289,6 +299,8 @@ const drawGameWorld = (store: GameStore) => {
         unaffectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
         unaffectedVipers.forEach(enemy => {
             drawEnemy(store, enemy);
+            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
+            if (wall) drawWall(store, wall);
         });
 
         // Dibujar enemigos afectados en gris
@@ -297,6 +309,17 @@ const drawGameWorld = (store: GameStore) => {
         affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
         affectedVipers.forEach(enemy => {
             drawEnemy(store, enemy);
+        });
+        ctx.restore();
+        
+        // Dibujar paredes de víboras afectadas siempre en negro
+        ctx.save();
+        ctx.fillStyle = 'black';
+        affectedVipers.forEach(enemy => {
+            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
+            if (wall) {
+                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+            }
         });
         ctx.restore();
     } else {

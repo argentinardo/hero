@@ -11,6 +11,7 @@ const createWall = (x: number, y: number, tile: string): Wall => {
         height: TILE_SIZE,
         type: 'solid',
         tile,
+        affectedByDark: false,
     };
 
     if (tile === '2') {
@@ -47,6 +48,7 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
                 spriteTick: 0,
                 movementTick: Math.random() * 100,
                 currentFrame: 0,
+                affectedByDark: false,
             };
         case 'S':
             return {
@@ -62,6 +64,7 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
                 maxLength: TILE_SIZE * 2,
                 spriteTick: 0,
                 currentFrame: 0,
+                affectedByDark: false,
             };
         case 'V': {
             const row = map[Math.floor(y / TILE_SIZE)];
@@ -85,6 +88,7 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
                 spriteTick: 0,
                 currentFrame: 0,
                 isHidden: true,
+                affectedByDark: false,
             };
         }
         default:
@@ -103,6 +107,7 @@ const createMiner = (x: number, y: number, mapWidth: number): Miner => ({
     animationTick: 0,
     animationDirection: 1,
     isFlipped: x > mapWidth / 2,
+    affectedByDark: false,
 });
 
 export const parseLevel = (store: GameStore, map: string[]) => {

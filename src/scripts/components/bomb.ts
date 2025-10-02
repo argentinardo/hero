@@ -13,6 +13,8 @@ const createExplosion = (store: GameStore, x: number, y: number) => {
         animationTick: 0,
         currentFrame: 0,
     });
+    // Activar el destello de explosión
+    store.explosionFlash = 1.0;
 };
 
 const addFallingChunks = (store: GameStore, wall: Wall) => {
@@ -154,6 +156,11 @@ export const updateExplosions = (store: GameStore) => {
         if (explosion.animationTick === 0) {
             explosion.currentFrame = Math.min(explosion.currentFrame + 1, anim.frames - 1);
         }
+    }
+    
+    // Desvanecer gradualmente el destello de explosión
+    if (store.explosionFlash > 0) {
+        store.explosionFlash = Math.max(0, store.explosionFlash - 0.08);
     }
 };
 

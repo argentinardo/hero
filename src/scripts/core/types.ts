@@ -69,6 +69,7 @@ export interface Wall extends GameObject {
     currentFrame?: number;
     health?: number;
     isDamaged?: boolean;
+    affectedByDark?: boolean;
 }
 
 export interface Laser extends GameObject {
@@ -201,6 +202,7 @@ export interface GameStore {
     miner: Miner | null;
     lights: Light[];
     isDark: boolean;
+    explosionFlash: number;
     fallingEntities: FallingEntity[];
     particles: Particle[];
     floatingScores: FloatingScore[];
