@@ -358,30 +358,56 @@ const drawGameWorld = (store: GameStore) => {
         ctx.restore();
         
         // Aplicar gradiente suave en los bordes para transición entre zona oscura e iluminada
+        // El gradiente debe estar fijo en las coordenadas del mundo, no moverse con la cámara
         ctx.save();
         
-        // Crear gradientes en los bordes superior e inferior del viewport
-        const gradientHeight = 200; // Altura del gradiente de transición
-        const screenTop = store.cameraY;
-        const screenBottom = store.cameraY + canvas.height;
+        // Encontrar los límites de la zona afectada por la oscuridad
+        const affectedObjects = [
+            ...affectedWalls,
+            ...affectedOtherEnemies,
+            ...affectedVipers
+        ];
         
-        // Gradiente superior (de oscuro a transparente hacia abajo)
-        const topGradient = ctx.createLinearGradient(0, screenTop, 0, screenTop + gradientHeight);
-        topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
-        topGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
-        topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        // Verificar si hay objetos afectados (incluyendo el minero)
+        const hasAffectedObjects = affectedObjects.length > 0 || store.miner?.affectedByDark;
         
-        ctx.fillStyle = topGradient;
-        ctx.fillRect(0, screenTop, canvas.width, gradientHeight);
-        
-        // Gradiente inferior (de transparente a oscuro hacia abajo)
-        const bottomGradient = ctx.createLinearGradient(0, screenBottom - gradientHeight, 0, screenBottom);
-        bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        bottomGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
-        bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
-        
-        ctx.fillStyle = bottomGradient;
-        ctx.fillRect(0, screenBottom - gradientHeight, canvas.width, gradientHeight);
+        if (hasAffectedObjects) {
+            // Calcular el límite superior e inferior de los objetos afectados
+            let minY = Infinity;
+            let maxY = -Infinity;
+            
+            affectedObjects.forEach(obj => {
+                if (obj.y < minY) minY = obj.y;
+                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
+            });
+            
+            // Incluir el minero en el cálculo si está afectado
+            if (store.miner?.affectedByDark) {
+                if (store.miner.y < minY) minY = store.miner.y;
+                if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
+            }
+            
+            const gradientHeight = 200; // Altura del gradiente de transición
+            const gradientOffset = 70; // Desplazamiento hacia arriba
+            
+            // Gradiente superior (de oscuro a transparente hacia abajo)
+            const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
+            topGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            topGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+            topGradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+            
+            ctx.fillStyle = topGradient;
+            ctx.fillRect(0, minY - gradientHeight - gradientOffset, canvas.width, gradientHeight);
+            
+            // Gradiente inferior (de transparente a oscuro hacia abajo)
+            const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
+            bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+            bottomGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+            bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = bottomGradient;
+            ctx.fillRect(0, maxY - gradientOffset, canvas.width, gradientHeight);
+        }
         
         ctx.restore();
     } else {

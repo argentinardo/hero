@@ -93,6 +93,47 @@ export const bindEditorCanvas = (store: GameStore) => {
             store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
         }
     }, { passive: false });
+
+    // Soporte para touch events en móvil
+    canvas.addEventListener('touchmove', event => {
+        if (store.appState !== 'editing') {
+            return;
+        }
+        event.preventDefault();
+        const touch = event.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        store.mouse.x = touch.clientX - rect.left;
+        store.mouse.y = touch.clientY - rect.top;
+        const worldY = store.mouse.y + store.cameraY;
+        store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
+        store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+        if (store.mouse.isDown) {
+            applyMousePaint(store);
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchstart', event => {
+        if (store.appState !== 'editing') {
+            return;
+        }
+        event.preventDefault();
+        const touch = event.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        store.mouse.x = touch.clientX - rect.left;
+        store.mouse.y = touch.clientY - rect.top;
+        const worldY = store.mouse.y + store.cameraY;
+        store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
+        store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+        store.mouse.isDown = true;
+        applyMousePaint(store);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+        if (store.appState !== 'editing') {
+            return;
+        }
+        store.mouse.isDown = false;
+    });
 };
 
 export const updateEditorLevelFromSelector = (store: GameStore) => {
