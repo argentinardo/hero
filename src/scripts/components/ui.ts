@@ -106,7 +106,7 @@ const startJoystick = (store: GameStore) => {
         const up = Math.sin(angle);
         const right = Math.cos(angle);
         store.keys.ArrowUp = up > 0.5;
-        store.keys.ArrowDown = up < -0.5;
+        // No activar ArrowDown con joystick, se usa el botón dedicado de bomba
         if (Math.abs(right) > 0.3) {
             if (right > 0) {
                 store.keys.ArrowRight = true;
@@ -122,19 +122,34 @@ const startJoystick = (store: GameStore) => {
     });
     store.joystickManager.on('end', () => {
         store.keys.ArrowUp = false;
-        store.keys.ArrowDown = false;
         store.keys.ArrowLeft = false;
         store.keys.ArrowRight = false;
+        // No resetear ArrowDown aquí, se controla con el botón de bomba
     });
 
-    if (actionZoneEl) {
-        actionZoneEl.addEventListener('touchstart', event => {
+    // Configurar botones de acción
+    const shootBtn = document.getElementById('shoot-btn');
+    const bombBtn = document.getElementById('bomb-btn');
+
+    if (shootBtn) {
+        shootBtn.addEventListener('touchstart', event => {
             event.preventDefault();
             store.keys.Space = true;
         });
-        actionZoneEl.addEventListener('touchend', event => {
+        shootBtn.addEventListener('touchend', event => {
             event.preventDefault();
             store.keys.Space = false;
+        });
+    }
+
+    if (bombBtn) {
+        bombBtn.addEventListener('touchstart', event => {
+            event.preventDefault();
+            store.keys.ArrowDown = true;
+        });
+        bombBtn.addEventListener('touchend', event => {
+            event.preventDefault();
+            store.keys.ArrowDown = false;
         });
     }
 };

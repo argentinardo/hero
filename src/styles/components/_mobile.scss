@@ -12,8 +12,18 @@
         padding: 0;
         margin: 0;
         max-width: none;
+        display: flex;
+        flex-direction: column;
+        position: relative;
     }
 
+    #gameCanvas {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100vw;
+        max-height: 100vh;
+        object-fit: contain;
+    }
     
     #game-ui {
         position: absolute;
@@ -34,16 +44,177 @@
     }
 
     #mobile-controls {
-        display: none; /* Oculto por defecto */
-        z-index: 20; /* Asegura que los controles estén por encima del canvas */
-        position: absolute;
+        display: none;
+        z-index: 20;
+        position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
+        pointer-events: none;
     }
 
     #mobile-controls[data-active="true"] {
         display: block;
+    }
+
+    #joystick-zone {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        width: 150px;
+        height: 150px;
+        pointer-events: auto;
+    }
+
+    #action-zone {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 150px;
+        height: 180px;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .action-button {
+        width: 100%;
+        height: 70px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        border-radius: 10px;
+        color: white;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 0.7rem;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        
+        &:active {
+            background-color: rgba(255, 255, 255, 0.5);
+            transform: scale(0.95);
+        }
+    }
+}
+
+/* Estilos específicos para landscape en móviles */
+@media (max-width: 1024px) and (orientation: landscape) {
+    body, html {
+        overflow: hidden;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    #main-container {
+        width: 100vw;
+        height: 100vh;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+    }
+
+    #gameCanvas {
+        width: auto !important;
+        height: 100vh !important;
+        max-height: 100vh;
+        aspect-ratio: 4/3;
+        margin: 0 auto;
+        display: block;
+    }
+
+    #game-ui {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        background-color: rgba(0,0,0,0.7);
+        padding: 5px 10px;
+        font-size: 0.6rem;
+        border-radius: 5px;
+    }
+
+    #mobile-controls {
+        display: none;
+        z-index: 20;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    #mobile-controls[data-active="true"] {
+        display: block;
+    }
+
+    #joystick-zone {
+        position: absolute;
+        bottom: 50%;
+        left: 20px;
+        transform: translateY(50%);
+        width: 140px;
+        height: 140px;
+        pointer-events: auto;
+    }
+
+    #action-zone {
+        position: absolute;
+        bottom: 50%;
+        right: 20px;
+        transform: translateY(50%);
+        width: 140px;
+        height: 180px;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .action-button {
+        width: 100%;
+        height: 70px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        border-radius: 10px;
+        color: white;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 0.6rem;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        
+        &:active {
+            background-color: rgba(255, 255, 255, 0.5);
+            transform: scale(0.95);
+        }
+    }
+
+    #message-overlay {
+        position: fixed;
+    }
+
+    #editor-panel {
+        display: none !important;
     }
 }
