@@ -12,6 +12,8 @@ import wallSrc from '../../assets/sprites/wall_small.png';
 import dirtSrc from '../../assets/sprites/tierra_small.png';
 import columnSrc from '../../assets/sprites/tierra_small.png';
 import lavaSrc from '../../assets/sprites/lava.png';
+import lightSrc from '../../assets/sprites/luz.png';
+import backgroundSrc from '../../assets/sprites/background_small.png';
 
 import type { AnimationMap, GameStore, TileDictionary } from './types';
 
@@ -30,6 +32,8 @@ export const SPRITE_SOURCES: Record<string, string> = {
     '2': dirtSrc,
     C: columnSrc,
     '3': lavaSrc,
+    L: lightSrc,
+    background: backgroundSrc,
 };
 
 export const ANIMATION_DATA: AnimationMap = {
@@ -39,7 +43,7 @@ export const ANIMATION_DATA: AnimationMap = {
     P_fly: { frames: 5, speed: 10, sprite: 'P_fly' },
     '8': { frames: 6, speed: 2, sprite: '8' },
     S: { frames: 15, speed: 7, sprite: 'S' },
-    V: { frames: 1, speed: 1, sprite: 'V' },
+    V: { frames: 4, speed: 8, sprite: 'V' },
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
     '3': { frames: 16, speed: 19, sprite: '3' },

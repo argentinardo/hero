@@ -123,8 +123,32 @@ export const drawEditor = (store: GameStore) => {
         return;
     }
 
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Dibujar fondo con background tiles
+    const backgroundSprite = store.sprites.background;
+    if (backgroundSprite) {
+        const startY = Math.floor(store.cameraY / TILE_SIZE) * TILE_SIZE;
+        const endY = store.cameraY + canvas.height;
+        const numTilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
+        const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
+        
+        ctx.save();
+        ctx.translate(0, -store.cameraY);
+        
+        for (let y = 0; y < numTilesY; y++) {
+            for (let x = 0; x < numTilesX; x++) {
+                const tileX = x * TILE_SIZE;
+                const tileY = startY + y * TILE_SIZE;
+                ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
+            }
+        }
+        
+        ctx.restore();
+    } else {
+        // Fallback: fondo gris oscuro
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
     ctx.save();
     ctx.translate(0, -store.cameraY);
 
@@ -159,14 +183,31 @@ export const drawEditor = (store: GameStore) => {
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
                 ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
             } else if (tile === 'L') {
-                // Dibujar luz en el editor
-                const centerX = colIndex * TILE_SIZE + TILE_SIZE / 2;
-                const centerY = rowIndex * TILE_SIZE + TILE_SIZE / 2;
-                const radius = TILE_SIZE / 3;
-                ctx.fillStyle = '#ffff00';
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                ctx.fill();
+                // Dibujar luz en el editor con sprite
+                const lightSprite = store.sprites.L;
+                if (lightSprite) {
+                    const frameWidth = lightSprite.width / 2; // 2 frames (encendida/apagada)
+                    ctx.drawImage(
+                        lightSprite,
+                        0, // Frame 0 (encendida)
+                        0,
+                        frameWidth,
+                        lightSprite.height,
+                        colIndex * TILE_SIZE,
+                        rowIndex * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE
+                    );
+                } else {
+                    // Fallback: círculo amarillo
+                    const centerX = colIndex * TILE_SIZE + TILE_SIZE / 2;
+                    const centerY = rowIndex * TILE_SIZE + TILE_SIZE / 2;
+                    const radius = TILE_SIZE / 3;
+                    ctx.fillStyle = '#ffff00';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
         });
     });
@@ -220,15 +261,35 @@ export const drawEditor = (store: GameStore) => {
         ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
         ctx.globalAlpha = 1;
     } else if (store.selectedTile === 'L') {
-        ctx.globalAlpha = 0.5;
-        const centerX = store.mouse.gridX * TILE_SIZE + TILE_SIZE / 2;
-        const centerY = store.mouse.gridY * TILE_SIZE + TILE_SIZE / 2;
-        const radius = TILE_SIZE / 3;
-        ctx.fillStyle = '#ffff00';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        // Preview de luz con sprite
+        const lightSprite = store.sprites.L;
+        if (lightSprite) {
+            ctx.globalAlpha = 0.5;
+            const frameWidth = lightSprite.width / 2; // 2 frames
+            ctx.drawImage(
+                lightSprite,
+                0, // Frame 0 (encendida)
+                0,
+                frameWidth,
+                lightSprite.height,
+                store.mouse.gridX * TILE_SIZE,
+                store.mouse.gridY * TILE_SIZE,
+                TILE_SIZE,
+                TILE_SIZE
+            );
+            ctx.globalAlpha = 1;
+        } else {
+            // Fallback: círculo amarillo
+            ctx.globalAlpha = 0.5;
+            const centerX = store.mouse.gridX * TILE_SIZE + TILE_SIZE / 2;
+            const centerY = store.mouse.gridY * TILE_SIZE + TILE_SIZE / 2;
+            const radius = TILE_SIZE / 3;
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
     }
 
     ctx.restore();

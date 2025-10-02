@@ -240,14 +240,44 @@ const drawGameWorld = (store: GameStore) => {
     const canvas = store.dom.canvas;
     if (!ctx || !canvas) return;
 
-    // Fondo con efecto de destello de explosión
+    // Dibujar fondo con tiles, modo oscuro, o destello de explosión
+    const backgroundSprite = store.sprites.background;
+    
     if (store.explosionFlash > 0) {
+        // Efecto de destello de explosión
         const flashIntensity = Math.floor(store.explosionFlash * 255);
         ctx.fillStyle = `rgb(${flashIntensity}, ${flashIntensity}, ${flashIntensity})`;
-    } else {
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (store.isDark) {
+        // Modo oscuro: fondo negro
         ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else if (backgroundSprite) {
+        // Dibujar fondo con tiles repetidos (modo normal)
+        const TILE_SIZE = 64; // Tamaño del tile del background
+        const startY = Math.floor(store.cameraY / TILE_SIZE) * TILE_SIZE;
+        const endY = store.cameraY + canvas.height;
+        const numTilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
+        const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
+        
+        ctx.save();
+        ctx.translate(0, -store.cameraY);
+        
+        for (let y = 0; y < numTilesY; y++) {
+            for (let x = 0; x < numTilesX; x++) {
+                const tileX = x * TILE_SIZE;
+                const tileY = startY + y * TILE_SIZE;
+                ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
+            }
+        }
+        
+        ctx.restore();
+    } else {
+        // Fallback: fondo negro
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     ctx.save();
     ctx.translate(0, -store.cameraY);
 

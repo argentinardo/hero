@@ -233,11 +233,31 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
         let anim = ANIMATION_DATA[tile as keyof typeof ANIMATION_DATA] ?? (spriteKey ? ANIMATION_DATA[spriteKey as keyof typeof ANIMATION_DATA] : undefined);
         let effectiveFrames = anim?.frames ?? 0;
         let totalFrames = anim?.frames ?? 0;
+        
+        // Caso especial para el minero
         if (tile === '9') {
             anim = ANIMATION_DATA['9_idle'];
             effectiveFrames = Math.min(anim.frames, 2);
             totalFrames = 6;
         }
+        
+        // Caso especial para la luz (tiene 2 frames: encendida/apagada)
+        if (tile === 'L') {
+            const frameWidth = sprite.width / 2; // 2 frames
+            ctx.drawImage(
+                sprite,
+                0, // Frame 0 (encendida)
+                0,
+                frameWidth,
+                sprite.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+            return;
+        }
+        
         if (anim && effectiveFrames > 0 && totalFrames > 0) {
             const frameDuration = Math.max(1, anim.speed) * (1000 / 60);
             const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;

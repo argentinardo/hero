@@ -5,3 +5,11 @@
     padding: 10px 20px;
     width: 100%;
 }
+
+/* Desktop: game-ui debe tener el mismo ancho que el canvas */
+@media (min-width: 769px) {
+    #game-ui {
+        max-width: 1200px; /* Mismo ancho que el canvas */
+        margin: 0 auto;
+    }
+}

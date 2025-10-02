@@ -136,15 +136,53 @@
     }
 
     #game-ui {
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
+        position: fixed;
+        top: 5px;
+        left: 0;
+        right: 0;
         z-index: 10;
-        background-color: rgba(0,0,0,0.7);
-        padding: 5px 10px;
-        font-size: 0.6rem;
-        border-radius: 5px;
+        background-color: rgba(0, 0, 0, 0.8);
+        padding: 5px;
+        font-size: 0.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, auto);
+        gap: 3px;
+        max-width: none;
+        margin: 0;
+        
+        /* Reorganizar elementos en grid */
+        > span:nth-child(1) { /* LIVES */
+            grid-column: 1;
+            grid-row: 1;
+            text-align: left;
+            padding-left: 5px;
+        }
+        
+        > span:nth-child(2) { /* LEVEL */
+            grid-column: 2;
+            grid-row: 1;
+            text-align: right;
+            padding-right: 5px;
+        }
+        
+        > div { /* ENERGY */
+            grid-column: 1 / -1;
+            grid-row: 2;
+            justify-self: center;
+            width: 90%;
+            font-size: 0.4rem;
+        }
+        
+        > span:nth-child(4) { /* SCORE */
+            grid-column: 1 / -1;
+            grid-row: 3;
+            text-align: center;
+        }
+        
+        button {
+            display: none; /* Ocultar botón de volver al editor en landscape */
+        }
     }
 
     #mobile-controls {
