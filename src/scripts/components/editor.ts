@@ -55,12 +55,57 @@ export const bindEditorCanvas = (store: GameStore) => {
         if (store.appState !== 'editing') {
             return;
         }
-        const rect = canvas.getBoundingClientRect();
-        store.mouse.x = event.clientX - rect.left;
-        store.mouse.y = event.clientY - rect.top;
-        const worldY = store.mouse.y + store.cameraY;
+
+        // Como el canvas está posicionado fijo en (0,0) y ocupa 60% del ancho,
+        // las coordenadas del evento están en relación al viewport completo
+        // Necesitamos mapear las coordenadas del evento al área del canvas
+        const canvasRect = canvas.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        // El canvas ocupa el 60% izquierdo del viewport
+        const canvasLeftEdge = 0;
+        const canvasRightEdge = viewportWidth * 0.6;
+
+        // Calcular coordenadas considerando el posicionamiento real del canvas
+        if (event.clientX >= canvasLeftEdge && event.clientX <= canvasRightEdge) {
+            // Para X: mapeo proporcional como antes
+            store.mouse.x = ((event.clientX - canvasLeftEdge) / (canvasRightEdge - canvasLeftEdge)) * canvasWidth;
+
+            // Para Y: calcular considerando la posición real del canvas en el viewport
+            // El canvas debería estar en top: 0, pero puede haber offsets del sistema
+            const canvasTopInViewport = canvasRect.top;
+            store.mouse.y = event.clientY - canvasTopInViewport;
+
+            // Debug adicional para verificar coordenadas
+            console.log(`Canvas rect: (${canvasRect.left}, ${canvasRect.top}, ${canvasRect.width}, ${canvasRect.height})`);
+            console.log(`Viewport: (${viewportWidth}x${viewportHeight})`);
+        } else {
+            // Si el evento está fuera del área del canvas, no procesar
+            return;
+        }
+
+        // Asegurar que las coordenadas estén dentro de los límites del canvas
+        store.mouse.x = Math.max(0, Math.min(store.mouse.x, canvasWidth));
+        store.mouse.y = Math.max(0, Math.min(store.mouse.y, canvas.height));
+
+        // Calcular coordenadas del mundo considerando la cámara
+        // Como el contenido del canvas se mueve mediante ctx.translate(0, -store.cameraY),
+        // las coordenadas del mouse ya están en relación al contenido visible del canvas
+        // No necesitamos sumar store.cameraY adicionalmente
+        const worldY = store.mouse.y;
         store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+
+        // Debug adicional para verificar el cálculo de grid
+        console.log(`World calc: mouse.y=${store.mouse.y}, cameraY=${store.cameraY}, worldY=${worldY}, gridY=${store.mouse.gridY}`);
+        console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
+
+        // Debug: Log de coordenadas para identificar el problema
+        console.log(`Mouse: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${event.clientX}, ${event.clientY})`);
+
         if (store.mouse.isDown) {
             applyMousePaint(store);
         }
@@ -101,12 +146,53 @@ export const bindEditorCanvas = (store: GameStore) => {
         }
         event.preventDefault();
         const touch = event.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        store.mouse.x = touch.clientX - rect.left;
-        store.mouse.y = touch.clientY - rect.top;
-        const worldY = store.mouse.y + store.cameraY;
+
+        // Como el canvas está posicionado fijo en (0,0) y ocupa 60% del ancho,
+        // las coordenadas del evento están en relación al viewport completo
+        // Necesitamos mapear las coordenadas del evento al área del canvas
+        const canvasRect = canvas.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        // El canvas ocupa el 60% izquierdo del viewport
+        const canvasLeftEdge = 0;
+        const canvasRightEdge = viewportWidth * 0.6;
+
+        // Calcular coordenadas considerando el posicionamiento real del canvas
+        if (touch.clientX >= canvasLeftEdge && touch.clientX <= canvasRightEdge) {
+            // Para X: mapeo proporcional como antes
+            store.mouse.x = ((touch.clientX - canvasLeftEdge) / (canvasRightEdge - canvasLeftEdge)) * canvasWidth;
+
+            // Para Y: calcular considerando la posición real del canvas en el viewport
+            // El canvas debería estar en top: 0, pero puede haber offsets del sistema
+            const canvasTopInViewport = canvasRect.top;
+            store.mouse.y = touch.clientY - canvasTopInViewport;
+
+            // Debug adicional para verificar el cálculo
+            console.log(`Touch Y calc: touch.clientY=${touch.clientY}, canvasTop=${canvasTopInViewport}, mouse.y=${store.mouse.y}`);
+        } else {
+            // Si el evento está fuera del área del canvas, no procesar
+            return;
+        }
+
+        // Asegurar que las coordenadas estén dentro de los límites del canvas
+        store.mouse.x = Math.max(0, Math.min(store.mouse.x, canvasWidth));
+        store.mouse.y = Math.max(0, Math.min(store.mouse.y, canvas.height));
+
+        // Calcular coordenadas del mundo considerando la cámara
+        // Como el contenido del canvas se mueve mediante ctx.translate(0, -store.cameraY),
+        // las coordenadas del mouse ya están en relación al contenido visible del canvas
+        // No necesitamos sumar store.cameraY adicionalmente
+        const worldY = store.mouse.y;
         store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+
+        // Debug adicional para verificar el cálculo de grid
+        console.log(`World calc: mouse.y=${store.mouse.y}, cameraY=${store.cameraY}, worldY=${worldY}, gridY=${store.mouse.gridY}`);
+        console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
+
         if (store.mouse.isDown) {
             applyMousePaint(store);
         }
@@ -118,12 +204,67 @@ export const bindEditorCanvas = (store: GameStore) => {
         }
         event.preventDefault();
         const touch = event.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        store.mouse.x = touch.clientX - rect.left;
-        store.mouse.y = touch.clientY - rect.top;
-        const worldY = store.mouse.y + store.cameraY;
+
+        // Como el canvas está posicionado fijo en (0,0) y ocupa 60% del ancho,
+        // las coordenadas del evento están en relación al viewport completo
+        // Necesitamos mapear las coordenadas del evento al área del canvas
+        const canvasRect = canvas.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        // El canvas ocupa el 60% izquierdo del viewport
+        const canvasLeftEdge = 0;
+        const canvasRightEdge = viewportWidth * 0.6;
+
+        // Calcular coordenadas considerando el posicionamiento real del canvas
+        if (touch.clientX >= canvasLeftEdge && touch.clientX <= canvasRightEdge) {
+            // Para X: mapeo proporcional como antes
+            store.mouse.x = ((touch.clientX - canvasLeftEdge) / (canvasRightEdge - canvasLeftEdge)) * canvasWidth;
+
+            // Para Y: calcular considerando la posición real del canvas en el viewport
+            // El canvas debería estar en top: 0, pero puede haber offsets del sistema
+            const canvasTopInViewport = canvasRect.top;
+            store.mouse.y = touch.clientY - canvasTopInViewport;
+
+            // Debug adicional para verificar coordenadas del dispositivo
+            console.log(`Device info: touch.clientX=${touch.clientX}, touch.clientY=${touch.clientY}`);
+            console.log(`Canvas rect: left=${canvasRect.left}, top=${canvasRect.top}, width=${canvasRect.width}, height=${canvasRect.height}`);
+            console.log(`Viewport: ${viewportWidth}x${viewportHeight}`);
+            console.log(`Canvas internal: ${canvasWidth}x${canvasHeight}`);
+            console.log(`Touch Y calc: touch.clientY=${touch.clientY}, canvasTop=${canvasTopInViewport}, mouse.y=${store.mouse.y}`);
+
+            // Verificar si hay algún offset del sistema del navegador
+            const visualViewport = window.visualViewport;
+            if (visualViewport) {
+                console.log(`Visual viewport: offsetLeft=${visualViewport.offsetLeft}, offsetTop=${visualViewport.offsetTop}`);
+                console.log(`Visual viewport size: ${visualViewport.width}x${visualViewport.height}`);
+            }
+        } else {
+            // Si el evento está fuera del área del canvas, no procesar
+            return;
+        }
+
+        // Asegurar que las coordenadas estén dentro de los límites del canvas
+        store.mouse.x = Math.max(0, Math.min(store.mouse.x, canvasWidth));
+        store.mouse.y = Math.max(0, Math.min(store.mouse.y, canvas.height));
+
+        // Calcular coordenadas del mundo considerando la cámara
+        // Como el contenido del canvas se mueve mediante ctx.translate(0, -store.cameraY),
+        // las coordenadas del mouse ya están en relación al contenido visible del canvas
+        // No necesitamos sumar store.cameraY adicionalmente
+        const worldY = store.mouse.y;
         store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+
+        // Debug adicional para verificar el cálculo de grid
+        console.log(`World calc: mouse.y=${store.mouse.y}, cameraY=${store.cameraY}, worldY=${worldY}, gridY=${store.mouse.gridY}`);
+        console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
+
+        // Debug: Log de coordenadas para identificar el problema
+        console.log(`Touch: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${touch.clientX}, ${touch.clientY})`);
+
         store.mouse.isDown = true;
         applyMousePaint(store);
     }, { passive: false });
