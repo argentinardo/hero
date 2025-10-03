@@ -46,10 +46,12 @@ const applyMousePaint = (store: GameStore) => {
     level[gridY][gridX] = selected;
 };
 
-// Variables para detectar swipes vs movimientos normales
-let touchStartY = 0;
+// Variables para detectar gestos con dos dedos
+let touchStartY1 = 0;
+let touchStartY2 = 0;
 let touchStartTime = 0;
-let isSwipeGesture = false;
+let isTwoFingerGesture = false;
+let lastTwoFingerY = 0;
 
 export const bindEditorCanvas = (store: GameStore) => {
     const canvas = store.dom.canvas;
@@ -153,22 +155,18 @@ export const bindEditorCanvas = (store: GameStore) => {
             return;
         }
         event.preventDefault();
-        const touch = event.touches[0];
 
-        // Detectar si es un swipe (movimiento rápido para scroll)
-        const currentTime = Date.now();
-        const timeDiff = currentTime - touchStartTime;
-        const currentY = touch.clientY;
-        const distanceY = Math.abs(currentY - touchStartY);
-        const velocity = distanceY / timeDiff; // píxeles por milisegundo
+        const touches = event.touches;
 
-        // Si el movimiento es rápido (> 0.5 píxeles/ms) y hay distancia suficiente (> 50 píxeles), es un swipe
-        if (timeDiff > 50 && velocity > 0.5 && distanceY > 50) {
-            isSwipeGesture = true;
+        // Si hay dos dedos y estamos en un gesto de dos dedos, procesar como scroll
+        if (touches.length === 2 && isTwoFingerGesture) {
+            const currentY1 = touches[0].clientY;
+            const currentY2 = touches[1].clientY;
+            const currentTwoFingerY = (currentY1 + currentY2) / 2;
 
-            // Calcular scroll basado en el movimiento del swipe
-            const deltaY = touchStartY - currentY; // Movimiento positivo hacia arriba = scroll hacia abajo
-            const scrollAmount = deltaY * 2; // Multiplicar por 2 para hacer el scroll más sensible
+            // Calcular movimiento relativo desde la última posición
+            const deltaY = lastTwoFingerY - currentTwoFingerY; // Movimiento positivo hacia arriba = scroll hacia abajo
+            const scrollAmount = deltaY * 1.5; // Factor de sensibilidad
 
             // Actualizar posición de la cámara
             if (store.editorLevel.length > 0) {
@@ -178,15 +176,17 @@ export const bindEditorCanvas = (store: GameStore) => {
                 // Aplicar scroll suave con límites
                 store.cameraY = Math.max(0, Math.min(store.cameraY + scrollAmount, maxCameraY));
 
-                // Debug del scroll
-                console.log(`Swipe scroll: deltaY=${deltaY}, scrollAmount=${scrollAmount}, new cameraY=${store.cameraY}`);
+                // Debug del scroll con dos dedos
+                console.log(`Two-finger scroll: deltaY=${deltaY}, scrollAmount=${scrollAmount}, new cameraY=${store.cameraY}`);
             }
 
+            // Actualizar posición para el siguiente cálculo
+            lastTwoFingerY = currentTwoFingerY;
             return; // No procesar como colocación de tiles
         }
 
-        // Si no es un swipe, procesar como colocación normal de tiles
-        if (!isSwipeGesture) {
+        // Si hay un solo dedo, procesar como colocación normal de tiles
+        if (touches.length === 1 && !isTwoFingerGesture) {
             // Como el canvas está posicionado fijo en (0,0) y ocupa 60% del ancho,
             // las coordenadas del evento están en relación al viewport completo
             // Necesitamos mapear las coordenadas del evento al área del canvas
@@ -201,25 +201,25 @@ export const bindEditorCanvas = (store: GameStore) => {
             const canvasRightEdge = viewportWidth * 0.6;
 
             // Calcular coordenadas considerando el posicionamiento real del canvas
-            if (touch.clientX >= canvasLeftEdge && touch.clientX <= canvasRightEdge) {
+            if (touches[0].clientX >= canvasLeftEdge && touches[0].clientX <= canvasRightEdge) {
                 // Para X: mapeo proporcional usando la resolución interna del canvas
                 const canvasElementWidth = canvasRect.width;  // Tamaño real del elemento (549)
                 const scaleX = canvasWidth / canvasElementWidth;  // Factor de escala (1200/549 ≈ 2.186)
-                store.mouse.x = (touch.clientX - canvasLeftEdge) * scaleX;
+                store.mouse.x = (touches[0].clientX - canvasLeftEdge) * scaleX;
 
                 // Para Y: calcular considerando la posición real del canvas en el viewport
                 const canvasTopInViewport = canvasRect.top;
                 const canvasElementHeight = canvasRect.height;  // Tamaño real del elemento (412)
                 const scaleY = canvasHeight / canvasElementHeight;  // Factor de escala (900/412 ≈ 2.184)
-                store.mouse.y = (touch.clientY - canvasTopInViewport) * scaleY;
+                store.mouse.y = (touches[0].clientY - canvasTopInViewport) * scaleY;
 
                 // Debug adicional para verificar coordenadas del dispositivo
-                console.log(`Device info: touch.clientX=${touch.clientX}, touch.clientY=${touch.clientY}`);
+                console.log(`Device info: touch.clientX=${touches[0].clientX}, touch.clientY=${touches[0].clientY}`);
                 console.log(`Canvas rect: left=${canvasRect.left}, top=${canvasRect.top}, width=${canvasRect.width}, height=${canvasRect.height}`);
                 console.log(`Viewport: ${viewportWidth}x${viewportHeight}`);
                 console.log(`Canvas internal: ${canvasWidth}x${canvasHeight}`);
                 console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
-                console.log(`Touch Y calc: touch.clientY=${touch.clientY}, canvasTop=${canvasTopInViewport}, scaledY=${store.mouse.y.toFixed(2)}`);
+                console.log(`Touch Y calc: touch.clientY=${touches[0].clientY}, canvasTop=${canvasTopInViewport}, scaledY=${store.mouse.y.toFixed(2)}`);
 
                 // Verificar si hay algún offset del sistema del navegador
                 const visualViewport = window.visualViewport;
@@ -258,12 +258,23 @@ export const bindEditorCanvas = (store: GameStore) => {
             return;
         }
         event.preventDefault();
-        const touch = event.touches[0];
 
-        // Guardar información inicial para detectar swipes
-        touchStartY = touch.clientY;
-        touchStartTime = Date.now();
-        isSwipeGesture = false;
+        const touches = event.touches;
+
+        // Si hay dos dedos tocando, iniciar gesto de dos dedos
+        if (touches.length === 2) {
+            touchStartY1 = touches[0].clientY;
+            touchStartY2 = touches[1].clientY;
+            touchStartTime = Date.now();
+            isTwoFingerGesture = true;
+            lastTwoFingerY = (touchStartY1 + touchStartY2) / 2;
+            return; // No procesar como toque normal
+        }
+
+        // Si hay un solo dedo, procesar normalmente
+        if (touches.length === 1) {
+            isTwoFingerGesture = false;
+        }
 
         // Como el canvas está posicionado fijo en (0,0) y ocupa 60% del ancho,
         // las coordenadas del evento están en relación al viewport completo
@@ -279,25 +290,25 @@ export const bindEditorCanvas = (store: GameStore) => {
         const canvasRightEdge = viewportWidth * 0.6;
 
         // Calcular coordenadas considerando el posicionamiento real del canvas
-        if (touch.clientX >= canvasLeftEdge && touch.clientX <= canvasRightEdge) {
+        if (touches[0].clientX >= canvasLeftEdge && touches[0].clientX <= canvasRightEdge) {
             // Para X: mapeo proporcional usando la resolución interna del canvas
             const canvasElementWidth = canvasRect.width;  // Tamaño real del elemento (549)
             const scaleX = canvasWidth / canvasElementWidth;  // Factor de escala (1200/549 ≈ 2.186)
-            store.mouse.x = (touch.clientX - canvasLeftEdge) * scaleX;
+            store.mouse.x = (touches[0].clientX - canvasLeftEdge) * scaleX;
 
             // Para Y: calcular considerando la posición real del canvas en el viewport
             const canvasTopInViewport = canvasRect.top;
             const canvasElementHeight = canvasRect.height;  // Tamaño real del elemento (412)
             const scaleY = canvasHeight / canvasElementHeight;  // Factor de escala (900/412 ≈ 2.184)
-            store.mouse.y = (touch.clientY - canvasTopInViewport) * scaleY;
+            store.mouse.y = (touches[0].clientY - canvasTopInViewport) * scaleY;
 
             // Debug adicional para verificar coordenadas del dispositivo
-            console.log(`Device info: touch.clientX=${touch.clientX}, touch.clientY=${touch.clientY}`);
+            console.log(`Device info: touch.clientX=${touches[0].clientX}, touch.clientY=${touches[0].clientY}`);
             console.log(`Canvas rect: left=${canvasRect.left}, top=${canvasRect.top}, width=${canvasRect.width}, height=${canvasRect.height}`);
             console.log(`Viewport: ${viewportWidth}x${viewportHeight}`);
             console.log(`Canvas internal: ${canvasWidth}x${canvasHeight}`);
             console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
-            console.log(`Touch Y calc: touch.clientY=${touch.clientY}, canvasTop=${canvasTopInViewport}, scaledY=${store.mouse.y.toFixed(2)}`);
+            console.log(`Touch Y calc: touch.clientY=${touches[0].clientY}, canvasTop=${canvasTopInViewport}, scaledY=${store.mouse.y.toFixed(2)}`);
 
             // Verificar si hay algún offset del sistema del navegador
             const visualViewport = window.visualViewport;
@@ -326,23 +337,25 @@ export const bindEditorCanvas = (store: GameStore) => {
         console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
 
         // Debug: Log de coordenadas para identificar el problema
-        console.log(`Touch: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${touch.clientX}, ${touch.clientY})`);
+        console.log(`Touch: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${touches[0].clientX}, ${touches[0].clientY})`);
 
         store.mouse.isDown = true;
         applyMousePaint(store);
     }, { passive: false });
 
-    canvas.addEventListener('touchend', () => {
+    canvas.addEventListener('touchend', event => {
         if (store.appState !== 'editing') {
             return;
         }
         store.mouse.isDown = false;
 
-        // Limpiar variables de detección de swipes después de un breve delay
+        // Limpiar variables de detección de gestos con dos dedos
         setTimeout(() => {
-            isSwipeGesture = false;
-            touchStartY = 0;
+            isTwoFingerGesture = false;
+            touchStartY1 = 0;
+            touchStartY2 = 0;
             touchStartTime = 0;
+            lastTwoFingerY = 0;
         }, 100);
     });
 };
