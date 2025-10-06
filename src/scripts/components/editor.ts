@@ -63,35 +63,30 @@ export const bindEditorCanvas = (store: GameStore) => {
             return;
         }
 
-        // Como el canvas está posicionado fijo en (0,0) y ocupa 60% del ancho,
-        // las coordenadas del evento están en relación al viewport completo
-        // Necesitamos mapear las coordenadas del evento al área del canvas
+        // Obtener las coordenadas reales del canvas en el viewport
         const canvasRect = canvas.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
         const canvasWidth = canvas.width;  // Resolución interna del canvas (1200)
         const canvasHeight = canvas.height;  // Resolución interna del canvas (900)
 
-        // El canvas ocupa el 60% izquierdo del viewport
-        const canvasLeftEdge = 0;
-        const canvasRightEdge = viewportWidth * 0.6;
+        // Verificar si el mouse está dentro del área del canvas
+        if (event.clientX >= canvasRect.left && event.clientX <= canvasRect.right &&
+            event.clientY >= canvasRect.top && event.clientY <= canvasRect.bottom) {
+            
+            // Calcular coordenadas relativas al canvas
+            const relativeX = event.clientX - canvasRect.left;
+            const relativeY = event.clientY - canvasRect.top;
+            
+            // Convertir a coordenadas del canvas interno usando el factor de escala
+            const scaleX = canvasWidth / canvasRect.width;
+            const scaleY = canvasHeight / canvasRect.height;
+            
+            store.mouse.x = relativeX * scaleX;
+            store.mouse.y = relativeY * scaleY;
 
-        // Calcular coordenadas considerando el posicionamiento real del canvas
-        if (event.clientX >= canvasLeftEdge && event.clientX <= canvasRightEdge) {
-            // Para X: mapeo proporcional usando la resolución interna del canvas
-            const canvasElementWidth = canvasRect.width;  // Tamaño real del elemento (549)
-            const scaleX = canvasWidth / canvasElementWidth;  // Factor de escala (1200/549 ≈ 2.186)
-            store.mouse.x = (event.clientX - canvasLeftEdge) * scaleX;
-
-            // Para Y: calcular considerando la posición real del canvas en el viewport
-            const canvasTopInViewport = canvasRect.top;
-            const canvasElementHeight = canvasRect.height;  // Tamaño real del elemento (412)
-            const scaleY = canvasHeight / canvasElementHeight;  // Factor de escala (900/412 ≈ 2.184)
-            store.mouse.y = (event.clientY - canvasTopInViewport) * scaleY;
-
-            // Debug adicional para verificar coordenadas
+            // Debug para verificar coordenadas
             console.log(`Canvas rect: (${canvasRect.left}, ${canvasRect.top}, ${canvasRect.width}, ${canvasRect.height})`);
-            console.log(`Viewport: (${viewportWidth}x${viewportHeight})`);
+            console.log(`Mouse relative: (${relativeX}, ${relativeY})`);
+            console.log(`Mouse canvas: (${store.mouse.x.toFixed(1)}, ${store.mouse.y.toFixed(1)})`);
             console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
         } else {
             // Si el evento está fuera del área del canvas, no procesar
@@ -103,9 +98,11 @@ export const bindEditorCanvas = (store: GameStore) => {
         store.mouse.y = Math.max(0, Math.min(store.mouse.y, canvas.height));
 
         // Calcular coordenadas del mundo considerando la cámara
-        // Las coordenadas del mouse ya están en relación a la resolución interna del canvas (1200x900)
-        // y el contenido se mueve mediante ctx.translate(0, -store.cameraY) en el contexto de dibujo
-        const worldY = store.mouse.y;
+        // Las coordenadas del mouse están en relación al contenido visible del canvas
+        // pero necesitamos convertirlas a coordenadas del mundo absoluto considerando el scroll
+        // Como el contenido se mueve mediante ctx.translate(0, -store.cameraY), necesitamos
+        // sumar store.cameraY para obtener las coordenadas correctas del mundo
+        const worldY = store.mouse.y + store.cameraY;
         store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
 
@@ -196,22 +193,20 @@ export const bindEditorCanvas = (store: GameStore) => {
             const canvasWidth = canvas.width;  // Resolución interna del canvas (1200)
             const canvasHeight = canvas.height;  // Resolución interna del canvas (900)
 
-            // El canvas ocupa el 60% izquierdo del viewport
-            const canvasLeftEdge = 0;
-            const canvasRightEdge = viewportWidth * 0.6;
-
-            // Calcular coordenadas considerando el posicionamiento real del canvas
-            if (touches[0].clientX >= canvasLeftEdge && touches[0].clientX <= canvasRightEdge) {
-                // Para X: mapeo proporcional usando la resolución interna del canvas
-                const canvasElementWidth = canvasRect.width;  // Tamaño real del elemento (549)
-                const scaleX = canvasWidth / canvasElementWidth;  // Factor de escala (1200/549 ≈ 2.186)
-                store.mouse.x = (touches[0].clientX - canvasLeftEdge) * scaleX;
-
-                // Para Y: calcular considerando la posición real del canvas en el viewport
-                const canvasTopInViewport = canvasRect.top;
-                const canvasElementHeight = canvasRect.height;  // Tamaño real del elemento (412)
-                const scaleY = canvasHeight / canvasElementHeight;  // Factor de escala (900/412 ≈ 2.184)
-                store.mouse.y = (touches[0].clientY - canvasTopInViewport) * scaleY;
+            // Verificar si el touch está dentro del área del canvas
+            if (touches[0].clientX >= canvasRect.left && touches[0].clientX <= canvasRect.right &&
+                touches[0].clientY >= canvasRect.top && touches[0].clientY <= canvasRect.bottom) {
+                
+                // Calcular coordenadas relativas al canvas
+                const relativeX = touches[0].clientX - canvasRect.left;
+                const relativeY = touches[0].clientY - canvasRect.top;
+                
+                // Convertir a coordenadas del canvas interno usando el factor de escala
+                const scaleX = canvasWidth / canvasRect.width;
+                const scaleY = canvasHeight / canvasRect.height;
+                
+                store.mouse.x = relativeX * scaleX;
+                store.mouse.y = relativeY * scaleY;
 
                 // Debug adicional para verificar coordenadas del dispositivo
                 console.log(`Device info: touch.clientX=${touches[0].clientX}, touch.clientY=${touches[0].clientY}`);
@@ -219,7 +214,7 @@ export const bindEditorCanvas = (store: GameStore) => {
                 console.log(`Viewport: ${viewportWidth}x${viewportHeight}`);
                 console.log(`Canvas internal: ${canvasWidth}x${canvasHeight}`);
                 console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
-                console.log(`Touch Y calc: touch.clientY=${touches[0].clientY}, canvasTop=${canvasTopInViewport}, scaledY=${store.mouse.y.toFixed(2)}`);
+                console.log(`Touch Y calc: touch.clientY=${touches[0].clientY}, canvasTop=${canvasRect.top}, scaledY=${store.mouse.y.toFixed(2)}`);
 
                 // Verificar si hay algún offset del sistema del navegador
                 const visualViewport = window.visualViewport;
@@ -285,22 +280,20 @@ export const bindEditorCanvas = (store: GameStore) => {
         const canvasWidth = canvas.width;  // Resolución interna del canvas (1200)
         const canvasHeight = canvas.height;  // Resolución interna del canvas (900)
 
-        // El canvas ocupa el 60% izquierdo del viewport
-        const canvasLeftEdge = 0;
-        const canvasRightEdge = viewportWidth * 0.6;
-
-        // Calcular coordenadas considerando el posicionamiento real del canvas
-        if (touches[0].clientX >= canvasLeftEdge && touches[0].clientX <= canvasRightEdge) {
-            // Para X: mapeo proporcional usando la resolución interna del canvas
-            const canvasElementWidth = canvasRect.width;  // Tamaño real del elemento (549)
-            const scaleX = canvasWidth / canvasElementWidth;  // Factor de escala (1200/549 ≈ 2.186)
-            store.mouse.x = (touches[0].clientX - canvasLeftEdge) * scaleX;
-
-            // Para Y: calcular considerando la posición real del canvas en el viewport
-            const canvasTopInViewport = canvasRect.top;
-            const canvasElementHeight = canvasRect.height;  // Tamaño real del elemento (412)
-            const scaleY = canvasHeight / canvasElementHeight;  // Factor de escala (900/412 ≈ 2.184)
-            store.mouse.y = (touches[0].clientY - canvasTopInViewport) * scaleY;
+        // Verificar si el touch está dentro del área del canvas
+        if (touches[0].clientX >= canvasRect.left && touches[0].clientX <= canvasRect.right &&
+            touches[0].clientY >= canvasRect.top && touches[0].clientY <= canvasRect.bottom) {
+            
+            // Calcular coordenadas relativas al canvas
+            const relativeX = touches[0].clientX - canvasRect.left;
+            const relativeY = touches[0].clientY - canvasRect.top;
+            
+            // Convertir a coordenadas del canvas interno usando el factor de escala
+            const scaleX = canvasWidth / canvasRect.width;
+            const scaleY = canvasHeight / canvasRect.height;
+            
+            store.mouse.x = relativeX * scaleX;
+            store.mouse.y = relativeY * scaleY;
 
             // Debug adicional para verificar coordenadas del dispositivo
             console.log(`Device info: touch.clientX=${touches[0].clientX}, touch.clientY=${touches[0].clientY}`);
@@ -308,7 +301,7 @@ export const bindEditorCanvas = (store: GameStore) => {
             console.log(`Viewport: ${viewportWidth}x${viewportHeight}`);
             console.log(`Canvas internal: ${canvasWidth}x${canvasHeight}`);
             console.log(`Scale factors: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
-            console.log(`Touch Y calc: touch.clientY=${touches[0].clientY}, canvasTop=${canvasTopInViewport}, scaledY=${store.mouse.y.toFixed(2)}`);
+            console.log(`Touch Y calc: touch.clientY=${touches[0].clientY}, canvasTop=${canvasRect.top}, scaledY=${store.mouse.y.toFixed(2)}`);
 
             // Verificar si hay algún offset del sistema del navegador
             const visualViewport = window.visualViewport;
@@ -326,9 +319,11 @@ export const bindEditorCanvas = (store: GameStore) => {
         store.mouse.y = Math.max(0, Math.min(store.mouse.y, canvas.height));
 
         // Calcular coordenadas del mundo considerando la cámara
-        // Las coordenadas del mouse ya están en relación a la resolución interna del canvas (1200x900)
-        // y el contenido se mueve mediante ctx.translate(0, -store.cameraY) en el contexto de dibujo
-        const worldY = store.mouse.y;
+        // Las coordenadas del mouse están en relación al contenido visible del canvas
+        // pero necesitamos convertirlas a coordenadas del mundo absoluto considerando el scroll
+        // Como el contenido se mueve mediante ctx.translate(0, -store.cameraY), necesitamos
+        // sumar store.cameraY para obtener las coordenadas correctas del mundo
+        const worldY = store.mouse.y + store.cameraY;
         store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
 

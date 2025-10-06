@@ -1,7 +1,7 @@
 import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER_SPEED, MAX_ENERGY, BOMB_FUSE } from '../core/constants';
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
-import { checkCollision } from '../core/collision';
+import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
 
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
@@ -27,6 +27,17 @@ const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
             player.y = wall.y + TILE_SIZE;
             player.vy = 0;
         } else {
+            // Verificar si el tile está en un bloque con altura
+            const isHeightBlock = isInHeightBlock(wall, store.walls);
+            const isTop = isTopBlock(wall, store.walls);
+            
+            // Si el héroe está cayendo (vy > 0) y el tile está en un bloque con altura
+            // pero NO es el bloque superior, permitir que pase a través
+            if (player.vy > 0 && isHeightBlock && !isTop) {
+                // No hacer nada - permitir que el héroe pase a través del bloque intermedio
+                return;
+            }
+            
             player.y = wall.y - player.height;
             if (!player.isApplyingThrust) {
                 player.isGrounded = true;

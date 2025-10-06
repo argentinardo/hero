@@ -7,9 +7,9 @@ const createInitialPlayer = (): Player => ({
     width: TILE_SIZE,
     height: TILE_SIZE * 2,
     hitbox: {
-        x: TILE_SIZE * 1.5 + TILE_SIZE / 4,
+        x: TILE_SIZE * 1.5 + (TILE_SIZE - 60) / 2,
         y: TILE_SIZE * 1.5,
-        width: TILE_SIZE / 2,
+        width: 60,
         height: TILE_SIZE * 2,
     },
     vx: 0,

@@ -64,7 +64,7 @@ export const showMenu = (store: GameStore) => {
     store.dom.ui.resumeEditorBtn?.classList.add('hidden');
 
     if (messageTitle) {
-        messageTitle.textContent = 'H.E.R.O. CLONE';
+        messageTitle.textContent = 'NEW H.E.R.O.';
     }
     if (messageText) {
         messageText.innerHTML = 'Presiona ENTER o el botón para empezar';

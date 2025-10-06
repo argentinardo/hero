@@ -101,7 +101,7 @@ const bootstrap = () => {
 
     preloadAssets(store, () => {
         loadLevel(store);
-        startGame(store);
+        // No llamar startGame automáticamente - esperar a que el usuario presione el botón
         gameLoop();
     });
 };
