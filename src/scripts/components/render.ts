@@ -164,14 +164,6 @@ const drawPlayer = (store: GameStore) => {
     ctx.translate(player.x + player.width / 2, player.y);
     ctx.scale(player.direction, 1);
     ctx.drawImage(sprite, player.currentFrame * frameWidth, 0, frameWidth, sprite.height, -player.width / 2, 0, player.width, player.height);
-
-    if (player.deathTimer > 0) {
-        ctx.globalAlpha = player.deathTimer / 60;
-        ctx.fillStyle = 'white';
-        ctx.fillRect(-player.width / 2, 0, player.width, player.height);
-        ctx.globalAlpha = 1;
-    }
-
     ctx.restore();
 };
 

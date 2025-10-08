@@ -1,7 +1,7 @@
 import type { JoystickManager } from 'nipplejs';
 
 export type AppState = 'menu' | 'playing' | 'editing';
-export type GameState = 'start' | 'playing' | 'respawning' | 'gameover' | 'win';
+export type GameState = 'start' | 'playing' | 'respawning' | 'floating' | 'gameover' | 'win';
 
 export interface AnimationData {
     frames: number;
@@ -20,7 +20,7 @@ export interface GameObject {
     height: number;
 }
 
-export type PlayerAnimationState = 'stand' | 'walk' | 'jump' | 'fly';
+export type PlayerAnimationState = 'stand' | 'walk' | 'jump' | 'fly' | 'die';
 
 export interface Player extends GameObject {
     hitbox: GameObject;
@@ -38,6 +38,9 @@ export interface Player extends GameObject {
     currentFrame: number;
     deathTimer: number;
     isFrozen: boolean;
+    isFloating: boolean;
+    respawnX: number;
+    respawnY: number;
 }
 
 export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner';
@@ -158,7 +161,6 @@ export interface UiElements {
     gameUiEl: HTMLElement | null;
     editorPanelEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
-    levelDataTextarea: HTMLTextAreaElement | null;
     confirmationModalEl: HTMLElement | null;
     levelSelectorEl: HTMLSelectElement | null;
     mobileControlsEl: HTMLElement | null;
@@ -170,10 +172,6 @@ export interface UiElements {
     resumeEditorBtn: HTMLButtonElement | null;
     loadLevelBtn: HTMLButtonElement | null;
     saveLevelBtn: HTMLButtonElement | null;
-    exportLevelBtn: HTMLButtonElement | null;
-    importLevelBtn: HTMLButtonElement | null;
-    saveAllBtn: HTMLButtonElement | null;
-    cleanLevelBtn: HTMLButtonElement | null;
     backToMenuBtn: HTMLButtonElement | null;
     confirmSaveBtn: HTMLButtonElement | null;
     cancelSaveBtn: HTMLButtonElement | null;
@@ -191,6 +189,7 @@ export interface GameStore {
     lives: number;
     score: number;
     energy: number;
+    energyDecrementRate: number;
     currentLevelIndex: number;
     cameraY: number;
     player: Player;

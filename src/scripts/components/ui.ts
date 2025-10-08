@@ -21,7 +21,6 @@ export const attachDomReferences = (store: GameStore) => {
     ui.gameUiEl = document.getElementById('game-ui');
     ui.editorPanelEl = document.getElementById('editor-panel');
     ui.paletteEl = document.getElementById('tile-palette');
-    ui.levelDataTextarea = document.getElementById('level-data-textarea') as HTMLTextAreaElement | null;
     ui.confirmationModalEl = document.getElementById('confirmation-modal');
     ui.levelSelectorEl = document.getElementById('level-selector') as HTMLSelectElement | null;
     ui.mobileControlsEl = document.getElementById('mobile-controls');
@@ -34,10 +33,6 @@ export const attachDomReferences = (store: GameStore) => {
     ui.resumeEditorBtn = document.getElementById('resume-editor-btn') as HTMLButtonElement | null;
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
     ui.saveLevelBtn = document.getElementById('save-level-btn') as HTMLButtonElement | null;
-    ui.exportLevelBtn = document.getElementById('export-level-btn') as HTMLButtonElement | null;
-    ui.importLevelBtn = document.getElementById('import-level-btn') as HTMLButtonElement | null;
-    ui.saveAllBtn = document.getElementById('save-all-btn') as HTMLButtonElement | null;
-    ui.cleanLevelBtn = document.getElementById('clean-level-btn') as HTMLButtonElement | null;
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
     ui.confirmSaveBtn = document.getElementById('confirm-save-btn') as HTMLButtonElement | null;
     ui.cancelSaveBtn = document.getElementById('cancel-save-btn') as HTMLButtonElement | null;
@@ -391,23 +386,15 @@ const setupMenuButtons = (store: GameStore) => {
 
 const setupLevelData = (store: GameStore) => {
     const {
-        levelDataTextarea,
         loadLevelBtn,
         saveLevelBtn,
-        exportLevelBtn,
-        importLevelBtn,
         playTestBtn,
         resumeEditorBtn,
         backToMenuBtn,
-        saveAllBtn,
-        cleanLevelBtn,
         confirmSaveBtn,
         cancelSaveBtn,
         confirmationModalEl,
     } = store.dom.ui;
-    if (!levelDataTextarea) {
-        return;
-    }
 
     loadLevelBtn?.addEventListener('click', () => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
@@ -418,23 +405,6 @@ const setupLevelData = (store: GameStore) => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
         window.alert(`Nivel ${index + 1} guardado en la sesión.`);
-    });
-
-    exportLevelBtn?.addEventListener('click', () => {
-        if (!store.editorLevel) {
-            return;
-        }
-        levelDataTextarea.value = JSON.stringify(store.editorLevel.map(row => row.join('')), null, 4);
-    });
-
-    importLevelBtn?.addEventListener('click', () => {
-        try {
-            const data = JSON.parse(levelDataTextarea.value);
-            store.editorLevel = data.map((row: string) => row.split(''));
-        } catch (error) {
-            console.error('Error al importar nivel', error);
-            window.alert('JSON inválido. Revisa el formato y vuelve a intentar.');
-        }
     });
 
     playTestBtn?.addEventListener('click', () => {
@@ -452,57 +422,8 @@ const setupLevelData = (store: GameStore) => {
 
     backToMenuBtn?.addEventListener('click', () => showMenu(store));
 
-    cleanLevelBtn?.addEventListener('click', () => {
-        if (store.editorLevel.length === 0) {
-            return;
-        }
-        store.editorLevel = store.editorLevel.map(row => row.map(() => '0'));
-        levelDataTextarea.value = JSON.stringify(store.editorLevel.map(row => row.join('')), null, 4);
-    });
-
-    const saveAllLevelsToFile = async () => {
-        const payload = store.levelDataStore.map(level => level.map(row => row.join('')));
-
-        const downloadFallback = () => {
-            const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = 'levels.json';
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(url);
-            window.alert('No se pudo guardar automáticamente. Se descargó un archivo levels.json con los datos.');
-        };
-
-        try {
-            const response = await fetch('/api/save-levels', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            window.alert('¡Todos los niveles se han guardado en levels.json!');
-        } catch (error) {
-            console.error('Error saving levels:', error);
-            downloadFallback();
-        }
-    };
-
-    saveAllBtn?.addEventListener('click', () => {
-        confirmationModalEl?.classList.remove('hidden');
-    });
-
-    confirmSaveBtn?.addEventListener('click', async () => {
-        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
+    confirmSaveBtn?.addEventListener('click', () => {
         confirmationModalEl?.classList.add('hidden');
-        await saveAllLevelsToFile();
     });
 
     cancelSaveBtn?.addEventListener('click', () => {

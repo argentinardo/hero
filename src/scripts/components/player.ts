@@ -77,6 +77,14 @@ const resolvePlayerMinerCollision = (store: GameStore, miner: Miner) => {
     player.hitbox.y = player.y;
 };
 
+const calculateEnergyDecrementRate = (levelLength: number): number => {
+    // Nivel base: 22 filas = decremento base (0.1)
+    // Para niveles más largos, decrementar más lento
+    const baseLevelLength = 22;
+    const decrementMultiplier = baseLevelLength / levelLength;
+    return 0.1 * decrementMultiplier;
+};
+
 export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) => {
     const { player } = store;
     Object.assign(player, {
@@ -105,7 +113,14 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
         deathTimer: 0,
         isFrozen: false,
     });
+    
+    // Siempre empezar con energía máxima visual
     store.energy = MAX_ENERGY;
+    
+    // Calcular y almacenar la velocidad de decremento basada en la longitud del nivel
+    const currentLevel = store.levelDesigns[store.currentLevelIndex];
+    const levelLength = currentLevel ? currentLevel.length : 22;
+    store.energyDecrementRate = calculateEnergyDecrementRate(levelLength);
 };
 
 export const handlePlayerInput = (store: GameStore) => {
@@ -113,6 +128,49 @@ export const handlePlayerInput = (store: GameStore) => {
 
     // Si el jugador está congelado, no procesar input
     if (player.isFrozen) {
+        return;
+    }
+
+    // Si está flotando, permitir movimiento y cualquier tecla salir del estado
+    if (store.gameState === 'floating' && player.isFloating) {
+        // Permitir movimiento horizontal
+        if (keys.ArrowLeft) {
+            player.vx = -PLAYER_SPEED;
+            player.direction = -1;
+        } else if (keys.ArrowRight) {
+            player.vx = PLAYER_SPEED;
+            player.direction = 1;
+        } else {
+            player.vx = 0;
+        }
+
+        // Cualquier tecla presionada sale del estado flotante
+        const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
+        if (anyKeyPressed) {
+            // Si es disparo láser, crear el láser
+            if (keys.Space && player.shootCooldown === 0) {
+                const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
+                const laserY = player.y + player.height / 4;
+                lasers.push({
+                    x: laserX,
+                    y: laserY,
+                    width: 30,
+                    height: 5,
+                    vx: LASER_SPEED * player.direction,
+                    startX: laserX - 20,
+                });
+                player.shootCooldown = 6;
+            }
+            
+            // Salir del estado flotante (misma lógica para cualquier tecla)
+            player.isFloating = false;
+            player.animationState = 'fly';
+            store.gameState = 'playing';
+        }
+
+        // Permitir vuelo (ArrowUp)
+        player.wantsToFly = Boolean(keys.ArrowUp);
+        
         return;
     }
 
@@ -175,13 +233,27 @@ export const emitParticles = (store: GameStore, x: number, y: number, count: num
     }
 };
 
-export const playerDie = (store: GameStore) => {
-    if (store.gameState === 'respawning' || store.gameState === 'gameover') {
+export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
+    if (store.gameState === 'respawning' || store.gameState === 'gameover' || store.gameState === 'floating') {
         return;
     }
 
     const { player } = store;
-    emitParticles(store, player.x + player.width / 2, player.y + player.height / 2, 20, 'white');
+    
+    // Si muere por enemigo, matar al enemigo también (sin puntos)
+    if (killedByEnemy) {
+        killedByEnemy.isDead = true;
+        killedByEnemy.isHidden = true;
+    }
+
+    // Guardar posición de muerte para respawn
+    player.respawnX = player.x;
+    player.respawnY = player.y;
+
+    // Cambiar animación a muerte
+    player.animationState = 'die';
+    player.currentFrame = 0;
+    player.animationTick = 0;
     player.deathTimer = 60;
     store.lives -= 1;
     store.gameState = 'respawning';
@@ -199,22 +271,27 @@ export const playerDie = (store: GameStore) => {
         return;
     }
 
+    // Reaparecer desde arriba del viewport actual
     window.setTimeout(() => {
-        const levelMap = store.levelDesigns[store.currentLevelIndex];
-        let startX = TILE_SIZE * 1.5;
-        let startY = TILE_SIZE * 1.5;
-        for (let y = 0; y < levelMap.length; y++) {
-            const x = levelMap[y].indexOf('P');
-            if (x !== -1) {
-                startX = x * TILE_SIZE;
-                startY = y * TILE_SIZE;
-                break;
-            }
-        }
-        resetPlayer(store, startX, startY);
-        store.cameraY = 0;
-        store.gameState = 'playing';
-    }, 2000);
+        const canvas = store.dom.canvas;
+        if (!canvas) return;
+        
+        // Aparecer desde arriba del viewport actual de la cámara
+        player.x = player.respawnX;
+        player.y = store.cameraY - TILE_SIZE; // Desde arriba del viewport actual
+        player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
+        player.hitbox.y = player.y;
+        player.animationState = 'fly';
+        player.isFloating = true;
+        player.isGrounded = false;
+        player.vy = 6; // Velocidad de descenso más rápida
+        player.vx = 0;
+        player.deathTimer = 0;
+        store.gameState = 'floating';
+        
+        // Objetivo: posición de respawn un tile más arriba
+        player.respawnY = player.respawnY - TILE_SIZE;
+    }, 1000);
 };
 
 const updateFlightState = (store: GameStore) => {
@@ -239,13 +316,12 @@ const updateFlightState = (store: GameStore) => {
             player.flyChargeTimer = 0;
             player.isApplyingThrust = true;
         }
-    } else if (player.wantsToFly && !player.isGrounded && store.energy > 0) {
+    } else if (player.wantsToFly && !player.isGrounded) {
         player.isApplyingThrust = true;
     }
 
-    if (player.isApplyingThrust && store.energy > 0) {
+    if (player.isApplyingThrust) {
         player.vy -= THRUST_POWER;
-        store.energy = Math.max(0, store.energy - 0.5);
         const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
         const jetX = player.x + baseOffsetX;
         const jetY = player.y + player.height - 42;
@@ -342,6 +418,37 @@ const updatePlayerAnimation = (store: GameStore) => {
 
 export const updatePlayer = (store: GameStore) => {
     const { player } = store;
+    
+    // Si está flotando, aplicar movimiento horizontal y descenso hacia posición objetivo
+    if (player.isFloating && store.gameState === 'floating') {
+        player.animationState = 'fly';
+        
+        // Aplicar movimiento horizontal
+        player.x += player.vx;
+        player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
+        
+        // Descender hacia la posición objetivo si no ha llegado
+        if (player.y < player.respawnY) {
+            player.y += player.vy;
+            player.hitbox.y = player.y;
+        } else {
+            // Ha llegado a la posición objetivo, detener descenso
+            player.y = player.respawnY;
+            player.hitbox.y = player.y;
+            player.vy = 0;
+        }
+        
+        // Mantener límites del canvas horizontalmente
+        const canvas = store.dom.canvas;
+        if (canvas) {
+            player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+            player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
+        }
+        
+        updatePlayerAnimation(store);
+        return;
+    }
+
     updateFlightState(store);
     updatePlayerPosition(store);
     handleCollisions(store);
@@ -349,9 +456,9 @@ export const updatePlayer = (store: GameStore) => {
     if (player.shootCooldown > 0) {
         player.shootCooldown--;
     }
-    if (player.isGrounded) {
-        store.energy = Math.min(MAX_ENERGY, store.energy + 1);
-    }
+
+    // Decrementar energía automáticamente como temporizador con velocidad variable
+    store.energy = Math.max(0, store.energy - store.energyDecrementRate);
 
     updatePlayerAnimation(store);
 };
@@ -378,10 +485,10 @@ export const checkEnemyCollision = (store: GameStore) => {
                 };
             }
             if (headHitbox && headHitbox.width > 0 && checkCollision(player.hitbox, headHitbox)) {
-                playerDie(store);
+                playerDie(store, enemy);
             }
         } else if (!enemy.isHidden && checkCollision(player.hitbox, enemy)) {
-            playerDie(store);
+            playerDie(store, enemy);
         }
     });
 };

@@ -8,7 +8,7 @@ import { TILE_SIZE } from './core/constants';
 import { setupUI, showMenu, startGame } from './components/ui';
 import { setupEditorState, bindEditorCanvas, drawEditor } from './components/editor';
 import { handlePlayerInput, updatePlayer, checkEnemyCollision } from './components/player';
-import { loadLevel, updateWalls, replenishEnergyOnGround, awardMinerRescue } from './components/level';
+import { loadLevel, updateWalls, awardMinerRescue } from './components/level';
 import { updateEnemies, updateMiner } from './components/enemy';
 import { updateLasers } from './components/laser';
 import { updateBombs, updateExplosions } from './components/bomb';
@@ -62,7 +62,7 @@ const checkMinerRescue = () => {
 };
 
 const updateGameState = () => {
-    if (store.gameState !== 'playing') return;
+    if (store.gameState !== 'playing' && store.gameState !== 'floating') return;
 
     handlePlayerInput(store);
     updatePlayer(store);
@@ -79,7 +79,6 @@ const updateGameState = () => {
     checkEnemyCollision(store);
     checkMinerRescue();
     updateCamera();
-    replenishEnergyOnGround(store);
 };
 
 const gameLoop = () => {

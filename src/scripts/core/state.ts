@@ -26,6 +26,9 @@ const createInitialPlayer = (): Player => ({
     currentFrame: 0,
     deathTimer: 0,
     isFrozen: false,
+    isFloating: false,
+    respawnX: 0,
+    respawnY: 0,
 });
 
 export const createInitialStore = (): GameStore => ({
@@ -34,6 +37,7 @@ export const createInitialStore = (): GameStore => ({
     lives: 0,
     score: 0,
     energy: 0,
+    energyDecrementRate: 0.1,
     currentLevelIndex: 0,
     cameraY: 0,
     player: createInitialPlayer(),
@@ -72,7 +76,6 @@ export const createInitialStore = (): GameStore => ({
             gameUiEl: null,
             editorPanelEl: null,
             paletteEl: null,
-            levelDataTextarea: null,
             confirmationModalEl: null,
             levelSelectorEl: null,
             mobileControlsEl: null,
@@ -84,10 +87,6 @@ export const createInitialStore = (): GameStore => ({
             resumeEditorBtn: null,
             loadLevelBtn: null,
             saveLevelBtn: null,
-            exportLevelBtn: null,
-            importLevelBtn: null,
-            saveAllBtn: null,
-            cleanLevelBtn: null,
             backToMenuBtn: null,
             confirmSaveBtn: null,
             cancelSaveBtn: null,

@@ -237,9 +237,4 @@ export const awardMinerRescue = (store: GameStore) => {
     store.player.vy = 0;
 };
 
-export const replenishEnergyOnGround = (store: GameStore) => {
-    if (store.player.isGrounded) {
-        store.energy = Math.min(MAX_ENERGY, store.energy + 1);
-    }
-};
 

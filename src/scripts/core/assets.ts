@@ -2,6 +2,7 @@ import playerWalkSrc from '../../assets/sprites/hero_walk.png';
 import playerStandSrc from '../../assets/sprites/hero_stand.png';
 import playerJumpSrc from '../../assets/sprites/hero_jump.png';
 import playerFlySrc from '../../assets/sprites/hero_fly.png';
+import playerDieSrc from '../../assets/sprites/hero-die.png';
 import batSrc from '../../assets/sprites/bat_small.png';
 import spiderSrc from '../../assets/sprites/spider_small.png';
 import viperSrc from '../../assets/sprites/serpiente_small.png';
@@ -22,6 +23,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     P_stand: playerStandSrc,
     P_jump: playerJumpSrc,
     P_fly: playerFlySrc,
+    P_die: playerDieSrc,
     '8': batSrc,
     S: spiderSrc,
     V: viperSrc,
@@ -41,6 +43,7 @@ export const ANIMATION_DATA: AnimationMap = {
     P_stand: { frames: 4, speed: 20, sprite: 'P_stand' },
     P_jump: { frames: 4, speed: 10, sprite: 'P_jump', loop: false },
     P_fly: { frames: 5, speed: 10, sprite: 'P_fly' },
+    P_die: { frames: 1, speed: 1, sprite: 'P_die', loop: false },
     '8': { frames: 6, speed: 2, sprite: '8' },
     S: { frames: 15, speed: 7, sprite: 'S' },
     V: { frames: 4, speed: 8, sprite: 'V' },
