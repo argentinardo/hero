@@ -5,6 +5,7 @@ import mainMusic from '../../assets/audio/main.mp3';
 import jetpackSound from '../../assets/audio/jetpack.mp3';
 import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';
+import stepsSound from '../../assets/audio/steps.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -13,6 +14,7 @@ interface AudioSystem {
         jetpack: HTMLAudioElement | null;
         laser: HTMLAudioElement | null;
         lifedown: HTMLAudioElement | null;
+        steps: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -26,6 +28,7 @@ let audioSystem: AudioSystem = {
         jetpack: null,
         laser: null,
         lifedown: null,
+        steps: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -50,6 +53,10 @@ export const initAudio = () => {
 
         audioSystem.sounds.lifedown = new Audio(lifedownSound);
         audioSystem.sounds.lifedown.volume = audioSystem.sfxVolume;
+
+        audioSystem.sounds.steps = new Audio(stepsSound);
+        audioSystem.sounds.steps.loop = true; // Los pasos suenan en loop mientras camina
+        audioSystem.sounds.steps.volume = audioSystem.sfxVolume * 0.6; // Más bajo que otros efectos
 
         console.log('Sistema de audio inicializado correctamente');
     } catch (error) {
@@ -115,6 +122,26 @@ export const playLifedownSound = () => {
     }
 };
 
+// Reproducir sonido de pasos
+export const playStepsSound = () => {
+    if (audioSystem.sounds.steps && !audioSystem.isMuted) {
+        if (audioSystem.sounds.steps.paused) {
+            audioSystem.sounds.steps.currentTime = 0;
+            audioSystem.sounds.steps.play().catch(error => {
+                console.log('Error al reproducir pasos:', error);
+            });
+        }
+    }
+};
+
+// Detener sonido de pasos
+export const stopStepsSound = () => {
+    if (audioSystem.sounds.steps) {
+        audioSystem.sounds.steps.pause();
+        audioSystem.sounds.steps.currentTime = 0;
+    }
+};
+
 // Silenciar/Activar audio
 export const toggleMute = () => {
     audioSystem.isMuted = !audioSystem.isMuted;
@@ -122,6 +149,7 @@ export const toggleMute = () => {
     if (audioSystem.isMuted) {
         pauseBackgroundMusic();
         stopJetpackSound();
+        stopStepsSound();
     } else {
         playBackgroundMusic();
     }

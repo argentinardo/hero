@@ -2,7 +2,7 @@ import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
-import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound } from './audio';
+import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound } from './audio';
 
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
@@ -401,6 +401,13 @@ const updatePlayerAnimation = (store: GameStore) => {
         }
     } else {
         newState = 'jump';
+    }
+
+    // Gestionar sonido de pasos
+    if (newState === 'walk' && player.isGrounded) {
+        playStepsSound();
+    } else {
+        stopStepsSound();
     }
 
     if (player.animationState !== newState) {

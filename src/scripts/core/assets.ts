@@ -15,6 +15,7 @@ import columnSrc from '../../assets/sprites/tierra_small.png';
 import lavaSrc from '../../assets/sprites/lava.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
+import splashSrc from '../../assets/sprites/splash.png';
 
 import type { AnimationMap, GameStore, TileDictionary } from './types';
 
@@ -36,6 +37,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     '3': lavaSrc,
     L: lightSrc,
     background: backgroundSrc,
+    splash: splashSrc,
 };
 
 export const ANIMATION_DATA: AnimationMap = {

@@ -56,6 +56,15 @@ export const showMenu = (store: GameStore) => {
     const { messageOverlay, messageTitle, messageText, gameUiEl, editorPanelEl, mobileControlsEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
+        
+        // Agregar imagen splash como fondo del menú
+        const splashSprite = store.sprites.splash;
+        if (splashSprite) {
+            messageOverlay.style.backgroundImage = `url(${splashSprite.src})`;
+            messageOverlay.style.backgroundSize = 'cover';
+            messageOverlay.style.backgroundPosition = 'center';
+            messageOverlay.style.backgroundRepeat = 'no-repeat';
+        }
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
@@ -163,6 +172,8 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     const { messageOverlay, gameUiEl, editorPanelEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
+        // Limpiar el fondo del splash
+        messageOverlay.style.backgroundImage = '';
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'flex';
@@ -197,6 +208,8 @@ export const startEditor = (store: GameStore) => {
     const { messageOverlay, gameUiEl, editorPanelEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
+        // Limpiar el fondo del splash
+        messageOverlay.style.backgroundImage = '';
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
