@@ -2,6 +2,7 @@ import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
+import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound } from './audio';
 
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
@@ -160,6 +161,9 @@ export const handlePlayerInput = (store: GameStore) => {
                     startX: laserX - 20,
                 });
                 player.shootCooldown = 6;
+                
+                // Reproducir sonido de láser
+                playLaserSound();
             }
             
             // Salir del estado flotante (misma lógica para cualquier tecla)
@@ -198,6 +202,9 @@ export const handlePlayerInput = (store: GameStore) => {
             startX: laserX - 20,
         });
         player.shootCooldown = 6;
+        
+        // Reproducir sonido de láser
+        playLaserSound();
     }
 
     if (keys.ArrowDown && player.isGrounded && bombs.length === 0) {
@@ -239,6 +246,9 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     }
 
     const { player } = store;
+    
+    // Reproducir sonido de perder vida
+    playLifedownSound();
     
     // Si muere por enemigo, matar al enemigo también (sin puntos)
     if (killedByEnemy) {
@@ -326,8 +336,14 @@ const updateFlightState = (store: GameStore) => {
         const jetX = player.x + baseOffsetX;
         const jetY = player.y + player.height - 42;
         emitParticles(store, jetX, jetY, 15, 'yellow');
+        
+        // Reproducir sonido de jetpack
+        playJetpackSound();
     } else {
         player.isApplyingThrust = false;
+        
+        // Detener sonido de jetpack
+        stopJetpackSound();
     }
 
     if (!player.isChargingFly) {

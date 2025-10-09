@@ -6,6 +6,7 @@ import { TILE_TYPES, preloadAssets, ANIMATION_DATA } from '../core/assets';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
+import { playBackgroundMusic, pauseBackgroundMusic } from './audio';
 
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
@@ -48,6 +49,10 @@ export const showMenu = (store: GameStore) => {
     store.appState = 'menu';
     store.gameState = 'start';
     setBodyClass('menu');
+    
+    // Pausar música de fondo al volver al menú
+    pauseBackgroundMusic();
+    
     const { messageOverlay, messageTitle, messageText, gameUiEl, editorPanelEl, mobileControlsEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
@@ -171,6 +176,10 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         editorPanelEl.style.display = 'none';
     }
     startJoystick(store);
+    
+    // Iniciar música de fondo
+    playBackgroundMusic();
+    
     store.lives = 3;
     store.score = 0;
     store.currentLevelIndex = 0;

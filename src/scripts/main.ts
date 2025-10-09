@@ -15,6 +15,7 @@ import { updateBombs, updateExplosions } from './components/bomb';
 import { updateParticles, updateFallingEntities, updateFloatingScores } from './components/effects';
 import { renderGame, renderEditor } from './components/render';
 import { updateLights } from './components/light';
+import { initAudio, playBackgroundMusic } from './components/audio';
 
 const store = createInitialStore();
 store.initialLevels = initialLevels;
@@ -114,6 +115,10 @@ const bootstrap = () => {
     setupUI(store);
     setupEditorState(store);
     bindEditorCanvas(store);
+    
+    // Inicializar sistema de audio
+    initAudio();
+    
     showMenu(store);
 
     preloadAssets(store, () => {
