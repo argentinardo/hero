@@ -178,6 +178,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
 
     resetPlayer(store, playerStartX, playerStartY);
     store.cameraY = store.player.y - (store.dom.canvas?.height ?? 0) / 2;
+    store.cameraX = store.player.x - (store.dom.canvas?.width ?? 0) / 2;
 };
 
 export const updateWalls = (store: GameStore) => {
@@ -209,6 +210,7 @@ export const loadLevel = (store: GameStore) => {
 
     parseLevel(store, store.levelDesigns[store.currentLevelIndex]);
     store.cameraY = 0;
+    store.cameraX = 0;
     if (store.dom.ui.levelCountEl) {
         store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     }

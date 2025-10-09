@@ -24,6 +24,7 @@ const updateCamera = () => {
     const canvas = store.dom.canvas;
     if (!canvas) return;
 
+    // Cámara vertical (como antes)
     const cameraDeadzone = canvas.height / 3;
     const playerBottom = store.player.y + store.player.height;
     if (store.player.y < store.cameraY + cameraDeadzone) {
@@ -36,6 +37,23 @@ const updateCamera = () => {
     const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
     const maxCameraY = Math.max(0, levelRows * TILE_SIZE - canvas.height);
     store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
+
+    // Cámara horizontal (nueva funcionalidad)
+    const horizontalDeadzone = canvas.width / 3;
+    const playerRight = store.player.x + store.player.width;
+    
+    // Mover cámara si el jugador se acerca a los bordes
+    if (store.player.x < store.cameraX + horizontalDeadzone) {
+        store.cameraX = store.player.x - horizontalDeadzone;
+    }
+    if (playerRight > store.cameraX + canvas.width - horizontalDeadzone) {
+        store.cameraX = playerRight - canvas.width + horizontalDeadzone;
+    }
+
+    // Calcular límites horizontales del nivel
+    const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+    const maxCameraX = Math.max(0, levelCols * TILE_SIZE - canvas.width);
+    store.cameraX = Math.max(0, Math.min(store.cameraX, maxCameraX));
 };
 
 const checkMinerRescue = () => {

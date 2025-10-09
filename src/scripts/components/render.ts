@@ -253,15 +253,17 @@ const drawGameWorld = (store: GameStore) => {
         const TILE_SIZE = 64; // Tamaño del tile del background
         const startY = Math.floor(store.cameraY / TILE_SIZE) * TILE_SIZE;
         const endY = store.cameraY + canvas.height;
-        const numTilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
+        const startX = Math.floor(store.cameraX / TILE_SIZE) * TILE_SIZE;
+        const endX = store.cameraX + canvas.width;
+        const numTilesX = Math.ceil((endX - startX) / TILE_SIZE) + 1;
         const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
         
         ctx.save();
-        ctx.translate(0, -store.cameraY);
+        ctx.translate(-store.cameraX, -store.cameraY);
         
         for (let y = 0; y < numTilesY; y++) {
             for (let x = 0; x < numTilesX; x++) {
-                const tileX = x * TILE_SIZE;
+                const tileX = startX + x * TILE_SIZE;
                 const tileY = startY + y * TILE_SIZE;
                 ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
             }
@@ -275,7 +277,7 @@ const drawGameWorld = (store: GameStore) => {
     }
     
     ctx.save();
-    ctx.translate(0, -store.cameraY);
+    ctx.translate(-store.cameraX, -store.cameraY);
 
     // Dibujar luces primero
     store.lights.forEach(light => drawLight(store, light));

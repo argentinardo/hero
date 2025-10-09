@@ -172,6 +172,7 @@ export interface UiElements {
     resumeEditorBtn: HTMLButtonElement | null;
     loadLevelBtn: HTMLButtonElement | null;
     saveLevelBtn: HTMLButtonElement | null;
+    generateLevelBtn: HTMLButtonElement | null;
     backToMenuBtn: HTMLButtonElement | null;
     confirmSaveBtn: HTMLButtonElement | null;
     cancelSaveBtn: HTMLButtonElement | null;
@@ -192,6 +193,7 @@ export interface GameStore {
     energyDecrementRate: number;
     currentLevelIndex: number;
     cameraY: number;
+    cameraX: number;
     player: Player;
     walls: Wall[];
     enemies: Enemy[];

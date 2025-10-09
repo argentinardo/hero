@@ -5,6 +5,7 @@ import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA } from '../core/assets';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
+import { generateLevel } from './levelGenerator';
 
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
@@ -33,6 +34,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.resumeEditorBtn = document.getElementById('resume-editor-btn') as HTMLButtonElement | null;
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
     ui.saveLevelBtn = document.getElementById('save-level-btn') as HTMLButtonElement | null;
+    ui.generateLevelBtn = document.getElementById('generate-level-btn') as HTMLButtonElement | null;
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
     ui.confirmSaveBtn = document.getElementById('confirm-save-btn') as HTMLButtonElement | null;
     ui.cancelSaveBtn = document.getElementById('cancel-save-btn') as HTMLButtonElement | null;
@@ -388,6 +390,7 @@ const setupLevelData = (store: GameStore) => {
     const {
         loadLevelBtn,
         saveLevelBtn,
+        generateLevelBtn,
         playTestBtn,
         resumeEditorBtn,
         backToMenuBtn,
@@ -407,6 +410,30 @@ const setupLevelData = (store: GameStore) => {
         window.alert(`Nivel ${index + 1} guardado en la sesión.`);
     });
 
+    generateLevelBtn?.addEventListener('click', () => {
+        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        const canvas = store.dom.canvas;
+        if (!canvas) return;
+        
+        // Calcular dimensiones del nivel basado en el canvas
+        // Hacer el nivel más ancho para permitir exploración horizontal (3x el ancho del canvas)
+        const levelWidth = Math.floor(canvas.width / TILE_SIZE) * 3;
+        const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
+        
+        // Generar nivel con dificultad basada en el índice
+        const difficulty = Math.min(index + 1, 10);
+        const generatedLevel = generateLevel({
+            width: levelWidth,
+            height: levelHeight,
+            difficulty: difficulty
+        });
+        
+        // Convertir a formato del editor (array de arrays)
+        store.editorLevel = generatedLevel.map((row: string) => row.split(''));
+        
+        window.alert(`Nivel ${index + 1} generado automáticamente con dificultad ${difficulty}.`);
+    });
+
     playTestBtn?.addEventListener('click', () => {
         const currentLevel = store.editorLevel.map(row => row.join(''));
         startGame(store, currentLevel);
@@ -416,6 +443,7 @@ const setupLevelData = (store: GameStore) => {
         if (store.appState === 'playing') {
             startEditor(store);
             store.cameraY = 0;
+            store.cameraX = 0;
             store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
         }
     });

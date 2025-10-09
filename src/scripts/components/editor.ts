@@ -1,6 +1,7 @@
 import { TILE_SIZE, TOTAL_LEVELS } from '../core/constants';
 import { TILE_TYPES, ANIMATION_DATA } from '../core/assets';
 import type { GameStore } from '../core/types';
+import { generateLevel, LevelGeneratorOptions } from './levelGenerator';
 
 const ensurePlayerUnique = (level: string[][], tile: string, x: number, y: number) => {
     if (tile !== 'P') {
@@ -15,8 +16,7 @@ const ensurePlayerUnique = (level: string[][], tile: string, x: number, y: numbe
     level[y][x] = tile;
 };
 
-const ensureLevelHeight = (level: string[][], canvasHeight: number) => {
-    const minRows = Math.ceil(canvasHeight / TILE_SIZE) + 1;
+const ensureLevelHeight = (level: string[][], minRows: number) => {
     while (level.length < minRows) {
         level.push(Array(level[0]?.length ?? 0).fill('0'));
     }
@@ -100,15 +100,15 @@ export const bindEditorCanvas = (store: GameStore) => {
         // Calcular coordenadas del mundo considerando la cámara
         // Las coordenadas del mouse están en relación al contenido visible del canvas
         // pero necesitamos convertirlas a coordenadas del mundo absoluto considerando el scroll
-        // Como el contenido se mueve mediante ctx.translate(0, -store.cameraY), necesitamos
-        // sumar store.cameraY para obtener las coordenadas correctas del mundo
+        // Como el contenido se mueve mediante ctx.translate(-cameraX, -cameraY), necesitamos
+        // sumar cameraX y cameraY para obtener las coordenadas correctas del mundo
+        const worldX = store.mouse.x + store.cameraX;
         const worldY = store.mouse.y + store.cameraY;
-        store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
+        store.mouse.gridX = Math.floor(worldX / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
 
         // Debug adicional para verificar el cálculo de grid
-        console.log(`World calc: mouse.y=${store.mouse.y}, cameraY=${store.cameraY}, worldY=${worldY}, gridY=${store.mouse.gridY}`);
-        console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
+        console.log(`World calc: mouse.x=${store.mouse.x}, mouse.y=${store.mouse.y}, cameraX=${store.cameraX}, cameraY=${store.cameraY}, worldX=${worldX}, worldY=${worldY}, gridX=${store.mouse.gridX}, gridY=${store.mouse.gridY}`);
 
         // Debug: Log de coordenadas para identificar el problema
         console.log(`Mouse: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${event.clientX}, ${event.clientY})`);
@@ -135,14 +135,42 @@ export const bindEditorCanvas = (store: GameStore) => {
             return;
         }
         event.preventDefault();
-        store.cameraY += event.deltaY;
-        if (store.editorLevel.length > 0) {
-            const levelHeight = store.editorLevel.length * TILE_SIZE;
-            if (store.cameraY + (canvas.height ?? 0) > levelHeight - TILE_SIZE) {
-                ensureLevelHeight(store.editorLevel, canvas.height ?? 0);
+        
+        // Scroll horizontal con Shift + rueda del mouse o deltaX
+        if (event.shiftKey || event.deltaX !== 0) {
+            const deltaX = event.shiftKey ? event.deltaY : event.deltaX;
+            store.cameraX += deltaX;
+            
+            if (store.editorLevel.length > 0 && store.editorLevel[0]) {
+                const levelWidth = store.editorLevel[0].length * TILE_SIZE;
+                
+                // Expandir horizontalmente si es necesario
+                if (store.cameraX + canvas.width > levelWidth - TILE_SIZE) {
+                    const minCols = Math.ceil((store.cameraX + canvas.width + TILE_SIZE * 5) / TILE_SIZE);
+                    
+                    // Agregar columnas a todas las filas
+                    for (let row of store.editorLevel) {
+                        while (row.length < minCols) {
+                            row.push('0');
+                        }
+                    }
+                }
+                
+                const maxCameraX = Math.max(0, store.editorLevel[0].length * TILE_SIZE - canvas.width);
+                store.cameraX = Math.max(0, Math.min(store.cameraX, maxCameraX));
             }
-            const maxCameraY = Math.max(0, store.editorLevel.length * TILE_SIZE - (canvas.height ?? 0));
-            store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
+        } else {
+            // Scroll vertical normal
+            store.cameraY += event.deltaY;
+            if (store.editorLevel.length > 0) {
+                const levelHeight = store.editorLevel.length * TILE_SIZE;
+                if (store.cameraY + (canvas.height ?? 0) > levelHeight - TILE_SIZE) {
+                    const minRows = Math.ceil((store.cameraY + canvas.height + TILE_SIZE * 5) / TILE_SIZE);
+                    ensureLevelHeight(store.editorLevel, minRows);
+                }
+                const maxCameraY = Math.max(0, store.editorLevel.length * TILE_SIZE - (canvas.height ?? 0));
+                store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
+            }
         }
     }, { passive: false });
 
@@ -233,14 +261,14 @@ export const bindEditorCanvas = (store: GameStore) => {
 
             // Calcular coordenadas del mundo considerando la cámara
             // Las coordenadas del mouse ya están en relación a la resolución interna del canvas (1200x900)
-            // y el contenido se mueve mediante ctx.translate(0, -store.cameraY) en el contexto de dibujo
-            const worldY = store.mouse.y;
-            store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
+            // y el contenido se mueve mediante ctx.translate(-cameraX, -cameraY) en el contexto de dibujo
+            const worldX = store.mouse.x + store.cameraX;
+            const worldY = store.mouse.y + store.cameraY;
+            store.mouse.gridX = Math.floor(worldX / TILE_SIZE);
             store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
 
             // Debug adicional para verificar el cálculo de grid
-            console.log(`World calc: mouse.y=${store.mouse.y}, cameraY=${store.cameraY}, worldY=${worldY}, gridY=${store.mouse.gridY}`);
-            console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
+            console.log(`Touch world calc: mouse.x=${store.mouse.x}, mouse.y=${store.mouse.y}, cameraX=${store.cameraX}, cameraY=${store.cameraY}, worldX=${worldX}, worldY=${worldY}, gridX=${store.mouse.gridX}, gridY=${store.mouse.gridY}`);
 
             if (store.mouse.isDown) {
                 applyMousePaint(store);
@@ -321,15 +349,15 @@ export const bindEditorCanvas = (store: GameStore) => {
         // Calcular coordenadas del mundo considerando la cámara
         // Las coordenadas del mouse están en relación al contenido visible del canvas
         // pero necesitamos convertirlas a coordenadas del mundo absoluto considerando el scroll
-        // Como el contenido se mueve mediante ctx.translate(0, -store.cameraY), necesitamos
-        // sumar store.cameraY para obtener las coordenadas correctas del mundo
+        // Como el contenido se mueve mediante ctx.translate(-cameraX, -cameraY), necesitamos
+        // sumar cameraX y cameraY para obtener las coordenadas correctas del mundo
+        const worldX = store.mouse.x + store.cameraX;
         const worldY = store.mouse.y + store.cameraY;
-        store.mouse.gridX = Math.floor(store.mouse.x / TILE_SIZE);
+        store.mouse.gridX = Math.floor(worldX / TILE_SIZE);
         store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
 
         // Debug adicional para verificar el cálculo de grid
-        console.log(`World calc: mouse.y=${store.mouse.y}, cameraY=${store.cameraY}, worldY=${worldY}, gridY=${store.mouse.gridY}`);
-        console.log(`Tile size: ${TILE_SIZE}, Expected gridY: ${Math.floor(worldY / TILE_SIZE)}`);
+        console.log(`Touchstart world calc: mouse.x=${store.mouse.x}, mouse.y=${store.mouse.y}, cameraX=${store.cameraX}, cameraY=${store.cameraY}, worldX=${worldX}, worldY=${worldY}, gridX=${store.mouse.gridX}, gridY=${store.mouse.gridY}`);
 
         // Debug: Log de coordenadas para identificar el problema
         console.log(`Touch: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${touches[0].clientX}, ${touches[0].clientY})`);
@@ -353,6 +381,86 @@ export const bindEditorCanvas = (store: GameStore) => {
             lastTwoFingerY = 0;
         }, 100);
     });
+
+    // Soporte para teclas WASD y flechas para scroll en el editor
+    const editorKeys: Record<string, boolean> = {};
+    
+    window.addEventListener('keydown', (event) => {
+        if (store.appState !== 'editing') return;
+        
+        // Marcar tecla como presionada
+        editorKeys[event.key] = true;
+    });
+    
+    window.addEventListener('keyup', (event) => {
+        if (store.appState !== 'editing') return;
+        
+        // Marcar tecla como no presionada
+        editorKeys[event.key] = false;
+    });
+    
+    // Función para expandir el nivel horizontalmente si es necesario
+    const ensureLevelWidth = (level: string[][], minCols: number) => {
+        if (level.length === 0) return;
+        
+        const currentWidth = level[0]?.length ?? 0;
+        if (currentWidth < minCols) {
+            // Agregar columnas a todas las filas
+            for (let row of level) {
+                while (row.length < minCols) {
+                    row.push('0');
+                }
+            }
+        }
+    };
+    
+    // Función para actualizar el scroll del editor basado en teclas presionadas
+    const updateEditorScroll = () => {
+        if (store.appState !== 'editing') return;
+        
+        const scrollSpeed = 10; // Píxeles por frame
+        
+        // Scroll horizontal (A/D o flechas izquierda/derecha)
+        if (editorKeys['a'] || editorKeys['A'] || editorKeys['ArrowLeft']) {
+            store.cameraX = Math.max(0, store.cameraX - scrollSpeed);
+        }
+        if (editorKeys['d'] || editorKeys['D'] || editorKeys['ArrowRight']) {
+            if (store.editorLevel.length > 0 && store.editorLevel[0]) {
+                const levelWidth = store.editorLevel[0].length * TILE_SIZE;
+                const maxCameraX = Math.max(0, levelWidth - canvas.width);
+                
+                // Si estamos cerca del borde derecho, expandir el nivel
+                if (store.cameraX + canvas.width > levelWidth - TILE_SIZE * 2) {
+                    const minCols = Math.ceil((store.cameraX + canvas.width + TILE_SIZE * 5) / TILE_SIZE);
+                    ensureLevelWidth(store.editorLevel, minCols);
+                }
+                
+                store.cameraX = Math.min(maxCameraX, store.cameraX + scrollSpeed);
+            }
+        }
+        
+        // Scroll vertical (W/S o flechas arriba/abajo)
+        if (editorKeys['w'] || editorKeys['W'] || editorKeys['ArrowUp']) {
+            store.cameraY = Math.max(0, store.cameraY - scrollSpeed);
+        }
+        if (editorKeys['s'] || editorKeys['S'] || editorKeys['ArrowDown']) {
+            if (store.editorLevel.length > 0) {
+                const levelHeight = store.editorLevel.length * TILE_SIZE;
+                const maxCameraY = Math.max(0, levelHeight - canvas.height);
+                
+                // Expandir verticalmente si es necesario (ya existente)
+                if (store.cameraY + canvas.height > levelHeight - TILE_SIZE * 2) {
+                    const minRows = Math.ceil((store.cameraY + canvas.height + TILE_SIZE * 5) / TILE_SIZE);
+                    ensureLevelHeight(store.editorLevel, minRows);
+                }
+                
+                store.cameraY = Math.min(maxCameraY, store.cameraY + scrollSpeed);
+            }
+        }
+    };
+    
+    // Llamar a updateEditorScroll en cada frame
+    setInterval(updateEditorScroll, 16); // ~60 FPS
 };
 
 export const updateEditorLevelFromSelector = (store: GameStore) => {
@@ -388,15 +496,17 @@ export const drawEditor = (store: GameStore) => {
     if (backgroundSprite) {
         const startY = Math.floor(store.cameraY / TILE_SIZE) * TILE_SIZE;
         const endY = store.cameraY + canvas.height;
-        const numTilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
+        const startX = Math.floor(store.cameraX / TILE_SIZE) * TILE_SIZE;
+        const endX = store.cameraX + canvas.width;
+        const numTilesX = Math.ceil((endX - startX) / TILE_SIZE) + 1;
         const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
         
         ctx.save();
-        ctx.translate(0, -store.cameraY);
+        ctx.translate(-store.cameraX, -store.cameraY);
         
         for (let y = 0; y < numTilesY; y++) {
             for (let x = 0; x < numTilesX; x++) {
-                const tileX = x * TILE_SIZE;
+                const tileX = startX + x * TILE_SIZE;
                 const tileY = startY + y * TILE_SIZE;
                 ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
             }
@@ -410,7 +520,7 @@ export const drawEditor = (store: GameStore) => {
     }
     
     ctx.save();
-    ctx.translate(0, -store.cameraY);
+    ctx.translate(-store.cameraX, -store.cameraY);
 
     const timestamp = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const msPerTick = 1000 / 60;
