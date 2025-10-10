@@ -173,6 +173,7 @@ export interface UiElements {
     loadLevelBtn: HTMLButtonElement | null;
     saveLevelBtn: HTMLButtonElement | null;
     generateLevelBtn: HTMLButtonElement | null;
+    saveAllBtn: HTMLButtonElement | null;
     backToMenuBtn: HTMLButtonElement | null;
     confirmSaveBtn: HTMLButtonElement | null;
     cancelSaveBtn: HTMLButtonElement | null;

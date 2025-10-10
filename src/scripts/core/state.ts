@@ -89,6 +89,7 @@ export const createInitialStore = (): GameStore => ({
             loadLevelBtn: null,
             saveLevelBtn: null,
             generateLevelBtn: null,
+            saveAllBtn: null,
             backToMenuBtn: null,
             confirmSaveBtn: null,
             cancelSaveBtn: null,
