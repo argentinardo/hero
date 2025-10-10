@@ -7,6 +7,7 @@ import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';
 import stepsSound from '../../assets/audio/steps.mp3';
 import bombSound from '../../assets/audio/bomb.mp3';
+import successLevelSound from '../../assets/audio/success_level.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -17,6 +18,7 @@ interface AudioSystem {
         lifedown: HTMLAudioElement | null;
         steps: HTMLAudioElement | null;
         bomb: HTMLAudioElement | null;
+        successLevel: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -32,6 +34,7 @@ let audioSystem: AudioSystem = {
         lifedown: null,
         steps: null,
         bomb: null,
+        successLevel: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -63,6 +66,9 @@ export const initAudio = () => {
 
         audioSystem.sounds.bomb = new Audio(bombSound);
         audioSystem.sounds.bomb.volume = audioSystem.sfxVolume;
+
+        audioSystem.sounds.successLevel = new Audio(successLevelSound);
+        audioSystem.sounds.successLevel.volume = audioSystem.sfxVolume;
 
         console.log('Sistema de audio inicializado correctamente');
     } catch (error) {
@@ -154,6 +160,16 @@ export const playBombSound = () => {
         audioSystem.sounds.bomb.currentTime = 0;
         audioSystem.sounds.bomb.play().catch(error => {
             console.log('Error al reproducir bomba:', error);
+        });
+    }
+};
+
+// Reproducir sonido de éxito al completar nivel
+export const playSuccessLevelSound = () => {
+    if (audioSystem.sounds.successLevel && !audioSystem.isMuted) {
+        audioSystem.sounds.successLevel.currentTime = 0;
+        audioSystem.sounds.successLevel.play().catch(error => {
+            console.log('Error al reproducir success level:', error);
         });
     }
 };

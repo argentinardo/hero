@@ -2,6 +2,7 @@ import { ANIMATION_DATA, TILE_TYPES } from '../core/assets';
 import { TILE_SIZE, MAX_ENERGY } from '../core/constants';
 import { resetPlayer } from './player';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
+import { playSuccessLevelSound } from './audio';
 
 const createWall = (x: number, y: number, tile: string): Wall => {
     const base: Wall = {
@@ -221,6 +222,10 @@ export const awardMinerRescue = (store: GameStore) => {
     if (!miner) {
         return;
     }
+    
+    // Reproducir sonido de éxito al rescatar al minero
+    playSuccessLevelSound();
+    
     store.score += 1000;
     store.floatingScores.push({
         x: miner.x,
