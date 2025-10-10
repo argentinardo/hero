@@ -427,19 +427,6 @@ const setupLevelData = (store: GameStore) => {
     const saveAllLevelsToFile = async () => {
         const payload = store.levelDataStore.map(level => level.map(row => row.join('')));
 
-        const downloadFallback = () => {
-            const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = 'levels.json';
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(url);
-            window.alert('No se pudo guardar automáticamente. Se descargó un archivo levels.json con los datos.');
-        };
-
         try {
             const response = await fetch('/api/save-levels', {
                 method: 'POST',
@@ -448,13 +435,14 @@ const setupLevelData = (store: GameStore) => {
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Error HTTP ${response.status}: ${errorText}`);
             }
 
-            window.alert('¡Todos los niveles se han guardado en levels.json!');
+            window.alert('¡Nivel guardado exitosamente en levels.json!');
         } catch (error) {
-            console.error('Error saving levels:', error);
-            downloadFallback();
+            console.error('Error al guardar niveles:', error);
+            window.alert(`ERROR: No se pudo guardar en el servidor.\n\nAsegúrate de que el servidor de desarrollo esté corriendo con:\n  npm run dev\n\nError: ${error instanceof Error ? error.message : String(error)}`);
         }
     };
 
