@@ -2,6 +2,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE, BOMB_FUSE } from '../core/constants';
 import type { Enemy, GameStore, Wall } from '../core/types';
 import { emitParticles, playerDie } from './player';
+import { playBombSound } from './audio';
 
 const createExplosion = (store: GameStore, x: number, y: number) => {
     store.explosions.push({
@@ -127,6 +128,7 @@ export const updateBombs = (store: GameStore) => {
         store.bombs.splice(i, 1);
         const centerX = bomb.x + bomb.width / 2;
         const centerY = bomb.y + bomb.height / 2;
+        
         createExplosion(store, bomb.x, bomb.y);
         emitParticles(store, centerX, centerY, 30, 'white');
         const explosionRadius = 70;

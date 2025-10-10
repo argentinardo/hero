@@ -6,6 +6,7 @@ import jetpackSound from '../../assets/audio/jetpack.mp3';
 import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';
 import stepsSound from '../../assets/audio/steps.mp3';
+import bombSound from '../../assets/audio/bomb.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -15,6 +16,7 @@ interface AudioSystem {
         laser: HTMLAudioElement | null;
         lifedown: HTMLAudioElement | null;
         steps: HTMLAudioElement | null;
+        bomb: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -29,6 +31,7 @@ let audioSystem: AudioSystem = {
         laser: null,
         lifedown: null,
         steps: null,
+        bomb: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -57,6 +60,9 @@ export const initAudio = () => {
         audioSystem.sounds.steps = new Audio(stepsSound);
         audioSystem.sounds.steps.loop = true; // Los pasos suenan en loop mientras camina
         audioSystem.sounds.steps.volume = audioSystem.sfxVolume * 0.6; // Más bajo que otros efectos
+
+        audioSystem.sounds.bomb = new Audio(bombSound);
+        audioSystem.sounds.bomb.volume = audioSystem.sfxVolume;
 
         console.log('Sistema de audio inicializado correctamente');
     } catch (error) {
@@ -139,6 +145,16 @@ export const stopStepsSound = () => {
     if (audioSystem.sounds.steps) {
         audioSystem.sounds.steps.pause();
         audioSystem.sounds.steps.currentTime = 0;
+    }
+};
+
+// Reproducir sonido de explosión de bomba
+export const playBombSound = () => {
+    if (audioSystem.sounds.bomb && !audioSystem.isMuted) {
+        audioSystem.sounds.bomb.currentTime = 0;
+        audioSystem.sounds.bomb.play().catch(error => {
+            console.log('Error al reproducir bomba:', error);
+        });
     }
 };
 
