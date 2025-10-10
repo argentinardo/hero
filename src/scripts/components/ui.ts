@@ -36,6 +36,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
     ui.saveLevelBtn = document.getElementById('save-level-btn') as HTMLButtonElement | null;
     ui.generateLevelBtn = document.getElementById('generate-level-btn') as HTMLButtonElement | null;
+    ui.saveAllBtn = document.getElementById('save-all-btn') as HTMLButtonElement | null;
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
     ui.confirmSaveBtn = document.getElementById('confirm-save-btn') as HTMLButtonElement | null;
     ui.cancelSaveBtn = document.getElementById('cancel-save-btn') as HTMLButtonElement | null;
@@ -413,6 +414,7 @@ const setupLevelData = (store: GameStore) => {
         loadLevelBtn,
         saveLevelBtn,
         generateLevelBtn,
+        saveAllBtn,
         playTestBtn,
         resumeEditorBtn,
         backToMenuBtn,
@@ -472,8 +474,49 @@ const setupLevelData = (store: GameStore) => {
 
     backToMenuBtn?.addEventListener('click', () => showMenu(store));
 
-    confirmSaveBtn?.addEventListener('click', () => {
+    const saveAllLevelsToFile = async () => {
+        const payload = store.levelDataStore.map(level => level.map(row => row.join('')));
+
+        const downloadFallback = () => {
+            const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'levels.json';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+            window.alert('No se pudo guardar automáticamente. Se descargó un archivo levels.json con los datos.');
+        };
+
+        try {
+            const response = await fetch('/api/save-levels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            window.alert('¡Todos los niveles se han guardado en levels.json!');
+        } catch (error) {
+            console.error('Error saving levels:', error);
+            downloadFallback();
+        }
+    };
+
+    saveAllBtn?.addEventListener('click', () => {
+        confirmationModalEl?.classList.remove('hidden');
+    });
+
+    confirmSaveBtn?.addEventListener('click', async () => {
+        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
         confirmationModalEl?.classList.add('hidden');
+        await saveAllLevelsToFile();
     });
 
     cancelSaveBtn?.addEventListener('click', () => {
