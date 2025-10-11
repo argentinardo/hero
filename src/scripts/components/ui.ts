@@ -36,6 +36,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
     ui.saveLevelBtn = document.getElementById('save-level-btn') as HTMLButtonElement | null;
     ui.generateLevelBtn = document.getElementById('generate-level-btn') as HTMLButtonElement | null;
+    ui.saveToJsonBtn = document.getElementById('save-to-json-btn') as HTMLButtonElement | null;
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
     ui.confirmSaveBtn = document.getElementById('confirm-save-btn') as HTMLButtonElement | null;
     ui.cancelSaveBtn = document.getElementById('cancel-save-btn') as HTMLButtonElement | null;
@@ -246,6 +247,29 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Caso especial para el jugador
+    if (tile === 'P') {
+        const playerSprite = store.sprites.hero_stand;
+        if (playerSprite && playerSprite.naturalWidth > 0) {
+            ctx.drawImage(
+                playerSprite,
+                0,
+                0,
+                playerSprite.width,
+                playerSprite.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        } else {
+            // Fallback: rectángulo rojo
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
+
     const spriteKey = TILE_TYPES[tile]?.sprite;
     const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
     if (sprite && sprite.naturalWidth > 0 && sprite.naturalHeight > 0) {
@@ -318,9 +342,6 @@ const populatePalette = (store: GameStore) => {
     paletteEntries.length = 0;
     stopPaletteAnimation();
     Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
-        if (key === 'P') {
-            return;
-        }
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile-selector flex flex-col items-center gap-1 text-xs text-center';
         tileDiv.dataset.tile = key;
@@ -329,7 +350,7 @@ const populatePalette = (store: GameStore) => {
         }
         const preview = document.createElement('canvas');
         preview.width = TILE_SIZE;
-        preview.height = TILE_SIZE;
+        preview.height = TILE_SIZE * (key === 'P' ? 2 : 1); // El jugador es más alto
         preview.className = 'tile-thumb border border-white/40';
 
         const spriteKey = TILE_TYPES[key]?.sprite;
@@ -413,6 +434,7 @@ const setupLevelData = (store: GameStore) => {
         loadLevelBtn,
         saveLevelBtn,
         generateLevelBtn,
+        saveToJsonBtn,
         playTestBtn,
         resumeEditorBtn,
         backToMenuBtn,
@@ -430,6 +452,33 @@ const setupLevelData = (store: GameStore) => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
         window.alert(`Nivel ${index + 1} guardado en la sesión.`);
+    });
+
+    saveToJsonBtn?.addEventListener('click', async () => {
+        try {
+            // Convertir los niveles del store a formato de strings
+            const levelsToSave = store.levelDataStore.map(level => 
+                level.map(row => row.join(''))
+            );
+
+            const response = await fetch('/api/save-levels', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(levelsToSave),
+            });
+
+            if (response.ok) {
+                window.alert('¡Niveles guardados exitosamente en el archivo JSON!');
+            } else {
+                window.alert('Error al guardar los niveles. Revisa la consola para más detalles.');
+                console.error('Error al guardar:', await response.text());
+            }
+        } catch (error) {
+            window.alert('Error de red al intentar guardar los niveles.');
+            console.error('Error:', error);
+        }
     });
 
     generateLevelBtn?.addEventListener('click', () => {

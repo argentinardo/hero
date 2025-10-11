@@ -210,8 +210,7 @@ export const loadLevel = (store: GameStore) => {
     }
 
     parseLevel(store, store.levelDesigns[store.currentLevelIndex]);
-    store.cameraY = 0;
-    store.cameraX = 0;
+    // La cámara ya se posiciona correctamente en parseLevel centrada en el jugador
     if (store.dom.ui.levelCountEl) {
         store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     }

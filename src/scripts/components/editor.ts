@@ -139,16 +139,32 @@ export const bindEditorCanvas = (store: GameStore) => {
         // Scroll horizontal con Shift + rueda del mouse o deltaX
         if (event.shiftKey || event.deltaX !== 0) {
             const deltaX = event.shiftKey ? event.deltaY : event.deltaX;
+            const prevCameraX = store.cameraX;
             store.cameraX += deltaX;
             
             if (store.editorLevel.length > 0 && store.editorLevel[0]) {
+                // Expandir horizontalmente a la izquierda si es necesario
+                if (store.cameraX < TILE_SIZE * 2) {
+                    const colsToAdd = 5; // Agregar 5 columnas a la izquierda
+                    
+                    // Agregar columnas al inicio de cada fila
+                    for (let row of store.editorLevel) {
+                        for (let i = 0; i < colsToAdd; i++) {
+                            row.unshift('0');
+                        }
+                    }
+                    
+                    // Ajustar la posición de la cámara para compensar las nuevas columnas
+                    store.cameraX += colsToAdd * TILE_SIZE;
+                }
+                
                 const levelWidth = store.editorLevel[0].length * TILE_SIZE;
                 
-                // Expandir horizontalmente si es necesario
+                // Expandir horizontalmente a la derecha si es necesario
                 if (store.cameraX + canvas.width > levelWidth - TILE_SIZE) {
                     const minCols = Math.ceil((store.cameraX + canvas.width + TILE_SIZE * 5) / TILE_SIZE);
                     
-                    // Agregar columnas a todas las filas
+                    // Agregar columnas al final de todas las filas
                     for (let row of store.editorLevel) {
                         while (row.length < minCols) {
                             row.push('0');
@@ -161,13 +177,31 @@ export const bindEditorCanvas = (store: GameStore) => {
             }
         } else {
             // Scroll vertical normal
+            const prevCameraY = store.cameraY;
             store.cameraY += event.deltaY;
             if (store.editorLevel.length > 0) {
+                // Expandir verticalmente hacia arriba si es necesario
+                if (store.cameraY < TILE_SIZE * 2) {
+                    const rowsToAdd = 5; // Agregar 5 filas arriba
+                    const rowWidth = store.editorLevel[0]?.length ?? 0;
+                    
+                    // Agregar filas al inicio
+                    for (let i = 0; i < rowsToAdd; i++) {
+                        store.editorLevel.unshift(Array(rowWidth).fill('0'));
+                    }
+                    
+                    // Ajustar la posición de la cámara para compensar las nuevas filas
+                    store.cameraY += rowsToAdd * TILE_SIZE;
+                }
+                
                 const levelHeight = store.editorLevel.length * TILE_SIZE;
+                
+                // Expandir verticalmente hacia abajo si es necesario
                 if (store.cameraY + (canvas.height ?? 0) > levelHeight - TILE_SIZE) {
                     const minRows = Math.ceil((store.cameraY + canvas.height + TILE_SIZE * 5) / TILE_SIZE);
                     ensureLevelHeight(store.editorLevel, minRows);
                 }
+                
                 const maxCameraY = Math.max(0, store.editorLevel.length * TILE_SIZE - (canvas.height ?? 0));
                 store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
             }
@@ -422,7 +456,23 @@ export const bindEditorCanvas = (store: GameStore) => {
         
         // Scroll horizontal (A/D o flechas izquierda/derecha)
         if (editorKeys['a'] || editorKeys['A'] || editorKeys['ArrowLeft']) {
+            const prevCameraX = store.cameraX;
             store.cameraX = Math.max(0, store.cameraX - scrollSpeed);
+            
+            // Expandir horizontalmente a la izquierda si es necesario
+            if (store.cameraX < TILE_SIZE * 2 && store.editorLevel.length > 0) {
+                const colsToAdd = 5; // Agregar 5 columnas a la izquierda
+                
+                // Agregar columnas al inicio de cada fila
+                for (let row of store.editorLevel) {
+                    for (let i = 0; i < colsToAdd; i++) {
+                        row.unshift('0');
+                    }
+                }
+                
+                // Ajustar la posición de la cámara para compensar las nuevas columnas
+                store.cameraX += colsToAdd * TILE_SIZE;
+            }
         }
         if (editorKeys['d'] || editorKeys['D'] || editorKeys['ArrowRight']) {
             if (store.editorLevel.length > 0 && store.editorLevel[0]) {
@@ -441,14 +491,29 @@ export const bindEditorCanvas = (store: GameStore) => {
         
         // Scroll vertical (W/S o flechas arriba/abajo)
         if (editorKeys['w'] || editorKeys['W'] || editorKeys['ArrowUp']) {
+            const prevCameraY = store.cameraY;
             store.cameraY = Math.max(0, store.cameraY - scrollSpeed);
+            
+            // Expandir verticalmente hacia arriba si es necesario
+            if (store.cameraY < TILE_SIZE * 2 && store.editorLevel.length > 0) {
+                const rowsToAdd = 5; // Agregar 5 filas arriba
+                const rowWidth = store.editorLevel[0]?.length ?? 0;
+                
+                // Agregar filas al inicio
+                for (let i = 0; i < rowsToAdd; i++) {
+                    store.editorLevel.unshift(Array(rowWidth).fill('0'));
+                }
+                
+                // Ajustar la posición de la cámara para compensar las nuevas filas
+                store.cameraY += rowsToAdd * TILE_SIZE;
+            }
         }
         if (editorKeys['s'] || editorKeys['S'] || editorKeys['ArrowDown']) {
             if (store.editorLevel.length > 0) {
                 const levelHeight = store.editorLevel.length * TILE_SIZE;
                 const maxCameraY = Math.max(0, levelHeight - canvas.height);
                 
-                // Expandir verticalmente si es necesario (ya existente)
+                // Expandir verticalmente hacia abajo si es necesario
                 if (store.cameraY + canvas.height > levelHeight - TILE_SIZE * 2) {
                     const minRows = Math.ceil((store.cameraY + canvas.height + TILE_SIZE * 5) / TILE_SIZE);
                     ensureLevelHeight(store.editorLevel, minRows);
