@@ -44,7 +44,7 @@
                         <select id="level-selector" class="flex-grow bg-gray-700 border-2 border-white p-1 text-sm"></select>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-2">
-                        <button id="load-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Cargar</button>
+                        <button id="load-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Restaurar</button>
                         <button id="save-level-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 p-2 border-2 border-white text-xs">Guardar</button>
                     </div>
                     <button id="generate-level-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mt-2 text-xs">Generar Nivel</button>
@@ -63,6 +63,17 @@
                 <div class="flex justify-center gap-4">
                     <button id="confirm-save-btn" class="bg-green-600 hover:bg-green-700 p-3 w-32 border-2 border-white">Confirmar</button>
                     <button id="cancel-save-btn" class="bg-gray-600 hover:bg-gray-700 p-3 w-32 border-2 border-white">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Notificación -->
+        <div id="notification-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-30">
+            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg">
+                <h2 id="notification-title" class="text-2xl mb-6">Notificación</h2>
+                <p id="notification-message" class="mb-8 text-lg whitespace-pre-line"></p>
+                <div class="flex justify-center">
+                    <button id="notification-ok-btn" class="bg-blue-600 hover:bg-blue-700 p-3 w-32 border-2 border-white">Aceptar</button>
                 </div>
             </div>
         </div>

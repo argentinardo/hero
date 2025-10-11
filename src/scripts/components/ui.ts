@@ -24,6 +24,10 @@ export const attachDomReferences = (store: GameStore) => {
     ui.editorPanelEl = document.getElementById('editor-panel');
     ui.paletteEl = document.getElementById('tile-palette');
     ui.confirmationModalEl = document.getElementById('confirmation-modal');
+    ui.notificationModalEl = document.getElementById('notification-modal');
+    ui.notificationTitleEl = document.getElementById('notification-title');
+    ui.notificationMessageEl = document.getElementById('notification-message');
+    ui.notificationOkBtn = document.getElementById('notification-ok-btn') as HTMLButtonElement | null;
     ui.levelSelectorEl = document.getElementById('level-selector') as HTMLSelectElement | null;
     ui.mobileControlsEl = document.getElementById('mobile-controls');
     ui.joystickZoneEl = document.getElementById('joystick-zone');
@@ -206,7 +210,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
 export const startEditor = (store: GameStore) => {
     store.appState = 'editing';
     setBodyClass('editing');
-    const { messageOverlay, gameUiEl, editorPanelEl } = store.dom.ui;
+    const { messageOverlay, gameUiEl, editorPanelEl, levelSelectorEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
         // Limpiar el fondo del splash
@@ -219,6 +223,14 @@ export const startEditor = (store: GameStore) => {
     if (editorPanelEl) {
         editorPanelEl.style.display = 'flex';
     }
+    
+    // Resetear la cámara al entrar al editor
+    store.cameraX = 0;
+    store.cameraY = 0;
+    
+    // Cargar el nivel actual del selector cuando se inicia el editor
+    const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
+    store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[currentIndex] ?? []));
 };
 
 export const updateUiBar = (store: GameStore) => {
@@ -429,6 +441,119 @@ const setupMenuButtons = (store: GameStore) => {
     });
 };
 
+/**
+ * Muestra un modal de notificación con un mensaje
+ */
+export const showNotification = (store: GameStore, title: string, message: string) => {
+    const { notificationModalEl, notificationTitleEl, notificationMessageEl } = store.dom.ui;
+    
+    if (notificationTitleEl) {
+        notificationTitleEl.textContent = title;
+    }
+    if (notificationMessageEl) {
+        notificationMessageEl.textContent = message;
+    }
+    if (notificationModalEl) {
+        notificationModalEl.classList.remove('hidden');
+        
+        // Agregar listener para cerrar con Escape (solo una vez)
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                hideNotification(store);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Cerrar al hacer clic en el fondo (solo una vez)
+        const handleClickOutside = (event: MouseEvent) => {
+            if (event.target === notificationModalEl) {
+                hideNotification(store);
+                notificationModalEl.removeEventListener('click', handleClickOutside);
+            }
+        };
+        notificationModalEl.addEventListener('click', handleClickOutside);
+    }
+};
+
+/**
+ * Oculta el modal de notificación
+ */
+const hideNotification = (store: GameStore) => {
+    const { notificationModalEl } = store.dom.ui;
+    if (notificationModalEl) {
+        notificationModalEl.classList.add('hidden');
+    }
+};
+
+/**
+ * Asegura que el editor permanezca visible después de operaciones
+ */
+const ensureEditorVisible = (store: GameStore) => {
+    const { gameUiEl, editorPanelEl, messageOverlay } = store.dom.ui;
+    
+    // Asegurar que el estado es correcto
+    if (store.appState === 'editing') {
+        // Ocultar UI del juego
+        if (gameUiEl) {
+            gameUiEl.style.display = 'none';
+        }
+        // Mostrar panel del editor
+        if (editorPanelEl) {
+            editorPanelEl.style.display = 'flex';
+        }
+        // Ocultar overlay de mensaje
+        if (messageOverlay) {
+            messageOverlay.style.display = 'none';
+        }
+    }
+};
+
+/**
+ * Elimina filas y columnas completamente vacías (solo '0') de un nivel
+ */
+const purgeEmptyRowsAndColumns = (level: string[][]): string[][] => {
+    if (level.length === 0) return level;
+    
+    // Crear una copia para no modificar el original
+    let cleanedLevel = JSON.parse(JSON.stringify(level)) as string[][];
+    
+    // Eliminar filas vacías (que solo contienen '0')
+    cleanedLevel = cleanedLevel.filter(row => 
+        row.some(cell => cell !== '0')
+    );
+    
+    // Si no quedan filas, retornar un nivel vacío
+    if (cleanedLevel.length === 0) return [['0']];
+    
+    // Identificar columnas que están completamente vacías
+    const numCols = cleanedLevel[0].length;
+    const columnsToKeep: boolean[] = [];
+    
+    for (let col = 0; col < numCols; col++) {
+        let hasNonZero = false;
+        for (let row = 0; row < cleanedLevel.length; row++) {
+            if (cleanedLevel[row][col] !== '0') {
+                hasNonZero = true;
+                break;
+            }
+        }
+        columnsToKeep[col] = hasNonZero;
+    }
+    
+    // Eliminar columnas vacías
+    cleanedLevel = cleanedLevel.map(row => 
+        row.filter((_, colIndex) => columnsToKeep[colIndex])
+    );
+    
+    // Verificar que quede al menos una columna
+    if (cleanedLevel.length > 0 && cleanedLevel[0].length === 0) {
+        return [['0']];
+    }
+    
+    return cleanedLevel;
+};
+
 const setupLevelData = (store: GameStore) => {
     const {
         loadLevelBtn,
@@ -441,17 +566,43 @@ const setupLevelData = (store: GameStore) => {
         confirmSaveBtn,
         cancelSaveBtn,
         confirmationModalEl,
+        notificationOkBtn,
     } = store.dom.ui;
 
-    loadLevelBtn?.addEventListener('click', () => {
+    // Configurar el botón OK del modal de notificación
+    notificationOkBtn?.addEventListener('click', () => {
+        hideNotification(store);
+    });
+
+    // Función para cargar nivel desde el store
+    const loadLevelFromStore = () => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index] ?? []));
+        // Resetear la cámara al cargar el nivel
+        store.cameraX = 0;
+        store.cameraY = 0;
+    };
+
+    // Cargar nivel automáticamente cuando cambia el selector
+    store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
+        loadLevelFromStore();
+    });
+
+    // Botón restaurar: recarga el nivel guardado (descartando cambios actuales)
+    loadLevelBtn?.addEventListener('click', () => {
+        loadLevelFromStore();
+        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        showNotification(store, '🔄 Restaurado', `Nivel ${index + 1} restaurado desde la sesión.\nCambios no guardados descartados.`);
     });
 
     saveLevelBtn?.addEventListener('click', () => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
-        window.alert(`Nivel ${index + 1} guardado en la sesión.`);
+        // Limpiar filas y columnas vacías antes de guardar
+        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
+        // Actualizar también el nivel del editor con la versión limpia
+        store.editorLevel = cleanedLevel;
+        showNotification(store, '✅ Guardado', `Nivel ${index + 1} guardado en la sesión.\nFilas y columnas vacías eliminadas.`);
     });
 
     generateLevelBtn?.addEventListener('click', () => {
@@ -475,7 +626,11 @@ const setupLevelData = (store: GameStore) => {
         // Convertir a formato del editor (array de arrays)
         store.editorLevel = generatedLevel.map((row: string) => row.split(''));
         
-        window.alert(`Nivel ${index + 1} generado automáticamente con dificultad ${difficulty}.`);
+        // Resetear la cámara al generar un nuevo nivel
+        store.cameraX = 0;
+        store.cameraY = 0;
+        
+        showNotification(store, '🎲 Nivel Generado', `Nivel ${index + 1} generado automáticamente con dificultad ${difficulty}.`);
     });
 
     playTestBtn?.addEventListener('click', () => {
@@ -495,7 +650,9 @@ const setupLevelData = (store: GameStore) => {
     backToMenuBtn?.addEventListener('click', () => showMenu(store));
 
     const saveAllLevelsToFile = async () => {
-        const payload = store.levelDataStore.map(level => level.map(row => row.join('')));
+        // Limpiar todos los niveles eliminando filas y columnas vacías
+        const cleanedLevels = store.levelDataStore.map(level => purgeEmptyRowsAndColumns(level));
+        const payload = cleanedLevels.map(level => level.map(row => row.join('')));
 
         const downloadFallback = () => {
             const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
@@ -507,7 +664,10 @@ const setupLevelData = (store: GameStore) => {
             anchor.click();
             document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
-            window.alert('No se pudo guardar automáticamente. Se descargó un archivo levels.json con los datos.');
+            showNotification(store, '⬇️ Descarga Manual', 'No se pudo guardar automáticamente.\nSe descargó un archivo levels.json con los datos.');
+            
+            // Asegurar que permanecemos en el editor
+            ensureEditorVisible(store);
         };
 
         try {
@@ -521,7 +681,10 @@ const setupLevelData = (store: GameStore) => {
                 throw new Error(`HTTP ${response.status}`);
             }
 
-            window.alert('¡Todos los niveles se han guardado en levels.json!');
+            showNotification(store, '💾 Guardado Exitoso', '¡Todos los niveles se han guardado en levels.json!');
+            
+            // Asegurar que permanecemos en el editor
+            ensureEditorVisible(store);
         } catch (error) {
             console.error('Error saving levels:', error);
             downloadFallback();
@@ -534,8 +697,14 @@ const setupLevelData = (store: GameStore) => {
 
     confirmSaveBtn?.addEventListener('click', async () => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
+        // Limpiar filas y columnas vacías antes de guardar
+        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
+        // Actualizar también el nivel del editor con la versión limpia
+        store.editorLevel = cleanedLevel;
         confirmationModalEl?.classList.add('hidden');
+        
+        // Guardar todos los niveles
         await saveAllLevelsToFile();
     });
 

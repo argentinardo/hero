@@ -162,6 +162,10 @@ export interface UiElements {
     editorPanelEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
     confirmationModalEl: HTMLElement | null;
+    notificationModalEl: HTMLElement | null;
+    notificationTitleEl: HTMLElement | null;
+    notificationMessageEl: HTMLElement | null;
+    notificationOkBtn: HTMLButtonElement | null;
     levelSelectorEl: HTMLSelectElement | null;
     mobileControlsEl: HTMLElement | null;
     joystickZoneEl: HTMLElement | null;
