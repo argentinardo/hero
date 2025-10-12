@@ -7,6 +7,16 @@ import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
 import { playBackgroundMusic, pauseBackgroundMusic } from './audio';
+import { 
+    undo, 
+    redo, 
+    copyArea, 
+    pasteArea, 
+    updateModeButtons, 
+    updateUndoRedoButtons, 
+    updatePasteButton,
+    initializeAdvancedEditor
+} from './advancedEditor';
 
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
@@ -44,6 +54,15 @@ export const attachDomReferences = (store: GameStore) => {
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
     ui.confirmSaveBtn = document.getElementById('confirm-save-btn') as HTMLButtonElement | null;
     ui.cancelSaveBtn = document.getElementById('cancel-save-btn') as HTMLButtonElement | null;
+    
+    // Editor tools
+    ui.undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
+    ui.redoBtn = document.getElementById('redo-btn') as HTMLButtonElement | null;
+    ui.copyBtn = document.getElementById('copy-btn') as HTMLButtonElement | null;
+    ui.pasteBtn = document.getElementById('paste-btn') as HTMLButtonElement | null;
+    ui.paintModeBtn = document.getElementById('paint-mode-btn') as HTMLButtonElement | null;
+    ui.fillModeBtn = document.getElementById('fill-mode-btn') as HTMLButtonElement | null;
+    ui.eraseModeBtn = document.getElementById('erase-mode-btn') as HTMLButtonElement | null;
 };
 
 const setBodyClass = (state: string) => {
@@ -231,6 +250,9 @@ export const startEditor = (store: GameStore) => {
     // Cargar el nivel actual del selector cuando se inicia el editor
     const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
     store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[currentIndex] ?? []));
+    
+    // Inicializar el editor avanzado
+    initializeAdvancedEditor(store);
 };
 
 export const updateUiBar = (store: GameStore) => {
@@ -353,27 +375,54 @@ const populatePalette = (store: GameStore) => {
     paletteEl.innerHTML = '';
     paletteEntries.length = 0;
     stopPaletteAnimation();
-    Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
+    
+    // Función para crear botones de tile
+    const createTileButton = (key: string, name: string, isEraser: boolean = false) => {
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile-selector flex flex-col items-center gap-1 text-xs text-center';
         tileDiv.dataset.tile = key;
         if (key === store.selectedTile) {
             tileDiv.classList.add('selected');
         }
+        if (isEraser) {
+            tileDiv.classList.add('eraser-tile');
+        }
+        
         const preview = document.createElement('canvas');
         preview.width = TILE_SIZE;
-        preview.height = TILE_SIZE * (key === 'P' ? 2 : 1); // El jugador es más alto
+        preview.height = TILE_SIZE * (key === 'P' ? 2 : 1);
         preview.className = 'tile-thumb border border-white/40';
 
-        const spriteKey = TILE_TYPES[key]?.sprite;
-        const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
-        if (sprite) {
-            if (!sprite.complete || sprite.naturalWidth === 0) {
-                sprite.addEventListener('load', () => drawPaletteEntry(store, key, preview, performance.now()), { once: true });
+        if (key === '0') {
+            // Tile vacío - mostrar X roja
+            const ctx = preview.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 3;
+                const centerX = TILE_SIZE / 2;
+                const centerY = TILE_SIZE / 2;
+                const crossSize = TILE_SIZE / 3;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX - crossSize, centerY - crossSize);
+                ctx.lineTo(centerX + crossSize, centerY + crossSize);
+                ctx.moveTo(centerX + crossSize, centerY - crossSize);
+                ctx.lineTo(centerX - crossSize, centerY + crossSize);
+                ctx.stroke();
             }
+        } else {
+            const spriteKey = TILE_TYPES[key]?.sprite;
+            const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
+            if (sprite) {
+                if (!sprite.complete || sprite.naturalWidth === 0) {
+                    sprite.addEventListener('load', () => drawPaletteEntry(store, key, preview, performance.now()), { once: true });
+                }
+            }
+            drawPaletteEntry(store, key, preview, performance.now());
+            paletteEntries.push({ tile: key, canvas: preview });
         }
-        drawPaletteEntry(store, key, preview, performance.now());
-        paletteEntries.push({ tile: key, canvas: preview });
 
         const label = document.createElement('span');
         label.textContent = name;
@@ -389,7 +438,16 @@ const populatePalette = (store: GameStore) => {
             store.selectedTile = key;
         });
         paletteEl.appendChild(tileDiv);
+    };
+    
+    // Agregar tile vacío (borrador) primero
+    createTileButton('0', 'Borrar', true);
+    
+    // Agregar todos los demás tiles
+    Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
+        createTileButton(key, name);
     });
+    
     startPaletteAnimation(store);
 };
 
@@ -581,6 +639,8 @@ const setupLevelData = (store: GameStore) => {
         // Resetear la cámara al cargar el nivel
         store.cameraX = 0;
         store.cameraY = 0;
+        // Reinicializar el editor avanzado
+        initializeAdvancedEditor(store);
     };
 
     // Cargar nivel automáticamente cuando cambia el selector
@@ -629,6 +689,9 @@ const setupLevelData = (store: GameStore) => {
         // Resetear la cámara al generar un nuevo nivel
         store.cameraX = 0;
         store.cameraY = 0;
+        
+        // Reinicializar el editor avanzado
+        initializeAdvancedEditor(store);
         
         showNotification(store, '🎲 Nivel Generado', `Nivel ${index + 1} generado automáticamente con dificultad ${difficulty}.`);
     });
@@ -710,6 +773,54 @@ const setupLevelData = (store: GameStore) => {
 
     cancelSaveBtn?.addEventListener('click', () => {
         confirmationModalEl?.classList.add('hidden');
+    });
+
+    // Editor avanzado - Undo/Redo
+    store.dom.ui.undoBtn?.addEventListener('click', () => {
+        undo(store);
+        updateUndoRedoButtons(store);
+    });
+    
+    store.dom.ui.redoBtn?.addEventListener('click', () => {
+        redo(store);
+        updateUndoRedoButtons(store);
+    });
+
+    // Editor avanzado - Copy/Paste
+    store.dom.ui.copyBtn?.addEventListener('click', () => {
+        const { startX, startY, gridX, gridY } = store.mouse;
+        if (startX !== undefined && startY !== undefined) {
+            copyArea(store, startX, startY, gridX, gridY);
+        } else {
+            // Si no hay área seleccionada, copiar solo el tile actual
+            copyArea(store, gridX, gridY, gridX, gridY);
+        }
+        updatePasteButton(store);
+        showNotification(store, 'Copiado', 'Área copiada al portapapeles');
+    });
+    
+    store.dom.ui.pasteBtn?.addEventListener('click', () => {
+        if (store.clipboard) {
+            pasteArea(store, store.mouse.gridX, store.mouse.gridY);
+            updateUndoRedoButtons(store);
+            showNotification(store, 'Pegado', 'Área pegada desde el portapapeles');
+        }
+    });
+
+    // Editor avanzado - Modos de edición
+    store.dom.ui.paintModeBtn?.addEventListener('click', () => {
+        store.editorMode = 'paint';
+        updateModeButtons(store);
+    });
+    
+    store.dom.ui.fillModeBtn?.addEventListener('click', () => {
+        store.editorMode = 'fill';
+        updateModeButtons(store);
+    });
+    
+    store.dom.ui.eraseModeBtn?.addEventListener('click', () => {
+        store.editorMode = 'erase';
+        updateModeButtons(store);
     });
 };
 

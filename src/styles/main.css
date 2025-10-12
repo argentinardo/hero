@@ -4,6 +4,9 @@ textarea{ background-color:#111; border:2px solid #4a4a4a; width:100%; height:10
 #main-container{ width:100%; max-width:1440px; margin-left:auto; margin-right:auto }
 #gameCanvas{ width:100%; height:auto; aspect-ratio:800/600; image-rendering:pixelated }
 .ui-bar{ background-color:#222; border:4px solid #fff; border-bottom:none; padding:10px 20px; width:100% }
+@media(min-width:769px){ #game-ui{max-width:1200px; margin:0 auto }
+}
+.tile-selector{ display:flex; flex-direction:column; align-items:center; gap:4px; font-size:.55rem; text-transform:uppercase }
 #game-container{ position:relative; width:1200px; height:720px; overflow:hidden; border:4px solid #4a4a4a; background:#000 }
 #game-world{ position:absolute; left:0; top:0; width:1200px; height:99999px; transform:translateY(0) }
 .game-object{ position:absolute; image-rendering:pixelated; background-repeat:no-repeat; background-position:0 0 }
@@ -15,12 +18,66 @@ textarea{ background-color:#111; border:2px solid #4a4a4a; width:100%; height:10
 .viper{ height:60px }
 .miner{ width:60px; height:60px }
 .bomb{ width:60px; height:60px }
-.explosion{ width:120px; height:120px; pointer-events:none }
-@media(max-width:768px){ body,html{overflow:hidden; height:100%; margin:0; padding:0 }
-#main-container{ width:100vw; height:100vh; padding:0; margin:0; max-width:none }
-#game-ui{ position:absolute; top:0; left:0; z-index:10; background-color:rgba(0,0,0,.5); padding:5px; font-size:.7rem }
+.explosion{ width:180px; height:180px; pointer-events:none }
+@media(max-width:768px)and (orientation:portrait){ body::before{content:"Por favor,gira tu dispositivo"; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,.95); color:#fff; padding:20px; font-family:"Press Start 2P",monospace; font-size:1rem; text-align:center; z-index:9999; border:3px solid #fff; border-radius:10px }
+#main-container{ display:none }
+}
+@media(max-width:768px)and (orientation:landscape){ body,html{overflow:hidden; height:100%; margin:0; padding:0 }
+#main-container{ width:100vw; height:100vh; padding:0; margin:0; max-width:none; display:flex; flex-direction:row; justify-content:center; align-items:center; position:relative }
+#gameCanvas{ width:auto !important; height:100vh !important; max-height:100vh; aspect-ratio:4/3; margin:0 auto; display:block }
+#game-ui{ position:fixed; top:10px; right:10px; width:18%; z-index:30; background-color:rgba(115,255,0,.85); padding:8px; font-size:.4rem; display:flex; flex-direction:column; gap:4px; border-radius:8px; border:2px solid hsla(0,0%,100%,.3); pointer-events:none }
+#game-ui>span,#game-ui>div{ text-align:left; white-space:nowrap }
+#game-ui>div{ width:100%; font-size:.35rem }
+#game-ui button{ display:none }
 #editor-panel{ display:none !important }
 #message-overlay p{ display:none }
-#mobile-controls{ display:none; z-index:20; position:absolute; top:0; left:0; width:100%; height:100% }
+body.state-editing #mobile-controls{ display:none !important }
+body.state-editing #game-ui{ display:none !important }
+body.state-editing #editor-panel{ display:flex !important; position:fixed; top:0; right:0; width:40%; height:100vh; flex-direction:column; background-color:rgba(0,0,0,.95); padding:10px; z-index:100; overflow-y:auto }
+body.state-editing #editor-panel #tile-palette{ display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-bottom:10px }
+body.state-editing #editor-panel #tile-palette canvas{ width:100%; height:100%; aspect-ratio:1; border:1px solid hsla(0,0%,100%,.3); cursor:pointer }
+body.state-editing #editor-panel #tile-palette canvas:active{ border-color:#fff; background-color:hsla(0,0%,100%,.2) }
+body.state-editing #editor-panel button{ font-size:.5rem; padding:8px; margin:3px 0 }
+body.state-editing #editor-panel textarea{ display:none }
+body.state-editing #editor-panel select{ font-size:.5rem; padding:5px }
+body.state-editing #gameCanvas{ width:60% !important; height:100vh !important; margin:0 !important; max-width:none !important; object-fit:contain !important; position:fixed !important; left:0 !important; top:0 !important; aspect-ratio:auto !important }
+body.state-editing #main-container{ justify-content:flex-start }
+#mobile-controls{ display:none; z-index:20; position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none }
 #mobile-controls[data-active=true]{ display:block }
+#joystick-zone{ position:absolute; top:0; left:0; width:25%; height:100vh; pointer-events:auto }
+#action-zone{ position:absolute; top:0; right:0; width:25%; height:100vh; pointer-events:auto; display:flex; flex-direction:column; gap:2vh; justify-content:center; align-items:center; padding:120px 10px 10px 10px }
+.action-button{ width:70%; height:38vh; background-color:hsla(0,0%,100%,.15); border:3px solid hsla(0,0%,100%,.6); border-radius:15px; color:#fff; font-family:"Press Start 2P",monospace; font-size:.7rem; touch-action:none; user-select:none; -webkit-user-select:none; display:flex; align-items:center; justify-content:center; text-align:center; transition:all .1s ease }
+.action-button:active{ background-color:hsla(0,0%,100%,.4); transform:scale(0.95); border-color:#fff }
 }
+@media(max-width:1024px)and (orientation:landscape){ body,html{overflow:hidden; height:100%; margin:0; padding:0 }
+#main-container{ width:100vw; height:100vh; padding:0; margin:0; display:flex; flex-direction:row; justify-content:center; align-items:center; position:relative }
+#gameCanvas{ width:auto !important; height:100vh !important; max-height:100vh; aspect-ratio:4/3; margin:0 auto; display:block }
+#game-ui{ position:fixed; top:10px; right:10px; width:18%; z-index:30; background-color:rgba(0,0,0,.85); padding:8px; font-size:.4rem; display:flex; flex-direction:column; gap:4px; border-radius:8px; border:2px solid hsla(0,0%,100%,.3); pointer-events:none }
+#game-ui>span,#game-ui>div{ text-align:left; white-space:nowrap }
+#game-ui>div{ width:100%; font-size:.35rem }
+#game-ui button{ display:none }
+#mobile-controls{ display:none; z-index:20; position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none }
+#mobile-controls[data-active=true]{ display:block }
+#joystick-zone{ position:absolute; top:0; left:0; width:25%; height:100vh; pointer-events:auto }
+#action-zone{ position:absolute; top:0; right:0; width:20.2%; height:100vh; pointer-events:auto; display:flex; flex-direction:column; gap:2vh; justify-content:center; align-items:center; padding:130px 10px 10px 10px }
+.action-button{ width:100%; height:36vh; background-color:hsla(0,0%,100%,.15); border:3px solid hsla(0,0%,100%,.6); border-radius:15px; color:#fff; font-family:"Press Start 2P",monospace; font-size:.7rem; touch-action:none; user-select:none; -webkit-user-select:none; display:flex; align-items:center; justify-content:center; text-align:center; transition:all .1s ease }
+.action-button:active{ background-color:hsla(0,0%,100%,.4); transform:scale(0.95); border-color:#fff }
+#message-overlay{ position:fixed }
+#editor-panel{ display:none !important }
+body.state-editing #mobile-controls{ display:none !important }
+body.state-editing #game-ui{ display:none !important }
+body.state-editing #editor-panel{ display:flex !important; position:fixed; top:0; right:0; width:40%; height:100vh; flex-direction:column; background-color:rgba(0,0,0,.95); padding:10px; z-index:100; overflow-y:auto }
+body.state-editing #editor-panel #tile-palette{ display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-bottom:10px }
+body.state-editing #editor-panel #tile-palette canvas{ width:100%; height:100%; aspect-ratio:1; border:1px solid hsla(0,0%,100%,.3); cursor:pointer }
+body.state-editing #editor-panel #tile-palette canvas:active{ border-color:#fff; background-color:hsla(0,0%,100%,.2) }
+body.state-editing #editor-panel button{ font-size:.5rem; padding:8px; margin:3px 0 }
+body.state-editing #editor-panel textarea{ display:none }
+body.state-editing #editor-panel select{ font-size:.5rem; padding:5px }
+body.state-editing #gameCanvas{ width:60% !important; height:100vh !important; margin:0 !important; max-width:none !important; object-fit:contain !important; position:fixed !important; left:0 !important; top:0 !important; aspect-ratio:auto !important }
+body.state-editing #main-container{ justify-content:flex-start }
+}
+.eraser-tile{ border:2px solid red !important }
+.eraser-tile.selected{ border:3px solid red !important; background-color:rgba(255,0,0,.1) }
+.tile-selector.selected{ border:3px solid lime; background-color:rgba(0,255,0,.1) }
+.tile-thumb{ transition:all .2s ease }
+.tile-thumb:hover{ transform:scale(1.05) }

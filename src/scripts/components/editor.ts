@@ -2,6 +2,17 @@ import { TILE_SIZE, TOTAL_LEVELS } from '../core/constants';
 import { TILE_TYPES, ANIMATION_DATA } from '../core/assets';
 import type { GameStore } from '../core/types';
 import { generateLevel, LevelGeneratorOptions } from './levelGenerator';
+import { 
+    saveToHistory, 
+    applyEditorTool, 
+    applyEditorToolArea,
+    updateModeButtons,
+    updateUndoRedoButtons,
+    updatePasteButton,
+    initializeAdvancedEditor,
+    copyArea,
+    pasteArea
+} from './advancedEditor';
 
 const ensurePlayerUnique = (level: string[][], tile: string, x: number, y: number) => {
     if (tile !== 'P') {
@@ -30,20 +41,37 @@ export const setupEditorState = (store: GameStore) => {
     });
     store.selectedTile = '1';
     store.mouse = { x: 0, y: 0, gridX: 0, gridY: 0, isDown: false };
+    
+    // Inicializar el editor avanzado
+    initializeAdvancedEditor(store);
 };
 
 const applyMousePaint = (store: GameStore) => {
-    const level = store.editorLevel;
     const { gridX, gridY } = store.mouse;
-    if (!level[gridY] || level[gridY][gridX] === undefined) {
-        return;
+    
+    // Si estamos en modo paint normal, usar el sistema original
+    if (store.editorMode === 'paint') {
+        const level = store.editorLevel;
+        if (!level[gridY] || level[gridY][gridX] === undefined) {
+            return;
+        }
+        
+        // Solo guardar en historial en el primer click, no en cada movimiento
+        if (!store.mouse.isDragging) {
+            saveToHistory(store);
+            store.mouse.isDragging = true;
+        }
+        
+        const selected = store.selectedTile;
+        if (selected === 'P') {
+            ensurePlayerUnique(level, selected, gridX, gridY);
+            return;
+        }
+        level[gridY][gridX] = selected;
+    } else {
+        // Para otros modos (fill, erase), usar el sistema avanzado
+        applyEditorTool(store, gridX, gridY);
     }
-    const selected = store.selectedTile;
-    if (selected === 'P') {
-        ensurePlayerUnique(level, selected, gridX, gridY);
-        return;
-    }
-    level[gridY][gridX] = selected;
 };
 
 // Variables para detectar gestos con dos dedos
@@ -123,11 +151,23 @@ export const bindEditorCanvas = (store: GameStore) => {
             return;
         }
         store.mouse.isDown = true;
+        store.mouse.isDragging = false;
+        store.mouse.startX = store.mouse.gridX;
+        store.mouse.startY = store.mouse.gridY;
         applyMousePaint(store);
     });
 
     canvas.addEventListener('mouseup', () => {
+        if (store.mouse.isDown && store.mouse.isDragging && 
+            store.mouse.startX !== undefined && store.mouse.startY !== undefined) {
+            // Si hubo drag, aplicar herramienta en el área completa
+            if (store.editorMode === 'paint') {
+                applyEditorToolArea(store, store.mouse.startX, store.mouse.startY, store.mouse.gridX, store.mouse.gridY);
+            }
+        }
         store.mouse.isDown = false;
+        store.mouse.isDragging = false;
+        updateUndoRedoButtons(store);
     });
 
     canvas.addEventListener('wheel', event => {
@@ -664,8 +704,26 @@ export const drawEditor = (store: GameStore) => {
         ctx.stroke();
     }
 
+    // Preview del tile seleccionado con 50% de opacidad
     const selectedSpriteKey = store.selectedTile === 'P' ? null : TILE_TYPES[store.selectedTile]?.sprite;
-    if (selectedSpriteKey) {
+    
+    if (store.selectedTile === '0') {
+        // Para tile vacío (borrar), mostrar una X roja semitransparente
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 3;
+        const centerX = store.mouse.gridX * TILE_SIZE + TILE_SIZE / 2;
+        const centerY = store.mouse.gridY * TILE_SIZE + TILE_SIZE / 2;
+        const crossSize = TILE_SIZE / 3;
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX - crossSize, centerY - crossSize);
+        ctx.lineTo(centerX + crossSize, centerY + crossSize);
+        ctx.moveTo(centerX + crossSize, centerY - crossSize);
+        ctx.lineTo(centerX - crossSize, centerY + crossSize);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    } else if (selectedSpriteKey) {
         const sprite = store.sprites[selectedSpriteKey];
         if (sprite) {
             ctx.globalAlpha = 0.5;
@@ -725,6 +783,81 @@ export const drawEditor = (store: GameStore) => {
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+    }
+
+    // Preview del área de drag-to-draw si estamos arrastrando
+    if (store.mouse.isDown && store.mouse.isDragging && 
+        store.mouse.startX !== undefined && store.mouse.startY !== undefined) {
+        
+        const startX = Math.min(store.mouse.startX, store.mouse.gridX);
+        const endX = Math.max(store.mouse.startX, store.mouse.gridX);
+        const startY = Math.min(store.mouse.startY, store.mouse.gridY);
+        const endY = Math.max(store.mouse.startY, store.mouse.gridY);
+        
+        // Dibujar rectángulo de selección
+        ctx.globalAlpha = 0.3;
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+            startX * TILE_SIZE,
+            startY * TILE_SIZE,
+            (endX - startX + 1) * TILE_SIZE,
+            (endY - startY + 1) * TILE_SIZE
+        );
+        
+        // Si es modo pintar, mostrar preview de todos los tiles del área
+        if (store.editorMode === 'paint' && store.selectedTile !== '0') {
+            const selectedSpriteKey = store.selectedTile === 'P' ? null : TILE_TYPES[store.selectedTile]?.sprite;
+            if (selectedSpriteKey) {
+                const sprite = store.sprites[selectedSpriteKey];
+                if (sprite) {
+                    ctx.globalAlpha = 0.3;
+                    for (let y = startY; y <= endY; y++) {
+                        for (let x = startX; x <= endX; x++) {
+                            const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, selectedSpriteKey);
+                            if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                                const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                                const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                                const frameWidth = sprite.width / totalFrames;
+                                ctx.drawImage(
+                                    sprite,
+                                    frameIndex * frameWidth,
+                                    0,
+                                    frameWidth,
+                                    sprite.height,
+                                    x * TILE_SIZE,
+                                    y * TILE_SIZE,
+                                    TILE_SIZE,
+                                    TILE_SIZE,
+                                );
+                            } else {
+                                ctx.drawImage(sprite, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (store.editorMode === 'paint' && store.selectedTile === '0') {
+            // Para borrar, mostrar X rojas en toda el área
+            ctx.globalAlpha = 0.3;
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const centerX = x * TILE_SIZE + TILE_SIZE / 2;
+                    const centerY = y * TILE_SIZE + TILE_SIZE / 2;
+                    const crossSize = TILE_SIZE / 4;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - crossSize, centerY - crossSize);
+                    ctx.lineTo(centerX + crossSize, centerY + crossSize);
+                    ctx.moveTo(centerX + crossSize, centerY - crossSize);
+                    ctx.lineTo(centerX - crossSize, centerY + crossSize);
+                    ctx.stroke();
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
     }
 
     ctx.restore();

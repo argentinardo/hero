@@ -133,12 +133,17 @@ export interface Light extends GameObject {
     isOn: boolean;
 }
 
+export type EditorMode = 'paint' | 'fill' | 'erase';
+
 export interface MouseState {
     x: number;
     y: number;
     gridX: number;
     gridY: number;
     isDown: boolean;
+    startX?: number;
+    startY?: number;
+    isDragging?: boolean;
 }
 
 export interface TileDefinition {
@@ -181,6 +186,13 @@ export interface UiElements {
     backToMenuBtn: HTMLButtonElement | null;
     confirmSaveBtn: HTMLButtonElement | null;
     cancelSaveBtn: HTMLButtonElement | null;
+    undoBtn: HTMLButtonElement | null;
+    redoBtn: HTMLButtonElement | null;
+    copyBtn: HTMLButtonElement | null;
+    pasteBtn: HTMLButtonElement | null;
+    paintModeBtn: HTMLButtonElement | null;
+    fillModeBtn: HTMLButtonElement | null;
+    eraseModeBtn: HTMLButtonElement | null;
 }
 
 export interface DomReferences {
@@ -221,6 +233,10 @@ export interface GameStore {
     sprites: Record<string, HTMLImageElement>;
     joystickManager: JoystickManager | null;
     initialLevels: string[][];
+    editorMode: EditorMode;
+    editorHistory: string[][][];
+    editorHistoryIndex: number;
+    clipboard: string[][] | null;
     dom: DomReferences;
 }
 
