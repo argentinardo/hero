@@ -97,19 +97,45 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
     }
 };
 
-const createMiner = (x: number, y: number, mapWidth: number): Miner => ({
-    x,
-    y: y - 13,
-    width: 78 * 1.3,
-    height: TILE_SIZE * 1.3,
-    tile: '9',
-    animationState: 'idle',
-    currentFrame: 0,
-    animationTick: 0,
-    animationDirection: 1,
-    isFlipped: x > mapWidth / 2,
-    affectedByDark: false,
-});
+const createMiner = (x: number, y: number, mapWidth: number, map: string[]): Miner => {
+    // Detectar a qué muro está pegado el minero
+    const tileX = Math.floor(x / TILE_SIZE);
+    const tileY = Math.floor(y / TILE_SIZE);
+    
+    // Verificar tiles adyacentes (izquierda y derecha)
+    const leftTile = map[tileY]?.[tileX - 1] || '0';
+    const rightTile = map[tileY]?.[tileX + 1] || '0';
+    
+    // El minero debe tener su espalda contra el muro
+    // Si hay muro a la izquierda, el minero mira hacia la derecha (no flipped)
+    // Si hay muro a la derecha, el minero mira hacia la izquierda (flipped)
+    let isFlipped = false;
+    
+    if (leftTile !== '0' && leftTile !== undefined) {
+        // Hay muro a la izquierda -> minero mira hacia la derecha (no flipped)
+        isFlipped = false;
+    } else if (rightTile !== '0' && rightTile !== undefined) {
+        // Hay muro a la derecha -> minero mira hacia la izquierda (flipped)
+        isFlipped = true;
+    } else {
+        // Fallback: usar lógica anterior si no hay muros detectados
+        isFlipped = x > mapWidth / 2;
+    }
+    
+    return {
+        x,
+        y: y - 13,
+        width: 78 * 1.3,
+        height: TILE_SIZE * 1.3,
+        tile: '9',
+        animationState: 'idle',
+        currentFrame: 0,
+        animationTick: 0,
+        animationDirection: 1,
+        isFlipped,
+        affectedByDark: false,
+    };
+};
 
 export const parseLevel = (store: GameStore, map: string[]) => {
     store.walls = [];
@@ -160,7 +186,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
             }
 
             if (tile === '9') {
-                store.miner = createMiner(tileX, tileY, levelPixelWidth);
+                store.miner = createMiner(tileX, tileY, levelPixelWidth, map);
                 continue;
             }
 

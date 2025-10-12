@@ -245,9 +245,21 @@ const drawGameWorld = (store: GameStore) => {
         ctx.fillStyle = `rgb(${flashIntensity}, ${flashIntensity}, ${flashIntensity})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else if (store.isDark) {
-        // Modo oscuro: fondo negro
+        // Modo oscuro: fondo negro que cubre todo el nivel
+        ctx.save();
+        ctx.translate(-store.cameraX, -store.cameraY);
+        
+        // Calcular las dimensiones completas del nivel
+        const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
+        const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+        const levelWidth = levelCols * TILE_SIZE;
+        const levelHeight = levelRows * TILE_SIZE;
+        
+        // Dibujar oscuridad que cubra todo el nivel
         ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, Math.max(levelWidth, canvas.width + store.cameraX), Math.max(levelHeight, canvas.height + store.cameraY));
+        
+        ctx.restore();
     } else if (backgroundSprite) {
         // Dibujar fondo con tiles repetidos (modo normal)
         const TILE_SIZE = 64; // Tamaño del tile del background

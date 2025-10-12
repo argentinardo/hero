@@ -39,19 +39,23 @@ const updateCamera = () => {
     const maxCameraY = Math.max(0, levelRows * TILE_SIZE - canvas.height);
     store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
 
-    // Cámara horizontal (nueva funcionalidad)
-    const horizontalDeadzone = canvas.width / 3;
-    const playerRight = store.player.x + store.player.width;
+    // Cámara horizontal por bloques de 20 tiles
+    const BLOCK_WIDTH_TILES = 20; // Ancho del bloque en tiles
+    const BLOCK_WIDTH_PIXELS = BLOCK_WIDTH_TILES * TILE_SIZE; // Ancho del bloque en pixels
     
-    // Mover cámara si el jugador se acerca a los bordes
-    if (store.player.x < store.cameraX + horizontalDeadzone) {
-        store.cameraX = store.player.x - horizontalDeadzone;
-    }
-    if (playerRight > store.cameraX + canvas.width - horizontalDeadzone) {
-        store.cameraX = playerRight - canvas.width + horizontalDeadzone;
+    // Calcular en qué bloque de 20 tiles está el héroe
+    const playerCenterX = store.player.x + store.player.width / 2;
+    const playerBlock = Math.floor(playerCenterX / BLOCK_WIDTH_PIXELS);
+    
+    // Calcular en qué bloque está actualmente la cámara
+    const currentCameraBlock = Math.floor(store.cameraX / BLOCK_WIDTH_PIXELS);
+    
+    // Si el héroe está en un bloque diferente al de la cámara, mover la cámara
+    if (playerBlock !== currentCameraBlock) {
+        store.cameraX = playerBlock * BLOCK_WIDTH_PIXELS;
     }
 
-    // Calcular límites horizontales del nivel
+    // Calcular límites horizontales del nivel (asegurar que no se pase del nivel)
     const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
     const maxCameraX = Math.max(0, levelCols * TILE_SIZE - canvas.width);
     store.cameraX = Math.max(0, Math.min(store.cameraX, maxCameraX));
