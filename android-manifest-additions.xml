@@ -1,0 +1,30 @@
+<!-- 
+  Agregar estas configuraciones a android/app/src/main/AndroidManifest.xml 
+  dentro del tag <application>
+-->
+
+<!-- Hardware acceleration para mejor rendimiento -->
+<application
+    android:hardwareAccelerated="true"
+    android:usesCleartextTraffic="true"
+    ...>
+    
+    <activity
+        ...
+        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+        android:windowSoftInputMode="adjustResize"
+        android:screenOrientation="landscape"
+        android:keepScreenOn="true">
+    </activity>
+
+</application>
+
+<!-- Permisos necesarios (fuera del tag <application>) -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+
+<!-- Orientación landscape (pantalla horizontal) -->
+<uses-feature android:name="android.hardware.screen.landscape" />
+
