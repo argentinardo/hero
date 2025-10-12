@@ -10,11 +10,7 @@ import { playBackgroundMusic, pauseBackgroundMusic } from './audio';
 import { 
     undo, 
     redo, 
-    copyArea, 
-    pasteArea, 
-    updateModeButtons, 
     updateUndoRedoButtons, 
-    updatePasteButton,
     initializeAdvancedEditor
 } from './advancedEditor';
 
@@ -58,11 +54,6 @@ export const attachDomReferences = (store: GameStore) => {
     // Editor tools
     ui.undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
     ui.redoBtn = document.getElementById('redo-btn') as HTMLButtonElement | null;
-    ui.copyBtn = document.getElementById('copy-btn') as HTMLButtonElement | null;
-    ui.pasteBtn = document.getElementById('paste-btn') as HTMLButtonElement | null;
-    ui.paintModeBtn = document.getElementById('paint-mode-btn') as HTMLButtonElement | null;
-    ui.fillModeBtn = document.getElementById('fill-mode-btn') as HTMLButtonElement | null;
-    ui.eraseModeBtn = document.getElementById('erase-mode-btn') as HTMLButtonElement | null;
 };
 
 const setBodyClass = (state: string) => {
@@ -283,7 +274,7 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
 
     // Caso especial para el jugador
     if (tile === 'P') {
-        const playerSprite = store.sprites.hero_stand;
+        const playerSprite = store.sprites.P_die;
         if (playerSprite && playerSprite.naturalWidth > 0) {
             ctx.drawImage(
                 playerSprite,
@@ -300,6 +291,58 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
             // Fallback: rectángulo rojo
             ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
+
+    // Caso especial para el tile vacío
+    if (tile === '0') {
+        const backgroundSprite = store.sprites.background;
+        if (backgroundSprite && backgroundSprite.naturalWidth > 0) {
+            ctx.drawImage(
+                backgroundSprite,
+                0,
+                0,
+                backgroundSprite.width,
+                backgroundSprite.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        } else {
+            // Fallback: fondo gris
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
+
+    // Caso especial para la luz
+    if (tile === 'L') {
+        const lightSprite = store.sprites.L;
+        if (lightSprite && lightSprite.naturalWidth > 0) {
+            const frameWidth = lightSprite.width / 2; // 2 frames (encendida/apagada)
+            ctx.drawImage(
+                lightSprite,
+                0, // Frame 0 (encendida)
+                0,
+                frameWidth,
+                lightSprite.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        } else {
+            // Fallback: círculo amarillo
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) / 3;
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
         }
         return;
     }
@@ -377,15 +420,12 @@ const populatePalette = (store: GameStore) => {
     stopPaletteAnimation();
     
     // Función para crear botones de tile
-    const createTileButton = (key: string, name: string, isEraser: boolean = false) => {
+    const createTileButton = (key: string, name: string) => {
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile-selector flex flex-col items-center gap-1 text-xs text-center';
         tileDiv.dataset.tile = key;
         if (key === store.selectedTile) {
             tileDiv.classList.add('selected');
-        }
-        if (isEraser) {
-            tileDiv.classList.add('eraser-tile');
         }
         
         const preview = document.createElement('canvas');
@@ -394,24 +434,15 @@ const populatePalette = (store: GameStore) => {
         preview.className = 'tile-thumb border border-white/40';
 
         if (key === '0') {
-            // Tile vacío - mostrar X roja
-            const ctx = preview.getContext('2d');
-            if (ctx) {
-                ctx.fillStyle = '#333';
-                ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
-                ctx.strokeStyle = '#ff0000';
-                ctx.lineWidth = 3;
-                const centerX = TILE_SIZE / 2;
-                const centerY = TILE_SIZE / 2;
-                const crossSize = TILE_SIZE / 3;
-                
-                ctx.beginPath();
-                ctx.moveTo(centerX - crossSize, centerY - crossSize);
-                ctx.lineTo(centerX + crossSize, centerY + crossSize);
-                ctx.moveTo(centerX + crossSize, centerY - crossSize);
-                ctx.lineTo(centerX - crossSize, centerY + crossSize);
-                ctx.stroke();
-            }
+            // Tile vacío - usar sprite de fondo, no dibujar X manual
+            // Marcar como tile borrador
+            tileDiv.classList.add('eraser-tile');
+        }
+        
+        // Para todos los tiles (incluyendo el vacío), usar drawPaletteEntry
+        if (key === 'P' || key === 'L' || key === '0') {
+            // Casos especiales: no agregar a paletteEntries para animación
+            drawPaletteEntry(store, key, preview, performance.now());
         } else {
             const spriteKey = TILE_TYPES[key]?.sprite;
             const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
@@ -440,10 +471,7 @@ const populatePalette = (store: GameStore) => {
         paletteEl.appendChild(tileDiv);
     };
     
-    // Agregar tile vacío (borrador) primero
-    createTileButton('0', 'Borrar', true);
-    
-    // Agregar todos los demás tiles
+    // Agregar todos los tiles incluyendo el vacío (0)
     Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
         createTileButton(key, name);
     });
@@ -650,9 +678,25 @@ const setupLevelData = (store: GameStore) => {
 
     // Botón restaurar: recarga el nivel guardado (descartando cambios actuales)
     loadLevelBtn?.addEventListener('click', () => {
-        loadLevelFromStore();
+        // Restaurar desde el archivo JSON original, no desde la sesión
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        showNotification(store, '🔄 Restaurado', `Nivel ${index + 1} restaurado desde la sesión.\nCambios no guardados descartados.`);
+        const originalLevel = store.initialLevels[index] ?? store.initialLevels[0];
+        
+        if (originalLevel) {
+            // Cargar el nivel original desde el JSON
+            store.editorLevel = originalLevel.map(row => row.split(''));
+            // También actualizar el store de la sesión para mantener consistencia
+            store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
+            
+            // Resetear la cámara
+            store.cameraX = 0;
+            store.cameraY = 0;
+            
+            // Reinicializar el editor avanzado
+            initializeAdvancedEditor(store);
+            
+            showNotification(store, '🔄 Restaurado', `Nivel ${index + 1} restaurado desde el archivo JSON.\nTodos los cambios descartados.`);
+        }
     });
 
     saveLevelBtn?.addEventListener('click', () => {
@@ -697,6 +741,17 @@ const setupLevelData = (store: GameStore) => {
     });
 
     playTestBtn?.addEventListener('click', () => {
+        // Guardar el nivel actual en la sesión (en memoria) antes de jugar
+        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        
+        // Limpiar filas y columnas vacías antes de guardar en sesión
+        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
+        
+        // Actualizar el store de la sesión con la versión limpia
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
+        store.editorLevel = cleanedLevel;
+        
+        // Convertir a formato del juego y empezar
         const currentLevel = store.editorLevel.map(row => row.join(''));
         startGame(store, currentLevel);
     });
@@ -786,41 +841,6 @@ const setupLevelData = (store: GameStore) => {
         updateUndoRedoButtons(store);
     });
 
-    // Editor avanzado - Copy/Paste
-    store.dom.ui.copyBtn?.addEventListener('click', () => {
-        const { startX, startY, gridX, gridY } = store.mouse;
-        if (startX !== undefined && startY !== undefined) {
-            copyArea(store, startX, startY, gridX, gridY);
-        } else {
-            // Si no hay área seleccionada, copiar solo el tile actual
-            copyArea(store, gridX, gridY, gridX, gridY);
-        }
-        updatePasteButton(store);
-        showNotification(store, 'Copiado', 'Área copiada al portapapeles');
-    });
-    
-    store.dom.ui.pasteBtn?.addEventListener('click', () => {
-        if (store.clipboard) {
-            pasteArea(store, store.mouse.gridX, store.mouse.gridY);
-            updateUndoRedoButtons(store);
-            showNotification(store, 'Pegado', 'Área pegada desde el portapapeles');
-        }
-    });
 
-    // Editor avanzado - Modos de edición
-    store.dom.ui.paintModeBtn?.addEventListener('click', () => {
-        store.editorMode = 'paint';
-        updateModeButtons(store);
-    });
-    
-    store.dom.ui.fillModeBtn?.addEventListener('click', () => {
-        store.editorMode = 'fill';
-        updateModeButtons(store);
-    });
-    
-    store.dom.ui.eraseModeBtn?.addEventListener('click', () => {
-        store.editorMode = 'erase';
-        updateModeButtons(store);
-    });
 };
 

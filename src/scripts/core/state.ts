@@ -63,10 +63,8 @@ export const createInitialStore = (): GameStore => ({
     sprites: {},
     joystickManager: null,
     initialLevels: [],
-    editorMode: 'paint',
     editorHistory: [],
     editorHistoryIndex: -1,
-    clipboard: null,
     dom: {
         canvas: null,
         ctx: null,
@@ -103,11 +101,6 @@ export const createInitialStore = (): GameStore => ({
             cancelSaveBtn: null,
             undoBtn: null,
             redoBtn: null,
-            copyBtn: null,
-            pasteBtn: null,
-            paintModeBtn: null,
-            fillModeBtn: null,
-            eraseModeBtn: null,
         },
     },
 });

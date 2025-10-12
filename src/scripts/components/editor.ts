@@ -4,14 +4,9 @@ import type { GameStore } from '../core/types';
 import { generateLevel, LevelGeneratorOptions } from './levelGenerator';
 import { 
     saveToHistory, 
-    applyEditorTool, 
-    applyEditorToolArea,
-    updateModeButtons,
+    paintArea,
     updateUndoRedoButtons,
-    updatePasteButton,
-    initializeAdvancedEditor,
-    copyArea,
-    pasteArea
+    initializeAdvancedEditor
 } from './advancedEditor';
 
 const ensurePlayerUnique = (level: string[][], tile: string, x: number, y: number) => {
@@ -47,31 +42,24 @@ export const setupEditorState = (store: GameStore) => {
 };
 
 const applyMousePaint = (store: GameStore) => {
+    const level = store.editorLevel;
     const { gridX, gridY } = store.mouse;
-    
-    // Si estamos en modo paint normal, usar el sistema original
-    if (store.editorMode === 'paint') {
-        const level = store.editorLevel;
-        if (!level[gridY] || level[gridY][gridX] === undefined) {
-            return;
-        }
-        
-        // Solo guardar en historial en el primer click, no en cada movimiento
-        if (!store.mouse.isDragging) {
-            saveToHistory(store);
-            store.mouse.isDragging = true;
-        }
-        
-        const selected = store.selectedTile;
-        if (selected === 'P') {
-            ensurePlayerUnique(level, selected, gridX, gridY);
-            return;
-        }
-        level[gridY][gridX] = selected;
-    } else {
-        // Para otros modos (fill, erase), usar el sistema avanzado
-        applyEditorTool(store, gridX, gridY);
+    if (!level[gridY] || level[gridY][gridX] === undefined) {
+        return;
     }
+    
+    // Solo guardar en historial en el primer click, no en cada movimiento
+    if (!store.mouse.isDragging) {
+        saveToHistory(store);
+        store.mouse.isDragging = true;
+    }
+    
+    const selected = store.selectedTile;
+    if (selected === 'P') {
+        ensurePlayerUnique(level, selected, gridX, gridY);
+        return;
+    }
+    level[gridY][gridX] = selected;
 };
 
 // Variables para detectar gestos con dos dedos
@@ -160,10 +148,8 @@ export const bindEditorCanvas = (store: GameStore) => {
     canvas.addEventListener('mouseup', () => {
         if (store.mouse.isDown && store.mouse.isDragging && 
             store.mouse.startX !== undefined && store.mouse.startY !== undefined) {
-            // Si hubo drag, aplicar herramienta en el área completa
-            if (store.editorMode === 'paint') {
-                applyEditorToolArea(store, store.mouse.startX, store.mouse.startY, store.mouse.gridX, store.mouse.gridY);
-            }
+            // Si hubo drag, pintar el área completa
+            paintArea(store, store.mouse.startX, store.mouse.startY, store.mouse.gridX, store.mouse.gridY, store.selectedTile);
         }
         store.mouse.isDown = false;
         store.mouse.isDragging = false;
@@ -655,10 +641,28 @@ export const drawEditor = (store: GameStore) => {
                     ctx.drawImage(sprite, colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             } else if (tile === 'P') {
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-                ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+                // Dibujar jugador con sprite hero-die.png - ocupando 2 tiles de altura
+                const playerSprite = store.sprites.P_die;
+                if (playerSprite) {
+                    // Asegurar que el sprite ocupe exactamente 2 tiles de altura
+                    ctx.drawImage(
+                        playerSprite,
+                        0,
+                        0,
+                        playerSprite.width,
+                        playerSprite.height,
+                        colIndex * TILE_SIZE,
+                        rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                        TILE_SIZE,
+                        TILE_SIZE * 2
+                    );
+                } else {
+                    // Fallback: rectángulo rojo ocupando 2 tiles
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+                }
             } else if (tile === 'L') {
-                // Dibujar luz en el editor con sprite
+                // Dibujar luz con sprite luz.png
                 const lightSprite = store.sprites.L;
                 if (lightSprite) {
                     const frameWidth = lightSprite.width / 2; // 2 frames (encendida/apagada)
@@ -683,6 +687,23 @@ export const drawEditor = (store: GameStore) => {
                     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
                     ctx.fill();
                 }
+            } else if (tile === '0') {
+                // Dibujar espacio vacío con background_small.png
+                const backgroundSprite = store.sprites.background;
+                if (backgroundSprite) {
+                    ctx.drawImage(
+                        backgroundSprite,
+                        0,
+                        0,
+                        backgroundSprite.width,
+                        backgroundSprite.height,
+                        colIndex * TILE_SIZE,
+                        rowIndex * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE
+                    );
+                }
+                // Si no hay sprite de fondo, no dibujar nada (mantener transparente)
             }
         });
     });
@@ -749,10 +770,29 @@ export const drawEditor = (store: GameStore) => {
             ctx.globalAlpha = 1;
         }
     } else if (store.selectedTile === 'P') {
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-        ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
-        ctx.globalAlpha = 1;
+        // Preview del jugador con sprite hero-die.png - ocupando 2 tiles de altura
+        const playerSprite = store.sprites.P_die;
+        if (playerSprite) {
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(
+                playerSprite,
+                0,
+                0,
+                playerSprite.width,
+                playerSprite.height,
+                store.mouse.gridX * TILE_SIZE,
+                store.mouse.gridY * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                TILE_SIZE,
+                TILE_SIZE * 2
+            );
+            ctx.globalAlpha = 1;
+        } else {
+            // Fallback: rectángulo rojo ocupando 2 tiles
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+            ctx.globalAlpha = 1;
+        }
     } else if (store.selectedTile === 'L') {
         // Preview de luz con sprite
         const lightSprite = store.sprites.L;
@@ -805,8 +845,8 @@ export const drawEditor = (store: GameStore) => {
             (endY - startY + 1) * TILE_SIZE
         );
         
-        // Si es modo pintar, mostrar preview de todos los tiles del área
-        if (store.editorMode === 'paint' && store.selectedTile !== '0') {
+        // Si no es tile vacío, mostrar preview de todos los tiles del área
+        if (store.selectedTile !== '0') {
             const selectedSpriteKey = store.selectedTile === 'P' ? null : TILE_TYPES[store.selectedTile]?.sprite;
             if (selectedSpriteKey) {
                 const sprite = store.sprites[selectedSpriteKey];
@@ -814,30 +854,50 @@ export const drawEditor = (store: GameStore) => {
                     ctx.globalAlpha = 0.3;
                     for (let y = startY; y <= endY; y++) {
                         for (let x = startX; x <= endX; x++) {
-                            const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, selectedSpriteKey);
-                            if (anim && effectiveFrames > 0 && totalFrames > 0) {
-                                const frameDuration = Math.max(1, anim.speed) * msPerTick;
-                                const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
-                                const frameWidth = sprite.width / totalFrames;
-                                ctx.drawImage(
-                                    sprite,
-                                    frameIndex * frameWidth,
-                                    0,
-                                    frameWidth,
-                                    sprite.height,
-                                    x * TILE_SIZE,
-                                    y * TILE_SIZE,
-                                    TILE_SIZE,
-                                    TILE_SIZE,
-                                );
+                            // Manejar casos especiales para el preview del área
+                            if (store.selectedTile === 'P') {
+                                // Preview del jugador en área - ocupando 2 tiles de altura
+                                const playerSprite = store.sprites.P_die;
+                                if (playerSprite) {
+                                    ctx.drawImage(
+                                        playerSprite,
+                                        0,
+                                        0,
+                                        playerSprite.width,
+                                        playerSprite.height,
+                                        x * TILE_SIZE,
+                                        y * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                                        TILE_SIZE,
+                                        TILE_SIZE * 2
+                                    );
+                                }
                             } else {
-                                ctx.drawImage(sprite, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                                // Preview normal de otros tiles
+                                const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, selectedSpriteKey);
+                                if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                                    const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                                    const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                                    const frameWidth = sprite.width / totalFrames;
+                                    ctx.drawImage(
+                                        sprite,
+                                        frameIndex * frameWidth,
+                                        0,
+                                        frameWidth,
+                                        sprite.height,
+                                        x * TILE_SIZE,
+                                        y * TILE_SIZE,
+                                        TILE_SIZE,
+                                        TILE_SIZE,
+                                    );
+                                } else {
+                                    ctx.drawImage(sprite, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                                }
                             }
                         }
                     }
                 }
             }
-        } else if (store.editorMode === 'paint' && store.selectedTile === '0') {
+        } else if (store.selectedTile === '0') {
             // Para borrar, mostrar X rojas en toda el área
             ctx.globalAlpha = 0.3;
             ctx.strokeStyle = '#ff0000';

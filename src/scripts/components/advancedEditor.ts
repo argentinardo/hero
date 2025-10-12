@@ -35,59 +35,6 @@ export const redo = (store: GameStore) => {
     }
 };
 
-// Sistema de clipboard
-export const copyArea = (store: GameStore, startX: number, startY: number, endX: number, endY: number) => {
-    const minX = Math.min(startX, endX);
-    const maxX = Math.max(startX, endX);
-    const minY = Math.min(startY, endY);
-    const maxY = Math.max(startY, endY);
-    
-    const copiedArea: string[][] = [];
-    for (let y = minY; y <= maxY; y++) {
-        const row: string[] = [];
-        for (let x = minX; x <= maxX; x++) {
-            row.push(store.editorLevel[y]?.[x] || '0');
-        }
-        copiedArea.push(row);
-    }
-    
-    store.clipboard = copiedArea;
-};
-
-export const pasteArea = (store: GameStore, pasteX: number, pasteY: number) => {
-    if (!store.clipboard || store.clipboard.length === 0) return;
-    
-    saveToHistory(store);
-    
-    const clipboardHeight = store.clipboard.length;
-    const clipboardWidth = store.clipboard[0].length;
-    
-    // Asegurar que el nivel sea lo suficientemente grande
-    const maxY = pasteY + clipboardHeight - 1;
-    const maxX = pasteX + clipboardWidth - 1;
-    
-    // Expandir el nivel si es necesario
-    while (store.editorLevel.length <= maxY) {
-        const rowWidth = store.editorLevel[0]?.length || 0;
-        store.editorLevel.push(Array(Math.max(rowWidth, maxX + 1)).fill('0'));
-    }
-    
-    // Expandir las filas existentes si es necesario
-    for (let y = 0; y < store.editorLevel.length; y++) {
-        while (store.editorLevel[y].length <= maxX) {
-            store.editorLevel[y].push('0');
-        }
-    }
-    
-    // Pegar el contenido
-    for (let y = 0; y < clipboardHeight; y++) {
-        for (let x = 0; x < clipboardWidth; x++) {
-            if (store.editorLevel[pasteY + y] && store.editorLevel[pasteY + y][pasteX + x] !== undefined) {
-                store.editorLevel[pasteY + y][pasteX + x] = store.clipboard[y][x];
-            }
-        }
-    }
-};
 
 // Función de llenado (flood fill)
 export const floodFill = (store: GameStore, startX: number, startY: number, newTile: string) => {
@@ -170,62 +117,6 @@ export const eraseArea = (store: GameStore, startX: number, startY: number, endX
     paintArea(store, startX, startY, endX, endY, '0');
 };
 
-// Función para aplicar la herramienta seleccionada
-export const applyEditorTool = (store: GameStore, x: number, y: number) => {
-    switch (store.editorMode) {
-        case 'paint':
-            // El pintado normal se maneja en el editor principal
-            break;
-        case 'fill':
-            floodFill(store, x, y, store.selectedTile);
-            break;
-        case 'erase':
-            if (store.editorLevel[y] && store.editorLevel[y][x] !== undefined) {
-                saveToHistory(store);
-                store.editorLevel[y][x] = '0';
-            }
-            break;
-    }
-};
-
-// Función para aplicar la herramienta en un área
-export const applyEditorToolArea = (store: GameStore, startX: number, startY: number, endX: number, endY: number) => {
-    switch (store.editorMode) {
-        case 'paint':
-            paintArea(store, startX, startY, endX, endY, store.selectedTile);
-            break;
-        case 'fill':
-            // Para fill, solo aplicar en el punto de inicio
-            floodFill(store, startX, startY, store.selectedTile);
-            break;
-        case 'erase':
-            eraseArea(store, startX, startY, endX, endY);
-            break;
-    }
-};
-
-// Función para actualizar el estado de los botones de modo
-export const updateModeButtons = (store: GameStore) => {
-    const { paintModeBtn, fillModeBtn, eraseModeBtn } = store.dom.ui;
-    
-    // Resetear todos los botones
-    if (paintModeBtn) paintModeBtn.className = 'flex-1 bg-gray-600 hover:bg-gray-700 p-1 border border-white text-xs';
-    if (fillModeBtn) fillModeBtn.className = 'flex-1 bg-gray-600 hover:bg-gray-700 p-1 border border-white text-xs';
-    if (eraseModeBtn) eraseModeBtn.className = 'flex-1 bg-gray-600 hover:bg-gray-700 p-1 border border-white text-xs';
-    
-    // Activar el botón del modo actual
-    switch (store.editorMode) {
-        case 'paint':
-            if (paintModeBtn) paintModeBtn.className = 'flex-1 bg-green-600 hover:bg-green-700 p-1 border border-white text-xs';
-            break;
-        case 'fill':
-            if (fillModeBtn) fillModeBtn.className = 'flex-1 bg-blue-600 hover:bg-blue-700 p-1 border border-white text-xs';
-            break;
-        case 'erase':
-            if (eraseModeBtn) eraseModeBtn.className = 'flex-1 bg-red-600 hover:bg-red-700 p-1 border border-white text-xs';
-            break;
-    }
-};
 
 // Función para actualizar el estado de los botones undo/redo
 export const updateUndoRedoButtons = (store: GameStore) => {
@@ -246,17 +137,6 @@ export const updateUndoRedoButtons = (store: GameStore) => {
     }
 };
 
-// Función para actualizar el estado del botón paste
-export const updatePasteButton = (store: GameStore) => {
-    const { pasteBtn } = store.dom.ui;
-    
-    if (pasteBtn) {
-        pasteBtn.disabled = !store.clipboard;
-        pasteBtn.className = pasteBtn.disabled 
-            ? 'w-full bg-gray-500 p-2 border-2 border-white text-xs opacity-50 cursor-not-allowed'
-            : 'w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white text-xs';
-    }
-};
 
 // Función para inicializar el editor avanzado
 export const initializeAdvancedEditor = (store: GameStore) => {
@@ -264,7 +144,5 @@ export const initializeAdvancedEditor = (store: GameStore) => {
     saveToHistory(store);
     
     // Actualizar botones
-    updateModeButtons(store);
     updateUndoRedoButtons(store);
-    updatePasteButton(store);
 };
