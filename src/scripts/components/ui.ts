@@ -318,6 +318,51 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
         return;
     }
 
+    // Caso especial para el miner (ocupa 2 tiles de ancho con animación)
+    if (tile === '9') {
+        const minerSprite = store.sprites['9'];
+        if (minerSprite && minerSprite.naturalWidth > 0) {
+            const anim = ANIMATION_DATA['9_idle'];
+            if (anim) {
+                const effectiveFrames = Math.min(anim.frames, 2);
+                const totalFrames = 6; // MINER_TOTAL_FRAMES
+                const msPerTick = 1000 / 60;
+                const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                const frameWidth = minerSprite.width / totalFrames;
+                
+                ctx.drawImage(
+                    minerSprite,
+                    frameIndex * frameWidth,
+                    0,
+                    frameWidth,
+                    minerSprite.height,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            } else {
+                ctx.drawImage(
+                    minerSprite,
+                    0,
+                    0,
+                    minerSprite.width,
+                    minerSprite.height,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            }
+        } else {
+            // Fallback: rectángulo azul
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
+
     // Caso especial para la luz
     if (tile === 'L') {
         const lightSprite = store.sprites.L;
@@ -429,7 +474,7 @@ const populatePalette = (store: GameStore) => {
         }
         
         const preview = document.createElement('canvas');
-        preview.width = TILE_SIZE;
+        preview.width = TILE_SIZE * (key === '9' ? 2 : 1);
         preview.height = TILE_SIZE * (key === 'P' ? 2 : 1);
         preview.className = 'tile-thumb border border-white/40';
 
@@ -440,9 +485,13 @@ const populatePalette = (store: GameStore) => {
         }
         
         // Para todos los tiles (incluyendo el vacío), usar drawPaletteEntry
-        if (key === 'P' || key === 'L' || key === '0') {
-            // Casos especiales: no agregar a paletteEntries para animación
+        if (key === 'P' || key === 'L' || key === '0' || key === '9') {
+            // Casos especiales: manejar con drawPaletteEntry
             drawPaletteEntry(store, key, preview, performance.now());
+            // Solo agregar miner a animación (los demás son estáticos)
+            if (key === '9') {
+                paletteEntries.push({ tile: key, canvas: preview });
+            }
         } else {
             const spriteKey = TILE_TYPES[key]?.sprite;
             const sprite = spriteKey ? store.sprites[spriteKey] : undefined;

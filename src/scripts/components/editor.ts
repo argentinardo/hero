@@ -59,7 +59,24 @@ const applyMousePaint = (store: GameStore) => {
         ensurePlayerUnique(level, selected, gridX, gridY);
         return;
     }
+    if (selected === '9') {
+        ensureMinerUnique(level, selected, gridX, gridY);
+        return;
+    }
     level[gridY][gridX] = selected;
+};
+
+const ensureMinerUnique = (level: string[][], tile: string, x: number, y: number) => {
+    // Eliminar cualquier miner existente
+    for (let row = 0; row < level.length; row++) {
+        for (let col = 0; col < level[row].length; col++) {
+            if (level[row][col] === '9') {
+                level[row][col] = '0';
+            }
+        }
+    }
+    // Colocar el nuevo miner
+    level[y][x] = tile;
 };
 
 // Variables para detectar gestos con dos dedos
@@ -616,52 +633,16 @@ export const drawEditor = (store: GameStore) => {
     const timestamp = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const msPerTick = 1000 / 60;
 
+    // Primera pasada: dibujar tiles normales y tiles especiales de 1x1
     store.editorLevel.forEach((row, rowIndex) => {
         row.forEach((tile, colIndex) => {
-            const spriteKey = TILE_TYPES[tile]?.sprite;
-            const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
-            if (sprite) {
-                const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, spriteKey);
-                if (anim && effectiveFrames > 0 && totalFrames > 0) {
-                    const frameDuration = Math.max(1, anim.speed) * msPerTick;
-                    const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
-                    const frameWidth = sprite.width / totalFrames;
-                    ctx.drawImage(
-                        sprite,
-                        frameIndex * frameWidth,
-                        0,
-                        frameWidth,
-                        sprite.height,
-                        colIndex * TILE_SIZE,
-                        rowIndex * TILE_SIZE,
-                        TILE_SIZE,
-                        TILE_SIZE,
-                    );
-                } else {
-                    ctx.drawImage(sprite, colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            } else if (tile === 'P') {
-                // Dibujar jugador con sprite hero-die.png - ocupando 2 tiles de altura
-                const playerSprite = store.sprites.P_die;
-                if (playerSprite) {
-                    // Asegurar que el sprite ocupe exactamente 2 tiles de altura
-                    ctx.drawImage(
-                        playerSprite,
-                        0,
-                        0,
-                        playerSprite.width,
-                        playerSprite.height,
-                        colIndex * TILE_SIZE,
-                        rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                        TILE_SIZE,
-                        TILE_SIZE * 2
-                    );
-                } else {
-                    // Fallback: rectángulo rojo ocupando 2 tiles
-                    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
-                }
-            } else if (tile === 'L') {
+            // Casos especiales que se manejan en segunda pasada
+            if (tile === 'P' || tile === '9') {
+                // Estos tiles ocupan múltiples espacios, se dibujan después
+                return;
+            }
+            
+            if (tile === 'L') {
                 // Dibujar luz con sprite luz.png
                 const lightSprite = store.sprites.L;
                 if (lightSprite) {
@@ -704,6 +685,155 @@ export const drawEditor = (store: GameStore) => {
                     );
                 }
                 // Si no hay sprite de fondo, no dibujar nada (mantener transparente)
+            } else {
+                // Tiles normales
+                const spriteKey = TILE_TYPES[tile]?.sprite;
+                const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
+                if (sprite) {
+                    const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, spriteKey);
+                    if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                        const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                        const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                        const frameWidth = sprite.width / totalFrames;
+                        ctx.drawImage(
+                            sprite,
+                            frameIndex * frameWidth,
+                            0,
+                            frameWidth,
+                            sprite.height,
+                            colIndex * TILE_SIZE,
+                            rowIndex * TILE_SIZE,
+                            TILE_SIZE,
+                            TILE_SIZE,
+                        );
+                    } else {
+                        ctx.drawImage(sprite, colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+        });
+    });
+
+    // Segunda pasada: dibujar tiles que ocupan múltiples espacios (Player y Miner)
+    store.editorLevel.forEach((row, rowIndex) => {
+        row.forEach((tile, colIndex) => {
+            if (tile === 'P') {
+                // Dibujar jugador con sprite hero-die.png - ocupando 2 tiles de altura
+                const playerSprite = store.sprites.P_die;
+                if (playerSprite) {
+                    // Asegurar que el sprite ocupe exactamente 2 tiles de altura
+                    ctx.drawImage(
+                        playerSprite,
+                        0,
+                        0,
+                        playerSprite.width,
+                        playerSprite.height,
+                        colIndex * TILE_SIZE,
+                        rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                        TILE_SIZE,
+                        TILE_SIZE * 2
+                    );
+                } else {
+                    // Fallback: rectángulo rojo ocupando 2 tiles
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+                }
+            } else if (tile === '9') {
+                // Dibujar miner con sprite miner_small.png - ocupando 2 tiles de ancho (120px) pero mostrando imagen a 78px
+                const minerSprite = store.sprites['9'];
+                if (minerSprite) {
+                    // Determinar orientación: el miner mira hacia la pared (está orientado con la pared a su derecha por defecto)
+                    const leftTile = row[colIndex - 1];
+                    const rightTile = row[colIndex + 1];
+                    let shouldFlip = false;
+                    
+                    // Si hay pared a la izquierda, reflejar el miner para que mire hacia ella
+                    if (leftTile && leftTile !== '0' && leftTile !== undefined) {
+                        shouldFlip = true;
+                    } else if (rightTile && rightTile !== '0' && rightTile !== undefined) {
+                        shouldFlip = false;
+                    }
+                    
+                    const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, '9');
+                    if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                        const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                        const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                        const frameWidth = minerSprite.width / totalFrames; // 468 / 6 = 78px
+                        const naturalWidth = 78; // Ancho natural de cada frame del miner
+                        const naturalHeight = minerSprite.height;
+                        // Centrar el sprite de 78px dentro del espacio de 120px (2 tiles)
+                        const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                        
+                        ctx.save();
+                        if (shouldFlip) {
+                            // Reflejar horizontalmente
+                            ctx.translate(colIndex * TILE_SIZE + TILE_SIZE * 2, rowIndex * TILE_SIZE);
+                            ctx.scale(-1, 1);
+                            ctx.drawImage(
+                                minerSprite,
+                                frameIndex * frameWidth,
+                                0,
+                                frameWidth,
+                                minerSprite.height,
+                                offsetX,
+                                0,
+                                naturalWidth,
+                                naturalHeight
+                            );
+                        } else {
+                            ctx.drawImage(
+                                minerSprite,
+                                frameIndex * frameWidth,
+                                0,
+                                frameWidth,
+                                minerSprite.height,
+                                colIndex * TILE_SIZE + offsetX,
+                                rowIndex * TILE_SIZE,
+                                naturalWidth,
+                                naturalHeight
+                            );
+                        }
+                        ctx.restore();
+                    } else {
+                        const naturalWidth = 78;
+                        const naturalHeight = minerSprite.height;
+                        const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                        
+                        ctx.save();
+                        if (shouldFlip) {
+                            ctx.translate(colIndex * TILE_SIZE + TILE_SIZE * 2, rowIndex * TILE_SIZE);
+                            ctx.scale(-1, 1);
+                            ctx.drawImage(
+                                minerSprite,
+                                0,
+                                0,
+                                78,
+                                minerSprite.height,
+                                offsetX,
+                                0,
+                                naturalWidth,
+                                naturalHeight
+                            );
+                        } else {
+                            ctx.drawImage(
+                                minerSprite,
+                                0,
+                                0,
+                                78,
+                                minerSprite.height,
+                                colIndex * TILE_SIZE + offsetX,
+                                rowIndex * TILE_SIZE,
+                                naturalWidth,
+                                naturalHeight
+                            );
+                        }
+                        ctx.restore();
+                    }
+                } else {
+                    // Fallback: rectángulo azul ocupando 2 tiles de ancho
+                    ctx.fillStyle = 'rgba(0, 0, 255, 0.8)';
+                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
+                }
             }
         });
     });
@@ -793,6 +923,54 @@ export const drawEditor = (store: GameStore) => {
             ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
             ctx.globalAlpha = 1;
         }
+    } else if (store.selectedTile === '9') {
+        // Preview del miner con sprite miner_small.png - ocupando 2 tiles (120px) pero mostrando a 78px
+        const minerSprite = store.sprites['9'];
+        if (minerSprite) {
+            ctx.globalAlpha = 0.5;
+            const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, '9');
+            if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                const frameWidth = minerSprite.width / totalFrames; // 468 / 6 = 78px
+                const naturalWidth = 78;
+                const naturalHeight = minerSprite.height;
+                const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                ctx.drawImage(
+                    minerSprite,
+                    frameIndex * frameWidth,
+                    0,
+                    frameWidth,
+                    minerSprite.height,
+                    store.mouse.gridX * TILE_SIZE + offsetX,
+                    store.mouse.gridY * TILE_SIZE,
+                    naturalWidth,
+                    naturalHeight
+                );
+            } else {
+                const naturalWidth = 78;
+                const naturalHeight = minerSprite.height;
+                const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                ctx.drawImage(
+                    minerSprite,
+                    0,
+                    0,
+                    78,
+                    minerSprite.height,
+                    store.mouse.gridX * TILE_SIZE + offsetX,
+                    store.mouse.gridY * TILE_SIZE,
+                    naturalWidth,
+                    naturalHeight
+                );
+            }
+            ctx.globalAlpha = 1;
+        } else {
+            // Fallback: rectángulo azul ocupando 2 tiles de ancho
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.8)';
+            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
+            ctx.globalAlpha = 1;
+        }
     } else if (store.selectedTile === 'L') {
         // Preview de luz con sprite
         const lightSprite = store.sprites.L;
@@ -870,6 +1048,46 @@ export const drawEditor = (store: GameStore) => {
                                         TILE_SIZE,
                                         TILE_SIZE * 2
                                     );
+                                }
+                            } else if (store.selectedTile === '9') {
+                                // Preview del miner en área - ocupando 2 tiles (120px) pero mostrando a 78px
+                                const minerSprite = store.sprites['9'];
+                                if (minerSprite) {
+                                    const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, '9');
+                                    if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                                        const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                                        const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                                        const frameWidth = minerSprite.width / totalFrames; // 468 / 6 = 78px
+                                        const naturalWidth = 78;
+                                        const naturalHeight = minerSprite.height;
+                                        const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                                        ctx.drawImage(
+                                            minerSprite,
+                                            frameIndex * frameWidth,
+                                            0,
+                                            frameWidth,
+                                            minerSprite.height,
+                                            x * TILE_SIZE + offsetX,
+                                            y * TILE_SIZE,
+                                            naturalWidth,
+                                            naturalHeight
+                                        );
+                                    } else {
+                                        const naturalWidth = 78;
+                                        const naturalHeight = minerSprite.height;
+                                        const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                                        ctx.drawImage(
+                                            minerSprite,
+                                            0,
+                                            0,
+                                            78,
+                                            minerSprite.height,
+                                            x * TILE_SIZE + offsetX,
+                                            y * TILE_SIZE,
+                                            naturalWidth,
+                                            naturalHeight
+                                        );
+                                    }
                                 }
                             } else {
                                 // Preview normal de otros tiles

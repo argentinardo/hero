@@ -393,6 +393,26 @@ const handleCollisions = (store: GameStore) => {
 
 const updatePlayerAnimation = (store: GameStore) => {
     const { player } = store;
+    
+    // No cambiar animación si está congelado (rescatando miner) o en estado de éxito/muerte
+    if (player.isFrozen || player.animationState === 'success' || player.animationState === 'die') {
+        // Solo avanzar frames de la animación actual
+        const animKey = `P_${player.animationState}` as keyof typeof ANIMATION_DATA;
+        const anim = ANIMATION_DATA[animKey];
+        if (anim) {
+            player.animationTick++;
+            if (player.animationTick >= anim.speed) {
+                player.animationTick = 0;
+                if (player.currentFrame < anim.frames - 1) {
+                    player.currentFrame++;
+                } else if (anim.loop !== false) {
+                    player.currentFrame = 0;
+                }
+            }
+        }
+        return;
+    }
+    
     let newState = player.animationState;
     if (player.isGrounded) {
         newState = player.isChargingFly ? 'jump' : player.vx === 0 ? 'stand' : 'walk';

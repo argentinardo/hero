@@ -263,6 +263,11 @@ export const awardMinerRescue = (store: GameStore) => {
     miner.currentFrame = 2;
     miner.animationTick = 0;
     
+    // Cambiar sprite del hero a hero_success
+    store.player.animationState = 'success';
+    store.player.currentFrame = 0;
+    store.player.animationTick = 0;
+    
     // Congelar al jugador inmediatamente
     store.player.isFrozen = true;
     store.player.vx = 0;

@@ -20,7 +20,7 @@ export interface GameObject {
     height: number;
 }
 
-export type PlayerAnimationState = 'stand' | 'walk' | 'jump' | 'fly' | 'die';
+export type PlayerAnimationState = 'stand' | 'walk' | 'jump' | 'fly' | 'die' | 'success';
 
 export interface Player extends GameObject {
     hitbox: GameObject;
