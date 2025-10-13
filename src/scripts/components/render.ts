@@ -160,8 +160,25 @@ const drawPlayer = (store: GameStore) => {
 
     const frameWidth = sprite.width / animData.frames;
 
+    // Efecto de vibración cuando está muriendo (campanazo)
+    let shakeX = 0;
+    let shakeY = 0;
+    if (player.animationState === 'die' && player.deathTimer > 0) {
+        // Vibración más intensa al principio, disminuye con el tiempo
+        const intensity = Math.min(player.deathTimer / 10, 3);
+        shakeX = (Math.random() - 0.5) * intensity * 2;
+        shakeY = (Math.random() - 0.5) * intensity * 2;
+    }
+
+    // Movimiento ondulatorio cuando está flotando (respawn)
+    let waveY = 0;
+    if (player.isFloating && store.gameState === 'floating') {
+        const waveAmplitude = 3;
+        waveY = Math.sin(player.floatWaveTime) * waveAmplitude;
+    }
+
     ctx.save();
-    ctx.translate(player.x + player.width / 2, player.y);
+    ctx.translate(player.x + player.width / 2 + shakeX, player.y + shakeY + waveY);
     ctx.scale(player.direction, 1);
     ctx.drawImage(sprite, player.currentFrame * frameWidth, 0, frameWidth, sprite.height, -player.width / 2, 0, player.width, player.height);
     ctx.restore();

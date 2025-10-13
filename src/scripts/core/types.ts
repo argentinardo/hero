@@ -41,6 +41,7 @@ export interface Player extends GameObject {
     isFloating: boolean;
     respawnX: number;
     respawnY: number;
+    floatWaveTime: number;
 }
 
 export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner';

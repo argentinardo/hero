@@ -113,6 +113,7 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
         currentFrame: 0,
         deathTimer: 0,
         isFrozen: false,
+        floatWaveTime: 0,
     });
     
     // Siempre empezar con energía máxima visual
@@ -267,7 +268,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     player.animationState = 'die';
     player.currentFrame = 0;
     player.animationTick = 0;
-    player.deathTimer = 60;
+    player.deathTimer = 30; // Reducido para cambiar más rápido a 'fly'
     store.lives -= 1;
     store.gameState = 'respawning';
 
@@ -295,11 +296,16 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
         player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
         player.hitbox.y = player.y;
         player.animationState = 'fly';
+        // Establecer en el último frame de P_fly para dar sensación de flotar
+        const flyAnim = ANIMATION_DATA.P_fly;
+        player.currentFrame = flyAnim.frames - 1; // Último frame
+        player.animationTick = 0;
         player.isFloating = true;
         player.isGrounded = false;
         player.vy = 6; // Velocidad de descenso más rápida
         player.vx = 0;
         player.deathTimer = 0;
+        player.floatWaveTime = 0; // Resetear tiempo de onda
         store.gameState = 'floating';
         
         // Objetivo: posición de respawn un tile más arriba
@@ -413,6 +419,11 @@ const updatePlayerAnimation = (store: GameStore) => {
         return;
     }
     
+    // Si está flotando (respawn), mantener el último frame de 'fly' sin animar
+    if (player.isFloating && store.gameState === 'floating') {
+        return; // No cambiar frame ni estado
+    }
+    
     let newState = player.animationState;
     if (player.isGrounded) {
         newState = player.isChargingFly ? 'jump' : player.vx === 0 ? 'stand' : 'walk';
@@ -469,6 +480,9 @@ export const updatePlayer = (store: GameStore) => {
     if (player.isFloating && store.gameState === 'floating') {
         player.animationState = 'fly';
         
+        // Incrementar tiempo para movimiento ondulatorio
+        player.floatWaveTime += 0.05;
+        
         // Aplicar movimiento horizontal
         player.x += player.vx;
         player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
@@ -476,12 +490,26 @@ export const updatePlayer = (store: GameStore) => {
         // Descender hacia la posición objetivo si no ha llegado
         if (player.y < player.respawnY) {
             player.y += player.vy;
-            player.hitbox.y = player.y;
         } else {
             // Ha llegado a la posición objetivo, detener descenso
             player.y = player.respawnY;
-            player.hitbox.y = player.y;
             player.vy = 0;
+        }
+        
+        // Actualizar hitbox (el waveOffset se aplicará solo en el renderizado)
+        player.hitbox.y = player.y;
+        
+        // Generar partículas de chispas del propulsor (menos intensas)
+        if (Math.random() < 0.15) { // 15% de probabilidad por frame
+            store.particles.push({
+                x: player.x + player.width / 2 + (Math.random() - 0.5) * 10,
+                y: player.y + player.height - 5,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: Math.random() * 2 + 1, // Caen hacia abajo
+                life: 15 + Math.random() * 10, // Vida más corta
+                color: Math.random() > 0.5 ? '#ff8800' : '#ffaa00',
+                size: 1 + Math.random() * 1.5, // Más pequeñas
+            });
         }
         
         // Mantener límites del canvas horizontalmente

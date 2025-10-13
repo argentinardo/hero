@@ -29,6 +29,7 @@ const createInitialPlayer = (): Player => ({
     isFloating: false,
     respawnX: 0,
     respawnY: 0,
+    floatWaveTime: 0,
 });
 
 export const createInitialStore = (): GameStore => ({
