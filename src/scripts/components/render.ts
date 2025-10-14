@@ -83,7 +83,10 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
 const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
-    const sprite = store.sprites[entity.tile];
+    
+    // Si es una víbora, usar el sprite de muerte (imagen estática)
+    const spriteKey = entity.tile === 'V' ? 'V_death' : entity.tile;
+    const sprite = store.sprites[spriteKey];
     if (!sprite) return;
 
     ctx.save();
@@ -95,12 +98,19 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
         ctx.scale(-1, 1);
     }
 
-    const anim = ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA];
+    // Si es una víbora muerta, no usar animación (es una imagen estática)
+    const isViperDeath = entity.tile === 'V';
+    const anim = !isViperDeath ? ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA] : null;
+    
+    // Reducir el tamaño de la serpiente muerta a 3/4
+    const width = isViperDeath ? entity.width * 0.75 : entity.width;
+    const height = isViperDeath ? entity.height * 0.75 : entity.height;
+    
     if (anim && anim.frames > 1) {
         const frameWidth = sprite.width / anim.frames;
-        ctx.drawImage(sprite, 0, 0, frameWidth, sprite.height, -entity.width / 2, -entity.height / 2, entity.width, entity.height);
+        ctx.drawImage(sprite, 0, 0, frameWidth, sprite.height, -width / 2, -height / 2, width, height);
     } else {
-        ctx.drawImage(sprite, -entity.width / 2, -entity.height / 2, entity.width, entity.height);
+        ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
     }
 
     ctx.restore();
@@ -342,6 +352,54 @@ const drawGameWorld = (store: GameStore) => {
         const affectedOtherEnemies = otherEnemies.filter(enemy => enemy.affectedByDark);
         const unaffectedOtherEnemies = otherEnemies.filter(enemy => !enemy.affectedByDark);
 
+        // Aplicar gradiente suave en los bordes para transición entre zona oscura e iluminada
+        // El gradiente debe estar fijo en las coordenadas del mundo, no moverse con la cámara
+        // Encontrar los límites de la zona afectada por la oscuridad
+        const affectedObjects = [
+            ...affectedWalls,
+            ...affectedOtherEnemies,
+            ...affectedVipers
+        ];
+        
+        // Verificar si hay objetos afectados (incluyendo el minero)
+        const hasAffectedObjects = affectedObjects.length > 0 || store.miner?.affectedByDark;
+        
+        if (hasAffectedObjects) {
+            // Calcular el límite superior e inferior de los objetos afectados
+            let minY = Infinity;
+            let maxY = -Infinity;
+            
+            affectedObjects.forEach(obj => {
+                if (obj.y < minY) minY = obj.y;
+                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
+            });
+            
+            // Incluir el minero en el cálculo si está afectado
+            if (store.miner?.affectedByDark) {
+                if (store.miner.y < minY) minY = store.miner.y;
+                if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
+            }
+            
+            const gradientHeight = 240; // Altura del gradiente de transición
+            const gradientOffset = 65; // Desplazamiento hacia arriba
+            
+            // Gradiente superior (de oscuro a transparente hacia abajo)
+            const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
+            topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = topGradient;
+            ctx.fillRect(0, minY - gradientHeight - gradientOffset, canvas.width, gradientHeight);
+            
+            // Gradiente inferior (de transparente a oscuro hacia abajo)
+            const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
+            bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = bottomGradient;
+            ctx.fillRect(0, maxY - gradientOffset, canvas.width, gradientHeight);
+        }
+
         // Dibujar minero afectado en gris
         if (store.miner?.affectedByDark) {
             ctx.save();
@@ -378,60 +436,6 @@ const drawGameWorld = (store: GameStore) => {
                 ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
             }
         });
-        ctx.restore();
-        
-        // Aplicar gradiente suave en los bordes para transición entre zona oscura e iluminada
-        // El gradiente debe estar fijo en las coordenadas del mundo, no moverse con la cámara
-        ctx.save();
-        
-        // Encontrar los límites de la zona afectada por la oscuridad
-        const affectedObjects = [
-            ...affectedWalls,
-            ...affectedOtherEnemies,
-            ...affectedVipers
-        ];
-        
-        // Verificar si hay objetos afectados (incluyendo el minero)
-        const hasAffectedObjects = affectedObjects.length > 0 || store.miner?.affectedByDark;
-        
-        if (hasAffectedObjects) {
-            // Calcular el límite superior e inferior de los objetos afectados
-            let minY = Infinity;
-            let maxY = -Infinity;
-            
-            affectedObjects.forEach(obj => {
-                if (obj.y < minY) minY = obj.y;
-                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
-            });
-            
-            // Incluir el minero en el cálculo si está afectado
-            if (store.miner?.affectedByDark) {
-                if (store.miner.y < minY) minY = store.miner.y;
-                if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
-            }
-            
-            const gradientHeight = 200; // Altura del gradiente de transición
-            const gradientOffset = 70; // Desplazamiento hacia arriba
-            
-            // Gradiente superior (de oscuro a transparente hacia abajo)
-            const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
-            topGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-            topGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
-            topGradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
-            
-            ctx.fillStyle = topGradient;
-            ctx.fillRect(0, minY - gradientHeight - gradientOffset, canvas.width, gradientHeight);
-            
-            // Gradiente inferior (de transparente a oscuro hacia abajo)
-            const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
-            bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
-            bottomGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
-            bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            ctx.fillStyle = bottomGradient;
-            ctx.fillRect(0, maxY - gradientOffset, canvas.width, gradientHeight);
-        }
-        
         ctx.restore();
     } else {
         // Modo normal

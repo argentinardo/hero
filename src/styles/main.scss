@@ -12,15 +12,7 @@
 @use 'components/enemies';
 @use 'components/mobile';
 
-// Estilos para el editor avanzado
-.eraser-tile {
-    border: 2px solid #ff0000 !important;
-    
-    &.selected {
-        border: 3px solid #ff0000 !important;
-        background-color: rgba(255, 0, 0, 0.1);
-    }
-}
+
 
 .tile-selector.selected {
     border: 3px solid #00ff00;

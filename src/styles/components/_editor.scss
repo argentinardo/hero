@@ -1,9 +1,64 @@
-.tile-selector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.55rem;
-  text-transform: uppercase;
+// Tile Palette Structure
+.tile-category {
+  
+  &-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  &-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    padding: 0;
+  }
 }
 
+// Tile Item
+.tile-item {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    .tile-label {
+      color: rgb(255, 255, 255);
+    }
+    .tile-preview {
+      outline: 1px solid rgb(255, 255, 255);
+    }
+
+  }
+  
+  &.selected {
+    .tile-label {
+      color: #16a34a;
+    }
+    .tile-preview {
+      outline: 1px solid #16a34a;
+    }
+
+  }
+}
+
+// Tile Preview
+.tile-preview {
+  border: 0px solid rgba(255, 255, 255, 0.4);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+// Tile Label
+.tile-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 2;
+  color: rgba(255, 255, 255, 0.7);
+}

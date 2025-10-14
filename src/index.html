@@ -33,12 +33,12 @@
                 <h2 class="text-center text-lg mb-2">EDITOR</h2>
                 <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
                 
-                <div class="grid grid-cols-3 gap-1" id="tile-palette">
+                <div id="tile-palette" class="flex flex-col gap-4">
                     <!-- Tiles se agregarán dinámicamente aquí -->
                 </div>
 
                 <div class="mt-4 border-t-2 border-gray-500 pt-4">
-                    <h3 class="text-center text-md my-2">Herramientas de Edición</h3>
+                    <h3 class="text-center text-md my-2">Edición</h3>
                     <div class="grid grid-cols-2 gap-2">
                         <button id="undo-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white text-xs">↶ Deshacer</button>
                         <button id="redo-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white text-xs">↷ Rehacer</button>
@@ -46,17 +46,15 @@
                 </div>
 
                 <div class="mt-4 border-t-2 border-gray-500 pt-4">
-                    <h3 class="text-center text-md my-2">Gestión de Niveles</h3>
+                    <h3 class="text-center text-md my-2">Niveles</h3>
                     <div class="flex items-center gap-2">
-                        <label for="level-selector" class="text-sm">Nivel:</label>
+                        <label for="level-selector" class="text-sm">Cargar:</label>
                         <select id="level-selector" class="flex-grow bg-gray-700 border-2 border-white p-1 text-sm"></select>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-2">
                         <button id="load-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Restaurar</button>
-                        <button id="save-level-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 p-2 border-2 border-white text-xs">Guardar</button>
-                    </div>
+                        <button id="save-level-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 p-2 border-2 border-white text-xs">Guardar en sesión</button>
                     <button id="generate-level-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mt-2 text-xs">Generar Nivel</button>
-                    <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar TODO en Archivo</button>
+                    <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar en Archivo</button>
                 </div>
                 
                  <button id="back-to-menu-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>

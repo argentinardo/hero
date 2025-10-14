@@ -7,6 +7,7 @@ import playerSuccessSrc from '../../assets/sprites/hero-success.png';
 import batSrc from '../../assets/sprites/bat_small.png';
 import spiderSrc from '../../assets/sprites/spider_small.png';
 import viperSrc from '../../assets/sprites/serpiente_small.png';
+import viperDeathSrc from '../../assets/sprites/serpiente_death.png';
 import minerSrc from '../../assets/sprites/miner_small.png';
 import bombSrc from '../../assets/sprites/bomba.png';
 import explosionSrc from '../../assets/sprites/boooom.png';
@@ -30,6 +31,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     '8': batSrc,
     S: spiderSrc,
     V: viperSrc,
+    V_death: viperDeathSrc,
     '9': minerSrc,
     bomb: bombSrc,
     explosion: explosionSrc,

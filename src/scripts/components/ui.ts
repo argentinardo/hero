@@ -467,7 +467,7 @@ const populatePalette = (store: GameStore) => {
     // Función para crear botones de tile
     const createTileButton = (key: string, name: string) => {
         const tileDiv = document.createElement('div');
-        tileDiv.className = 'tile-selector flex flex-col items-center gap-1 text-xs text-center';
+        tileDiv.className = 'tile-item';
         tileDiv.dataset.tile = key;
         if (key === store.selectedTile) {
             tileDiv.classList.add('selected');
@@ -476,19 +476,15 @@ const populatePalette = (store: GameStore) => {
         const preview = document.createElement('canvas');
         preview.width = TILE_SIZE * (key === '9' ? 2 : 1);
         preview.height = TILE_SIZE * (key === 'P' ? 2 : 1);
-        preview.className = 'tile-thumb border border-white/40';
+        preview.className = 'tile-preview';
 
         if (key === '0') {
-            // Tile vacío - usar sprite de fondo, no dibujar X manual
-            // Marcar como tile borrador
             tileDiv.classList.add('eraser-tile');
         }
         
         // Para todos los tiles (incluyendo el vacío), usar drawPaletteEntry
         if (key === 'P' || key === 'L' || key === '0' || key === '9') {
-            // Casos especiales: manejar con drawPaletteEntry
             drawPaletteEntry(store, key, preview, performance.now());
-            // Solo agregar miner a animación (los demás son estáticos)
             if (key === '9') {
                 paletteEntries.push({ tile: key, canvas: preview });
             }
@@ -505,24 +501,86 @@ const populatePalette = (store: GameStore) => {
         }
 
         const label = document.createElement('span');
+        label.className = 'tile-label';
         label.textContent = name;
 
         tileDiv.appendChild(preview);
         tileDiv.appendChild(label);
+        
         tileDiv.addEventListener('click', () => {
-            const selected = paletteEl.querySelector('.tile-selector.selected');
+            const selected = paletteEl.querySelector('.tile-item.selected');
             if (selected) {
                 selected.classList.remove('selected');
             }
             tileDiv.classList.add('selected');
             store.selectedTile = key;
         });
-        paletteEl.appendChild(tileDiv);
+        
+        return tileDiv;
     };
     
-    // Agregar todos los tiles incluyendo el vacío (0)
-    Object.entries(TILE_TYPES).forEach(([key, { name, color }]) => {
-        createTileButton(key, name);
+    // Organizar tiles por categorías
+    const categories = [
+        {
+            name: 'Personajes',
+            tiles: [
+                { key: 'P', name: 'Player' },
+                { key: '9', name: 'Minero' }
+            ]
+        },
+        {
+            name: 'Terreno',
+            tiles: [
+                { key: '0', name: 'Vacío' },
+                { key: '1', name: 'Muro' },
+                { key: '2', name: 'Tierra' }
+            ]
+        },
+        {
+            name: 'Elementos',
+            tiles: [
+                { key: 'C', name: 'Columna' },
+                { key: '3', name: 'Lava' },
+                { key: 'L', name: 'Luz' }
+            ]
+        },
+        {
+            name: 'Enemigos',
+            tiles: [
+                { key: '8', name: 'Bat' },
+                { key: 'S', name: 'Araña' },
+                { key: 'V', name: 'Víbora' }
+            ]
+        }
+    ];
+    
+    // Crear estructura de categorías
+    categories.forEach(category => {
+        // Crear sección de categoría
+        const categorySection = document.createElement('div');
+        categorySection.className = 'tile-category';
+        
+        // Crear encabezado
+        const categoryHeader = document.createElement('div');
+        categoryHeader.className = 'tile-category-header';
+        categoryHeader.textContent = category.name;
+        categorySection.appendChild(categoryHeader);
+        
+        // Crear grid de tiles
+        const tilesGrid = document.createElement('div');
+        tilesGrid.className = 'tile-category-grid';
+        
+        // Agregar tiles
+        category.tiles.forEach(({ key, name }) => {
+            const tileData = TILE_TYPES[key];
+            if (tileData) {
+                const tileButton = createTileButton(key, name);
+                tilesGrid.appendChild(tileButton);
+            }
+        });
+        
+        categorySection.appendChild(tilesGrid);
+        paletteEl.appendChild(categorySection);
     });
     
     startPaletteAnimation(store);
