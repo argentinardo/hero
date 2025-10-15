@@ -181,17 +181,17 @@
         display: block;
     }
 
-    /* Zona de joystick ocupa toda la pantalla para poder superponerse al canvas */
+    /* Zona de joystick ocupa 3/4 del ancho (dejando 1/4 para botones) */
     #joystick-zone {
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
+        width: 75%;
         height: 100vh;
         pointer-events: auto;
     }
 
-    /* Área derecha para botones - ajustada para dejar espacio al UI */
+    /* Área derecha para botones - ocupa 1/4 del ancho */
     #action-zone {
         position: absolute;
         top: 0;
@@ -311,22 +311,22 @@
         display: block;
     }
 
-    /* Zona de joystick ocupa toda la pantalla para poder superponerse al canvas */
+    /* Zona de joystick ocupa 3/4 del ancho (dejando 1/4 para botones) */
     #joystick-zone {
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
+        width: 75%;
         height: 100vh;
         pointer-events: auto;
     }
 
-    /* Área derecha para botones - ajustada para dejar espacio al UI */
+    /* Área derecha para botones - ocupa 1/4 del ancho */
     #action-zone {
         position: absolute;
         top: 0;
         right: 0;
-        width: 20.2%;
+        width: 25%;
         height: 100vh;
         pointer-events: auto;
         display: flex;

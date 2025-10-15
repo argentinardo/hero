@@ -161,12 +161,19 @@ const startJoystick = (store: GameStore) => {
             store.joystickManager = null;
             store.joystickNipple = undefined;
         }
-        const baseX = typeof clientX === 'number' ? clientX : Math.round(window.innerWidth * 0.15);
-        const baseY = typeof clientY === 'number' ? clientY : Math.round(window.innerHeight * 0.75);
+        // Calcular posición por defecto: visible siempre, a 13% desde la izquierda y centrado vertical
+        const zoneRect = store.dom.ui.joystickZoneEl?.getBoundingClientRect();
+        const defaultX = zoneRect ? (zoneRect.left + zoneRect.width * 0.13) : (window.innerWidth * 0.13);
+        const defaultY = zoneRect ? (zoneRect.top + zoneRect.height / 2) : (window.innerHeight / 2);
+        const baseX = typeof clientX === 'number' ? clientX : Math.round(defaultX);
+        const baseY = typeof clientY === 'number' ? clientY : Math.round(defaultY);
         store.joystickBaseX = baseX;
         store.joystickBaseY = baseY;
-        const left = `${(baseX / window.innerWidth) * 100}%`;
-        const top = `${(baseY / window.innerHeight) * 100}%`;
+        // Posicionamiento relativo a la zona del joystick
+        const baseLeftPct = zoneRect ? ((baseX - zoneRect.left) / zoneRect.width) * 100 : (baseX / window.innerWidth) * 100;
+        const baseTopPct = zoneRect ? ((baseY - zoneRect.top) / zoneRect.height) * 100 : (baseY / window.innerHeight) * 100;
+        const left = `${Math.max(0, Math.min(100, baseLeftPct))}%`;
+        const top = `${Math.max(0, Math.min(100, baseTopPct))}%`;
         store.joystickManager = nipplejs.create({
             zone: joystickZoneEl,
             mode: 'static',
@@ -180,7 +187,7 @@ const startJoystick = (store: GameStore) => {
         attachJoystickHandlers();
     };
 
-    // Crear joystick visible por defecto (esquina inferior izquierda aprox.)
+    // Crear joystick visible por defecto (centro vertical y 40px desde la derecha)
     if (!store.joystickManager) {
         createJoystickAt();
     }
@@ -267,10 +274,8 @@ const startJoystick = (store: GameStore) => {
             store.keys.ArrowUp = false;
             store.keys.ArrowLeft = false;
             store.keys.ArrowRight = false;
-            // Re-crear joystick para recentrar visuales en la base actual
-            if (store.joystickBaseX != null && store.joystickBaseY != null) {
-                createJoystickAt(store.joystickBaseX, store.joystickBaseY);
-            }
+            // Re-crear joystick para recentrar en la posición por defecto (visible)
+            createJoystickAt();
         };
 
         const handleTouchEnd = (event: TouchEvent) => {
