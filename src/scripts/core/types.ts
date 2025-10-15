@@ -238,5 +238,7 @@ export interface GameStore {
     editorHistory: string[][][];
     editorHistoryIndex: number;
     dom: DomReferences;
+    laserLocked: boolean;
+    lastShootTapTime: number;
 }
 

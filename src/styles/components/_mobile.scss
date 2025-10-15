@@ -50,6 +50,7 @@
         aspect-ratio: 4/3;
         margin: 0 auto;
         display: block;
+        z-index: 10; /* Canvas debajo de los controles */
     }
     
     /* UI compacto en la columna derecha, arriba de los botones */
@@ -189,6 +190,34 @@
         width: 25%;
         height: 100vh;
         pointer-events: auto;
+        z-index: 40; /* Por encima del canvas */
+        
+        /* Previsualización del joystick */
+        &::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border: 3px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pulseJoystick 2s ease-in-out infinite;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+        
+        /* Ocultar previsualización cuando el joystick está activo */
+        &.active::before {
+            opacity: 0;
+        }
+    }
+    
+    @keyframes pulseJoystick {
+        0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
     }
 
     /* Área derecha para botones - ajustada para dejar espacio al UI */
@@ -205,6 +234,7 @@
         justify-content: center;
         align-items: center;
         padding: 120px 10px 10px 10px; /* Padding superior para dejar espacio al UI */
+        z-index: 40; /* Por encima del canvas */
     }
 
     /* Botones más pequeños para que entren con el UI */
@@ -225,12 +255,33 @@
         justify-content: center;
         text-align: center;
         transition: all 0.1s ease;
+        position: relative;
         
         &:active {
             background-color: rgba(255, 255, 255, 0.4);
             transform: scale(0.95);
             border-color: rgba(255, 255, 255, 1);
         }
+        
+        /* Indicador de estado locked para el láser */
+        &.locked {
+            background-color: rgba(255, 200, 0, 0.3);
+            border-color: rgba(255, 200, 0, 1);
+            animation: pulseLaser 1s ease-in-out infinite;
+            
+            &::after {
+                content: '🔒';
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 1.2rem;
+            }
+        }
+    }
+    
+    @keyframes pulseLaser {
+        0%, 100% { box-shadow: 0 0 10px rgba(255, 200, 0, 0.5); }
+        50% { box-shadow: 0 0 20px rgba(255, 200, 0, 0.8); }
     }
 }
 
@@ -262,6 +313,7 @@
         aspect-ratio: 4/3;
         margin: 0 auto;
         display: block;
+        z-index: 10; /* Canvas debajo de los controles */
     }
 
     /* UI compacto en la columna derecha, arriba de los botones */
@@ -319,6 +371,34 @@
         width: 25%;
         height: 100vh;
         pointer-events: auto;
+        z-index: 40; /* Por encima del canvas */
+        
+        /* Previsualización del joystick */
+        &::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            border: 3px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pulseJoystick 2s ease-in-out infinite;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+        
+        /* Ocultar previsualización cuando el joystick está activo */
+        &.active::before {
+            opacity: 0;
+        }
+    }
+    
+    @keyframes pulseJoystick {
+        0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
     }
 
     /* Área derecha para botones - ajustada para dejar espacio al UI */
@@ -335,6 +415,7 @@
         justify-content: center;
         align-items: center;
         padding: 130px 10px 10px 10px; /* Padding superior para dejar espacio al UI */
+        z-index: 40; /* Por encima del canvas */
     }
 
     /* Botones más pequeños para que entren con el UI */
@@ -355,12 +436,33 @@
         justify-content: center;
         text-align: center;
         transition: all 0.1s ease;
+        position: relative;
         
         &:active {
             background-color: rgba(255, 255, 255, 0.4);
             transform: scale(0.95);
             border-color: rgba(255, 255, 255, 1);
         }
+        
+        /* Indicador de estado locked para el láser */
+        &.locked {
+            background-color: rgba(255, 200, 0, 0.3);
+            border-color: rgba(255, 200, 0, 1);
+            animation: pulseLaser 1s ease-in-out infinite;
+            
+            &::after {
+                content: '🔒';
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 1.2rem;
+            }
+        }
+    }
+    
+    @keyframes pulseLaser {
+        0%, 100% { box-shadow: 0 0 10px rgba(255, 200, 0, 0.5); }
+        50% { box-shadow: 0 0 20px rgba(255, 200, 0, 0.8); }
     }
 
     #message-overlay {

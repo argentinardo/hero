@@ -107,6 +107,14 @@ export const showMenu = (store: GameStore) => {
             store.joystickManager.destroy();
             store.joystickManager = null;
         }
+        
+        // Resetear estado del láser locked
+        store.laserLocked = false;
+        store.lastShootTapTime = 0;
+        const shootBtn = document.getElementById('shoot-btn');
+        if (shootBtn) {
+            shootBtn.classList.remove('locked');
+        }
     }
 };
 
@@ -128,6 +136,12 @@ const startJoystick = (store: GameStore) => {
         color: 'white',
         catchforce: true,
     });
+    
+    // Añadir eventos táctiles a la zona para ocultar la previsualización
+    joystickZoneEl.addEventListener('touchstart', () => {
+        joystickZoneEl.classList.add('active');
+    });
+    
     store.joystickManager.on('move', (_evt: NippleEvent, data: NippleJoystick) => {
         const angle = data.angle.radian;
         const force = data.force;
@@ -151,6 +165,11 @@ const startJoystick = (store: GameStore) => {
             store.keys.ArrowRight = false;
         }
     });
+    // Evento touchend para mostrar la previsualización de nuevo
+    joystickZoneEl.addEventListener('touchend', () => {
+        joystickZoneEl.classList.remove('active');
+    });
+    
     store.joystickManager.on('end', () => {
         store.keys.ArrowUp = false;
         store.keys.ArrowLeft = false;
@@ -163,13 +182,41 @@ const startJoystick = (store: GameStore) => {
     const bombBtn = document.getElementById('bomb-btn');
 
     if (shootBtn) {
+        const DOUBLE_TAP_DELAY = 300; // 300ms para detectar doble tap
+        
         shootBtn.addEventListener('touchstart', event => {
             event.preventDefault();
+            const currentTime = Date.now();
+            const timeSinceLastTap = currentTime - store.lastShootTapTime;
+            
+            // Detectar doble tap
+            if (timeSinceLastTap < DOUBLE_TAP_DELAY && timeSinceLastTap > 0) {
+                // Toggle del estado locked
+                store.laserLocked = !store.laserLocked;
+                
+                // Actualizar clase visual
+                if (store.laserLocked) {
+                    shootBtn.classList.add('locked');
+                } else {
+                    shootBtn.classList.remove('locked');
+                }
+                
+                // Resetear tiempo para evitar triple tap
+                store.lastShootTapTime = 0;
+            } else {
+                store.lastShootTapTime = currentTime;
+            }
+            
+            // Activar disparo (ya sea en modo normal o locked)
             store.keys.Space = true;
         });
+        
         shootBtn.addEventListener('touchend', event => {
             event.preventDefault();
-            store.keys.Space = false;
+            // Solo desactivar si NO está en modo locked
+            if (!store.laserLocked) {
+                store.keys.Space = false;
+            }
         });
     }
 

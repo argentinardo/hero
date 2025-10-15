@@ -66,6 +66,8 @@ export const createInitialStore = (): GameStore => ({
     initialLevels: [],
     editorHistory: [],
     editorHistoryIndex: -1,
+    laserLocked: false,
+    lastShootTapTime: 0,
     dom: {
         canvas: null,
         ctx: null,

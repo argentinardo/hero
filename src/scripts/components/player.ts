@@ -147,10 +147,10 @@ export const handlePlayerInput = (store: GameStore) => {
         }
 
         // Cualquier tecla presionada sale del estado flotante
-        const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
+        const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space || store.laserLocked;
         if (anyKeyPressed) {
             // Si es disparo láser, crear el láser
-            if (keys.Space && player.shootCooldown === 0) {
+            if ((keys.Space || store.laserLocked) && player.shootCooldown === 0) {
                 const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
                 const laserY = player.y + player.height / 4;
                 lasers.push({
@@ -191,7 +191,8 @@ export const handlePlayerInput = (store: GameStore) => {
 
     player.wantsToFly = Boolean(keys.ArrowUp);
 
-    if (keys.Space && player.shootCooldown === 0) {
+    // Disparo de láser (manual o automático en modo locked)
+    if ((keys.Space || store.laserLocked) && player.shootCooldown === 0) {
         const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
         const laserY = player.y + player.height / 4;
         lasers.push({
