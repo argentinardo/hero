@@ -97,7 +97,15 @@
 
         <!-- Controles Móviles -->
         <div id="mobile-controls" class="hidden">
-            <div id="joystick-zone"></div>
+            <!-- Joystick visual siempre visible y arrastrable -->
+            <div id="virtual-joystick-container">
+                <div id="virtual-joystick">
+                    <div id="joystick-base">
+                        <div id="joystick-stick"></div>
+                    </div>
+                </div>
+            </div>
+            
             <div id="action-zone">
                 <button id="shoot-btn" class="action-button">LÁSER</button>
                 <button id="bomb-btn" class="action-button">BOMBA</button>

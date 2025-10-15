@@ -63,6 +63,7 @@ export const createInitialStore = (): GameStore => ({
     keys: {},
     sprites: {},
     joystickManager: null,
+    virtualJoystick: null,
     initialLevels: [],
     editorHistory: [],
     editorHistoryIndex: -1,
