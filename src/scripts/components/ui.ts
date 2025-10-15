@@ -41,6 +41,7 @@ export const attachDomReferences = (store: GameStore) => {
 
     ui.startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     ui.levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+    ui.retryBtn = document.getElementById('retry-btn') as HTMLButtonElement | null;
     ui.playTestBtn = document.getElementById('play-test-btn') as HTMLButtonElement | null;
     ui.resumeEditorBtn = document.getElementById('resume-editor-btn') as HTMLButtonElement | null;
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
@@ -68,7 +69,7 @@ export const showMenu = (store: GameStore) => {
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
     
-    const { messageOverlay, messageTitle, messageText, gameUiEl, editorPanelEl, mobileControlsEl } = store.dom.ui;
+    const { messageOverlay, messageTitle, messageText, gameUiEl, editorPanelEl, mobileControlsEl, retryBtn } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
         
@@ -94,6 +95,10 @@ export const showMenu = (store: GameStore) => {
     }
     if (messageText) {
         messageText.innerHTML = 'Presiona ENTER o el botón para empezar';
+    }
+    // Ocultar botón de reintentar en el menú principal
+    if (retryBtn) {
+        retryBtn.classList.add('hidden');
     }
 
     if ('ontouchstart' in window && mobileControlsEl) {
@@ -180,7 +185,7 @@ const startJoystick = (store: GameStore) => {
     }
 };
 
-export const startGame = (store: GameStore, levelOverride: string[] | null = null) => {
+export const startGame = (store: GameStore, levelOverride: string[] | null = null, startIndex?: number, preserveLevels?: boolean) => {
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
@@ -208,12 +213,16 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     
     store.lives = 3;
     store.score = 0;
-    store.currentLevelIndex = 0;
-    if (levelOverride) {
+    // Configurar niveles
+    if (preserveLevels) {
+        // Mantener store.levelDesigns tal como lo preparó el llamador
+    } else if (levelOverride) {
         store.levelDesigns = [levelOverride];
     } else {
         store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
     }
+    // Establecer índice inicial
+    store.currentLevelIndex = startIndex ?? 0;
     loadLevel(store);
 };
 
@@ -618,9 +627,10 @@ export const setupUI = (store: GameStore) => {
 };
 
 const setupMenuButtons = (store: GameStore) => {
-    const { startGameBtn, levelEditorBtn } = store.dom.ui;
+    const { startGameBtn, levelEditorBtn, retryBtn } = store.dom.ui;
     startGameBtn?.addEventListener('click', () => startGame(store));
     levelEditorBtn?.addEventListener('click', () => startEditor(store));
+    retryBtn?.addEventListener('click', () => startGame(store));
     window.addEventListener('keydown', event => {
         store.keys[event.code] = true;
         if (event.code === 'Enter' && store.appState === 'menu') {
@@ -848,19 +858,27 @@ const setupLevelData = (store: GameStore) => {
     });
 
     playTestBtn?.addEventListener('click', () => {
-        // Guardar el nivel actual en la sesión (en memoria) antes de jugar
+        // Jugar el nivel que está seleccionado en el selector (respeta el nivel cargado)
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        
-        // Limpiar filas y columnas vacías antes de guardar en sesión
-        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
-        
-        // Actualizar el store de la sesión con la versión limpia
+        // Tomar el nivel desde el store de sesión; si está vacío, usar el buffer del editor como fallback
+        const sourceLevel = (store.levelDataStore[index] && store.levelDataStore[index].length > 0)
+            ? JSON.parse(JSON.stringify(store.levelDataStore[index]))
+            : JSON.parse(JSON.stringify(store.editorLevel));
+
+        // Limpiar filas y columnas vacías
+        const cleanedLevel = purgeEmptyRowsAndColumns(sourceLevel);
+
+        // Preparar levelDesigns para que comience en el índice seleccionado
+        const payload = cleanedLevel.map(row => row.join(''));
+        store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
+        store.levelDesigns[index] = payload;
+
+        // Sincronizar editor y sesión con la versión limpia
         store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
         store.editorLevel = cleanedLevel;
-        
-        // Convertir a formato del juego y empezar
-        const currentLevel = store.editorLevel.map(row => row.join(''));
-        startGame(store, currentLevel);
+
+        // Iniciar juego desde ese índice, preservando levelDesigns
+        startGame(store, null, index, true);
     });
 
     resumeEditorBtn?.addEventListener('click', () => {

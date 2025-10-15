@@ -91,6 +91,13 @@ export const bindEditorCanvas = (store: GameStore) => {
     if (!canvas) {
         return;
     }
+    // Evitar scroll por botón medio del navegador en el canvas
+    canvas.addEventListener('mousedown', e => {
+        if (store.appState !== 'editing') return;
+        if (e.button === 1) {
+            e.preventDefault();
+        }
+    });
     canvas.addEventListener('mousemove', event => {
         if (store.appState !== 'editing') {
             return;
@@ -146,23 +153,48 @@ export const bindEditorCanvas = (store: GameStore) => {
         // Debug: Log de coordenadas para identificar el problema
         console.log(`Mouse: (${store.mouse.x.toFixed(2)}, ${store.mouse.y.toFixed(2)}) -> Grid: (${store.mouse.gridX}, ${store.mouse.gridY}) | Event: (${event.clientX}, ${event.clientY})`);
 
+        // Panning con botón medio (hand tool)
+        if (store.mouse.isPanning) {
+            const dx = store.mouse.x - (store.mouse.panStartMouseX ?? store.mouse.x);
+            const dy = store.mouse.y - (store.mouse.panStartMouseY ?? store.mouse.y);
+            const startCamX = store.mouse.panStartCameraX ?? store.cameraX;
+            const startCamY = store.mouse.panStartCameraY ?? store.cameraY;
+            store.cameraX = Math.max(0, startCamX - dx);
+            store.cameraY = Math.max(0, startCamY - dy);
+        }
+
         if (store.mouse.isDown) {
             applyMousePaint(store);
         }
     });
 
     canvas.addEventListener('mousedown', event => {
-        if (store.appState !== 'editing' || event.button !== 0) {
+        if (store.appState !== 'editing') return;
+        if (event.button === 1) {
+            // Iniciar pan con botón medio
+            store.mouse.isPanning = true;
+            store.mouse.panStartMouseX = store.mouse.x;
+            store.mouse.panStartMouseY = store.mouse.y;
+            store.mouse.panStartCameraX = store.cameraX;
+            store.mouse.panStartCameraY = store.cameraY;
+            canvas.style.cursor = 'grabbing';
+            event.preventDefault();
             return;
         }
-        store.mouse.isDown = true;
-        store.mouse.isDragging = false;
-        store.mouse.startX = store.mouse.gridX;
-        store.mouse.startY = store.mouse.gridY;
-        applyMousePaint(store);
+        if (event.button === 0) {
+            store.mouse.isDown = true;
+            store.mouse.isDragging = false;
+            store.mouse.startX = store.mouse.gridX;
+            store.mouse.startY = store.mouse.gridY;
+            applyMousePaint(store);
+        }
     });
 
-    canvas.addEventListener('mouseup', () => {
+    canvas.addEventListener('mouseup', (event) => {
+        if (store.appState === 'editing' && event.button === 1) {
+            store.mouse.isPanning = false;
+            canvas.style.cursor = '';
+        }
         if (store.mouse.isDown && store.mouse.isDragging && 
             store.mouse.startX !== undefined && store.mouse.startY !== undefined) {
             // Si hubo drag, pintar el área completa
@@ -171,6 +203,16 @@ export const bindEditorCanvas = (store: GameStore) => {
         store.mouse.isDown = false;
         store.mouse.isDragging = false;
         updateUndoRedoButtons(store);
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        if (store.appState !== 'editing') return;
+        if (store.mouse.isPanning) {
+            store.mouse.isPanning = false;
+            canvas.style.cursor = '';
+        }
+        store.mouse.isDown = false;
+        store.mouse.isDragging = false;
     });
 
     canvas.addEventListener('wheel', event => {
@@ -838,6 +880,7 @@ export const drawEditor = (store: GameStore) => {
         });
     });
 
+    // Grid fina (cada tile)
     ctx.strokeStyle = '#444';
     ctx.lineWidth = 1;
     const levelWidth = store.editorLevel[0]?.length ?? 0;
@@ -853,6 +896,51 @@ export const drawEditor = (store: GameStore) => {
         ctx.moveTo(0, y);
         ctx.lineTo(levelWidth * TILE_SIZE, y);
         ctx.stroke();
+    }
+
+    // Grid gruesa (cada 20x18 tiles = tamaño de viewport 1200x1080)
+    // Origen definido por la posición del jugador: 2 tiles a la izquierda y 3 arriba
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    const majorCols = 20;
+    const majorRows = 18;
+
+    // Encontrar posición del jugador en editorLevel
+    let playerCol = 0;
+    let playerRow = 0;
+    outer: for (let r = 0; r < levelHeight; r++) {
+        const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+        if (c !== -1) {
+            playerRow = r;
+            playerCol = c;
+            break outer;
+        }
+    }
+
+    const originTileX = Math.max(0, playerCol - 2);
+    const originTileY = Math.max(0, playerRow - 3);
+
+    // Calcular primera línea mayor visible hacia la izquierda y arriba
+    const firstKx = Math.ceil((0 - originTileX) / majorCols);
+    let tileX = originTileX + firstKx * majorCols;
+    while (tileX <= levelWidth) {
+        const gx = tileX * TILE_SIZE;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, levelHeight * TILE_SIZE);
+        ctx.stroke();
+        tileX += majorCols;
+    }
+
+    const firstKy = Math.ceil((0 - originTileY) / majorRows);
+    let tileY = originTileY + firstKy * majorRows;
+    while (tileY <= levelHeight) {
+        const gy = tileY * TILE_SIZE;
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(levelWidth * TILE_SIZE, gy);
+        ctx.stroke();
+        tileY += majorRows;
     }
 
     // Preview del tile seleccionado con 50% de opacidad

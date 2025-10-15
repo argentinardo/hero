@@ -134,6 +134,38 @@ export const playLifedownSound = () => {
     }
 };
 
+// Ejecutar callback cuando termine el sonido de perder vida
+export const onLifedownEnded = (callback: () => void) => {
+    const snd = audioSystem.sounds.lifedown;
+    if (!snd) return;
+    snd.addEventListener('ended', () => {
+        try {
+            callback();
+        } catch (e) {
+            console.error(e);
+        }
+    }, { once: true });
+};
+
+// Detener todos los sonidos excepto el de perder vida
+export const stopAllSfxExceptLifedown = () => {
+    const { jetpack, laser, steps, bomb, successLevel } = audioSystem.sounds;
+    [jetpack, steps, bomb, successLevel].forEach(snd => {
+        if (snd) {
+            snd.pause();
+            snd.currentTime = 0;
+        }
+    });
+    // Para el láser, no es loop; pausar clones no es trivial, así que solo pausamos la instancia base
+    if (laser) {
+        try { laser.pause(); /* noop if not playing */ } catch {}
+    }
+    // Pausar música de fondo
+    if (audioSystem.bgMusic) {
+        audioSystem.bgMusic.pause();
+    }
+};
+
 // Reproducir sonido de pasos
 export const playStepsSound = () => {
     if (audioSystem.sounds.steps && !audioSystem.isMuted) {

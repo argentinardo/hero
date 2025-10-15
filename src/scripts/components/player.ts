@@ -2,7 +2,7 @@ import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
-import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombSound } from './audio';
+import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
 
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
@@ -251,8 +251,15 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
 
     const { player } = store;
     
-    // Reproducir sonido de perder vida
+    // Reproducir sonido de perder vida y silenciar el resto
+    stopAllSfxExceptLifedown();
     playLifedownSound();
+    // Reanudar música cuando termine el sonido de perder vida (si no es game over)
+    onLifedownEnded(() => {
+        if (store.lives > 0 && store.gameState !== 'gameover') {
+            playBackgroundMusic();
+        }
+    });
     
     // Si muere por enemigo, matar al enemigo también (sin puntos)
     if (killedByEnemy) {
@@ -268,18 +275,23 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     player.animationState = 'die';
     player.currentFrame = 0;
     player.animationTick = 0;
-    player.deathTimer = 30; // Reducido para cambiar más rápido a 'fly'
+    // Aumentar pausa de muerte para prolongar el efecto de campana
+    player.deathTimer = 90;
     store.lives -= 1;
     store.gameState = 'respawning';
 
     if (store.lives <= 0) {
         window.setTimeout(() => {
             store.gameState = 'gameover';
-            const { messageOverlay, messageText, messageTitle } = store.dom.ui;
+            const { messageOverlay, messageText, messageTitle, retryBtn } = store.dom.ui;
             if (messageOverlay && messageText && messageTitle) {
                 messageTitle.textContent = 'GAME OVER';
-                messageText.textContent = `Puntuación final: ${store.score}. Presiona ENTER para volver al menú.`;
+                messageText.textContent = `Puntuación final: ${store.score}.`;
                 messageOverlay.style.display = 'flex';
+            }
+            // Mostrar botón de reintentar y ocultar editor
+            if (retryBtn) {
+                retryBtn.classList.remove('hidden');
             }
         }, 1500);
         return;

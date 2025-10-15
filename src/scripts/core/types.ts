@@ -144,6 +144,12 @@ export interface MouseState {
     startX?: number;
     startY?: number;
     isDragging?: boolean;
+    // Editor panning with middle mouse
+    isPanning?: boolean;
+    panStartMouseX?: number;
+    panStartMouseY?: number;
+    panStartCameraX?: number;
+    panStartCameraY?: number;
 }
 
 export interface TileDefinition {
@@ -163,6 +169,7 @@ export interface UiElements {
     messageOverlay: HTMLElement | null;
     messageTitle: HTMLElement | null;
     messageText: HTMLElement | null;
+    retryBtn?: HTMLButtonElement | null;
     gameUiEl: HTMLElement | null;
     editorPanelEl: HTMLElement | null;
     paletteEl: HTMLElement | null;

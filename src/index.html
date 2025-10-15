@@ -86,10 +86,12 @@
 
         <!-- Pantalla de Mensajes (Inicio / Game Over) -->
         <div id="message-overlay" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center items-center text-center">
-            <h1 id="message-title" class="text-4xl mb-4">NEW H.E.R.O.</h1>
-            <div class="flex gap-4">
-                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 mt-8 border-2 border-white">Empezar Juego</button>
-                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 mt-8 border-2 border-white">Editar Niveles</button>
+            <h1 id="message-title" class="text-4xl mb-2">NEW H.E.R.O.</h1>
+            <p id="message-text" class="text-sm opacity-90"></p>
+            <div class="flex gap-4 mt-6">
+                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Empezar Juego</button>
+                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white">Editar Niveles</button>
+                <button id="retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white hidden">Volver a jugar</button>
             </div>
         </div>
 
