@@ -262,6 +262,17 @@ const startJoystick = (store: GameStore) => {
             event.preventDefault();
         };
 
+        const resetKeysAndRecenter = () => {
+            // Reset de entradas
+            store.keys.ArrowUp = false;
+            store.keys.ArrowLeft = false;
+            store.keys.ArrowRight = false;
+            // Re-crear joystick para recentrar visuales en la base actual
+            if (store.joystickBaseX != null && store.joystickBaseY != null) {
+                createJoystickAt(store.joystickBaseX, store.joystickBaseY);
+            }
+        };
+
         const handleTouchEnd = (event: TouchEvent) => {
             if (store.joystickFingerId != null) {
                 let stillActive = false;
@@ -273,13 +284,27 @@ const startJoystick = (store: GameStore) => {
                 }
                 if (!stillActive) {
                     store.joystickFingerId = undefined;
+                    resetKeysAndRecenter();
                 }
+            } else {
+                resetKeysAndRecenter();
             }
         };
 
         joystickZoneEl.addEventListener('touchstart', handleTouchStart, { passive: false });
         joystickZoneEl.addEventListener('touchmove', handleTouchMove, { passive: false });
         joystickZoneEl.addEventListener('touchend', handleTouchEnd);
+        joystickZoneEl.addEventListener('touchcancel', handleTouchEnd);
+
+        // Fallback global: si el toque termina fuera del área, igual resetear
+        const globalEnd = (e: TouchEvent) => {
+            if (e.touches.length === 0) {
+                store.joystickFingerId = undefined;
+                resetKeysAndRecenter();
+            }
+        };
+        window.addEventListener('touchend', globalEnd);
+        window.addEventListener('touchcancel', globalEnd);
         zoneAny._elasticBound = true;
     }
 
