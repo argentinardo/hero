@@ -114,49 +114,174 @@ const startJoystick = (store: GameStore) => {
     if (!('ontouchstart' in window)) {
         return;
     }
-    const { mobileControlsEl, joystickZoneEl, actionZoneEl } = store.dom.ui;
+    const { mobileControlsEl, joystickZoneEl } = store.dom.ui;
     if (mobileControlsEl) {
         mobileControlsEl.dataset.active = 'true';
     }
-    if (!joystickZoneEl || store.joystickManager) {
+    if (!joystickZoneEl) {
         return;
     }
-    store.joystickManager = nipplejs.create({
-        zone: joystickZoneEl,
-        mode: 'dynamic',
-        position: { left: '50%', top: '50%' },
-        color: 'white',
-        catchforce: true,
-    });
-    store.joystickManager.on('move', (_evt: NippleEvent, data: NippleJoystick) => {
-        const angle = data.angle.radian;
-        const force = data.force;
-        if (force <= 0.2) {
-            return;
-        }
-        const up = Math.sin(angle);
-        const right = Math.cos(angle);
-        store.keys.ArrowUp = up > 0.5;
-        // No activar ArrowDown con joystick, se usa el botón dedicado de bomba
-        if (Math.abs(right) > 0.3) {
-            if (right > 0) {
-                store.keys.ArrowRight = true;
-                store.keys.ArrowLeft = false;
+
+    const attachJoystickHandlers = () => {
+        if (!store.joystickManager) return;
+        store.joystickManager.on('move', (_evt: NippleEvent, data: NippleJoystick) => {
+            const angle = data.angle.radian;
+            const force = data.force;
+            if (force <= 0.2) {
+                return;
+            }
+            const up = Math.sin(angle);
+            const right = Math.cos(angle);
+            store.keys.ArrowUp = up > 0.5;
+            // No activar ArrowDown con joystick, se usa el botón dedicado de bomba
+            if (Math.abs(right) > 0.3) {
+                if (right > 0) {
+                    store.keys.ArrowRight = true;
+                    store.keys.ArrowLeft = false;
+                } else {
+                    store.keys.ArrowLeft = true;
+                    store.keys.ArrowRight = false;
+                }
             } else {
-                store.keys.ArrowLeft = true;
+                store.keys.ArrowLeft = false;
                 store.keys.ArrowRight = false;
             }
-        } else {
+        });
+        store.joystickManager.on('end', () => {
+            store.keys.ArrowUp = false;
             store.keys.ArrowLeft = false;
             store.keys.ArrowRight = false;
+            // No resetear ArrowDown aquí, se controla con el botón de bomba
+        });
+    };
+
+    const createJoystickAt = (clientX?: number, clientY?: number) => {
+        if (store.joystickManager) {
+            store.joystickManager.destroy();
+            store.joystickManager = null;
+            store.joystickNipple = undefined;
         }
-    });
-    store.joystickManager.on('end', () => {
-        store.keys.ArrowUp = false;
-        store.keys.ArrowLeft = false;
-        store.keys.ArrowRight = false;
-        // No resetear ArrowDown aquí, se controla con el botón de bomba
-    });
+        const baseX = typeof clientX === 'number' ? clientX : Math.round(window.innerWidth * 0.15);
+        const baseY = typeof clientY === 'number' ? clientY : Math.round(window.innerHeight * 0.75);
+        store.joystickBaseX = baseX;
+        store.joystickBaseY = baseY;
+        const left = `${(baseX / window.innerWidth) * 100}%`;
+        const top = `${(baseY / window.innerHeight) * 100}%`;
+        store.joystickManager = nipplejs.create({
+            zone: joystickZoneEl,
+            mode: 'static',
+            position: { left, top },
+            color: 'white',
+            catchforce: true,
+        });
+        // persist the nipple DOM container for direct px positioning
+        // @ts-ignore
+        store.joystickNipple = (store.joystickManager as any).ui?.front?.parentElement?.parentElement || (document.querySelector('.nipple') as HTMLElement | null);
+        attachJoystickHandlers();
+    };
+
+    // Crear joystick visible por defecto (esquina inferior izquierda aprox.)
+    if (!store.joystickManager) {
+        createJoystickAt();
+    }
+
+    // Comportamiento elástico: recentrar la base hacia el dedo conservando la dirección
+    const zoneAny = joystickZoneEl as unknown as { _elasticBound?: boolean } & HTMLElement;
+    if (!zoneAny._elasticBound) {
+        const MAX_STICK_DISTANCE = 80; // radio máximo del joystick en px
+        const RECENTER_COOLDOWN_MS = 8; // limitar updates de posición
+
+        const getActiveTouch = (e: TouchEvent) => {
+            if (store.joystickFingerId != null) {
+                for (let i = 0; i < e.touches.length; i++) {
+                    const touch = e.touches[i];
+                    if (touch.identifier === store.joystickFingerId) return touch;
+                }
+                return null;
+            }
+            return e.touches[0] ?? null;
+        };
+
+        const handleTouchStart = (event: TouchEvent) => {
+            const t = getActiveTouch(event);
+            if (!t) return;
+            store.joystickFingerId = t.identifier;
+            createJoystickAt(t.clientX, t.clientY);
+            event.preventDefault();
+        };
+
+        const handleTouchMove = (event: TouchEvent) => {
+            const t = getActiveTouch(event);
+            if (!t || store.joystickBaseX == null || store.joystickBaseY == null) return;
+            const now = performance.now();
+            const dx = t.clientX - store.joystickBaseX;
+            const dy = t.clientY - store.joystickBaseY;
+            const dist = Math.hypot(dx, dy);
+            const dirX = dist > 0 ? dx / dist : 0;
+            const dirY = dist > 0 ? dy / dist : 0;
+            const clamped = Math.min(dist, MAX_STICK_DISTANCE);
+
+            // 100% flotante: colocar la base justo a 'clamped' por detrás del dedo
+            if (!store.joystickLastRecenterAt || now - store.joystickLastRecenterAt >= RECENTER_COOLDOWN_MS) {
+                const newBaseX = t.clientX - dirX * clamped;
+                const newBaseY = t.clientY - dirY * clamped;
+                store.joystickBaseX = newBaseX;
+                store.joystickBaseY = newBaseY;
+                const container = store.joystickNipple as HTMLElement | undefined;
+                if (container) {
+                    container.style.left = `${newBaseX - container.clientWidth / 2}px`;
+                    container.style.top = `${newBaseY - container.clientHeight / 2}px`;
+                    container.style.position = 'absolute';
+                } else {
+                    createJoystickAt(newBaseX, newBaseY);
+                }
+                store.joystickLastRecenterAt = now;
+            }
+
+            // Mapear a teclas usando el vector dedo-base
+            const DEADZONE = 10; // px
+            const absDx = Math.abs(t.clientX - store.joystickBaseX);
+            const absDy = Math.abs(t.clientY - store.joystickBaseY);
+            // Up
+            store.keys.ArrowUp = (store.joystickBaseY - t.clientY) > DEADZONE;
+            // Left/Right con umbral proporcional
+            const horizThreshold = MAX_STICK_DISTANCE * 0.3;
+            if (absDx > horizThreshold) {
+                if ((t.clientX - store.joystickBaseX) > 0) {
+                    store.keys.ArrowRight = true;
+                    store.keys.ArrowLeft = false;
+                } else {
+                    store.keys.ArrowLeft = true;
+                    store.keys.ArrowRight = false;
+                }
+            } else {
+                store.keys.ArrowLeft = false;
+                store.keys.ArrowRight = false;
+            }
+
+            event.preventDefault();
+        };
+
+        const handleTouchEnd = (event: TouchEvent) => {
+            if (store.joystickFingerId != null) {
+                let stillActive = false;
+                for (let i = 0; i < event.touches.length; i++) {
+                    if (event.touches[i].identifier === store.joystickFingerId) {
+                        stillActive = true;
+                        break;
+                    }
+                }
+                if (!stillActive) {
+                    store.joystickFingerId = undefined;
+                }
+            }
+        };
+
+        joystickZoneEl.addEventListener('touchstart', handleTouchStart, { passive: false });
+        joystickZoneEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+        joystickZoneEl.addEventListener('touchend', handleTouchEnd);
+        zoneAny._elasticBound = true;
+    }
 
     // Configurar botones de acción
     const shootBtn = document.getElementById('shoot-btn');

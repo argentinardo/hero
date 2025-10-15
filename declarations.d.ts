@@ -43,6 +43,7 @@ declare module 'nipplejs' {
       radian: number;
     };
     force: number;
+    distance?: number; // pixels from base to front
   }
 
   export interface Position {

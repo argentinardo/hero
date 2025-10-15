@@ -234,6 +234,12 @@ export interface GameStore {
     keys: Record<string, boolean>;
     sprites: Record<string, HTMLImageElement>;
     joystickManager: JoystickManager | null;
+    joystickNipple?: any;
+    // Joystick elastic behavior state
+    joystickBaseX?: number; // px
+    joystickBaseY?: number; // px
+    joystickFingerId?: number;
+    joystickLastRecenterAt?: number; // ms timestamp for throttling
     initialLevels: string[][];
     editorHistory: string[][][];
     editorHistoryIndex: number;

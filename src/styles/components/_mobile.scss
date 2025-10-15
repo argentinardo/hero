@@ -181,12 +181,12 @@
         display: block;
     }
 
-    /* Toda el área izquierda es zona de joystick */
+    /* Zona de joystick ocupa toda la pantalla para poder superponerse al canvas */
     #joystick-zone {
         position: absolute;
         top: 0;
         left: 0;
-        width: 25%;
+        width: 100%;
         height: 100vh;
         pointer-events: auto;
     }
@@ -311,12 +311,12 @@
         display: block;
     }
 
-    /* Toda el área izquierda es zona de joystick */
+    /* Zona de joystick ocupa toda la pantalla para poder superponerse al canvas */
     #joystick-zone {
         position: absolute;
         top: 0;
         left: 0;
-        width: 25%;
+        width: 100%;
         height: 100vh;
         pointer-events: auto;
     }
