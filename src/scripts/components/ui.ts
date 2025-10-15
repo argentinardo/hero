@@ -318,14 +318,41 @@ const startJoystick = (store: GameStore) => {
     const bombBtn = document.getElementById('bomb-btn');
 
     if (shootBtn) {
+        // Soporte de tap normal (mantener mientras toca)
         shootBtn.addEventListener('touchstart', event => {
             event.preventDefault();
-            store.keys.Space = true;
+            if (!store.shootLocked) {
+                store.keys.Space = true;
+            }
         });
         shootBtn.addEventListener('touchend', event => {
             event.preventDefault();
-            store.keys.Space = false;
+            if (!store.shootLocked) {
+                store.keys.Space = false;
+            }
         });
+
+        // Doble tap para alternar bloqueo
+        let lastTapTime = 0;
+        const DOUBLE_TAP_MS = 300;
+        const onTap = (event: TouchEvent) => {
+            const now = performance.now();
+            const delta = now - lastTapTime;
+            lastTapTime = now;
+            if (delta <= DOUBLE_TAP_MS) {
+                store.shootLocked = !store.shootLocked;
+                if (store.shootLocked) {
+                    store.keys.Space = true;
+                    shootBtn.classList.add('locked');
+                    shootBtn.textContent = 'LÁSER AUTO';
+                } else {
+                    store.keys.Space = false;
+                    shootBtn.classList.remove('locked');
+                    shootBtn.textContent = 'LÁSER';
+                }
+            }
+        };
+        shootBtn.addEventListener('touchend', onTap);
     }
 
     if (bombBtn) {

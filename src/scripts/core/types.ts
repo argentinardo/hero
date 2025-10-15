@@ -244,5 +244,7 @@ export interface GameStore {
     editorHistory: string[][][];
     editorHistoryIndex: number;
     dom: DomReferences;
+    // Disparo bloqueado (doble tap en móvil)
+    shootLocked?: boolean;
 }
 

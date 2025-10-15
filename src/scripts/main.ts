@@ -65,11 +65,17 @@ const checkMinerRescue = () => {
     const miner = store.miner;
     if (!miner || miner.animationState === 'rescued') return;
 
+    // Zona de rescate basada en el primer tile expuesto del minero
+    const tileWidth = TILE_SIZE;
+    const frontRect = miner.isFlipped
+        ? { x: miner.x, y: miner.y, width: tileWidth, height: miner.height }
+        : { x: miner.x + Math.max(0, miner.width - tileWidth), y: miner.y, width: tileWidth, height: miner.height };
+
     const zone = {
-        x: miner.x - 10,
-        y: miner.y - 10,
-        width: miner.width + 20,
-        height: miner.height + 20,
+        x: frontRect.x - 10,
+        y: frontRect.y - 10,
+        width: frontRect.width + 20,
+        height: frontRect.height + 20,
     };
 
     const hitbox = store.player.hitbox;

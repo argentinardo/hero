@@ -104,14 +104,18 @@
             display: flex !important;
             position: fixed;
             top: 0;
+            left: 0;
             right: 0;
-            width: 40%;
+            width: 100%;
+            max-width: none;
             height: 100vh;
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);
             padding: 10px;
             z-index: 100;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
             
             #tile-palette {
                 display: grid;
@@ -150,15 +154,7 @@
         }
         
         #gameCanvas {
-            width: 60% !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            max-width: none !important;
-            object-fit: contain !important;
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            aspect-ratio: auto !important;
+            display: none !important;
         }
 
         #main-container {
@@ -230,6 +226,12 @@
             background-color: rgba(255, 255, 255, 0.4);
             transform: scale(0.95);
             border-color: rgba(255, 255, 255, 1);
+        }
+        &.locked {
+            background-color: rgba(0, 255, 0, 0.35);
+            border-color: rgba(0, 255, 0, 0.9);
+            box-shadow: 0 0 18px rgba(0, 255, 0, 0.8), inset 0 0 10px rgba(0, 255, 0, 0.6);
+            transform: none;
         }
     }
 }
@@ -385,14 +387,18 @@
             display: flex !important;
             position: fixed;
             top: 0;
+            left: 0;
             right: 0;
-            width: 40%;
+            width: 100%;
+            max-width: none;
             height: 100vh;
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);
             padding: 10px;
             z-index: 100;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
             
             #tile-palette {
                 display: grid;
@@ -431,15 +437,7 @@
         }
         
         #gameCanvas {
-            width: 60% !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            max-width: none !important;
-            object-fit: contain !important;
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            aspect-ratio: auto !important;
+            display: none !important;
         }
 
         #main-container {

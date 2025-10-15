@@ -393,8 +393,22 @@ const handleCollisions = (store: GameStore) => {
         }
     });
 
-    if (miner && miner.animationState !== 'rescued' && checkCollision(player.hitbox, miner)) {
-        resolvePlayerMinerCollision(store, miner);
+    if (miner && miner.animationState !== 'rescued') {
+        // Colisión con el minero: usar solo el primer tile (lado expuesto)
+        const frontRect = (() => {
+            const tileWidth = TILE_SIZE;
+            // Si el minero está pegado a la derecha (isFlipped = true), su lado expuesto es el izquierdo
+            if (miner.isFlipped) {
+                return { x: miner.x, y: miner.y, width: tileWidth, height: miner.height };
+            }
+            // Pegado a la izquierda (no flipped): lado expuesto es el derecho
+            const x = miner.x + Math.max(0, miner.width - tileWidth);
+            return { x, y: miner.y, width: tileWidth, height: miner.height };
+        })();
+
+        if (checkCollision(player.hitbox, frontRect)) {
+            resolvePlayerMinerCollision(store, miner);
+        }
     }
 
     const levelWidth = store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE;
