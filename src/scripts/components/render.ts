@@ -62,10 +62,12 @@ const drawWall = (store: GameStore, wall: Wall) => {
 		const isCandidate = (wall.tile === '1' || wall.tile === '2');
 		if (isCandidate) {
 			const r = 10;
-			const rTL = (up === '0' && left === '0') ? r : 0;
-			const rTR = (up === '0' && right === '0') ? r : 0;
-			const rBL = (down === '0' && left === '0') ? r : 0;
-			const rBR = (down === '0' && right === '0') ? r : 0;
+			// Tratar tiles de araña (S) como vacíos para el cálculo de esquinas redondeadas
+			const isEmpty = (tile: string) => tile === '0' || tile === 'S';
+			const rTL = (isEmpty(up) && isEmpty(left)) ? r : 0;
+			const rTR = (isEmpty(up) && isEmpty(right)) ? r : 0;
+			const rBL = (isEmpty(down) && isEmpty(left)) ? r : 0;
+			const rBR = (isEmpty(down) && isEmpty(right)) ? r : 0;
 			if (rTL || rTR || rBL || rBR) {
 				beginRoundedRectPathCorners(ctx, wall.x, wall.y, wall.width, wall.height, rTL, rTR, rBR, rBL);
 				ctx.clip();
