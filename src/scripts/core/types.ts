@@ -1,4 +1,5 @@
 import type { JoystickManager } from 'nipplejs';
+import type { VirtualJoystick } from '../components/virtualJoystick';
 
 export type AppState = 'menu' | 'playing' | 'editing';
 export type GameState = 'start' | 'playing' | 'respawning' | 'floating' | 'gameover' | 'win';
@@ -234,6 +235,7 @@ export interface GameStore {
     keys: Record<string, boolean>;
     sprites: Record<string, HTMLImageElement>;
     joystickManager: JoystickManager | null;
+    virtualJoystick: VirtualJoystick | null;
     initialLevels: string[][];
     editorHistory: string[][][];
     editorHistoryIndex: number;
