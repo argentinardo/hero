@@ -2,7 +2,7 @@ import { ANIMATION_DATA, TILE_TYPES } from '../core/assets';
 import { TILE_SIZE, MAX_ENERGY } from '../core/constants';
 import { resetPlayer } from './player';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
-import { playSuccessLevelSound } from './audio';
+import { playSuccessLevelSound, stopAllSfxExceptSuccessLevel, playBackgroundMusic } from './audio';
 
 const createWall = (x: number, y: number, tile: string): Wall => {
     const base: Wall = {
@@ -240,6 +240,8 @@ export const loadLevel = (store: GameStore) => {
     if (store.dom.ui.levelCountEl) {
         store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     }
+    // Reanudar música principal al comenzar un nuevo nivel
+    playBackgroundMusic();
 };
 
 export const awardMinerRescue = (store: GameStore) => {
@@ -248,7 +250,8 @@ export const awardMinerRescue = (store: GameStore) => {
         return;
     }
     
-    // Reproducir sonido de éxito al rescatar al minero
+    // Detener todos los otros sonidos y reproducir el de éxito
+    stopAllSfxExceptSuccessLevel();
     playSuccessLevelSound();
     
     store.score += 1000;

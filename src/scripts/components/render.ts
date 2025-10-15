@@ -8,13 +8,70 @@ import { checkCollision } from '../core/collision';
 import { updateParticles, updateFallingEntities, updateFloatingScores } from './effects';
 import { drawLight } from './light';
 
+// Paleta para tintar muros por bloques de 3 filas (colores vivos)
+const WALL_TINT_COLORS = ['#ff4d4d', '#00e5ff', '#ffea00', '#00ff85', '#ff6bff', '#ff8c00'];
+
+// Utilidad: trazar un rectángulo con radios por esquina
+const beginRoundedRectPathCorners = (
+	ctx: CanvasRenderingContext2D,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	rTL: number,
+	rTR: number,
+	rBR: number,
+	rBL: number,
+) => {
+	const tl = Math.max(0, Math.min(rTL, Math.min(w, h) / 2));
+	const tr = Math.max(0, Math.min(rTR, Math.min(w, h) / 2));
+	const br = Math.max(0, Math.min(rBR, Math.min(w, h) / 2));
+	const bl = Math.max(0, Math.min(rBL, Math.min(w, h) / 2));
+	ctx.beginPath();
+	ctx.moveTo(x + tl, y);
+	ctx.lineTo(x + w - tr, y);
+	ctx.quadraticCurveTo(x + w, y, x + w, y + tr);
+	ctx.lineTo(x + w, y + h - br);
+	ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+	ctx.lineTo(x + bl, y + h);
+	ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
+	ctx.lineTo(x, y + tl);
+	ctx.quadraticCurveTo(x, y, x + tl, y);
+	ctx.closePath();
+};
+
 const drawWall = (store: GameStore, wall: Wall) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
 
+    ctx.save();
+
     if (wall.isDamaged) {
         ctx.globalAlpha = 0.5;
     }
+
+	// Aplicar clip de esquinas redondeadas por esquina según vecinos vacíos (excepto lava y columnas)
+	if (store.levelDesigns && store.levelDesigns[store.currentLevelIndex]) {
+		const level = store.levelDesigns[store.currentLevelIndex];
+		const colIndex = Math.floor(wall.x / TILE_SIZE);
+		const rowIndex = Math.floor(wall.y / TILE_SIZE);
+		const up = level[rowIndex - 1]?.[colIndex] ?? '0';
+		const down = level[rowIndex + 1]?.[colIndex] ?? '0';
+		const left = level[rowIndex]?.[colIndex - 1] ?? '0';
+		const right = level[rowIndex]?.[colIndex + 1] ?? '0';
+		const isCandidate = (wall.tile === '1' || wall.tile === '2');
+		if (isCandidate) {
+			const r = 10;
+			const rTL = (up === '0' && left === '0') ? r : 0;
+			const rTR = (up === '0' && right === '0') ? r : 0;
+			const rBL = (down === '0' && left === '0') ? r : 0;
+			const rBR = (down === '0' && right === '0') ? r : 0;
+			if (rTL || rTR || rBL || rBR) {
+				beginRoundedRectPathCorners(ctx, wall.x, wall.y, wall.width, wall.height, rTL, rTR, rBR, rBL);
+				ctx.clip();
+			}
+		}
+	}
 
     const sprite = store.sprites[wall.tile];
     if (sprite) {
@@ -30,9 +87,21 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
     }
 
-    if (wall.isDamaged) {
-        ctx.globalAlpha = 1;
+    // Aplicar tint por bloques de 3 filas, excepto para lava ('3') y columnas ('C')
+    if (wall.tile !== '3' && wall.tile !== 'C') {
+        const rowIndex = Math.floor(wall.y / TILE_SIZE);
+        const blockIndex = Math.floor(rowIndex / 3);
+        const tintColor = WALL_TINT_COLORS[blockIndex % WALL_TINT_COLORS.length];
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.225;
+        ctx.fillStyle = tintColor;
+        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        ctx.globalAlpha = prevAlpha;
+        ctx.globalCompositeOperation = 'source-over';
     }
+
+    ctx.restore();
 };
 
 const drawEnemy = (store: GameStore, enemy: Enemy) => {

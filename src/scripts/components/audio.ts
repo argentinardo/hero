@@ -7,6 +7,7 @@ import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';
 import stepsSound from '../../assets/audio/steps.mp3';
 import bombSound from '../../assets/audio/bomb.mp3';
+import enemyKillSound from '../../assets/audio/enemy_kill.mp3';
 import successLevelSound from '../../assets/audio/success_level.mp3';
 
 // Interfaz para el sistema de audio
@@ -19,6 +20,7 @@ interface AudioSystem {
         steps: HTMLAudioElement | null;
         bomb: HTMLAudioElement | null;
         successLevel: HTMLAudioElement | null;
+        enemyKill: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -35,6 +37,7 @@ let audioSystem: AudioSystem = {
         steps: null,
         bomb: null,
         successLevel: null,
+        enemyKill: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -69,6 +72,9 @@ export const initAudio = () => {
 
         audioSystem.sounds.successLevel = new Audio(successLevelSound);
         audioSystem.sounds.successLevel.volume = audioSystem.sfxVolume;
+
+        audioSystem.sounds.enemyKill = new Audio(enemyKillSound);
+        audioSystem.sounds.enemyKill.volume = audioSystem.sfxVolume;
 
         console.log('Sistema de audio inicializado correctamente');
     } catch (error) {
@@ -166,6 +172,27 @@ export const stopAllSfxExceptLifedown = () => {
     }
 };
 
+// Detener todos los sonidos excepto el de éxito de nivel
+export const stopAllSfxExceptSuccessLevel = () => {
+    const { jetpack, laser, steps, bomb, successLevel } = audioSystem.sounds;
+    // Pausar todos los SFX que puedan estar en loop o activos, excepto successLevel
+    [jetpack, steps, bomb].forEach(snd => {
+        if (snd) {
+            snd.pause();
+            snd.currentTime = 0;
+        }
+    });
+    // El láser usa clones para múltiples disparos; pausamos la instancia base si existe
+    if (laser) {
+        try { laser.pause(); } catch {}
+    }
+    // Pausar música de fondo para que destaque el éxito
+    if (audioSystem.bgMusic) {
+        audioSystem.bgMusic.pause();
+    }
+    // No pausar ni resetear successLevel aquí; se gestionará al reproducir
+};
+
 // Reproducir sonido de pasos
 export const playStepsSound = () => {
     if (audioSystem.sounds.steps && !audioSystem.isMuted) {
@@ -203,6 +230,16 @@ export const playSuccessLevelSound = () => {
         audioSystem.sounds.successLevel.play().catch(error => {
             console.log('Error al reproducir success level:', error);
         });
+    }
+};
+
+// Reproducir sonido al eliminar enemigo
+export const playEnemyKillSound = () => {
+    if (audioSystem.sounds.enemyKill && !audioSystem.isMuted) {
+        // Crear clon para permitir kills simultáneos
+        const killClone = audioSystem.sounds.enemyKill.cloneNode(true) as HTMLAudioElement;
+        killClone.volume = audioSystem.sfxVolume;
+        killClone.play().catch(() => {});
     }
 };
 

@@ -1,6 +1,7 @@
 import type { GameStore, Wall } from '../core/types';
 import { TILE_SIZE } from '../core/constants';
 import { emitParticles } from './player';
+import { playEnemyKillSound } from './audio';
 
 const splitDestructibleWall = (store: GameStore, wall: Wall) => {
     const quarterWidth = TILE_SIZE / 2;
@@ -114,6 +115,8 @@ export const updateLasers = (store: GameStore) => {
             store.floatingScores.push({ x: enemy.x, y: enemy.y, text: '+100', life: 60, opacity: 1 });
             store.enemies.splice(j, 1);
             store.score += 100;
+            // Reproducir sonido al eliminar enemigo por láser
+            playEnemyKillSound();
             break;
         }
     }

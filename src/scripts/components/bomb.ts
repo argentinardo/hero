@@ -2,7 +2,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE, BOMB_FUSE } from '../core/constants';
 import type { Enemy, GameStore, Wall } from '../core/types';
 import { emitParticles, playerDie } from './player';
-import { playBombSound } from './audio';
+import { playBombSound, playEnemyKillSound } from './audio';
 
 const createExplosion = (store: GameStore, x: number, y: number) => {
     store.explosions.push({
@@ -107,6 +107,10 @@ const destroyEnemiesInRadius = (store: GameStore, centerX: number, centerY: numb
         });
         store.floatingScores.push({ x: enemy.x, y: enemy.y, text: '+100', life: 60, opacity: 1 });
     });
+    // Reproducir sonido de kill si hubo al menos un enemigo eliminado
+    if (toRemove.size > 0) {
+        playEnemyKillSound();
+    }
     store.enemies = store.enemies.filter(enemy => !toRemove.has(enemy));
     store.score += toRemove.size * 100;
 };
