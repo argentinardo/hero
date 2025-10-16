@@ -6,8 +6,7 @@
 }
 
 #gameCanvas {
-    width: 100%;
-    height: auto;
+    width: auto;
+    height: 100vh;
     aspect-ratio: 800 / 600;
-    image-rendering: pixelated; /* Mantiene los pixeles nítidos al escalar */
 }

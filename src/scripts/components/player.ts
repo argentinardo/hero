@@ -3,6 +3,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
 import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
+import { vibrate } from '../utils/device';
 
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
@@ -254,6 +255,8 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     // Reproducir sonido de perder vida y silenciar el resto
     stopAllSfxExceptLifedown();
     playLifedownSound();
+    // Vibración al perder vida
+    vibrate([50, 100, 50]);
     // Reanudar música cuando termine el sonido de perder vida (si no es game over)
     onLifedownEnded(() => {
         if (store.lives > 0 && store.gameState !== 'gameover') {
@@ -267,9 +270,18 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
         killedByEnemy.isHidden = true;
     }
 
-    // Guardar posición de muerte para respawn
-    player.respawnX = player.x;
+    // Guardar posición de muerte para respawn (acotada a los límites del nivel)
+    const levelWidthTiles = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+    const levelWidthPx = levelWidthTiles * TILE_SIZE;
+    const clampedX = Math.max(0, Math.min(player.x, levelWidthPx - player.width));
+    player.respawnX = clampedX;
     player.respawnY = player.y;
+    // Guardar también coordenadas de tile para un respawn exacto por grilla
+    player.respawnTileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
+    player.respawnTileY = Math.floor((player.y + player.height) / TILE_SIZE) - 1;
+    // Guardar offsets sub-tile para evitar saltos horizontales/verticales
+    player.respawnOffsetX = (player.x + player.width / 2) - (player.respawnTileX * TILE_SIZE + TILE_SIZE / 2);
+    player.respawnOffsetY = (player.y + player.height) - ((player.respawnTileY + 1) * TILE_SIZE);
 
     // Cambiar animación a muerte
     player.animationState = 'die';
@@ -293,6 +305,22 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
             if (retryBtn) {
                 retryBtn.classList.remove('hidden');
             }
+
+            // Desactivar controles móviles y destruir joystick para no bloquear clicks en overlay
+            const mobileControlsEl = store.dom.ui.mobileControlsEl;
+            if (mobileControlsEl) {
+                mobileControlsEl.dataset.active = 'false';
+            }
+            if (store.joystickManager) {
+                try { store.joystickManager.destroy(); } catch {}
+                store.joystickManager = null;
+            }
+            // Resetear entradas de movimiento/disparo
+            store.keys.ArrowUp = false;
+            store.keys.ArrowDown = false;
+            store.keys.ArrowLeft = false;
+            store.keys.ArrowRight = false;
+            store.keys.Space = false;
         }, 1500);
         return;
     }
@@ -302,7 +330,28 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
         const canvas = store.dom.canvas;
         if (!canvas) return;
         
-        // Aparecer desde arriba del viewport actual de la cámara
+        // Recalcular respawnX/Y desde las coordenadas de tile si están presentes
+        if (player.respawnTileX !== undefined && player.respawnTileY !== undefined) {
+            const baseXCenter = player.respawnTileX * TILE_SIZE + TILE_SIZE / 2;
+            const rxCenter = baseXCenter + (player.respawnOffsetX ?? 0);
+            const rx = rxCenter - player.width / 2;
+            const ryBottom = (player.respawnTileY + 1) * TILE_SIZE + (player.respawnOffsetY ?? 0);
+            const ry = ryBottom - player.height;
+            const levelWidthTiles2 = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+            const levelWidthPx2 = levelWidthTiles2 * TILE_SIZE;
+            player.respawnX = Math.max(0, Math.min(rx, levelWidthPx2 - player.width));
+            player.respawnY = Math.max(0, ry);
+        }
+        
+        // Alinear cámara horizontalmente al bloque del respawn para evitar "saltar" en niveles anchos
+        const BLOCK_WIDTH_TILES = 20;
+        const blockWidthPx = BLOCK_WIDTH_TILES * TILE_SIZE;
+        const playerCenterX = player.respawnX + player.width / 2;
+        const respawnBlock = Math.floor(playerCenterX / blockWidthPx);
+        const maxCameraX = Math.max(0, (levelWidthPx - canvas.width));
+        store.cameraX = Math.max(0, Math.min(respawnBlock * blockWidthPx, maxCameraX));
+        
+        // Posicionar jugador en su X guardada y entrando desde arriba del viewport actual
         player.x = player.respawnX;
         player.y = store.cameraY - TILE_SIZE; // Desde arriba del viewport actual
         player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;

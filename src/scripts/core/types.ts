@@ -42,6 +42,10 @@ export interface Player extends GameObject {
     respawnX: number;
     respawnY: number;
     floatWaveTime: number;
+    respawnTileX?: number;
+    respawnTileY?: number;
+    respawnOffsetX?: number;
+    respawnOffsetY?: number;
 }
 
 export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner';
@@ -109,6 +113,7 @@ export interface FallingEntity extends GameObject {
     tile: string;
     rotation?: number;
     rotationSpeed?: number;
+    hasBounced?: boolean; // para permitir un único rebote en enemigos
 }
 
 export interface Particle {
@@ -192,6 +197,7 @@ export interface UiElements {
     mobileControlsEl: HTMLElement | null;
     joystickZoneEl: HTMLElement | null;
     actionZoneEl: HTMLElement | null;
+    volumeBtn?: HTMLButtonElement | null;
     startGameBtn: HTMLButtonElement | null;
     levelEditorBtn: HTMLButtonElement | null;
     playTestBtn: HTMLButtonElement | null;

@@ -9,6 +9,9 @@ import stepsSound from '../../assets/audio/steps.mp3';
 import bombSound from '../../assets/audio/bomb.mp3';
 import enemyKillSound from '../../assets/audio/enemy_kill.mp3';
 import successLevelSound from '../../assets/audio/success_level.mp3';
+import toyBounceSound from '../../assets/audio/toy.mp3';
+import brickBounceSound from '../../assets/audio/brick.mp3';
+import bulbOffSound from '../../assets/audio/bulb.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -21,6 +24,9 @@ interface AudioSystem {
         bomb: HTMLAudioElement | null;
         successLevel: HTMLAudioElement | null;
         enemyKill: HTMLAudioElement | null;
+        toy: HTMLAudioElement | null;
+        brick: HTMLAudioElement | null;
+        bulb: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -38,6 +44,9 @@ let audioSystem: AudioSystem = {
         bomb: null,
         successLevel: null,
         enemyKill: null,
+        toy: null,
+        brick: null,
+        bulb: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -75,6 +84,15 @@ export const initAudio = () => {
 
         audioSystem.sounds.enemyKill = new Audio(enemyKillSound);
         audioSystem.sounds.enemyKill.volume = audioSystem.sfxVolume;
+
+        audioSystem.sounds.toy = new Audio(toyBounceSound);
+        audioSystem.sounds.toy.volume = audioSystem.sfxVolume;
+
+        audioSystem.sounds.brick = new Audio(brickBounceSound);
+        audioSystem.sounds.brick.volume = audioSystem.sfxVolume;
+
+        audioSystem.sounds.bulb = new Audio(bulbOffSound);
+        audioSystem.sounds.bulb.volume = audioSystem.sfxVolume;
 
         console.log('Sistema de audio inicializado correctamente');
     } catch (error) {
@@ -240,6 +258,33 @@ export const playEnemyKillSound = () => {
         const killClone = audioSystem.sounds.enemyKill.cloneNode(true) as HTMLAudioElement;
         killClone.volume = audioSystem.sfxVolume;
         killClone.play().catch(() => {});
+    }
+};
+
+// Reproducir sonido de rebote tipo "toy"
+export const playToyBounce = () => {
+    if (audioSystem.sounds.toy && !audioSystem.isMuted) {
+        const toyClone = audioSystem.sounds.toy.cloneNode(true) as HTMLAudioElement;
+        toyClone.volume = audioSystem.sfxVolume;
+        toyClone.play().catch(() => {});
+    }
+};
+
+// Reproducir sonido de rebote de ladrillo
+export const playBrickBounce = () => {
+    if (audioSystem.sounds.brick && !audioSystem.isMuted) {
+        const brickClone = audioSystem.sounds.brick.cloneNode(true) as HTMLAudioElement;
+        brickClone.volume = audioSystem.sfxVolume;
+        brickClone.play().catch(() => {});
+    }
+};
+
+// Reproducir sonido al apagar una luz
+export const playBulbOff = () => {
+    if (audioSystem.sounds.bulb && !audioSystem.isMuted) {
+        const bulbClone = audioSystem.sounds.bulb.cloneNode(true) as HTMLAudioElement;
+        bulbClone.volume = audioSystem.sfxVolume;
+        bulbClone.play().catch(() => {});
     }
 };
 

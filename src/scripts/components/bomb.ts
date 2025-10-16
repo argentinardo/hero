@@ -3,6 +3,7 @@ import { TILE_SIZE, BOMB_FUSE } from '../core/constants';
 import type { Enemy, GameStore, Wall } from '../core/types';
 import { emitParticles, playerDie } from './player';
 import { playBombSound, playEnemyKillSound } from './audio';
+import { vibrate } from '../utils/device';
 
 const createExplosion = (store: GameStore, x: number, y: number) => {
     store.explosions.push({
@@ -135,6 +136,8 @@ export const updateBombs = (store: GameStore) => {
         
         createExplosion(store, bomb.x, bomb.y);
         emitParticles(store, centerX, centerY, 30, 'white');
+        // Vibración al explotar bomba (patrón corto)
+        vibrate([30, 50, 30]);
         const explosionRadius = 70;
         destroyWallsInRadius(store, centerX, centerY, explosionRadius);
         destroyEnemiesInRadius(store, centerX, centerY, explosionRadius);

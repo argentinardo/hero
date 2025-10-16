@@ -1,5 +1,6 @@
-import { GRAVITY } from '../core/constants';
+import { GRAVITY, TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
+import { playToyBounce, playBrickBounce } from './audio';
 
 export const updateParticles = (store: GameStore) => {
     for (let i = store.particles.length - 1; i >= 0; i--) {
@@ -25,6 +26,37 @@ export const updateFallingEntities = (store: GameStore) => {
         if (entity.rotationSpeed) {
             entity.rotation = (entity.rotation ?? 0) + entity.rotationSpeed;
         }
+
+        // Rebote en suelo expuesto: ejecutar a lo sumo una vez
+        if (!entity.hasBounced) {
+            const level = store.levelDesigns[store.currentLevelIndex];
+            if (level && level.length > 0) {
+                const cols = level[0]?.length ?? 0;
+                const gridCenterX = Math.floor((entity.x + entity.width / 2) / TILE_SIZE);
+                const gridYBelow = Math.floor((entity.y + entity.height) / TILE_SIZE);
+                if (gridCenterX >= 0 && gridCenterX < cols && gridYBelow >= 0 && gridYBelow < level.length) {
+                    const below = level[gridYBelow][gridCenterX];
+                    const above = gridYBelow - 1 >= 0 ? level[gridYBelow - 1][gridCenterX] : '1';
+                    if (below === '1' && above === '0') {
+                        const groundY = gridYBelow * TILE_SIZE - entity.height;
+                        if (entity.y >= groundY) {
+                            entity.y = groundY;
+                            entity.vy = -Math.abs(entity.vy) * 0.5;
+                            entity.vx *= 0.9;
+                            entity.hasBounced = true;
+                            // Brick sound para ladrillos normales ('1') y de columna ('C'); resto usa toy
+                            const isBrickTile = entity.tile === '1' || entity.tile === 'C';
+                            if (isBrickTile) {
+                                playBrickBounce();
+                            } else {
+                                playToyBounce();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (entity.y > store.cameraY + canvasHeight) {
             store.fallingEntities.splice(i, 1);
         }

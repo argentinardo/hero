@@ -16,6 +16,7 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
     padding: 0;
+    overflow-x: hidden;
   }
 }
 
@@ -61,4 +62,10 @@
   text-align: center;
   line-height: 2;
   color: rgba(255, 255, 255, 0.7);
+}
+
+// Editor panel scroll behavior (desktop)
+#editor-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
 }

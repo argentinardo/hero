@@ -39,6 +39,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.mobileControlsEl = document.getElementById('mobile-controls');
     ui.joystickZoneEl = document.getElementById('joystick-zone');
     ui.actionZoneEl = document.getElementById('action-zone');
+    ui.volumeBtn = document.getElementById('volume-btn') as HTMLButtonElement | null;
 
     ui.startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     ui.levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
@@ -174,6 +175,7 @@ const startJoystick = (store: GameStore) => {
     // Configurar botones de acción
     const shootBtn = document.getElementById('shoot-btn');
     const bombBtn = document.getElementById('bomb-btn');
+    const volumeBtn = store.dom.ui.volumeBtn as HTMLButtonElement | null;
 
     if (shootBtn) {
         shootBtn.addEventListener('touchstart', event => {
@@ -237,6 +239,28 @@ const startJoystick = (store: GameStore) => {
             store.keys.ArrowDown = false;
         });
     }
+
+    if (volumeBtn) {
+        const updateIcon = () => {
+            try {
+                // Lazy require para evitar ciclos
+                const { getAudioState } = require('./audio');
+                const state = getAudioState();
+                volumeBtn.textContent = state.isMuted ? '🔇' : '🔊';
+            } catch {}
+        };
+        updateIcon();
+        const toggle = () => {
+            try {
+                const { toggleMute, getAudioState } = require('./audio');
+                toggleMute();
+                const state = getAudioState();
+                volumeBtn.textContent = state.isMuted ? '🔇' : '🔊';
+            } catch {}
+        };
+        volumeBtn.addEventListener('touchstart', e => { e.preventDefault(); toggle(); });
+        volumeBtn.addEventListener('click', e => { e.preventDefault(); toggle(); });
+    }
 };
 
 export const startGame = (store: GameStore, levelOverride: string[] | null = null, startIndex?: number, preserveLevels?: boolean) => {
@@ -269,6 +293,14 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         editorPanelEl.style.display = 'none';
     }
     startJoystick(store);
+
+    // Intento de bloqueo de orientación a landscape en navegadores que lo soportan
+    try {
+        const anyScreen: any = window.screen;
+        if (anyScreen?.orientation?.lock) {
+            anyScreen.orientation.lock('landscape').catch(() => {});
+        }
+    } catch {}
     
     // Iniciar música de fondo
     playBackgroundMusic();

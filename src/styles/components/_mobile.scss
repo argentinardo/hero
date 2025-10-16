@@ -107,6 +107,10 @@
     #message-overlay p {
        display: none;
     }
+    #message-overlay {
+        position: fixed;
+        z-index: 50; /* por encima de #mobile-controls (z-index: 20) */
+    }
     
     /* Editor móvil: solo canvas y paleta */
     body.state-editing {
@@ -134,12 +138,14 @@
             padding: 10px;
             z-index: 100;
             overflow-y: auto;
+            overflow-x: hidden;
             
             #tile-palette {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
                 gap: 3px;
                 margin-bottom: 10px;
+                overflow-x: hidden;
                 
                 canvas {
                     width: 100%;
@@ -246,6 +252,24 @@
 			height: 2px;
 			width: 80%;
 		}
+
+        .volume-btn {
+            position: fixed;
+            left: 1.2%;
+            bottom: 2.5%;
+            width: 54px;
+            height: 54px;
+            border-radius: 9999px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 22px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
     }
 
     /* Área derecha para botones - ajustada para dejar espacio al UI */
@@ -438,6 +462,24 @@
             border-radius: 8px;
 
 		}
+
+        .volume-btn {
+            position: fixed;
+            left: 1.2%;
+            bottom: 2.5%;
+            width: 48px;
+            height: 48px;
+            border-radius: 9999px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
     }
 
     /* Área derecha para botones - ajustada para dejar espacio al UI */
@@ -490,6 +532,7 @@
 
     #message-overlay {
         position: fixed;
+        z-index: 50; /* por encima de #mobile-controls (z-index: 20) */
     }
 
     #editor-panel {
@@ -522,12 +565,14 @@
             padding: 10px;
             z-index: 100;
             overflow-y: auto;
+            overflow-x: hidden;
             
             #tile-palette {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 3px;
+                grid-template-columns: repeat(2, 1fr); /* columnas más grandes en móvil para evitar overflow */
+                gap: 6px;
                 margin-bottom: 10px;
+                overflow-x: hidden;
                 
                 canvas {
                     width: 100%;

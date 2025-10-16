@@ -1,5 +1,6 @@
 import type { GameStore, Light } from '../core/types';
 import { checkCollision } from '../core/collision';
+import { playBulbOff } from './audio';
 
 const markCharactersInViewport = (store: GameStore) => {
     const canvas = store.dom.canvas;
@@ -50,6 +51,7 @@ export const updateLights = (store: GameStore) => {
             if (checkCollision(light, laser)) {
                 light.isOn = false;
                 store.isDark = true;
+                playBulbOff();
                 markCharactersInViewport(store);
             }
         });
@@ -58,6 +60,7 @@ export const updateLights = (store: GameStore) => {
         if (checkCollision(light, player.hitbox)) {
             light.isOn = false;
             store.isDark = true;
+            playBulbOff();
             markCharactersInViewport(store);
         }
     });
