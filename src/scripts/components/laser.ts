@@ -42,6 +42,49 @@ const destroyVerticalColumn = (store: GameStore, origin: Wall) => {
     store.walls = store.walls.filter(w => !toDestroy.has(w));
 };
 
+// Cortar la columna vertical a la mitad del lado impactado, soltando ladrillos
+const cutVerticalColumnHalf = (store: GameStore, hitWall: Wall, side: 'left' | 'right') => {
+    const baseGridX = Math.floor(hitWall.x / TILE_SIZE);
+    const baseX = baseGridX * TILE_SIZE;
+
+    // Recolectar toda la columna por gridX (incluye piezas ya recortadas)
+    const columnWalls = store.walls.filter(w => w.type === 'destructible_v' && Math.floor(w.x / TILE_SIZE) === baseGridX);
+
+    columnWalls.forEach(wall => {
+        const hasHalfWidth = wall.width <= TILE_SIZE / 2 + 0.01;
+        if (hasHalfWidth) {
+            // Ya está a la mitad: otro disparo elimina la mitad restante -> caer ladrillos y quitar muro
+            const removeLeft = Math.round(wall.x) === baseX;
+            const removedHalfX = removeLeft ? wall.x : wall.x; // toda la pieza restante cae
+            // Dividir la pieza restante en dos ladrillos (superior/inferior)
+            store.fallingEntities.push({ x: removedHalfX, y: wall.y, width: wall.width, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            store.fallingEntities.push({ x: removedHalfX, y: wall.y + TILE_SIZE / 2, width: wall.width, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            // Eliminar del mapa
+            const idx = store.walls.indexOf(wall);
+            if (idx >= 0) store.walls.splice(idx, 1);
+            return;
+        }
+
+        // Primera vez: recortar la mitad del lado impactado y soltar ladrillos de esa mitad
+        if (side === 'left') {
+            // Lado izquierdo cae
+            store.fallingEntities.push({ x: wall.x, y: wall.y, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            store.fallingEntities.push({ x: wall.x, y: wall.y + TILE_SIZE / 2, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            // Conservar mitad derecha
+            wall.x = baseX + TILE_SIZE / 2;
+            wall.width = TILE_SIZE / 2;
+        } else {
+            // Lado derecho cae
+            const rightX = wall.x + TILE_SIZE / 2;
+            store.fallingEntities.push({ x: rightX, y: wall.y, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            store.fallingEntities.push({ x: rightX, y: wall.y + TILE_SIZE / 2, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            // Conservar mitad izquierda
+            wall.x = baseX;
+            wall.width = TILE_SIZE / 2;
+        }
+    });
+};
+
 export const updateLasers = (store: GameStore) => {
     const levelWidth = store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE;
 
@@ -62,18 +105,23 @@ export const updateLasers = (store: GameStore) => {
                 laser.x + laser.width > wall.x &&
                 laser.y < wall.y + wall.height &&
                 laser.y + laser.height > wall.y) {
+                // Comportamiento especial para columnas 'C' (destructible_v): cortar a la mitad y soltar ladrillos
+                if (wall.type === 'destructible_v') {
+                    const side = laser.vx >= 0 ? 'left' : 'right';
+                    cutVerticalColumnHalf(store, wall, side);
+                    store.lasers.splice(i, 1);
+                    removed = true;
+                    break;
+                }
                 if (wall.type.startsWith('destructible') && wall.health !== undefined) {
                     wall.health -= 1;
                     if (wall.health <= 30) {
                         wall.isDamaged = true;
                     }
                     if (wall.health <= 0) {
-                        if (wall.type === 'destructible_v') {
-                            destroyVerticalColumn(store, wall);
-                        } else {
+
                             splitDestructibleWall(store, wall);
                             store.walls.splice(j, 1);
-                        }
                     }
                 }
                 store.lasers.splice(i, 1);
