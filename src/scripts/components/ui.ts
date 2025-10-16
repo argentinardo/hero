@@ -398,30 +398,12 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
         return;
     }
 
-    // Caso especial para el tile vacío
+    // Caso especial para el tile vacío: transparente (no dibujar nada)
     if (tile === '0') {
-        const backgroundSprite = store.sprites.background;
-        if (backgroundSprite && backgroundSprite.naturalWidth > 0) {
-            ctx.drawImage(
-                backgroundSprite,
-                0,
-                0,
-                backgroundSprite.width,
-                backgroundSprite.height,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-        } else {
-            // Fallback: fondo gris
-            ctx.fillStyle = '#333';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
         return;
     }
 
-    // Caso especial para el miner (ocupa 2 tiles de ancho con animación)
+    // Caso especial para el minero (ocupa 2 tiles de ancho con animación)
     if (tile === '9') {
         const minerSprite = store.sprites['9'];
         if (minerSprite && minerSprite.naturalWidth > 0) {
