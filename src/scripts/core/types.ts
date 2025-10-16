@@ -171,6 +171,11 @@ export interface UiElements {
     messageText: HTMLElement | null;
     retryBtn?: HTMLButtonElement | null;
     gameUiEl: HTMLElement | null;
+    rightUiEl: HTMLElement | null;
+    menuBtn: HTMLButtonElement | null;
+    restartBtn: HTMLButtonElement | null;
+    menuBtnDesktop: HTMLButtonElement | null;
+    restartBtnDesktop: HTMLButtonElement | null;
     editorPanelEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
     confirmationModalEl: HTMLElement | null;
@@ -178,6 +183,11 @@ export interface UiElements {
     notificationTitleEl: HTMLElement | null;
     notificationMessageEl: HTMLElement | null;
     notificationOkBtn: HTMLButtonElement | null;
+    exitModalEl: HTMLElement | null;
+    exitTitleEl: HTMLElement | null;
+    exitTextEl: HTMLElement | null;
+    exitConfirmBtn: HTMLButtonElement | null;
+    exitCancelBtn: HTMLButtonElement | null;
     levelSelectorEl: HTMLSelectElement | null;
     mobileControlsEl: HTMLElement | null;
     joystickZoneEl: HTMLElement | null;
@@ -234,17 +244,12 @@ export interface GameStore {
     keys: Record<string, boolean>;
     sprites: Record<string, HTMLImageElement>;
     joystickManager: JoystickManager | null;
-    joystickNipple?: any;
-    // Joystick elastic behavior state
-    joystickBaseX?: number; // px
-    joystickBaseY?: number; // px
-    joystickFingerId?: number;
-    joystickLastRecenterAt?: number; // ms timestamp for throttling
+    // Estado de UI móvil
+    isLaserSticky: boolean;
+    lastShootTap: number;
     initialLevels: string[][];
     editorHistory: string[][][];
     editorHistoryIndex: number;
     dom: DomReferences;
-    // Disparo bloqueado (doble tap en móvil)
-    shootLocked?: boolean;
 }
 

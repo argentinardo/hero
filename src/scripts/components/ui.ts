@@ -27,6 +27,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.messageTitle = document.getElementById('message-title');
     ui.messageText = document.getElementById('message-text');
     ui.gameUiEl = document.getElementById('game-ui');
+    ui.rightUiEl = document.getElementById('right-ui');
     ui.editorPanelEl = document.getElementById('editor-panel');
     ui.paletteEl = document.getElementById('tile-palette');
     ui.confirmationModalEl = document.getElementById('confirmation-modal');
@@ -51,6 +52,15 @@ export const attachDomReferences = (store: GameStore) => {
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
     ui.confirmSaveBtn = document.getElementById('confirm-save-btn') as HTMLButtonElement | null;
     ui.cancelSaveBtn = document.getElementById('cancel-save-btn') as HTMLButtonElement | null;
+    ui.menuBtn = document.getElementById('menu-btn') as HTMLButtonElement | null;
+    ui.restartBtn = document.getElementById('restart-btn') as HTMLButtonElement | null;
+    ui.menuBtnDesktop = document.getElementById('menu-btn-desktop') as HTMLButtonElement | null;
+    ui.restartBtnDesktop = document.getElementById('restart-btn-desktop') as HTMLButtonElement | null;
+    ui.exitModalEl = document.getElementById('exit-modal');
+    ui.exitTitleEl = document.getElementById('exit-title');
+    ui.exitTextEl = document.getElementById('exit-text');
+    ui.exitConfirmBtn = document.getElementById('exit-confirm-btn') as HTMLButtonElement | null;
+    ui.exitCancelBtn = document.getElementById('exit-cancel-btn') as HTMLButtonElement | null;
     
     // Editor tools
     ui.undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
@@ -69,7 +79,7 @@ export const showMenu = (store: GameStore) => {
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
     
-    const { messageOverlay, messageTitle, messageText, gameUiEl, editorPanelEl, mobileControlsEl, retryBtn } = store.dom.ui;
+    const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, editorPanelEl, mobileControlsEl, retryBtn } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
         
@@ -84,6 +94,9 @@ export const showMenu = (store: GameStore) => {
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
+    }
+    if (rightUiEl) {
+        rightUiEl.style.display = 'none';
     }
     if (editorPanelEl) {
         editorPanelEl.style.display = 'none';
@@ -114,245 +127,104 @@ const startJoystick = (store: GameStore) => {
     if (!('ontouchstart' in window)) {
         return;
     }
-    const { mobileControlsEl, joystickZoneEl } = store.dom.ui;
+    const { mobileControlsEl, joystickZoneEl, actionZoneEl } = store.dom.ui;
     if (mobileControlsEl) {
         mobileControlsEl.dataset.active = 'true';
     }
-    if (!joystickZoneEl) {
+    if (!joystickZoneEl || store.joystickManager) {
         return;
     }
-
-    const attachJoystickHandlers = () => {
-        if (!store.joystickManager) return;
-        store.joystickManager.on('move', (_evt: NippleEvent, data: NippleJoystick) => {
-            const angle = data.angle.radian;
-            const force = data.force;
-            if (force <= 0.2) {
-                return;
-            }
-            const up = Math.sin(angle);
-            const right = Math.cos(angle);
-            store.keys.ArrowUp = up > 0.5;
-            // No activar ArrowDown con joystick, se usa el botón dedicado de bomba
-            if (Math.abs(right) > 0.3) {
-                if (right > 0) {
-                    store.keys.ArrowRight = true;
-                    store.keys.ArrowLeft = false;
-                } else {
-                    store.keys.ArrowLeft = true;
-                    store.keys.ArrowRight = false;
-                }
-            } else {
-                store.keys.ArrowLeft = false;
-                store.keys.ArrowRight = false;
-            }
-        });
-        store.joystickManager.on('end', () => {
-            store.keys.ArrowUp = false;
-            store.keys.ArrowLeft = false;
-            store.keys.ArrowRight = false;
-            // No resetear ArrowDown aquí, se controla con el botón de bomba
-        });
-    };
-
-    const createJoystickAt = (clientX?: number, clientY?: number) => {
-        if (store.joystickManager) {
-            store.joystickManager.destroy();
-            store.joystickManager = null;
-            store.joystickNipple = undefined;
+    store.joystickManager = nipplejs.create({
+        zone: joystickZoneEl,
+        mode: 'dynamic',
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+        catchforce: true,
+    });
+    store.joystickManager.on('move', (_evt: NippleEvent, data: NippleJoystick) => {
+        const angle = data.angle.radian;
+        const force = data.force;
+        if (force <= 0.2) {
+            return;
         }
-        // Calcular posición por defecto: visible siempre, a 13% desde la izquierda y centrado vertical
-        const zoneRect = store.dom.ui.joystickZoneEl?.getBoundingClientRect();
-        const defaultX = zoneRect ? (zoneRect.left + zoneRect.width * 0.13) : (window.innerWidth * 0.13);
-        const defaultY = zoneRect ? (zoneRect.top + zoneRect.height / 2) : (window.innerHeight / 2);
-        const baseX = typeof clientX === 'number' ? clientX : Math.round(defaultX);
-        const baseY = typeof clientY === 'number' ? clientY : Math.round(defaultY);
-        store.joystickBaseX = baseX;
-        store.joystickBaseY = baseY;
-        // Posicionamiento relativo a la zona del joystick
-        const baseLeftPct = zoneRect ? ((baseX - zoneRect.left) / zoneRect.width) * 100 : (baseX / window.innerWidth) * 100;
-        const baseTopPct = zoneRect ? ((baseY - zoneRect.top) / zoneRect.height) * 100 : (baseY / window.innerHeight) * 100;
-        const left = `${Math.max(0, Math.min(100, baseLeftPct))}%`;
-        const top = `${Math.max(0, Math.min(100, baseTopPct))}%`;
-        store.joystickManager = nipplejs.create({
-            zone: joystickZoneEl,
-            mode: 'static',
-            position: { left, top },
-            color: 'white',
-            catchforce: true,
-        });
-        // persist the nipple DOM container for direct px positioning
-        // @ts-ignore
-        store.joystickNipple = (store.joystickManager as any).ui?.front?.parentElement?.parentElement || (document.querySelector('.nipple') as HTMLElement | null);
-        attachJoystickHandlers();
-    };
-
-    // Crear joystick visible por defecto (centro vertical y 40px desde la derecha)
-    if (!store.joystickManager) {
-        createJoystickAt();
-    }
-
-    // Comportamiento elástico: recentrar la base hacia el dedo conservando la dirección
-    const zoneAny = joystickZoneEl as unknown as { _elasticBound?: boolean } & HTMLElement;
-    if (!zoneAny._elasticBound) {
-        const MAX_STICK_DISTANCE = 80; // radio máximo del joystick en px
-        const RECENTER_COOLDOWN_MS = 8; // limitar updates de posición
-
-        const getActiveTouch = (e: TouchEvent) => {
-            if (store.joystickFingerId != null) {
-                for (let i = 0; i < e.touches.length; i++) {
-                    const touch = e.touches[i];
-                    if (touch.identifier === store.joystickFingerId) return touch;
-                }
-                return null;
-            }
-            return e.touches[0] ?? null;
-        };
-
-        const handleTouchStart = (event: TouchEvent) => {
-            const t = getActiveTouch(event);
-            if (!t) return;
-            store.joystickFingerId = t.identifier;
-            createJoystickAt(t.clientX, t.clientY);
-            event.preventDefault();
-        };
-
-        const handleTouchMove = (event: TouchEvent) => {
-            const t = getActiveTouch(event);
-            if (!t || store.joystickBaseX == null || store.joystickBaseY == null) return;
-            const now = performance.now();
-            const dx = t.clientX - store.joystickBaseX;
-            const dy = t.clientY - store.joystickBaseY;
-            const dist = Math.hypot(dx, dy);
-            const dirX = dist > 0 ? dx / dist : 0;
-            const dirY = dist > 0 ? dy / dist : 0;
-            const clamped = Math.min(dist, MAX_STICK_DISTANCE);
-
-            // 100% flotante: colocar la base justo a 'clamped' por detrás del dedo
-            if (!store.joystickLastRecenterAt || now - store.joystickLastRecenterAt >= RECENTER_COOLDOWN_MS) {
-                const newBaseX = t.clientX - dirX * clamped;
-                const newBaseY = t.clientY - dirY * clamped;
-                store.joystickBaseX = newBaseX;
-                store.joystickBaseY = newBaseY;
-                const container = store.joystickNipple as HTMLElement | undefined;
-                if (container) {
-                    container.style.left = `${newBaseX - container.clientWidth / 2}px`;
-                    container.style.top = `${newBaseY - container.clientHeight / 2}px`;
-                    container.style.position = 'absolute';
-                } else {
-                    createJoystickAt(newBaseX, newBaseY);
-                }
-                store.joystickLastRecenterAt = now;
-            }
-
-            // Mapear a teclas usando el vector dedo-base
-            const DEADZONE = 10; // px
-            const absDx = Math.abs(t.clientX - store.joystickBaseX);
-            const absDy = Math.abs(t.clientY - store.joystickBaseY);
-            // Up
-            store.keys.ArrowUp = (store.joystickBaseY - t.clientY) > DEADZONE;
-            // Left/Right con umbral proporcional
-            const horizThreshold = MAX_STICK_DISTANCE * 0.3;
-            if (absDx > horizThreshold) {
-                if ((t.clientX - store.joystickBaseX) > 0) {
-                    store.keys.ArrowRight = true;
-                    store.keys.ArrowLeft = false;
-                } else {
-                    store.keys.ArrowLeft = true;
-                    store.keys.ArrowRight = false;
-                }
-            } else {
+        const up = Math.sin(angle);
+        const right = Math.cos(angle);
+        store.keys.ArrowUp = up > 0.5;
+        // No activar ArrowDown con joystick, se usa el botón dedicado de bomba
+        if (Math.abs(right) > 0.3) {
+            if (right > 0) {
+                store.keys.ArrowRight = true;
                 store.keys.ArrowLeft = false;
+            } else {
+                store.keys.ArrowLeft = true;
                 store.keys.ArrowRight = false;
             }
-
-            event.preventDefault();
-        };
-
-        const resetKeysAndRecenter = () => {
-            // Reset de entradas
-            store.keys.ArrowUp = false;
+        } else {
             store.keys.ArrowLeft = false;
             store.keys.ArrowRight = false;
-            // Re-crear joystick para recentrar en la posición por defecto (visible)
-            createJoystickAt();
-        };
-
-        const handleTouchEnd = (event: TouchEvent) => {
-            if (store.joystickFingerId != null) {
-                let stillActive = false;
-                for (let i = 0; i < event.touches.length; i++) {
-                    if (event.touches[i].identifier === store.joystickFingerId) {
-                        stillActive = true;
-                        break;
-                    }
-                }
-                if (!stillActive) {
-                    store.joystickFingerId = undefined;
-                    resetKeysAndRecenter();
-                }
-            } else {
-                resetKeysAndRecenter();
-            }
-        };
-
-        joystickZoneEl.addEventListener('touchstart', handleTouchStart, { passive: false });
-        joystickZoneEl.addEventListener('touchmove', handleTouchMove, { passive: false });
-        joystickZoneEl.addEventListener('touchend', handleTouchEnd);
-        joystickZoneEl.addEventListener('touchcancel', handleTouchEnd);
-
-        // Fallback global: si el toque termina fuera del área, igual resetear
-        const globalEnd = (e: TouchEvent) => {
-            if (e.touches.length === 0) {
-                store.joystickFingerId = undefined;
-                resetKeysAndRecenter();
-            }
-        };
-        window.addEventListener('touchend', globalEnd);
-        window.addEventListener('touchcancel', globalEnd);
-        zoneAny._elasticBound = true;
-    }
+        }
+    });
+    store.joystickManager.on('end', () => {
+        store.keys.ArrowUp = false;
+        store.keys.ArrowLeft = false;
+        store.keys.ArrowRight = false;
+        // No resetear ArrowDown aquí, se controla con el botón de bomba
+    });
 
     // Configurar botones de acción
     const shootBtn = document.getElementById('shoot-btn');
     const bombBtn = document.getElementById('bomb-btn');
 
     if (shootBtn) {
-        // Soporte de tap normal (mantener mientras toca)
         shootBtn.addEventListener('touchstart', event => {
             event.preventDefault();
-            if (!store.shootLocked) {
+            const now = Date.now();
+
+            // Si ya está bloqueado, un toque lo desbloquea
+            if (store.isLaserSticky) {
+                store.isLaserSticky = false;
+                store.keys.Space = false;
+                shootBtn.classList.remove('sticky-active');
+                store.lastShootTap = 0;
+                return;
+            }
+
+            // Doble toque para bloquear
+            if (store.lastShootTap && now - store.lastShootTap < 300) {
+                store.isLaserSticky = true;
+                store.keys.Space = true;
+                shootBtn.classList.add('sticky-active');
+                store.lastShootTap = 0;
+                return;
+            }
+
+            // Primer toque: comportamiento normal (mantener presionado)
+            store.lastShootTap = now;
+            if (!store.isLaserSticky) {
                 store.keys.Space = true;
             }
         });
+
         shootBtn.addEventListener('touchend', event => {
             event.preventDefault();
-            if (!store.shootLocked) {
+            // Si no está en modo sticky, soltar el botón suelta el disparo
+            if (!store.isLaserSticky) {
                 store.keys.Space = false;
             }
         });
 
-        // Doble tap para alternar bloqueo
-        let lastTapTime = 0;
-        const DOUBLE_TAP_MS = 300;
-        const onTap = (event: TouchEvent) => {
-            const now = performance.now();
-            const delta = now - lastTapTime;
-            lastTapTime = now;
-            if (delta <= DOUBLE_TAP_MS) {
-                store.shootLocked = !store.shootLocked;
-                if (store.shootLocked) {
-                    store.keys.Space = true;
-                    shootBtn.classList.add('locked');
-                    shootBtn.textContent = 'LÁSER AUTO';
-                } else {
-                    store.keys.Space = false;
-                    shootBtn.classList.remove('locked');
-                    shootBtn.textContent = 'LÁSER';
-                }
+        // Soporte opcional para dblclick en dispositivos con ratón
+        shootBtn.addEventListener('dblclick', event => {
+            event.preventDefault();
+            store.isLaserSticky = !store.isLaserSticky;
+            if (store.isLaserSticky) {
+                store.keys.Space = true;
+                shootBtn.classList.add('sticky-active');
+            } else {
+                store.keys.Space = false;
+                shootBtn.classList.remove('sticky-active');
             }
-        };
-        shootBtn.addEventListener('touchend', onTap);
+        });
     }
 
     if (bombBtn) {
@@ -371,7 +243,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
-    const { messageOverlay, gameUiEl, editorPanelEl } = store.dom.ui;
+    const { messageOverlay, gameUiEl, rightUiEl, editorPanelEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
         // Limpiar el fondo del splash
@@ -379,6 +251,14 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'flex';
+    }
+    if (rightUiEl) {
+        const isMobileLandscape = window.matchMedia('(max-width: 1024px) and (orientation: landscape)').matches || window.matchMedia('(max-width: 768px) and (orientation: landscape)').matches;
+        if (isMobileLandscape) {
+            rightUiEl.style.display = 'flex';
+        } else {
+            rightUiEl.style.display = 'none';
+        }
     }
     if (levelOverride) {
         store.dom.ui.resumeEditorBtn?.classList.remove('hidden');
@@ -809,7 +689,7 @@ export const setupUI = (store: GameStore) => {
 };
 
 const setupMenuButtons = (store: GameStore) => {
-    const { startGameBtn, levelEditorBtn, retryBtn } = store.dom.ui;
+    const { startGameBtn, levelEditorBtn, retryBtn, menuBtn, restartBtn, menuBtnDesktop, restartBtnDesktop, exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
     startGameBtn?.addEventListener('click', () => startGame(store));
     levelEditorBtn?.addEventListener('click', () => startEditor(store));
     retryBtn?.addEventListener('click', () => startGame(store));
@@ -823,6 +703,52 @@ const setupMenuButtons = (store: GameStore) => {
     });
     window.addEventListener('keyup', event => {
         store.keys[event.code] = false;
+    });
+
+    // Confirmación de acciones (Menú y Reiniciar)
+    const openExitModal = (title: string, text: string, onConfirm: () => void) => {
+        if (!exitModalEl) return;
+        if (exitTitleEl) exitTitleEl.textContent = title;
+        if (exitTextEl) exitTextEl.textContent = text;
+        exitModalEl.classList.remove('hidden');
+        const confirmHandler = () => {
+            onConfirm();
+            exitModalEl.classList.add('hidden');
+            exitConfirmBtn?.removeEventListener('click', confirmHandler);
+            exitCancelBtn?.removeEventListener('click', cancelHandler);
+        };
+        const cancelHandler = () => {
+            exitModalEl.classList.add('hidden');
+            exitConfirmBtn?.removeEventListener('click', confirmHandler);
+            exitCancelBtn?.removeEventListener('click', cancelHandler);
+        };
+        exitConfirmBtn?.addEventListener('click', confirmHandler);
+        exitCancelBtn?.addEventListener('click', cancelHandler);
+    };
+
+    menuBtn?.addEventListener('click', () => {
+        openExitModal('Volver al Menú', '¿Deseas volver al menú principal?', () => {
+            showMenu(store);
+        });
+    });
+
+    restartBtn?.addEventListener('click', () => {
+        openExitModal('Reiniciar Nivel', '¿Deseas reiniciar el nivel actual?', () => {
+            startGame(store, null, store.currentLevelIndex, true);
+        });
+    });
+
+    // Desktop duplicates
+    menuBtnDesktop?.addEventListener('click', () => {
+        openExitModal('Volver al Menú', '¿Deseas volver al menú principal?', () => {
+            showMenu(store);
+        });
+    });
+
+    restartBtnDesktop?.addEventListener('click', () => {
+        openExitModal('Reiniciar Nivel', '¿Deseas reiniciar el nivel actual?', () => {
+            startGame(store, null, store.currentLevelIndex, true);
+        });
     });
 };
 

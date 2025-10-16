@@ -21,7 +21,20 @@
                 <div class="w-40 h-5 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400"></div></div>
             </div>
             <span>SCORE: <span id="score-count">0</span></span>
+            <div class="hidden md:flex items-center gap-2">
+                <button id="menu-btn-desktop" class="bg-gray-700 hover:bg-gray-800 px-3 py-1 border-2 border-white">Menú</button>
+                <button id="restart-btn-desktop" class="bg-yellow-700 hover:bg-yellow-800 px-3 py-1 border-2 border-white">Reiniciar</button>
+            </div>
             <button id="resume-editor-btn" class="hidden bg-indigo-600 hover:bg-indigo-700 px-3 py-1 border-2 border-white">Volver al Editor</button>
+        </div>
+
+        <!-- Barra de UI derecha con acciones rápidas -->
+        <div id="right-ui" class="ui-bar w-full max-w-4xl text-sm flex items-center justify-between gap-4 mt-2">
+            <div></div>
+            <div class="flex gap-2">
+                <button id="menu-btn" class="bg-gray-700 hover:bg-gray-800 px-3 py-1 border-2 border-white">Menú</button>
+                <button id="restart-btn" class="bg-yellow-700 hover:bg-yellow-800 px-3 py-1 border-2 border-white">Reiniciar</button>
+            </div>
         </div>
 
         <div class="flex gap-4">
@@ -73,6 +86,18 @@
             </div>
         </div>
 
+        <!-- Modal de Confirmación de Salida -->
+        <div id="exit-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
+            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg">
+                <h2 id="exit-title" class="text-2xl mb-6">Confirmar acción</h2>
+                <p id="exit-text" class="mb-8 text-lg whitespace-pre-line">¿Seguro que deseas continuar?</p>
+                <div class="flex justify-center gap-4">
+                    <button id="exit-confirm-btn" class="bg-red-600 hover:bg-red-700 p-3 w-32 border-2 border-white">Sí</button>
+                    <button id="exit-cancel-btn" class="bg-gray-600 hover:bg-gray-700 p-3 w-32 border-2 border-white">No</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal de Notificación -->
         <div id="notification-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-30">
             <div class="bg-gray-800 p-8 border-4 border-white max-w-lg">
@@ -97,7 +122,9 @@
 
         <!-- Controles Móviles -->
         <div id="mobile-controls" class="hidden">
-            <div id="joystick-zone"></div>
+            <div id="joystick-zone">
+                <div id="joystick-visual"></div>
+            </div>
             <div id="action-zone">
                 <button id="shoot-btn" class="action-button">LÁSER</button>
                 <button id="bomb-btn" class="action-button">BOMBA</button>

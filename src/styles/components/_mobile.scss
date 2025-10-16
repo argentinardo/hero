@@ -55,8 +55,8 @@
     /* UI compacto en la columna derecha, arriba de los botones */
     #game-ui {
         position: fixed;
-        top: 10px;
-        right: 10px;
+        top: 0.5%;
+        left: 0.5%;
         width: 18%;
         z-index: 30;
         background-color: rgba(115, 255, 0, 0.85);
@@ -82,6 +82,24 @@
         button { display: none; }
     }
     
+    /* Panel derecho: igual que game-ui pero anclado a la derecha */
+    #right-ui {
+        position: fixed;
+        top: 0.5%;
+        right: 0.5%;
+        width: 18%;
+        z-index: 30;
+        background-color: rgba(115, 255, 0, 0.85);
+        padding: 8px;
+        font-size: 0.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        pointer-events: auto; /* Necesario para que los botones sean clicables */
+    }
+    
     #editor-panel {
         display: none !important;
     }
@@ -100,22 +118,22 @@
             display: none !important;
         }
         
+        #right-ui {
+            display: none !important;
+        }
+        
         #editor-panel {
             display: flex !important;
             position: fixed;
             top: 0;
-            left: 0;
             right: 0;
-            width: 100%;
-            max-width: none;
+            width: 40%;
             height: 100vh;
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);
             padding: 10px;
             z-index: 100;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
             
             #tile-palette {
                 display: grid;
@@ -154,7 +172,15 @@
         }
         
         #gameCanvas {
-            display: none !important;
+            width: 60% !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            max-width: none !important;
+            object-fit: contain !important;
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            aspect-ratio: auto !important;
         }
 
         #main-container {
@@ -177,17 +203,52 @@
         display: block;
     }
 
-    /* Zona de joystick ocupa 3/4 del ancho (dejando 1/4 para botones) */
+    /* Toda el área izquierda es zona de joystick */
     #joystick-zone {
         position: absolute;
         top: 0;
         left: 0;
-        width: 75%;
+        width: 50%;
         height: 100vh;
         pointer-events: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+		#joystick-visual {
+			position: fixed;
+			left: 0.5%;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 34vh;
+			height: 34vh;
+			opacity: 0.25;
+			border-radius: 50%;
+			border: 2px solid rgba(255, 255, 255, 0.5);
+			box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.1);
+			pointer-events: none;
+		}
+		#joystick-visual::before,
+		#joystick-visual::after {
+			content: "";
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(255, 255, 255, 0.6);
+			pointer-events: none;
+		}
+		#joystick-visual::before { /* línea vertical */
+			width: 2px;
+			height: 80%;
+		}
+		#joystick-visual::after { /* línea horizontal */
+			height: 2px;
+			width: 80%;
+		}
     }
 
-    /* Área derecha para botones - ocupa 1/4 del ancho */
+    /* Área derecha para botones - ajustada para dejar espacio al UI */
     #action-zone {
         position: absolute;
         top: 0;
@@ -209,7 +270,7 @@
         height: 38vh; /* Reducido de 45vh a 38vh para dejar espacio al UI */
         background-color: rgba(255, 255, 255, 0.15);
         border: 3px solid rgba(255, 255, 255, 0.6);
-        border-radius: 15px;
+        border-radius: 9999px; /* redondo */
         color: white;
         font-family: 'Press Start 2P', monospace;
         font-size: 0.7rem;
@@ -227,11 +288,11 @@
             transform: scale(0.95);
             border-color: rgba(255, 255, 255, 1);
         }
-        &.locked {
-            background-color: rgba(0, 255, 0, 0.35);
-            border-color: rgba(0, 255, 0, 0.9);
-            box-shadow: 0 0 18px rgba(0, 255, 0, 0.8), inset 0 0 10px rgba(0, 255, 0, 0.6);
-            transform: none;
+
+        &.sticky-active {
+            background-color: rgba(255, 255, 255, 0.35);
+            border-color: rgba(255, 255, 255, 1);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2) inset;
         }
     }
 }
@@ -269,8 +330,8 @@
     /* UI compacto en la columna derecha, arriba de los botones */
     #game-ui {
         position: fixed;
-        top: 10px;
-        right: 10px;
+        top: 0.5%;
+        left: 0.5%;
         width: 18%;
         z-index: 30;
         background-color: rgba(0, 0, 0, 0.85);
@@ -298,6 +359,24 @@
         }
     }
 
+    /* Panel derecho: igual que game-ui pero anclado a la derecha */
+    #right-ui {
+        position: fixed;
+        top: 0.5%;
+        right: 0.5%;
+        width: 18%;
+        z-index: 30;
+        background-color: rgba(0, 0, 0, 0.85);
+        padding: 8px;
+        font-size: 0.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        pointer-events: auto; /* Necesario para que los botones sean clicables */
+    }
+
     #mobile-controls {
         display: none;
         z-index: 20;
@@ -313,22 +392,60 @@
         display: block;
     }
 
-    /* Zona de joystick ocupa 3/4 del ancho (dejando 1/4 para botones) */
+    /* Toda el área izquierda es zona de joystick */
     #joystick-zone {
         position: absolute;
         top: 0;
         left: 0;
-        width: 75%;
+        width: 50%;
         height: 100vh;
         pointer-events: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+		#joystick-visual {
+			position: fixed;
+			left: 3%;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 28vh;
+			height: 28vh;
+			opacity: 0.25;
+			border-radius: 50%;
+			border: 2px solid rgba(255, 255, 255, 0.5);
+			box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.1);
+			pointer-events: none;
+		}
+		#joystick-visual::before,
+		#joystick-visual::after {
+			content: "";
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(255, 255, 255, 0.6);
+			pointer-events: none;
+		}
+		#joystick-visual::before { /* línea vertical */
+			width: 24px;
+			height: 80%;
+            border-radius: 8px;
+		}
+		#joystick-visual::after { /* línea horizontal */
+			height: 24px;
+			width: 80%;
+            border-radius: 8px;
+
+		}
     }
 
-    /* Área derecha para botones - ocupa 1/4 del ancho */
+    /* Área derecha para botones - ajustada para dejar espacio al UI */
     #action-zone {
         position: absolute;
         top: 0;
         right: 0;
-        width: 25%;
+        width: 20.2%;
         height: 100vh;
         pointer-events: auto;
         display: flex;
@@ -345,7 +462,7 @@
         height: 36vh; /* Reducido de 45vh a 38vh para dejar espacio al UI */
         background-color: rgba(255, 255, 255, 0.15);
         border: 3px solid rgba(255, 255, 255, 0.6);
-        border-radius: 15px;
+        border-radius: 9999px; /* redondo */
         color: white;
         font-family: 'Press Start 2P', monospace;
         font-size: 0.7rem;
@@ -362,6 +479,12 @@
             background-color: rgba(255, 255, 255, 0.4);
             transform: scale(0.95);
             border-color: rgba(255, 255, 255, 1);
+        }
+
+        &.sticky-active {
+            background-color: rgba(255, 255, 255, 0.35);
+            border-color: rgba(255, 255, 255, 1);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2) inset;
         }
     }
 
@@ -383,22 +506,22 @@
             display: none !important;
         }
         
+        #right-ui {
+            display: none !important;
+        }
+        
         #editor-panel {
             display: flex !important;
             position: fixed;
             top: 0;
-            left: 0;
             right: 0;
-            width: 100%;
-            max-width: none;
+            width: 40%;
             height: 100vh;
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);
             padding: 10px;
             z-index: 100;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
             
             #tile-palette {
                 display: grid;
@@ -410,11 +533,9 @@
                     width: 100%;
                     height: 100%;
                     aspect-ratio: 1;
-                    border: 1px solid rgba(255, 255, 255, 0.3);
                     cursor: pointer;
                     
                     &:active {
-                        border-color: rgba(255, 255, 255, 1);
                         background-color: rgba(255, 255, 255, 0.2);
                     }
                 }
@@ -437,7 +558,14 @@
         }
         
         #gameCanvas {
-            display: none !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            max-width: none !important;
+            object-fit: contain !important;
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            aspect-ratio: auto !important;
         }
 
         #main-container {
