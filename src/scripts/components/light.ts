@@ -7,10 +7,11 @@ const markCharactersInViewport = (store: GameStore) => {
     if (!canvas) return;
 
     const cameraY = store.cameraY;
+    const cameraX = store.cameraX;
     const screenTop = cameraY;
     const screenBottom = cameraY + canvas.height;
-    const screenLeft = 0;
-    const screenRight = canvas.width;
+    const screenLeft = cameraX;
+    const screenRight = cameraX + canvas.width;
 
     // Función para verificar si un objeto está visible en el viewport
     const isInViewport = (obj: { x: number; y: number; width: number; height: number }) => {
@@ -20,21 +21,21 @@ const markCharactersInViewport = (store: GameStore) => {
                obj.y < screenBottom;
     };
 
-    // Marcar SOLO las paredes que están en el viewport (excepto lava)
+    // Marcar las paredes que están en el viewport (excepto lava)
     store.walls.forEach(wall => {
         if (wall.tile !== '3' && isInViewport(wall)) {
             wall.affectedByDark = true;
         }
     });
 
-    // Marcar SOLO los enemigos que están en el viewport
+    // Marcar los enemigos que están en el viewport
     store.enemies.forEach(enemy => {
         if (!enemy.isHidden && isInViewport(enemy)) {
             enemy.affectedByDark = true;
         }
     });
 
-    // Marcar minero SOLO si está en el viewport
+    // Marcar minero si está en el viewport
     if (store.miner && isInViewport(store.miner)) {
         store.miner.affectedByDark = true;
     }

@@ -347,13 +347,30 @@ export const startEditor = (store: GameStore) => {
         editorPanelEl.style.display = 'flex';
     }
     
-    // Resetear la cámara al entrar al editor
-    store.cameraX = 0;
-    store.cameraY = 0;
-    
     // Cargar el nivel actual del selector cuando se inicia el editor
     const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
     store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[currentIndex] ?? []));
+    
+    // Centrar la cámara del editor en el jugador si existe
+    const canvas = store.dom.canvas;
+    if (canvas && store.editorLevel.length > 0) {
+        let playerCol = 0;
+        let playerRow = 0;
+        outerCenterStart: for (let r = 0; r < store.editorLevel.length; r++) {
+            const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+            if (c !== -1) {
+                playerRow = r;
+                playerCol = c;
+                break outerCenterStart;
+            }
+        }
+        store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
+        store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+    } else {
+        // Fallback
+        store.cameraX = 0;
+        store.cameraY = 0;
+    }
     
     // Inicializar el editor avanzado
     initializeAdvancedEditor(store);
@@ -913,9 +930,25 @@ const setupLevelData = (store: GameStore) => {
     const loadLevelFromStore = () => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index] ?? []));
-        // Resetear la cámara al cargar el nivel
-        store.cameraX = 0;
-        store.cameraY = 0;
+        // Centrar la cámara en el jugador si existe
+        const canvas = store.dom.canvas;
+        if (canvas && store.editorLevel.length > 0) {
+            let playerCol = 0;
+            let playerRow = 0;
+            outerCenter: for (let r = 0; r < store.editorLevel.length; r++) {
+                const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+                if (c !== -1) {
+                    playerRow = r;
+                    playerCol = c;
+                    break outerCenter;
+                }
+            }
+            store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
+            store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+        } else {
+            store.cameraX = 0;
+            store.cameraY = 0;
+        }
         // Reinicializar el editor avanzado
         initializeAdvancedEditor(store);
     };
@@ -937,9 +970,25 @@ const setupLevelData = (store: GameStore) => {
             // También actualizar el store de la sesión para mantener consistencia
             store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
             
-            // Resetear la cámara
-            store.cameraX = 0;
-            store.cameraY = 0;
+            // Centrar la cámara en el jugador
+            const canvas = store.dom.canvas;
+            if (canvas && store.editorLevel.length > 0) {
+                let playerCol = 0;
+                let playerRow = 0;
+                outerCenterRestore: for (let r = 0; r < store.editorLevel.length; r++) {
+                    const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+                    if (c !== -1) {
+                        playerRow = r;
+                        playerCol = c;
+                        break outerCenterRestore;
+                    }
+                }
+                store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
+                store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+            } else {
+                store.cameraX = 0;
+                store.cameraY = 0;
+            }
             
             // Reinicializar el editor avanzado
             initializeAdvancedEditor(store);
@@ -979,9 +1028,24 @@ const setupLevelData = (store: GameStore) => {
         // Convertir a formato del editor (array de arrays)
         store.editorLevel = generatedLevel.map((row: string) => row.split(''));
         
-        // Resetear la cámara al generar un nuevo nivel
-        store.cameraX = 0;
-        store.cameraY = 0;
+        // Centrar la cámara en el jugador si existe
+        if (store.editorLevel.length > 0) {
+            let playerCol = 0;
+            let playerRow = 0;
+            outerCenterGen: for (let r = 0; r < store.editorLevel.length; r++) {
+                const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+                if (c !== -1) {
+                    playerRow = r;
+                    playerCol = c;
+                    break outerCenterGen;
+                }
+            }
+            store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
+            store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+        } else {
+            store.cameraX = 0;
+            store.cameraY = 0;
+        }
         
         // Reinicializar el editor avanzado
         initializeAdvancedEditor(store);

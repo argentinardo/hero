@@ -587,12 +587,11 @@ export const updatePlayer = (store: GameStore) => {
             });
         }
         
-        // Mantener límites del canvas horizontalmente
-        const canvas = store.dom.canvas;
-        if (canvas) {
-            player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
-            player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
-        }
+        // Mantener límites del nivel horizontalmente (importante en niveles anchos)
+        const levelWidthTiles = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+        const levelWidthPx = levelWidthTiles * TILE_SIZE;
+        player.x = Math.max(0, Math.min(player.x, levelWidthPx - player.width));
+        player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
         
         updatePlayerAnimation(store);
         return;
