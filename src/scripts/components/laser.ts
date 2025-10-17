@@ -7,14 +7,18 @@ const splitDestructibleWall = (store: GameStore, wall: Wall) => {
     const quarterWidth = TILE_SIZE / 2;
     const quarterHeight = TILE_SIZE / 2;
     for (let i = 0; i < 4; i++) {
+        const offsetX = (i % 2) * quarterWidth;
+        const offsetY = Math.floor(i / 2) * quarterHeight;
         store.fallingEntities.push({
-            x: wall.x + (i % 2) * quarterWidth,
-            y: wall.y + Math.floor(i / 2) * quarterHeight,
+            x: wall.x + offsetX,
+            y: wall.y + offsetY,
             width: quarterWidth,
             height: quarterHeight,
             vy: Math.random() * -4 - 1,
             vx: (Math.random() - 0.5) * 6,
             tile: wall.tile,
+            srcTileOffsetX: offsetX,
+            srcTileOffsetY: offsetY,
         });
     }
 };

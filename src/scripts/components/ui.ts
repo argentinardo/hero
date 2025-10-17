@@ -364,8 +364,16 @@ export const startEditor = (store: GameStore) => {
                 break outerCenterStart;
             }
         }
-        store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
-        store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+        const levelCols = store.editorLevel[0]?.length ?? 0;
+        const levelRows = store.editorLevel.length;
+        const levelWidth = levelCols * TILE_SIZE;
+        const levelHeight = levelRows * TILE_SIZE;
+        const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE; // Player en 3er tile desde la izquierda
+        const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE; // Player en 4to tile desde arriba
+        const maxCamX = Math.max(0, levelWidth - canvas.width);
+        const maxCamY = Math.max(0, levelHeight - canvas.height);
+        store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+        store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
     } else {
         // Fallback
         store.cameraX = 0;
@@ -943,8 +951,16 @@ const setupLevelData = (store: GameStore) => {
                     break outerCenter;
                 }
             }
-            store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
-            store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+            const levelCols = store.editorLevel[0]?.length ?? 0;
+            const levelRows = store.editorLevel.length;
+            const levelWidth = levelCols * TILE_SIZE;
+            const levelHeight = levelRows * TILE_SIZE;
+            const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
+            const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
+            const maxCamX = Math.max(0, levelWidth - canvas.width);
+            const maxCamY = Math.max(0, levelHeight - canvas.height);
+            store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+            store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
         } else {
             store.cameraX = 0;
             store.cameraY = 0;
@@ -983,8 +999,16 @@ const setupLevelData = (store: GameStore) => {
                         break outerCenterRestore;
                     }
                 }
-                store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
-                store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+                const levelCols = store.editorLevel[0]?.length ?? 0;
+                const levelRows = store.editorLevel.length;
+                const levelWidth = levelCols * TILE_SIZE;
+                const levelHeight = levelRows * TILE_SIZE;
+                const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
+                const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
+                const maxCamX = Math.max(0, levelWidth - canvas.width);
+                const maxCamY = Math.max(0, levelHeight - canvas.height);
+                store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+                store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
             } else {
                 store.cameraX = 0;
                 store.cameraY = 0;
@@ -1040,8 +1064,16 @@ const setupLevelData = (store: GameStore) => {
                     break outerCenterGen;
                 }
             }
-            store.cameraX = Math.max(0, playerCol * TILE_SIZE - Math.floor(canvas.width / 2) + Math.floor(TILE_SIZE / 2));
-            store.cameraY = Math.max(0, playerRow * TILE_SIZE - Math.floor(canvas.height / 2) + Math.floor(TILE_SIZE));
+            const levelCols = store.editorLevel[0]?.length ?? 0;
+            const levelRows = store.editorLevel.length;
+            const levelWidth = levelCols * TILE_SIZE;
+            const levelHeight = levelRows * TILE_SIZE;
+            const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
+            const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
+            const maxCamX = Math.max(0, levelWidth - (canvas?.width ?? 0));
+            const maxCamY = Math.max(0, levelHeight - (canvas?.height ?? 0));
+            store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+            store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
         } else {
             store.cameraX = 0;
             store.cameraY = 0;

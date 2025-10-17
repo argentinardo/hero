@@ -114,6 +114,10 @@ export interface FallingEntity extends GameObject {
     rotation?: number;
     rotationSpeed?: number;
     hasBounced?: boolean; // para permitir un único rebote en enemigos
+    // Offsets dentro del tile original para recorte de textura (en coordenadas de tile)
+    // Ej.: 0 o TILE_SIZE/2 para cuartos de ladrillo
+    srcTileOffsetX?: number;
+    srcTileOffsetY?: number;
 }
 
 export interface Particle {

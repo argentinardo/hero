@@ -181,7 +181,15 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
         const frameWidth = sprite.width / anim.frames;
         ctx.drawImage(sprite, 0, 0, frameWidth, sprite.height, -width / 2, -height / 2, width, height);
     } else {
-        ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
+        // Recortar la porción correcta del sprite basada en el offset dentro del tile original
+        // Si no hay offsets, usar el sprite completo
+        const srcOffsetX = (entity.srcTileOffsetX ?? 0);
+        const srcOffsetY = (entity.srcTileOffsetY ?? 0);
+        const sx = (srcOffsetX / TILE_SIZE) * sprite.width;
+        const sy = (srcOffsetY / TILE_SIZE) * sprite.height;
+        const sw = (width / TILE_SIZE) * sprite.width;
+        const sh = (height / TILE_SIZE) * sprite.height;
+        ctx.drawImage(sprite, sx, sy, sw, sh, -width / 2, -height / 2, width, height);
     }
 
     ctx.restore();
@@ -454,21 +462,24 @@ const drawGameWorld = (store: GameStore) => {
             const gradientHeight = 240; // Altura del gradiente de transición
             const gradientOffset = 65; // Desplazamiento hacia arriba
             
-            // Gradiente superior (de oscuro a transparente hacia abajo)
+            // Gradiente superior (de oscuro a transparente hacia abajo) a lo ANCHO del nivel visible
             const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
             topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
             topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = topGradient;
-            ctx.fillRect(0, minY - gradientHeight - gradientOffset, canvas.width, gradientHeight);
+            // Usar el ancho completo del nivel, no solo el canvas
+            const levelColsForGradient = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+            const levelWidthForGradient = levelColsForGradient * TILE_SIZE;
+            ctx.fillRect(0, minY - gradientHeight - gradientOffset, levelWidthForGradient, gradientHeight);
             
-            // Gradiente inferior (de transparente a oscuro hacia abajo)
+            // Gradiente inferior (de transparente a oscuro hacia abajo) a lo ANCHO del nivel visible
             const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
             bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
             bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = bottomGradient;
-            ctx.fillRect(0, maxY - gradientOffset, canvas.width, gradientHeight);
+            ctx.fillRect(0, maxY - gradientOffset, levelWidthForGradient, gradientHeight);
         }
 
         // Dibujar minero afectado en gris
