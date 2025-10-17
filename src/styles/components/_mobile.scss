@@ -569,8 +569,8 @@
             
             #tile-palette {
                 display: grid;
-                grid-template-columns: repeat(2, 1fr); /* columnas más grandes en móvil para evitar overflow */
-                gap: 6px;
+                grid-template-columns: repeat(3, 1fr); /* igual que desktop */
+                gap: 3px;
                 margin-bottom: 10px;
                 overflow-x: hidden;
                 

@@ -305,6 +305,16 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     // Iniciar música de fondo
     playBackgroundMusic();
     
+    // Si venimos desde el editor (levelOverride no nulo) ocultar los botones del right-ui para dejar paso a "Volver al Editor"
+    if (levelOverride || preserveLevels) {
+        document.getElementById('menu-btn')?.classList.add('hidden');
+        document.getElementById('restart-btn')?.classList.add('hidden');
+        store.dom.ui.resumeEditorBtn?.classList.remove('hidden');
+    } else {
+        document.getElementById('menu-btn')?.classList.remove('hidden');
+        document.getElementById('restart-btn')?.classList.remove('hidden');
+    }
+    
     store.lives = 3;
     store.score = 0;
     // Configurar niveles
@@ -982,33 +992,40 @@ const setupLevelData = (store: GameStore) => {
     playTestBtn?.addEventListener('click', () => {
         // Jugar el nivel que está seleccionado en el selector (respeta el nivel cargado)
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        // Tomar el nivel desde el store de sesión; si está vacío, usar el buffer del editor como fallback
-        const sourceLevel = (store.levelDataStore[index] && store.levelDataStore[index].length > 0)
-            ? JSON.parse(JSON.stringify(store.levelDataStore[index]))
-            : JSON.parse(JSON.stringify(store.editorLevel));
+        // Guardar SIEMPRE el buffer actual del editor en la sesión antes de probar
+        const currentBuffer = JSON.parse(JSON.stringify(store.editorLevel));
 
         // Limpiar filas y columnas vacías
-        const cleanedLevel = purgeEmptyRowsAndColumns(sourceLevel);
+        const cleanedLevel = purgeEmptyRowsAndColumns(currentBuffer);
+
+        // Persistir en sesión (levelDataStore) antes de iniciar el juego
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
+        // Mantener el editor en la versión limpia
+        store.editorLevel = cleanedLevel;
 
         // Preparar levelDesigns para que comience en el índice seleccionado
         const payload = cleanedLevel.map(row => row.join(''));
         store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
         store.levelDesigns[index] = payload;
 
-        // Sincronizar editor y sesión con la versión limpia
-        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
-        store.editorLevel = cleanedLevel;
-
         // Iniciar juego desde ese índice, preservando levelDesigns
         startGame(store, null, index, true);
     });
 
+    // Reemplazar el listener de resumeEditorBtn para preservar el nivel actual
     resumeEditorBtn?.addEventListener('click', () => {
+        // Volver al editor preservando el nivel actual
         if (store.appState === 'playing') {
             startEditor(store);
-            store.cameraY = 0;
-            store.cameraX = 0;
-            store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
+            // Conservar el índice de nivel y el buffer actual del nivel
+            const index = store.currentLevelIndex;
+            // Sincronizar el editor con el nivel que se está jugando actualmente
+            // levelDesigns es string[] (filas como strings); convertir a string[][] para el editor
+            const levelRows = store.levelDesigns[index] ?? [];
+            store.editorLevel = levelRows.map(row => row.split(''));
+            // Reinicializar el editor avanzado para alinear historial y UI con el buffer actual
+            initializeAdvancedEditor(store);
+            // No resetear levelDesigns aquí para mantener cambios locales hasta guardar
         }
     });
 
