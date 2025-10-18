@@ -129,9 +129,18 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
 export const handlePlayerInput = (store: GameStore) => {
     const { player, keys, bombs, lasers } = store;
 
-    // Si el jugador está congelado, no procesar input
-    if (player.isFrozen) {
+    // Si el jugador está congelado o en estado de respawn/floating, no procesar input
+    if (player.isFrozen || store.gameState === 'respawning') {
         return;
+    }
+    
+    // Durante floating, solo permitir input si el jugador ha llegado a su posición de respawn Y está completamente detenido
+    if (store.gameState === 'floating') {
+        const hasReachedPosition = player.y >= player.respawnY;
+        const isStationary = Math.abs(player.vy) < 0.1;
+        if (!hasReachedPosition || !isStationary) {
+            return;
+        }
     }
 
     // Si está flotando, permitir movimiento y cualquier tecla salir del estado
@@ -209,7 +218,7 @@ export const handlePlayerInput = (store: GameStore) => {
         playLaserSound();
     }
 
-    if (keys.ArrowDown && player.isGrounded && bombs.length === 0) {
+    if (keys.ArrowDown && player.isGrounded && bombs.length === 0 && store.bombsRemaining > 0) {
         const offsetX = player.direction === 1 ? TILE_SIZE / 2 : -(TILE_SIZE / 2);
         const bombWidth = TILE_SIZE / 1.5;
         const bombX = player.direction === 1
@@ -225,6 +234,8 @@ export const handlePlayerInput = (store: GameStore) => {
             animationTick: 0,
             currentFrame: 0,
         });
+        
+        store.bombsRemaining--;
         
         // Reproducir sonido de bomba al plantarla
         playBombSound();
@@ -443,19 +454,17 @@ const handleCollisions = (store: GameStore) => {
     });
 
     if (miner && miner.animationState !== 'rescued') {
-        // Colisión con el minero: usar solo el primer tile (lado expuesto)
-        const frontRect = (() => {
-            const tileWidth = TILE_SIZE;
-            // Si el minero está pegado a la derecha (isFlipped = true), su lado expuesto es el izquierdo
-            if (miner.isFlipped) {
-                return { x: miner.x, y: miner.y, width: tileWidth, height: miner.height };
-            }
-            // Pegado a la izquierda (no flipped): lado expuesto es el derecho
-            const x = miner.x + Math.max(0, miner.width - tileWidth);
-            return { x, y: miner.y, width: tileWidth, height: miner.height };
-        })();
+        // Colisión con el minero: considerar ambos tiles del minero
+        // El minero ocupa aproximadamente 2 tiles de ancho (78 * 1.3 ≈ 101 px)
+        // Crear un rectángulo de colisión que cubra ambos tiles
+        const minerCollisionRect = {
+            x: miner.x,
+            y: miner.y,
+            width: miner.width,
+            height: miner.height
+        };
 
-        if (checkCollision(player.hitbox, frontRect)) {
+        if (checkCollision(player.hitbox, minerCollisionRect)) {
             resolvePlayerMinerCollision(store, miner);
         }
     }
@@ -607,6 +616,11 @@ export const updatePlayer = (store: GameStore) => {
 
     // Decrementar energía automáticamente como temporizador con velocidad variable
     store.energy = Math.max(0, store.energy - store.energyDecrementRate);
+    
+    // Muerte por energía agotada
+    if (store.energy <= 0) {
+        playerDie(store);
+    }
 
     updatePlayerAnimation(store);
 };

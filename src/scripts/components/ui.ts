@@ -23,6 +23,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.livesCountEl = document.getElementById('lives-count');
     ui.levelCountEl = document.getElementById('level-count');
     ui.scoreCountEl = document.getElementById('score-count');
+    ui.bombsCountEl = document.getElementById('bombs-count');
     ui.energyBarEl = document.getElementById('energy-bar');
     ui.messageOverlay = document.getElementById('message-overlay');
     ui.messageTitle = document.getElementById('message-title');
@@ -316,7 +317,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         document.getElementById('restart-btn')?.classList.remove('hidden');
     }
     
-    store.lives = 3;
+    store.lives = 5;
     store.score = 0;
     // Configurar niveles
     if (preserveLevels) {
@@ -386,7 +387,7 @@ export const startEditor = (store: GameStore) => {
 };
 
 export const updateUiBar = (store: GameStore) => {
-    const { livesCountEl, levelCountEl, scoreCountEl, energyBarEl } = store.dom.ui;
+    const { livesCountEl, levelCountEl, scoreCountEl, bombsCountEl, energyBarEl } = store.dom.ui;
     if (livesCountEl) {
         livesCountEl.textContent = `${store.lives}`;
     }
@@ -395,6 +396,9 @@ export const updateUiBar = (store: GameStore) => {
     }
     if (scoreCountEl) {
         scoreCountEl.textContent = `${store.score}`;
+    }
+    if (bombsCountEl) {
+        bombsCountEl.textContent = `${store.bombsRemaining}`;
     }
     if (energyBarEl) {
         energyBarEl.style.width = `${(store.energy / 200) * 100}%`;
@@ -670,7 +674,8 @@ const populatePalette = (store: GameStore) => {
             tiles: [
                 { key: '8', name: 'Bat' },
                 { key: 'S', name: 'Araña' },
-                { key: 'V', name: 'Víbora' }
+                { key: 'V', name: 'Víbora' },
+                { key: 'T', name: 'Tentáculo' }
             ]
         }
     ];

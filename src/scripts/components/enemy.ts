@@ -5,6 +5,8 @@ import { loadLevel } from './level';
 
 export const updateEnemies = (store: GameStore) => {
     const canvasWidth = store.dom.canvas?.width ?? 0;
+    const player = store.player;
+    
     store.enemies.forEach(enemy => {
         const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
         if (anim) {
@@ -81,6 +83,80 @@ export const updateEnemies = (store: GameStore) => {
                             enemy.state = 'idle';
                             enemy.idleTimer = 60 + Math.random() * 60;
                             enemy.isHidden = true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            }
+            case 'tentacle': {
+                // El tentáculo detecta al héroe y lo persigue con delay
+                const detectionRange = TILE_SIZE * 4; // 4 tiles de rango de detección
+                const attackRange = TILE_SIZE * 0.8; // Cuando está muy cerca, atacar
+                const speed = 1.5;
+                
+                const distanceToPlayer = Math.hypot(
+                    player.x + player.width / 2 - enemy.x,
+                    player.y + player.height / 2 - enemy.y
+                );
+                
+                // Determinar dirección hacia el jugador
+                const directionX = player.x > enemy.x ? 1 : -1;
+                enemy.direction = directionX;
+                
+                switch (enemy.state) {
+                    case 'idle':
+                        // Si el héroe está cerca, comenzar a perseguir con delay
+                        if (distanceToPlayer < detectionRange) {
+                            enemy.state = 'waiting_extended';
+                            enemy.waitTimer = 30; // Delay antes de moverse
+                        }
+                        break;
+                    case 'waiting_extended':
+                        enemy.waitTimer = (enemy.waitTimer ?? 0) - 1;
+                        if ((enemy.waitTimer ?? 0) <= 0) {
+                            enemy.state = 'extending';
+                        }
+                        break;
+                    case 'extending':
+                        // Perseguir al héroe
+                        if (distanceToPlayer > detectionRange * 1.5) {
+                            // Si el héroe se alejó mucho, volver
+                            enemy.state = 'retracting';
+                        } else if (distanceToPlayer < attackRange) {
+                            // Si está muy cerca, atacar
+                            enemy.state = 'attacking';
+                            enemy.waitTimer = 60; // Duración del ataque
+                        } else {
+                            // Moverse hacia el héroe (solo en X, ya que vive en lava)
+                            const dx = player.x - enemy.x;
+                            if (Math.abs(dx) > TILE_SIZE / 2) {
+                                enemy.x += Math.sign(dx) * speed;
+                            }
+                        }
+                        break;
+                    case 'attacking':
+                        // Durante el ataque, el tentáculo intenta agarrar al héroe
+                        enemy.waitTimer = (enemy.waitTimer ?? 0) - 1;
+                        // Si el héroe está en rango de ataque, causar daño
+                        if (distanceToPlayer < attackRange * 1.5) {
+                            // La colisión se maneja en checkEnemyCollision
+                        }
+                        if ((enemy.waitTimer ?? 0) <= 0) {
+                            enemy.state = 'retracting';
+                        }
+                        break;
+                    case 'retracting':
+                        // Volver a la posición inicial
+                        const distanceToHome = Math.abs(enemy.x - (enemy.initialX ?? enemy.x));
+                        if (distanceToHome < speed) {
+                            enemy.x = enemy.initialX ?? enemy.x;
+                            enemy.state = 'idle';
+                            enemy.idleTimer = 60; // Pausa antes de detectar de nuevo
+                        } else {
+                            const dxHome = (enemy.initialX ?? enemy.x) - enemy.x;
+                            enemy.x += Math.sign(dxHome) * speed;
                         }
                         break;
                     default:

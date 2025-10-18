@@ -18,6 +18,7 @@ import lavaSrc from '../../assets/sprites/lava.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splash.png';
+import tentacleSrc from '../../assets/sprites/tentaculo.png';
 
 import type { AnimationMap, GameStore, TileDictionary } from './types';
 
@@ -42,6 +43,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     L: lightSrc,
     background: backgroundSrc,
     splash: splashSrc,
+    T: tentacleSrc,
 };
 
 export const ANIMATION_DATA: AnimationMap = {
@@ -57,6 +59,7 @@ export const ANIMATION_DATA: AnimationMap = {
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
     '3': { frames: 16, speed: 19, sprite: '3' },
+    T: { frames: 4, speed: 8, sprite: 'T' },
     bomb: { frames: 6, speed: 15, sprite: 'bomb', loop: false },
     explosion: { frames: 6, speed: 2, sprite: 'explosion', loop: false },
 };
@@ -71,6 +74,7 @@ export const TILE_TYPES: TileDictionary = {
     '8': { name: 'Murciélago', color: '#9400d3', class: 'bat', sprite: '8' },
     S: { name: 'Araña', color: '#ff8c00', class: 'spider', sprite: 'S' },
     V: { name: 'Víbora', color: '#32cd32', class: 'viper', sprite: 'V' },
+    T: { name: 'Tentáculo', color: '#8b008b', class: 'tentacle', sprite: 'T' },
     '9': { name: 'Minero', color: '#4169e1', class: 'miner', sprite: '9' },
     L: { name: 'Luz', color: '#ffff00', class: 'light' },
 };

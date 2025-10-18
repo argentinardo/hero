@@ -92,6 +92,27 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
                 affectedByDark: false,
             };
         }
+        case 'T': {
+            return {
+                x,
+                y,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
+                vx: 0,
+                vy: 0,
+                type: 'tentacle',
+                tile,
+                initialX: x,
+                initialY: y,
+                state: 'idle',
+                idleTimer: 0,
+                waitTimer: 0,
+                spriteTick: 0,
+                currentFrame: 0,
+                isHidden: false,
+                affectedByDark: false,
+            };
+        }
         default:
             return null;
     }
@@ -173,7 +194,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                 continue;
             }
 
-            if (['8', 'S', 'V'].includes(tile)) {
+            if (['8', 'S', 'V', 'T'].includes(tile)) {
                 const enemy = createEnemy(tile, tileX, tileY, map);
                 if (enemy) {
                     store.enemies.push(enemy);
@@ -181,6 +202,10 @@ export const parseLevel = (store: GameStore, map: string[]) => {
 
                 if (tile === 'V') {
                     store.walls.push(createWall(tileX, tileY, '1'));
+                }
+                if (tile === 'T') {
+                    // El tentáculo necesita lava debajo
+                    store.walls.push(createWall(tileX, tileY, '3'));
                 }
                 continue;
             }
@@ -240,6 +265,10 @@ export const loadLevel = (store: GameStore) => {
     if (store.dom.ui.levelCountEl) {
         store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     }
+    
+    // Rellenar bombas al comenzar cada nivel
+    store.bombsRemaining = 5;
+    
     // Reanudar música principal al comenzar un nuevo nivel
     playBackgroundMusic();
 };
