@@ -675,13 +675,21 @@ export const drawEditor = (store: GameStore) => {
     const timestamp = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const msPerTick = 1000 / 60;
 
-    // Primera pasada: dibujar tiles normales y tiles especiales de 1x1
-    store.editorLevel.forEach((row, rowIndex) => {
-        row.forEach((tile, colIndex) => {
+    // Calcular ventana visible en tiles
+    const startCol = Math.max(0, Math.floor(store.cameraX / TILE_SIZE));
+    const endCol = Math.min((store.editorLevel[0]?.length ?? 0) - 1, Math.ceil((store.cameraX + canvas.width) / TILE_SIZE));
+    const startRow = Math.max(0, Math.floor(store.cameraY / TILE_SIZE));
+    const endRow = Math.min(store.editorLevel.length - 1, Math.ceil((store.cameraY + canvas.height) / TILE_SIZE));
+
+    // Primera pasada: dibujar tiles normales y tiles especiales de 1x1 solo en viewport
+    for (let rowIndex = startRow; rowIndex <= endRow; rowIndex++) {
+        const row = store.editorLevel[rowIndex] ?? [];
+        for (let colIndex = startCol; colIndex <= endCol; colIndex++) {
+            const tile = row[colIndex];
             // Casos especiales que se manejan en segunda pasada
             if (tile === 'P' || tile === '9') {
                 // Estos tiles ocupan múltiples espacios, se dibujan después
-                return;
+                continue;
             }
             
             if (tile === 'L') {
@@ -753,12 +761,19 @@ export const drawEditor = (store: GameStore) => {
                     }
                 }
             }
-        });
-    });
+        }
+    }
 
-    // Segunda pasada: dibujar tiles que ocupan múltiples espacios (Player y Miner)
-    store.editorLevel.forEach((row, rowIndex) => {
-        row.forEach((tile, colIndex) => {
+    // Segunda pasada: dibujar tiles que ocupan múltiples espacios (Player y Miner) solo en viewport extendido ligeramente
+    const paddedStartCol = Math.max(0, startCol - 2);
+    const paddedEndCol = Math.min((store.editorLevel[0]?.length ?? 0) - 1, endCol + 2);
+    const paddedStartRow = Math.max(0, startRow - 2);
+    const paddedEndRow = Math.min(store.editorLevel.length - 1, endRow + 2);
+
+    for (let rowIndex = paddedStartRow; rowIndex <= paddedEndRow; rowIndex++) {
+        const row = store.editorLevel[rowIndex] ?? [];
+        for (let colIndex = paddedStartCol; colIndex <= paddedEndCol; colIndex++) {
+            const tile = row[colIndex];
             if (tile === 'P') {
                 // Dibujar jugador con sprite hero-die.png - ocupando 2 tiles de altura
                 const playerSprite = store.sprites.P_die;
@@ -877,24 +892,29 @@ export const drawEditor = (store: GameStore) => {
                     ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
                 }
             }
-        });
-    });
+        }
+    }
 
-    // Grid fina (cada tile)
+    // Grid fina (cada tile) solo en viewport
     ctx.strokeStyle = '#444';
     ctx.lineWidth = 1;
     const levelWidth = store.editorLevel[0]?.length ?? 0;
     const levelHeight = store.editorLevel.length;
-    for (let x = 0; x <= levelWidth * TILE_SIZE; x += TILE_SIZE) {
+    const gridStartX = startCol * TILE_SIZE;
+    const gridEndX = Math.min(levelWidth * TILE_SIZE, (endCol + 1) * TILE_SIZE);
+    const gridStartY = startRow * TILE_SIZE;
+    const gridEndY = Math.min(levelHeight * TILE_SIZE, (endRow + 1) * TILE_SIZE);
+
+    for (let x = gridStartX; x <= gridEndX; x += TILE_SIZE) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, levelHeight * TILE_SIZE);
+        ctx.moveTo(x, gridStartY);
+        ctx.lineTo(x, gridEndY);
         ctx.stroke();
     }
-    for (let y = 0; y <= levelHeight * TILE_SIZE; y += TILE_SIZE) {
+    for (let y = gridStartY; y <= gridEndY; y += TILE_SIZE) {
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(levelWidth * TILE_SIZE, y);
+        ctx.moveTo(gridStartX, y);
+        ctx.lineTo(gridEndX, y);
         ctx.stroke();
     }
 
@@ -920,25 +940,29 @@ export const drawEditor = (store: GameStore) => {
     const originTileX = Math.max(0, playerCol - 2);
     const originTileY = Math.max(0, playerRow - 3);
 
-    // Calcular primera línea mayor visible hacia la izquierda y arriba
-    const firstKx = Math.ceil((0 - originTileX) / majorCols);
+    // Calcular primera línea mayor visible hacia la izquierda y arriba, restringida al viewport
+    const viewportStartTilesX = startCol;
+    const viewportEndTilesX = endCol + 1;
+    const firstKx = Math.ceil((viewportStartTilesX - originTileX) / majorCols);
     let tileX = originTileX + firstKx * majorCols;
-    while (tileX <= levelWidth) {
+    while (tileX <= viewportEndTilesX) {
         const gx = tileX * TILE_SIZE;
         ctx.beginPath();
-        ctx.moveTo(gx, 0);
-        ctx.lineTo(gx, levelHeight * TILE_SIZE);
+        ctx.moveTo(gx, gridStartY);
+        ctx.lineTo(gx, gridEndY);
         ctx.stroke();
         tileX += majorCols;
     }
 
-    const firstKy = Math.ceil((0 - originTileY) / majorRows);
+    const viewportStartTilesY = startRow;
+    const viewportEndTilesY = endRow + 1;
+    const firstKy = Math.ceil((viewportStartTilesY - originTileY) / majorRows);
     let tileY = originTileY + firstKy * majorRows;
-    while (tileY <= levelHeight) {
+    while (tileY <= viewportEndTilesY) {
         const gy = tileY * TILE_SIZE;
         ctx.beginPath();
-        ctx.moveTo(0, gy);
-        ctx.lineTo(levelWidth * TILE_SIZE, gy);
+        ctx.moveTo(gridStartX, gy);
+        ctx.lineTo(gridEndX, gy);
         ctx.stroke();
         tileY += majorRows;
     }

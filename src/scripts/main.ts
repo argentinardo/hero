@@ -1,6 +1,7 @@
 import '../styles/main.scss';
 
-import initialLevels from '../assets/levels.json';
+import initialLevelsRaw from '../assets/levels.json';
+import { expandLevelsFromAny } from './utils/levels';
 
 import { createInitialStore } from './core/state';
 import { preloadAssets } from './core/assets';
@@ -18,8 +19,9 @@ import { updateLights } from './components/light';
 import { initAudio, playBackgroundMusic } from './components/audio';
 
 const store = createInitialStore();
-store.initialLevels = initialLevels;
-store.levelDesigns = JSON.parse(JSON.stringify(initialLevels));
+const expanded = expandLevelsFromAny(initialLevelsRaw);
+store.initialLevels = expanded;
+store.levelDesigns = JSON.parse(JSON.stringify(expanded));
 
 const updateCamera = () => {
     const canvas = store.dom.canvas;

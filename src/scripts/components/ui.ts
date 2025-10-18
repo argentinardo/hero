@@ -3,6 +3,7 @@ import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nippl
 
 import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA } from '../core/assets';
+import { buildChunkedFile20x18 } from '../utils/levels';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
@@ -1130,7 +1131,8 @@ const setupLevelData = (store: GameStore) => {
     const saveAllLevelsToFile = async () => {
         // Limpiar todos los niveles eliminando filas y columnas vacías
         const cleanedLevels = store.levelDataStore.map(level => purgeEmptyRowsAndColumns(level));
-        const payload = cleanedLevels.map(level => level.map(row => row.join('')));
+        const levelsAsStrings = cleanedLevels.map(level => level.map(row => row.join('')));
+        const payload = buildChunkedFile20x18(levelsAsStrings);
 
         const downloadFallback = () => {
             const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
