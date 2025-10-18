@@ -330,10 +330,11 @@ const drawFloatingScores = (store: GameStore) => {
 };
 
 const drawHud = (store: GameStore) => {
-    const { livesCountEl, scoreCountEl, levelCountEl, energyBarEl } = store.dom.ui;
+    const { livesCountEl, scoreCountEl, levelCountEl, bombsCountEl, energyBarEl } = store.dom.ui;
     if (livesCountEl) livesCountEl.textContent = `${store.lives}`;
     if (scoreCountEl) scoreCountEl.textContent = `${store.score}`;
     if (levelCountEl) levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+    if (bombsCountEl) bombsCountEl.textContent = `${store.bombsRemaining}`;
     if (energyBarEl) energyBarEl.style.width = `${(store.energy / MAX_ENERGY) * 100}%`;
 };
 
@@ -538,9 +539,9 @@ const drawGameWorld = (store: GameStore) => {
 
     store.fallingEntities.forEach(entity => drawFallingEntity(store, entity));
     drawLasers(store);
-    drawPlayer(store);
     drawBombs(store);
     drawExplosions(store);
+    drawPlayer(store);
     drawParticles(store);
     drawFloatingScores(store);
     ctx.restore();

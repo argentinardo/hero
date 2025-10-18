@@ -48,7 +48,7 @@ export interface Player extends GameObject {
     respawnOffsetY?: number;
 }
 
-export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner';
+export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner' | 'tentacle';
 
 export interface Enemy extends GameObject {
     vx: number;
@@ -175,6 +175,7 @@ export interface UiElements {
     scoreCountEl: HTMLElement | null;
     energyBarEl: HTMLElement | null;
     levelCountEl: HTMLElement | null;
+    bombsCountEl: HTMLElement | null;
     messageOverlay: HTMLElement | null;
     messageTitle: HTMLElement | null;
     messageText: HTMLElement | null;
@@ -230,6 +231,7 @@ export interface GameStore {
     score: number;
     energy: number;
     energyDecrementRate: number;
+    bombsRemaining: number;
     currentLevelIndex: number;
     cameraY: number;
     cameraX: number;
