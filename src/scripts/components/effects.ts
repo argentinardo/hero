@@ -76,3 +76,34 @@ export const updateFloatingScores = (store: GameStore) => {
     }
 };
 
+export const updatePlatforms = (store: GameStore) => {
+    const { platforms, walls } = store;
+    platforms.forEach(platform => {
+        if (!platform.isActive) return;
+        platform.x += platform.vx;
+        // Rebotar al chocar con una pared sólida o borde de nivel
+        const left = platform.x;
+        const right = platform.x + platform.width;
+        const levelWidth = store.levelDesigns[store.currentLevelIndex][0].length * 64; // TILE_SIZE
+        // Bordes
+        if (left <= 0 || right >= levelWidth) {
+            platform.vx *= -1;
+            platform.x = Math.max(0, Math.min(platform.x, levelWidth - platform.width));
+            return;
+        }
+        // Paredes
+        const hitWall = walls.find(w => w.tile !== '3' &&
+            !(w.y + w.height <= platform.y || w.y >= platform.y + platform.height) &&
+            !(w.x + w.width <= platform.x || w.x >= platform.x + platform.width));
+        if (hitWall) {
+            platform.vx *= -1;
+            // Empujar fuera de la pared
+            if (platform.vx > 0) {
+                platform.x = hitWall.x + hitWall.width;
+            } else {
+                platform.x = hitWall.x - platform.width;
+            }
+        }
+    });
+};
+

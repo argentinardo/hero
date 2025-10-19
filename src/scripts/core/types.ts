@@ -48,7 +48,7 @@ export interface Player extends GameObject {
     respawnOffsetY?: number;
 }
 
-export type EnemyType = 'bat' | 'viper' | 'spider' | 'miner';
+export type EnemyType = 'bat' | 'viper' | 'spider' | 'tentacle' | 'miner';
 
 export interface Enemy extends GameObject {
     vx: number;
@@ -59,7 +59,7 @@ export interface Enemy extends GameObject {
     initialX?: number;
     initialY?: number;
     maxLength?: number;
-    state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended';
+    state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended' | 'detecting' | 'attacking';
     idleTimer?: number;
     waitTimer?: number;
     spriteTick: number;
@@ -68,6 +68,11 @@ export interface Enemy extends GameObject {
     isDead?: boolean;
     isHidden?: boolean;
     affectedByDark?: boolean;
+    detectionRange?: number;
+    attackRange?: number;
+    detectionDelay?: number;
+    playerStillTimer?: number;
+    extensionLength?: number;
 }
 
 export interface Wall extends GameObject {
@@ -80,6 +85,11 @@ export interface Wall extends GameObject {
     affectedByDark?: boolean;
 }
 
+export interface Platform extends GameObject {
+    vx: number;
+    isActive: boolean;
+}
+
 export interface Laser extends GameObject {
     vx: number;
     startX: number;
@@ -89,6 +99,7 @@ export interface Bomb extends GameObject {
     fuse: number;
     animationTick: number;
     currentFrame: number;
+    attachedPlatform?: Platform;
 }
 
 export interface Explosion extends GameObject {
@@ -230,6 +241,7 @@ export interface GameStore {
     score: number;
     energy: number;
     energyDecrementRate: number;
+    bombsRemaining: number;
     currentLevelIndex: number;
     cameraY: number;
     cameraX: number;
@@ -241,6 +253,7 @@ export interface GameStore {
     explosions: Explosion[];
     miner: Miner | null;
     lights: Light[];
+    platforms: Platform[];
     isDark: boolean;
     explosionFlash: number;
     fallingEntities: FallingEntity[];

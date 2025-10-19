@@ -5,6 +5,8 @@ import { loadLevel } from './level';
 
 export const updateEnemies = (store: GameStore) => {
     const canvasWidth = store.dom.canvas?.width ?? 0;
+    const player = store.player;
+    
     store.enemies.forEach(enemy => {
         const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
         if (anim) {
@@ -83,6 +85,104 @@ export const updateEnemies = (store: GameStore) => {
                             enemy.isHidden = true;
                         }
                         break;
+                    default:
+                        break;
+                }
+                break;
+            }
+            case 'tentacle': {
+                // Calcular distancia al jugador
+                const dx = (player.x + player.width / 2) - (enemy.initialX ?? enemy.x);
+                const dy = (player.y + player.height / 2) - (enemy.initialY ?? enemy.y);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const speed = 3;
+                
+                switch (enemy.state) {
+                    case 'idle':
+                        // Permanece oculto en la lava
+                        enemy.isHidden = true;
+                        enemy.extensionLength = 0;
+                        
+                        // Detectar si el héroe está cerca
+                        if (distance <= (enemy.detectionRange ?? TILE_SIZE * 4)) {
+                            enemy.state = 'detecting';
+                            enemy.detectionDelay = 30; // Delay de 30 frames
+                        }
+                        break;
+                        
+                    case 'detecting':
+                        // Delay antes de atacar
+                        enemy.detectionDelay = (enemy.detectionDelay ?? 0) - 1;
+                        
+                        // Si el héroe se aleja, volver a idle
+                        if (distance > (enemy.detectionRange ?? TILE_SIZE * 4)) {
+                            enemy.state = 'idle';
+                            break;
+                        }
+                        
+                        // Después del delay, atacar
+                        if ((enemy.detectionDelay ?? 0) <= 0) {
+                            enemy.state = 'attacking';
+                            enemy.isHidden = false;
+                            enemy.playerStillTimer = 0;
+                        }
+                        break;
+                        
+                    case 'attacking':
+                        // Extender tentáculo hacia el jugador
+                        const maxExtension = enemy.attackRange ?? TILE_SIZE * 6;
+                        const targetExtension = Math.min(distance, maxExtension);
+                        
+                        // Mover el tentáculo hacia el jugador
+                        if ((enemy.extensionLength ?? 0) < targetExtension) {
+                            enemy.extensionLength = (enemy.extensionLength ?? 0) + speed;
+                            
+                            // Actualizar posición de la "cabeza" del tentáculo
+                            const angle = Math.atan2(dy, dx);
+                            enemy.x = (enemy.initialX ?? enemy.x) + Math.cos(angle) * (enemy.extensionLength ?? 0);
+                            enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(angle) * (enemy.extensionLength ?? 0);
+                        } else {
+                            // Ya alcanzó la extensión objetivo
+                            enemy.extensionLength = targetExtension;
+                            
+                            // Actualizar posición siguiendo al jugador
+                            const angle = Math.atan2(dy, dx);
+                            enemy.x = (enemy.initialX ?? enemy.x) + Math.cos(angle) * targetExtension;
+                            enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(angle) * targetExtension;
+                        }
+                        
+                        // Detectar si el jugador se queda quieto
+                        if (Math.abs(player.vx) < 0.1 && Math.abs(player.vy) < 0.1) {
+                            enemy.playerStillTimer = (enemy.playerStillTimer ?? 0) + 1;
+                        } else {
+                            enemy.playerStillTimer = 0;
+                        }
+                        
+                        // Si el jugador se aleja mucho, retraer
+                        if (distance > maxExtension + TILE_SIZE * 2) {
+                            enemy.state = 'retracting';
+                        }
+                        break;
+                        
+                    case 'retracting':
+                        // Retraer tentáculo a la posición inicial
+                        if ((enemy.extensionLength ?? 0) > 0) {
+                            enemy.extensionLength = Math.max(0, (enemy.extensionLength ?? 0) - speed * 2);
+                            
+                            // Mover hacia la posición inicial
+                            const angle = Math.atan2(dy, dx);
+                            enemy.x = (enemy.initialX ?? enemy.x) + Math.cos(angle) * (enemy.extensionLength ?? 0);
+                            enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(angle) * (enemy.extensionLength ?? 0);
+                        } else {
+                            // Ya se retrajo completamente
+                            enemy.x = enemy.initialX ?? enemy.x;
+                            enemy.y = enemy.initialY ?? enemy.y;
+                            enemy.state = 'idle';
+                            enemy.isHidden = true;
+                        }
+                        break;
+                        
                     default:
                         break;
                 }

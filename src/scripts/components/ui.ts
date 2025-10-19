@@ -316,7 +316,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         document.getElementById('restart-btn')?.classList.remove('hidden');
     }
     
-    store.lives = 3;
+    store.lives = 5;
     store.score = 0;
     // Configurar niveles
     if (preserveLevels) {
@@ -484,6 +484,49 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
         return;
     }
 
+    // Caso especial para el tentáculo (ocupa 2 tiles de alto con animación)
+    if (tile === 'T') {
+        const tentacleSprite = store.sprites['T'];
+        if (tentacleSprite && tentacleSprite.naturalWidth > 0) {
+            const anim = ANIMATION_DATA['T'];
+            if (anim) {
+                const msPerTick = 1000 / 60;
+                const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
+                const frameWidth = tentacleSprite.width / anim.frames;
+                
+                ctx.drawImage(
+                    tentacleSprite,
+                    frameIndex * frameWidth,
+                    0,
+                    frameWidth,
+                    tentacleSprite.height,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            } else {
+                ctx.drawImage(
+                    tentacleSprite,
+                    0,
+                    0,
+                    tentacleSprite.width,
+                    tentacleSprite.height,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            }
+        } else {
+            // Fallback: rectángulo verde
+            ctx.fillStyle = 'rgba(34, 139, 34, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
+
     // Caso especial para la luz
     if (tile === 'L') {
         const lightSprite = store.sprites.L;
@@ -596,7 +639,7 @@ const populatePalette = (store: GameStore) => {
         
         const preview = document.createElement('canvas');
         preview.width = TILE_SIZE * (key === '9' ? 2 : 1);
-        preview.height = TILE_SIZE * (key === 'P' ? 2 : 1);
+        preview.height = TILE_SIZE * (key === 'P' || key === 'T' ? 2 : 1);
         preview.className = 'tile-preview';
 
         if (key === '0') {
@@ -604,9 +647,9 @@ const populatePalette = (store: GameStore) => {
         }
         
         // Para todos los tiles (incluyendo el vacío), usar drawPaletteEntry
-        if (key === 'P' || key === 'L' || key === '0' || key === '9') {
+        if (key === 'P' || key === 'L' || key === '0' || key === '9' || key === 'T') {
             drawPaletteEntry(store, key, preview, performance.now());
-            if (key === '9') {
+            if (key === '9' || key === 'T') {
                 paletteEntries.push({ tile: key, canvas: preview });
             }
         } else {
@@ -617,8 +660,20 @@ const populatePalette = (store: GameStore) => {
                     sprite.addEventListener('load', () => drawPaletteEntry(store, key, preview, performance.now()), { once: true });
                 }
             }
-            drawPaletteEntry(store, key, preview, performance.now());
-            paletteEntries.push({ tile: key, canvas: preview });
+            if (key === 'A') {
+                // Dibujo manual para plataforma en la paleta (60x10 centrado al fondo)
+                const ctx = preview.getContext('2d');
+                if (ctx) {
+                    ctx.clearRect(0, 0, preview.width, preview.height);
+                    ctx.fillStyle = '#ffff00';
+                    const px = (preview.width - 60) / 2;
+                    const py = preview.height - 10;
+                    ctx.fillRect(px, py, 60, 10);
+                }
+            } else {
+                drawPaletteEntry(store, key, preview, performance.now());
+                paletteEntries.push({ tile: key, canvas: preview });
+            }
         }
 
         const label = document.createElement('span');
@@ -662,7 +717,8 @@ const populatePalette = (store: GameStore) => {
             tiles: [
                 { key: 'C', name: 'Columna' },
                 { key: '3', name: 'Lava' },
-                { key: 'L', name: 'Luz' }
+                { key: 'L', name: 'Luz' },
+                { key: 'A', name: 'Plataforma' }
             ]
         },
         {
@@ -670,7 +726,8 @@ const populatePalette = (store: GameStore) => {
             tiles: [
                 { key: '8', name: 'Bat' },
                 { key: 'S', name: 'Araña' },
-                { key: 'V', name: 'Víbora' }
+                { key: 'V', name: 'Víbora' },
+                { key: 'T', name: 'Tentáculo' }
             ]
         }
     ];

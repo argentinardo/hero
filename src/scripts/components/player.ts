@@ -1,6 +1,6 @@
 import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER_SPEED, MAX_ENERGY, BOMB_FUSE } from '../core/constants';
 import { ANIMATION_DATA } from '../core/assets';
-import type { Enemy, GameStore, Miner, Wall } from '../core/types';
+import type { Enemy, GameStore, Miner, Wall, Platform } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
 import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
 import { vibrate } from '../utils/device';
@@ -134,49 +134,41 @@ export const handlePlayerInput = (store: GameStore) => {
         return;
     }
 
-    // Si está flotando, permitir movimiento y cualquier tecla salir del estado
+    // Si está flotando, ignorar inputs hasta estar en posición y detenido
     if (store.gameState === 'floating' && player.isFloating) {
-        // Permitir movimiento horizontal
-        if (keys.ArrowLeft) {
-            player.vx = -PLAYER_SPEED;
-            player.direction = -1;
-        } else if (keys.ArrowRight) {
-            player.vx = PLAYER_SPEED;
-            player.direction = 1;
-        } else {
-            player.vx = 0;
-        }
-
-        // Cualquier tecla presionada sale del estado flotante
-        const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
-        if (anyKeyPressed) {
-            // Si es disparo láser, crear el láser
-            if (keys.Space && player.shootCooldown === 0) {
-                const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
-                const laserY = player.y + player.height / 4;
-                lasers.push({
-                    x: laserX,
-                    y: laserY,
-                    width: 30,
-                    height: 5,
-                    vx: LASER_SPEED * player.direction,
-                    startX: laserX - 20,
-                });
-                player.shootCooldown = 6;
-                
-                // Reproducir sonido de láser
-                playLaserSound();
-            }
-            
-            // Salir del estado flotante (misma lógica para cualquier tecla)
-            player.isFloating = false;
-            player.animationState = 'fly';
-            store.gameState = 'playing';
-        }
-
-        // Permitir vuelo (ArrowUp)
-        player.wantsToFly = Boolean(keys.ArrowUp);
+        // Verificar si ya llegó a la posición de respawn y está detenido
+        const hasArrived = player.y >= player.respawnY && player.vy === 0;
         
+        if (hasArrived) {
+            // Ya llegó y está detenido, ahora puede tomar control con cualquier tecla
+            const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
+            if (anyKeyPressed) {
+                // Si es disparo láser, crear el láser
+                if (keys.Space && player.shootCooldown === 0) {
+                    const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
+                    const laserY = player.y + player.height / 4;
+                    lasers.push({
+                        x: laserX,
+                        y: laserY,
+                        width: 30,
+                        height: 5,
+                        vx: LASER_SPEED * player.direction,
+                        startX: laserX - 20,
+                    });
+                    player.shootCooldown = 6;
+                    
+                    // Reproducir sonido de láser
+                    playLaserSound();
+                }
+                
+                // Salir del estado flotante (misma lógica para cualquier tecla)
+                player.isFloating = false;
+                player.animationState = 'fly';
+                store.gameState = 'playing';
+            }
+        }
+        
+        // No permitir ningún input mientras no haya llegado completamente
         return;
     }
 
@@ -209,13 +201,28 @@ export const handlePlayerInput = (store: GameStore) => {
         playLaserSound();
     }
 
-    if (keys.ArrowDown && player.isGrounded && bombs.length === 0) {
+    if (keys.ArrowDown && player.isGrounded && bombs.length === 0 && store.bombsRemaining > 0) {
         const offsetX = player.direction === 1 ? TILE_SIZE / 2 : -(TILE_SIZE / 2);
         const bombWidth = TILE_SIZE / 1.5;
         const bombX = player.direction === 1
             ? player.x
             : player.x
         const bombY = player.y + player.height - TILE_SIZE;
+        
+        // Detectar si el jugador está sobre una plataforma
+        let attachedPlatform = undefined;
+        for (const platform of store.platforms) {
+            const playerBottom = player.y + player.height;
+            const onPlatform = 
+                player.hitbox.x < platform.x + platform.width &&
+                player.hitbox.x + player.hitbox.width > platform.x &&
+                Math.abs(playerBottom - platform.y) < 5; // Tolerancia de 5px
+            if (onPlatform) {
+                attachedPlatform = platform;
+                break;
+            }
+        }
+        
         bombs.push({
             x: bombX,
             y: bombY,
@@ -224,7 +231,11 @@ export const handlePlayerInput = (store: GameStore) => {
             fuse: BOMB_FUSE,
             animationTick: 0,
             currentFrame: 0,
+            attachedPlatform,
         });
+        
+        // Decrementar bombas disponibles
+        store.bombsRemaining--;
         
         // Reproducir sonido de bomba al plantarla
         playBombSound();
@@ -367,7 +378,11 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
         player.vx = 0;
         player.deathTimer = 0;
         player.floatWaveTime = 0; // Resetear tiempo de onda
-        store.gameState = 'floating';
+        
+        // Restaurar energía al 100% después de morir
+        store.energy = MAX_ENERGY;
+        
+        store.gameState = 'floating'; // En este estado es inmortal hasta que presione una tecla
         
         // Objetivo: posición de respawn un tile más arriba
         player.respawnY = player.respawnY - TILE_SIZE;
@@ -434,7 +449,7 @@ const updatePlayerPosition = (store: GameStore) => {
 };
 
 const handleCollisions = (store: GameStore) => {
-    const { player, walls, miner } = store;
+    const { player, walls, miner, platforms } = store;
     player.isGrounded = false;
     walls.forEach(wall => {
         if (checkCollision(player.hitbox, wall)) {
@@ -459,6 +474,33 @@ const handleCollisions = (store: GameStore) => {
             resolvePlayerMinerCollision(store, miner);
         }
     }
+
+    // Colisión con plataformas (permiten pararse sobre lava)
+    platforms.forEach(platform => {
+        const willLand = player.vy >= 0;
+        const intersects =
+            player.hitbox.x < platform.x + platform.width &&
+            player.hitbox.x + player.hitbox.width > platform.x &&
+            player.hitbox.y + player.hitbox.height > platform.y &&
+            player.hitbox.y + player.hitbox.height < platform.y + platform.height + 20; // tolerancia
+        if (willLand && intersects) {
+            player.y = platform.y - player.height;
+            player.hitbox.y = player.y;
+            player.isGrounded = true;
+            player.vy = 0;
+            // Activar plataforma en primer contacto
+            if (!platform.isActive) {
+                platform.isActive = true;
+                // Determinar dirección inicial hacia la pared más cercana (izq/der)
+                // Si player está a la izquierda del centro del nivel, moverse a la derecha, y viceversa
+                const levelCenterX = (store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE) / 2;
+                platform.vx = (platform.x + platform.width / 2) < levelCenterX ? 2 : -2;
+            }
+            // Arrastrar al héroe con la plataforma
+            player.x += platform.vx;
+            player.hitbox.x = player.x + TILE_SIZE / 4;
+        }
+    });
 
     const levelWidth = store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE;
     if (player.x < 0) {
@@ -607,6 +649,11 @@ export const updatePlayer = (store: GameStore) => {
 
     // Decrementar energía automáticamente como temporizador con velocidad variable
     store.energy = Math.max(0, store.energy - store.energyDecrementRate);
+    
+    // Si la energía llega a 0, el jugador muere
+    if (store.energy <= 0 && store.gameState === 'playing') {
+        playerDie(store);
+    }
 
     updatePlayerAnimation(store);
 };
@@ -634,6 +681,33 @@ export const checkEnemyCollision = (store: GameStore) => {
             }
             if (headHitbox && headHitbox.width > 0 && checkCollision(player.hitbox, headHitbox)) {
                 playerDie(store, enemy);
+            }
+        } else if (enemy.type === 'tentacle' && !enemy.isHidden) {
+            // Para el tentáculo, verificar colisión con el "cuerpo" extendido
+            if (enemy.extensionLength && enemy.extensionLength > 0) {
+                // Colisión con la cabeza del tentáculo
+                if (checkCollision(player.hitbox, enemy)) {
+                    playerDie(store, enemy);
+                }
+                
+                // Verificar colisión con el "cuerpo" del tentáculo (aproximación con línea gruesa)
+                const startX = (enemy.initialX ?? enemy.x) + TILE_SIZE / 2;
+                const startY = (enemy.initialY ?? enemy.y) + TILE_SIZE / 2;
+                const endX = enemy.x + enemy.width / 2;
+                const endY = enemy.y + enemy.height / 2;
+                
+                const playerCenterX = player.hitbox.x + player.hitbox.width / 2;
+                const playerCenterY = player.hitbox.y + player.hitbox.height / 2;
+                
+                // Distancia del jugador a la línea del tentáculo
+                const lineLength = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+                const distance = Math.abs((endY - startY) * playerCenterX - (endX - startX) * playerCenterY + endX * startY - endY * startX) / lineLength;
+                
+                // Si está cerca de la línea y dentro del rango de extensión
+                const t = ((playerCenterX - startX) * (endX - startX) + (playerCenterY - startY) * (endY - startY)) / (lineLength * lineLength);
+                if (distance < 15 && t >= 0 && t <= 1) {
+                    playerDie(store, enemy);
+                }
             }
         } else if (!enemy.isHidden && checkCollision(player.hitbox, enemy)) {
             playerDie(store, enemy);

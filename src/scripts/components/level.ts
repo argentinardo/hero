@@ -92,6 +92,31 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
                 affectedByDark: false,
             };
         }
+        case 'T': {
+            // Tentáculo en lava - ocupa 2 tiles verticalmente
+            return {
+                x,
+                y: y - TILE_SIZE, // Empezar un tile arriba
+                width: TILE_SIZE,
+                height: TILE_SIZE * 2, // Ocupa 2 tiles de altura
+                vx: 0,
+                vy: 0,
+                type: 'tentacle',
+                tile,
+                initialX: x,
+                initialY: y - TILE_SIZE, // Guardar posición inicial ajustada
+                state: 'idle',
+                spriteTick: 0,
+                currentFrame: 0,
+                isHidden: true,
+                affectedByDark: false,
+                detectionRange: TILE_SIZE * 4, // Detecta al héroe a 4 tiles
+                attackRange: TILE_SIZE * 6, // Alcance máximo del tentáculo
+                detectionDelay: 30, // 30 frames de delay antes de atacar
+                playerStillTimer: 0,
+                extensionLength: 0,
+            };
+        }
         default:
             return null;
     }
@@ -142,6 +167,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     store.enemies = [];
     store.miner = null;
     store.lights = [];
+    store.platforms = [];
     store.isDark = false;
     store.lasers = [];
     store.bombs = [];
@@ -173,7 +199,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                 continue;
             }
 
-            if (['8', 'S', 'V'].includes(tile)) {
+            if (['8', 'S', 'V', 'T'].includes(tile)) {
                 const enemy = createEnemy(tile, tileX, tileY, map);
                 if (enemy) {
                     store.enemies.push(enemy);
@@ -181,6 +207,10 @@ export const parseLevel = (store: GameStore, map: string[]) => {
 
                 if (tile === 'V') {
                     store.walls.push(createWall(tileX, tileY, '1'));
+                }
+                // Los tentáculos viven en la lava, así que añadimos lava debajo
+                if (tile === 'T') {
+                    store.walls.push(createWall(tileX, tileY, '3'));
                 }
                 continue;
             }
@@ -199,6 +229,13 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                     tile: 'L',
                     isOn: true,
                 });
+            } else if (tile === 'A') {
+                // Plataforma amarilla: 60x10, apoyada en el piso del tile (parte inferior)
+                const width = 60;
+                const height = 10;
+                const px = tileX + (TILE_SIZE - width) / 2;
+                const py = tileY + TILE_SIZE - height; // fondo del tile
+                store.platforms.push({ x: px, y: py, width, height, vx: 0, isActive: false });
             }
         }
     });
@@ -206,6 +243,9 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     resetPlayer(store, playerStartX, playerStartY);
     store.cameraY = store.player.y - (store.dom.canvas?.height ?? 0) / 2;
     store.cameraX = store.player.x - (store.dom.canvas?.width ?? 0) / 2;
+    
+    // Rellenar bombas al comenzar el nivel
+    store.bombsRemaining = 5;
 };
 
 export const updateWalls = (store: GameStore) => {

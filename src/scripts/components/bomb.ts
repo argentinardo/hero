@@ -129,6 +129,11 @@ export const updateBombs = (store: GameStore) => {
         if (bomb.animationTick === 0) {
             bomb.currentFrame = (bomb.currentFrame + 1) % anim.frames;
         }
+        
+        // Si la bomba está sobre una plataforma, seguir su movimiento
+        if (bomb.attachedPlatform) {
+            bomb.x += bomb.attachedPlatform.vx;
+        }
 
         if (bomb.fuse > 0) {
             continue;

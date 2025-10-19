@@ -7,6 +7,7 @@ import type { GameStore, Wall, Enemy, FallingEntity } from '../core/types';
 import { checkCollision } from '../core/collision';
 import { updateParticles, updateFallingEntities, updateFloatingScores } from './effects';
 import { drawLight } from './light';
+import type { Platform } from '../core/types';
 
 // Paleta para tintar muros por bloques de 3 filas (colores vivos)
 const WALL_TINT_COLORS = ['#ff4d4d', '#00e5ff', '#ffea00', '#00ff85', '#ff6bff', '#ff8c00'];
@@ -119,8 +120,42 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
     if (enemy.type === 'viper') {
         flip = enemy.direction === -1;
     }
-
-    if (flip) {
+    
+    // Dibujar tentáculo con "cuerpo" extendido
+    if (enemy.type === 'tentacle' && enemy.extensionLength && enemy.extensionLength > 0) {
+        // Dibujar el "cuerpo" del tentáculo (línea ondulada desde la lava hasta la cabeza)
+        const startX = enemy.initialX ?? enemy.x;
+        const startY = enemy.initialY ?? enemy.y;
+        const endX = enemy.x + enemy.width / 2;
+        const endY = enemy.y + enemy.height / 2;
+        
+        ctx.strokeStyle = '#228b22'; // Verde oscuro
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        
+        // Dibujar línea ondulada
+        ctx.beginPath();
+        ctx.moveTo(startX + TILE_SIZE / 2, startY + TILE_SIZE / 2);
+        
+        const segments = 10;
+        for (let i = 1; i <= segments; i++) {
+            const t = i / segments;
+            const x = startX + TILE_SIZE / 2 + (endX - startX - TILE_SIZE / 2) * t;
+            const y = startY + TILE_SIZE / 2 + (endY - startY - TILE_SIZE / 2) * t;
+            
+            // Añadir ondulación
+            const waveOffset = Math.sin(t * Math.PI * 3 + Date.now() / 100) * 5;
+            const perpX = -(endY - startY - TILE_SIZE / 2) / enemy.extensionLength;
+            const perpY = (endX - startX - TILE_SIZE / 2) / enemy.extensionLength;
+            
+            ctx.lineTo(x + perpX * waveOffset, y + perpY * waveOffset);
+        }
+        
+        ctx.stroke();
+        
+        // Dibujar la cabeza del tentáculo
+        ctx.translate(enemy.x, enemy.y);
+    } else if (flip) {
         ctx.translate(enemy.x + enemy.width, enemy.y);
         ctx.scale(-1, 1);
     } else {
@@ -148,6 +183,15 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
         ctx.drawImage(sprite, 0, 0, enemy.width, enemy.height);
     }
 
+    ctx.restore();
+};
+
+const drawPlatform = (store: GameStore, platform: Platform) => {
+    const ctx = store.dom.ctx;
+    if (!ctx) return;
+    ctx.save();
+    ctx.fillStyle = '#ffff00';
+    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
     ctx.restore();
 };
 
@@ -399,6 +443,8 @@ const drawGameWorld = (store: GameStore) => {
 
     // Dibujar luces primero
     store.lights.forEach(light => drawLight(store, light));
+    // Dibujar plataformas
+    store.platforms.forEach(p => drawPlatform(store, p));
 
     if (store.isDark) {
         // Modo oscuro: paredes y personajes afectados en gris, no afectados en color normal
@@ -444,42 +490,7 @@ const drawGameWorld = (store: GameStore) => {
         const hasAffectedObjects = affectedObjects.length > 0 || store.miner?.affectedByDark;
         
         if (hasAffectedObjects) {
-            // Calcular el límite superior e inferior de los objetos afectados
-            let minY = Infinity;
-            let maxY = -Infinity;
-            
-            affectedObjects.forEach(obj => {
-                if (obj.y < minY) minY = obj.y;
-                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
-            });
-            
-            // Incluir el minero en el cálculo si está afectado
-            if (store.miner?.affectedByDark) {
-                if (store.miner.y < minY) minY = store.miner.y;
-                if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
-            }
-            
-            const gradientHeight = 240; // Altura del gradiente de transición
-            const gradientOffset = 65; // Desplazamiento hacia arriba
-            
-            // Gradiente superior (de oscuro a transparente hacia abajo) a lo ANCHO del nivel visible
-            const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
-            topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-            topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            ctx.fillStyle = topGradient;
-            // Usar el ancho completo del nivel, no solo el canvas
-            const levelColsForGradient = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
-            const levelWidthForGradient = levelColsForGradient * TILE_SIZE;
-            ctx.fillRect(0, minY - gradientHeight - gradientOffset, levelWidthForGradient, gradientHeight);
-            
-            // Gradiente inferior (de transparente a oscuro hacia abajo) a lo ANCHO del nivel visible
-            const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
-            bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-            bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            ctx.fillStyle = bottomGradient;
-            ctx.fillRect(0, maxY - gradientOffset, levelWidthForGradient, gradientHeight);
+            // Se calculará y dibujará el degradé después de dibujar enemigos y minero para afectarlos también
         }
 
         // Dibujar minero afectado en gris
@@ -519,6 +530,34 @@ const drawGameWorld = (store: GameStore) => {
             }
         });
         ctx.restore();
+
+        // Finalmente, aplicar el degradé sobre todo (incluyendo enemigos y minero)
+        if (hasAffectedObjects) {
+            let minY = Infinity;
+            let maxY = -Infinity;
+            affectedObjects.forEach(obj => {
+                if (obj.y < minY) minY = obj.y;
+                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
+            });
+            if (store.miner?.affectedByDark) {
+                if (store.miner.y < minY) minY = store.miner.y;
+                if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
+            }
+            const gradientHeight = 240;
+            const gradientOffset = 65;
+            const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
+            topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = topGradient;
+            const levelColsForGradient = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+            const levelWidthForGradient = levelColsForGradient * TILE_SIZE;
+            ctx.fillRect(0, minY - gradientHeight - gradientOffset, levelWidthForGradient, gradientHeight);
+            const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
+            bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = bottomGradient;
+            ctx.fillRect(0, maxY - gradientOffset, levelWidthForGradient, gradientHeight);
+        }
     } else {
         // Modo normal
         store.walls.forEach(wall => drawWall(store, wall));
@@ -537,10 +576,10 @@ const drawGameWorld = (store: GameStore) => {
     }
 
     store.fallingEntities.forEach(entity => drawFallingEntity(store, entity));
+    drawExplosions(store);
     drawLasers(store);
     drawPlayer(store);
     drawBombs(store);
-    drawExplosions(store);
     drawParticles(store);
     drawFloatingScores(store);
     ctx.restore();

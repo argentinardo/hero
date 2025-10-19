@@ -692,6 +692,15 @@ export const drawEditor = (store: GameStore) => {
                 continue;
             }
             
+            if (tile === 'A') {
+                // Plataforma: rectángulo amarillo 60x10 apoyado al fondo del tile
+                ctx.fillStyle = '#ffff00';
+                const px = colIndex * TILE_SIZE + (TILE_SIZE - 60) / 2;
+                const py = rowIndex * TILE_SIZE + TILE_SIZE - 10;
+                ctx.fillRect(px, py, 60, 10);
+                continue;
+            }
+
             if (tile === 'L') {
                 // Dibujar luz con sprite luz.png
                 const lightSprite = store.sprites.L;
@@ -891,6 +900,44 @@ export const drawEditor = (store: GameStore) => {
                     ctx.fillStyle = 'rgba(0, 0, 255, 0.8)';
                     ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
                 }
+            } else if (tile === 'T') {
+                // Dibujar tentáculo con sprite tentaculo.png - ocupando 2 tiles de altura
+                const tentacleSprite = store.sprites.T;
+                if (tentacleSprite) {
+                    const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, 'T');
+                    if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                        const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                        const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                        const frameWidth = tentacleSprite.width / totalFrames;
+                        ctx.drawImage(
+                            tentacleSprite,
+                            frameIndex * frameWidth,
+                            0,
+                            frameWidth,
+                            tentacleSprite.height,
+                            colIndex * TILE_SIZE,
+                            rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                            TILE_SIZE,
+                            TILE_SIZE * 2
+                        );
+                    } else {
+                        ctx.drawImage(
+                            tentacleSprite,
+                            0,
+                            0,
+                            tentacleSprite.width,
+                            tentacleSprite.height,
+                            colIndex * TILE_SIZE,
+                            rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                            TILE_SIZE,
+                            TILE_SIZE * 2
+                        );
+                    }
+                } else {
+                    // Fallback: rectángulo verde ocupando 2 tiles verticalmente
+                    ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
+                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+                }
             }
         }
     }
@@ -1083,6 +1130,48 @@ export const drawEditor = (store: GameStore) => {
             ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
             ctx.globalAlpha = 1;
         }
+    } else if (store.selectedTile === 'T') {
+        // Preview del tentáculo con sprite tentaculo.png - ocupando 2 tiles de altura
+        const tentacleSprite = store.sprites.T;
+        if (tentacleSprite) {
+            ctx.globalAlpha = 0.5;
+            const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, 'T');
+            if (anim && effectiveFrames > 0 && totalFrames > 0) {
+                const frameDuration = Math.max(1, anim.speed) * msPerTick;
+                const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
+                const frameWidth = tentacleSprite.width / totalFrames;
+                ctx.drawImage(
+                    tentacleSprite,
+                    frameIndex * frameWidth,
+                    0,
+                    frameWidth,
+                    tentacleSprite.height,
+                    store.mouse.gridX * TILE_SIZE,
+                    store.mouse.gridY * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                    TILE_SIZE,
+                    TILE_SIZE * 2
+                );
+            } else {
+                ctx.drawImage(
+                    tentacleSprite,
+                    0,
+                    0,
+                    tentacleSprite.width,
+                    tentacleSprite.height,
+                    store.mouse.gridX * TILE_SIZE,
+                    store.mouse.gridY * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
+                    TILE_SIZE,
+                    TILE_SIZE * 2
+                );
+            }
+            ctx.globalAlpha = 1;
+        } else {
+            // Fallback: rectángulo verde ocupando 2 tiles verticalmente
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
+            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+            ctx.globalAlpha = 1;
+        }
     } else if (store.selectedTile === 'L') {
         // Preview de luz con sprite
         const lightSprite = store.sprites.L;
@@ -1113,6 +1202,14 @@ export const drawEditor = (store: GameStore) => {
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+    } else if (store.selectedTile === 'A') {
+        // Preview de plataforma: 60x10 al fondo del tile
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#ffff00';
+        const px = store.mouse.gridX * TILE_SIZE + (TILE_SIZE - 60) / 2;
+        const py = store.mouse.gridY * TILE_SIZE + TILE_SIZE - 10;
+        ctx.fillRect(px, py, 60, 10);
+        ctx.globalAlpha = 1;
     }
 
     // Preview del área de drag-to-draw si estamos arrastrando
@@ -1201,6 +1298,13 @@ export const drawEditor = (store: GameStore) => {
                                         );
                                     }
                                 }
+                            } else if (store.selectedTile === 'A') {
+                                // Preview de plataforma en área
+                                ctx.globalAlpha = 0.3;
+                                ctx.fillStyle = '#ffff00';
+                                const px = x * TILE_SIZE + (TILE_SIZE - 60) / 2;
+                                const py = y * TILE_SIZE + TILE_SIZE - 10;
+                                ctx.fillRect(px, py, 60, 10);
                             } else {
                                 // Preview normal de otros tiles
                                 const { anim, effectiveFrames, totalFrames } = resolveAnimation(store.selectedTile, selectedSpriteKey);

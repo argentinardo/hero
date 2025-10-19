@@ -8,6 +8,7 @@ import batSrc from '../../assets/sprites/bat_small.png';
 import spiderSrc from '../../assets/sprites/spider_small.png';
 import viperSrc from '../../assets/sprites/serpiente_small.png';
 import viperDeathSrc from '../../assets/sprites/serpiente_death.png';
+import tentacleSrc from '../../assets/sprites/tentaculo.png';
 import minerSrc from '../../assets/sprites/miner_small.png';
 import bombSrc from '../../assets/sprites/bomba.png';
 import explosionSrc from '../../assets/sprites/boooom.png';
@@ -32,6 +33,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     S: spiderSrc,
     V: viperSrc,
     V_death: viperDeathSrc,
+    T: tentacleSrc,
     '9': minerSrc,
     bomb: bombSrc,
     explosion: explosionSrc,
@@ -54,6 +56,7 @@ export const ANIMATION_DATA: AnimationMap = {
     '8': { frames: 6, speed: 2, sprite: '8' },
     S: { frames: 15, speed: 7, sprite: 'S' },
     V: { frames: 4, speed: 8, sprite: 'V' },
+    T: { frames: 4, speed: 8, sprite: 'T' },
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
     '3': { frames: 16, speed: 19, sprite: '3' },
@@ -71,8 +74,10 @@ export const TILE_TYPES: TileDictionary = {
     '8': { name: 'Murciélago', color: '#9400d3', class: 'bat', sprite: '8' },
     S: { name: 'Araña', color: '#ff8c00', class: 'spider', sprite: 'S' },
     V: { name: 'Víbora', color: '#32cd32', class: 'viper', sprite: 'V' },
+    T: { name: 'Tentáculo', color: '#228b22', class: 'tentacle', sprite: 'T' },
     '9': { name: 'Minero', color: '#4169e1', class: 'miner', sprite: '9' },
     L: { name: 'Luz', color: '#ffff00', class: 'light' },
+    'A': { name: 'Plataforma', color: '#ffff00', class: 'platform' },
 };
 
 export const preloadAssets = (store: GameStore, callback: () => void) => {

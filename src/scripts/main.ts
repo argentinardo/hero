@@ -13,7 +13,7 @@ import { loadLevel, updateWalls, awardMinerRescue } from './components/level';
 import { updateEnemies, updateMiner } from './components/enemy';
 import { updateLasers } from './components/laser';
 import { updateBombs, updateExplosions } from './components/bomb';
-import { updateParticles, updateFallingEntities, updateFloatingScores } from './components/effects';
+import { updateParticles, updateFallingEntities, updateFloatingScores, updatePlatforms } from './components/effects';
 import { renderGame, renderEditor } from './components/render';
 import { updateLights } from './components/light';
 import { initAudio, playBackgroundMusic } from './components/audio';
@@ -107,6 +107,7 @@ const updateGameState = () => {
     updateParticles(store);
     updateFallingEntities(store);
     updateFloatingScores(store);
+    updatePlatforms(store);
     checkEnemyCollision(store);
     checkMinerRescue();
     updateCamera();
