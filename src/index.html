@@ -9,34 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-900 flex justify-center items-start h-screen pt-8">
+<body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
 
-    <div id="main-container" class="flex flex-col items-center justify-center">
-        <!-- Barra de Interfaz de Usuario (UI) del Juego -->
-        <div id="game-ui" class="ui-bar w-full max-w-4xl text-sm flex items-center justify-between gap-4">
-            <div class="flex items-center gap-2">
-                <span>LIVES:</span>
-                <div id="lives-count" class="flex gap-1"></div>
-            </div>
-            <span>LEVEL: <span id="level-count">1</span></span>
-            <div class="flex items-center gap-2">
-                <span>ENERGY:</span>
-                <div class="w-40 h-5 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400"></div></div>
-            </div>
-            <div class="flex items-center gap-2">
-                <span>TNT:</span>
-                <div id="bombs-count" class="flex gap-1"></div>
-            </div>
-            <span>SCORE: <span id="score-count">0</span></span>
-            <div class="hidden md:flex items-center gap-2">
-                <button id="menu-btn-desktop" class="bg-gray-700 hover:bg-gray-800 px-3 py-1 border-2 border-white">Menú</button>
-                <button id="restart-btn-desktop" class="bg-yellow-700 hover:bg-yellow-800 px-3 py-1 border-2 border-white">Reiniciar</button>
-            </div>
-            <button id="resume-editor-btn" class="hidden bg-indigo-600 hover:bg-indigo-700 px-3 py-1 border-2 border-white">Volver al Editor</button>
-        </div>
-
-        <!-- Barra de UI derecha con acciones rápidas -->
-        <div id="right-ui" class="ui-bar w-full max-w-4xl text-sm flex items-center justify-between gap-4 mt-2">
+    <div id="main-container">
+        <!-- Barra de UI con acciones rápidas (móvil) -->
+        <div id="right-ui" class="text-sm flex items-center justify-between gap-4" style="display: none;">
             <div></div>
             <div class="flex gap-2">
                 <button id="menu-btn" class="bg-gray-700 hover:bg-gray-800 px-3 py-1 border-2 border-white">Menú</button>
@@ -44,12 +21,41 @@
             </div>
         </div>
 
-        <div class="flex gap-4">
-            <!-- Canvas del Juego / Editor -->
-            <canvas id="gameCanvas" width="1200" height="900"></canvas>
+        <div>
+            <!-- Contenedor Canvas con barras UI superpuestas -->
+            <div class="canvas-wrapper">
+                <!-- Barra Superior (superpuesta) -->
+                <div id="game-ui" class="text-base" style="display: none;">
+                    <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
+                    <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
+                    <button id="menu-btn-desktop" class="hidden md:block bg-gray-700 hover:bg-gray-800 px-4 py-2 border-2 border-white text-sm">Menú</button>
+                    <button id="restart-btn-desktop" class="hidden md:block bg-yellow-700 hover:bg-yellow-800 px-4 py-2 border-2 border-white text-sm">Reiniciar</button>
+                    <button id="resume-editor-btn" class="hidden bg-indigo-600 hover:bg-indigo-700 px-4 py-2 border-2 border-white text-sm">Volver al Editor</button>
+                </div>
+                
+                <!-- Canvas del Juego / Editor -->
+                <canvas id="gameCanvas" width="1200" height="900"></canvas>
+                
+                <!-- Barra Inferior (superpuesta) -->
+                <div id="bottom-ui" class="text-base" style="display: none;">
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg font-bold">LIVES:</span>
+                        <div id="lives-count" class="flex gap-1"></div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg font-bold">ENERGY:</span>
+                        <div class="w-80 h-8 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400"></div></div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg font-bold">TNT:</span>
+                        <div id="bombs-count" class="flex gap-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            <!-- Panel del Editor -->
-            <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden">
+        <!-- Panel del Editor -->
+        <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden bg-gray-800">
                 <h2 class="text-center text-lg mb-2">EDITOR</h2>
                 <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
                 
@@ -57,20 +63,6 @@
                     <!-- Tiles se agregarán dinámicamente aquí -->
                 </div>
 
-                <div id="crushing-wall-config" class="mt-4 border-t-2 border-yellow-500 pt-4 hidden">
-                    <h3 class="text-center text-md my-2">Configuración de Paredes</h3>
-                    <div class="flex flex-col gap-3">
-                        <div>
-                            <label for="wall-speed" class="text-xs block mb-1">Velocidad:</label>
-                            <input type="range" id="wall-speed" min="0.5" max="5" step="0.5" value="1.5" class="w-full">
-                            <span id="wall-speed-value" class="text-xs text-gray-300">1.5</span>
-                        </div>
-                        <div>
-                            <label for="wall-color" class="text-xs block mb-1">Color:</label>
-                            <input type="color" id="wall-color" value="#cc0000" class="w-full h-8 border-2 border-white">
-                        </div>
-                    </div>
-                </div>
 
                 <div class="mt-4 border-t-2 border-gray-500 pt-4">
                     <h3 class="text-center text-md my-2">Edición</h3>

@@ -83,6 +83,10 @@ export interface Wall extends GameObject {
     health?: number;
     isDamaged?: boolean;
     affectedByDark?: boolean;
+    // Para columnas destructibles: renderizado visual vs colisión
+    visualWidth?: number;
+    visualX?: number;
+    cutSide?: 'left' | 'right'; // Qué lado fue cortado
     // Para paredes aplastantes
     side?: 'left' | 'right';
     minWidth?: number;
@@ -207,6 +211,7 @@ export interface UiElements {
     retryBtn?: HTMLButtonElement | null;
     gameUiEl: HTMLElement | null;
     rightUiEl: HTMLElement | null;
+    bottomUiEl: HTMLElement | null;
     menuBtn: HTMLButtonElement | null;
     restartBtn: HTMLButtonElement | null;
     menuBtnDesktop: HTMLButtonElement | null;

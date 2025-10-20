@@ -1,15 +1,82 @@
-.ui-bar {
-    background-color: rgba(0, 0, 0, 0.25);
-    padding: 10px 20px;
-    width: 100%;
-    position: fixed;
-    top: 0;
+/* Contenedor principal con posicionamiento para las barras */
+#main-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* Desktop: game-ui debe tener el mismo ancho que el canvas */
-@media (min-width: 769px) {
-    #game-ui {
-        max-width: 1200px; /* Mismo ancho que el canvas */
-        margin: 0 auto;
-    }
+/* Contenedor para canvas + barras superpuestas */
+.canvas-wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Canvas - siempre 100vh de alto, escalado proporcional */
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Mantiene la proporción sin distorsionar */
+    background-color: #000; /* Fondo negro para las barras laterales si aparecen */
+}
+
+/* Barra superior - superpuesta sobre el canvas */
+#game-ui {
+    position: fixed; /* Fixed para alinearse con el canvas */
+    top: 0;
+    left: 0;
+    width: 100%; /* Se ajustará dinámicamente por JavaScript */
+    height: 10vh; /* 10% del alto del viewport */
+    background-color: rgba(0, 0, 0, 0.95); /* Fondo más opaco */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Contenido centrado */
+    gap: 3rem; /* Espacio entre elementos */
+    z-index: 100;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+/* Barra de botones móvil */
+#right-ui {
+    position: absolute;
+    top: 10vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 8px 20px;
+    z-index: 99;
+}
+
+/* Barra inferior - superpuesta sobre el canvas */
+#bottom-ui {
+    position: fixed; /* Fixed para alinearse con el canvas */
+    bottom: 0;
+    left: 0;
+    width: 100%; /* Se ajustará dinámicamente por JavaScript */
+    height: 10vh; /* 10% del alto del viewport */
+    background-color: rgba(0, 0, 0, 0.95); /* Fondo más opaco */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem; /* Espacio uniforme entre elementos */
+    z-index: 100;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+/* Panel del editor - posicionado a la derecha */
+#editor-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 200;
 }

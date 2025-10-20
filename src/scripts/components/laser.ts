@@ -46,22 +46,26 @@ const applyColumnCutOrRemove = (store: GameStore, baseGridX: number, action: 'ha
     // action === 'half'
     colWalls.forEach(wall => {
         // Si ya está a la mitad, no volver a cortar
-        if (wall.width <= TILE_SIZE / 2 + 0.01) return;
+        if (wall.visualWidth && wall.visualWidth <= TILE_SIZE / 2 + 0.01) return;
         if (side === 'left') {
             // Caer mitad izquierda
             store.fallingEntities.push({ x: wall.x, y: wall.y, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
             store.fallingEntities.push({ x: wall.x, y: wall.y + TILE_SIZE / 2, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
-            // Conservar mitad derecha
-            wall.x = baseX + TILE_SIZE / 2;
-            wall.width = TILE_SIZE / 2;
+            // Conservar mitad derecha VISUALMENTE, pero mantener colisión completa
+            wall.visualX = baseX + TILE_SIZE / 2;
+            wall.visualWidth = TILE_SIZE / 2;
+            wall.cutSide = 'left';
+            // La colisión (wall.x y wall.width) permanece igual
         } else {
             // Caer mitad derecha
             const rightX = baseX + TILE_SIZE / 2;
             store.fallingEntities.push({ x: rightX, y: wall.y, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
             store.fallingEntities.push({ x: rightX, y: wall.y + TILE_SIZE / 2, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
-            // Conservar mitad izquierda
-            wall.x = baseX;
-            wall.width = TILE_SIZE / 2;
+            // Conservar mitad izquierda VISUALMENTE, pero mantener colisión completa
+            wall.visualX = baseX;
+            wall.visualWidth = TILE_SIZE / 2;
+            wall.cutSide = 'right';
+            // La colisión (wall.x y wall.width) permanece igual
         }
     });
 };

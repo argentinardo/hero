@@ -641,18 +641,23 @@ export const drawEditor = (store: GameStore) => {
         return;
     }
 
-    // Dibujar fondo con background tiles
+    // Dibujar fondo con background tiles y efecto parallax
     const backgroundSprite = store.sprites.background;
     if (backgroundSprite) {
-        const startY = Math.floor(store.cameraY / TILE_SIZE) * TILE_SIZE;
-        const endY = store.cameraY + canvas.height;
-        const startX = Math.floor(store.cameraX / TILE_SIZE) * TILE_SIZE;
-        const endX = store.cameraX + canvas.width;
+        // Efecto parallax: el fondo se mueve más lento que la cámara
+        const parallaxFactor = 0.5; // 0.5 = mitad de velocidad (más profundidad)
+        const parallaxCameraX = store.cameraX * parallaxFactor;
+        const parallaxCameraY = store.cameraY * parallaxFactor;
+        
+        const startY = Math.floor(parallaxCameraY / TILE_SIZE) * TILE_SIZE;
+        const endY = parallaxCameraY + canvas.height;
+        const startX = Math.floor(parallaxCameraX / TILE_SIZE) * TILE_SIZE;
+        const endX = parallaxCameraX + canvas.width;
         const numTilesX = Math.ceil((endX - startX) / TILE_SIZE) + 1;
         const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
         
         ctx.save();
-        ctx.translate(-store.cameraX, -store.cameraY);
+        ctx.translate(-parallaxCameraX, -parallaxCameraY);
         
         for (let y = 0; y < numTilesY; y++) {
             for (let x = 0; x < numTilesX; x++) {
@@ -744,6 +749,11 @@ export const drawEditor = (store: GameStore) => {
                     );
                 }
                 // Si no hay sprite de fondo, no dibujar nada (mantener transparente)
+            } else if (tile === 'H' || tile === 'J') {
+                // Paredes aplastantes: dibujar con color configurado
+                const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+                ctx.fillStyle = config.color;
+                ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             } else {
                 // Tiles normales
                 const spriteKey = TILE_TYPES[tile]?.sprite;
@@ -1210,6 +1220,13 @@ export const drawEditor = (store: GameStore) => {
         const py = store.mouse.gridY * TILE_SIZE + TILE_SIZE - 10;
         ctx.fillRect(px, py, 60, 10);
         ctx.globalAlpha = 1;
+    } else if (store.selectedTile === 'H' || store.selectedTile === 'J') {
+        // Preview de pared aplastante con color configurado
+        ctx.globalAlpha = 0.5;
+        const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+        ctx.fillStyle = config.color;
+        ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx.globalAlpha = 1;
     }
 
     // Preview del área de drag-to-draw si estamos arrastrando
@@ -1258,6 +1275,11 @@ export const drawEditor = (store: GameStore) => {
                                         TILE_SIZE * 2
                                     );
                                 }
+                            } else if (store.selectedTile === 'H' || store.selectedTile === 'J') {
+                                // Preview de paredes aplastantes en área
+                                const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+                                ctx.fillStyle = config.color;
+                                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                             } else if (store.selectedTile === '9') {
                                 // Preview del miner en área - ocupando 2 tiles (120px) pero mostrando a 78px
                                 const minerSprite = store.sprites['9'];

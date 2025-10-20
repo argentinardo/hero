@@ -2,6 +2,9 @@ import { GRAVITY, TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
 import { playToyBounce, playBrickBounce } from './audio';
 
+// Velocidad máxima de caída para enemigos muertos (alcanzada después de 1 segundo)
+const MAX_FALL_VELOCITY = 8; // Velocidad de caída más lenta y controlada
+
 export const updateParticles = (store: GameStore) => {
     for (let i = store.particles.length - 1; i >= 0; i--) {
         const particle = store.particles[i];
@@ -20,7 +23,11 @@ export const updateFallingEntities = (store: GameStore) => {
     const canvasHeight = store.dom.canvas?.height ?? 0;
     for (let i = store.fallingEntities.length - 1; i >= 0; i--) {
         const entity = store.fallingEntities[i];
+        // Aplicar gravedad con límite de velocidad máxima
         entity.vy += GRAVITY;
+        if (entity.vy > MAX_FALL_VELOCITY) {
+            entity.vy = MAX_FALL_VELOCITY;
+        }
         entity.y += entity.vy;
         entity.x += entity.vx;
         if (entity.rotationSpeed) {

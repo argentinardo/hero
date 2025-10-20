@@ -61,6 +61,10 @@ const drawWall = (store: GameStore, wall: Wall) => {
         return;
     }
 
+    // Determinar posición y ancho visual (para columnas cortadas)
+    const renderX = wall.visualX !== undefined ? wall.visualX : wall.x;
+    const renderWidth = wall.visualWidth !== undefined ? wall.visualWidth : wall.width;
+
 	// Aplicar clip de esquinas redondeadas por esquina según vecinos vacíos (excepto lava y columnas)
 	if (store.levelDesigns && store.levelDesigns[store.currentLevelIndex]) {
 		const level = store.levelDesigns[store.currentLevelIndex];
@@ -80,7 +84,7 @@ const drawWall = (store: GameStore, wall: Wall) => {
 			const rBL = (isEmpty(down) && isEmpty(left)) ? r : 0;
 			const rBR = (isEmpty(down) && isEmpty(right)) ? r : 0;
 			if (rTL || rTR || rBL || rBR) {
-				beginRoundedRectPathCorners(ctx, wall.x, wall.y, wall.width, wall.height, rTL, rTR, rBR, rBL);
+				beginRoundedRectPathCorners(ctx, renderX, wall.y, renderWidth, wall.height, rTL, rTR, rBR, rBL);
 				ctx.clip();
 			}
 		}
@@ -91,13 +95,27 @@ const drawWall = (store: GameStore, wall: Wall) => {
         const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
         if (anim && wall.currentFrame !== undefined) {
             const frameWidth = sprite.width / anim.frames;
-            ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, wall.x, wall.y, wall.width, wall.height);
+            // Si es columna cortada, recortar el sprite apropiadamente
+            if (wall.visualWidth !== undefined && wall.cutSide) {
+                const srcX = wall.cutSide === 'left' ? frameWidth / 2 : 0;
+                const srcWidth = frameWidth / 2;
+                ctx.drawImage(sprite, wall.currentFrame * frameWidth + srcX, 0, srcWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+            } else {
+                ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+            }
         } else {
-            ctx.drawImage(sprite, wall.x, wall.y, wall.width, wall.height);
+            // Si es columna cortada, recortar el sprite apropiadamente
+            if (wall.visualWidth !== undefined && wall.cutSide) {
+                const srcX = wall.cutSide === 'left' ? sprite.width / 2 : 0;
+                const srcWidth = sprite.width / 2;
+                ctx.drawImage(sprite, srcX, 0, srcWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+            } else {
+                ctx.drawImage(sprite, renderX, wall.y, renderWidth, wall.height);
+            }
         }
     } else {
         ctx.fillStyle = TILE_TYPES[wall.tile]?.color ?? '#fff';
-        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
     }
 
     // Aplicar tint por bloques de 3 filas, excepto para lava ('3') y columnas ('C')
@@ -109,7 +127,7 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.globalCompositeOperation = 'screen';
         ctx.globalAlpha = 0.225;
         ctx.fillStyle = tintColor;
-        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
         ctx.globalAlpha = prevAlpha;
         ctx.globalCompositeOperation = 'source-over';
     }
@@ -393,12 +411,12 @@ const drawHud = (store: GameStore) => {
         for (let i = 0; i < store.lives; i++) {
             if (playerSprite && playerSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
-                miniCanvas.width = 12;
-                miniCanvas.height = 24;
+                miniCanvas.width = 24;
+                miniCanvas.height = 48;
                 miniCanvas.style.imageRendering = 'pixelated';
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
-                    miniCtx.drawImage(playerSprite, 0, 0, playerSprite.width, playerSprite.height, 0, 0, 12, 24);
+                    miniCtx.drawImage(playerSprite, 0, 0, playerSprite.width, playerSprite.height, 0, 0, 24, 48);
                 }
                 livesCountEl.appendChild(miniCanvas);
             } else {
@@ -406,6 +424,7 @@ const drawHud = (store: GameStore) => {
                 const span = document.createElement('span');
                 span.textContent = '♥';
                 span.style.color = '#ff0000';
+                span.style.fontSize = '1.5rem';
                 livesCountEl.appendChild(span);
             }
         }
@@ -419,19 +438,20 @@ const drawHud = (store: GameStore) => {
         for (let i = 0; i < store.bombsRemaining; i++) {
             if (bombSprite && bombSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
-                miniCanvas.width = 16;
-                miniCanvas.height = 16;
+                miniCanvas.width = 32;
+                miniCanvas.height = 32;
                 miniCanvas.style.imageRendering = 'pixelated';
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
                     const frameWidth = bombSprite.width / ANIMATION_DATA.bomb.frames;
-                    miniCtx.drawImage(bombSprite, 0, 0, frameWidth, bombSprite.height, 0, 0, 16, 16);
+                    miniCtx.drawImage(bombSprite, 0, 0, frameWidth, bombSprite.height, 0, 0, 32, 32);
                 }
                 bombsCountEl.appendChild(miniCanvas);
             } else {
                 // Fallback: usar emoji
                 const span = document.createElement('span');
                 span.textContent = '💣';
+                span.style.fontSize = '1.5rem';
                 bombsCountEl.appendChild(span);
             }
         }
@@ -479,17 +499,23 @@ const drawGameWorld = (store: GameStore) => {
         
         ctx.restore();
     } else if (backgroundSprite) {
-        // Dibujar fondo con tiles repetidos (modo normal)
+        // Dibujar fondo con tiles repetidos y efecto parallax (modo normal)
         const TILE_SIZE = 64; // Tamaño del tile del background
-        const startY = Math.floor(store.cameraY / TILE_SIZE) * TILE_SIZE;
-        const endY = store.cameraY + canvas.height;
-        const startX = Math.floor(store.cameraX / TILE_SIZE) * TILE_SIZE;
-        const endX = store.cameraX + canvas.width;
+        
+        // Efecto parallax: el fondo se mueve más lento que la cámara
+        const parallaxFactor = 0.5; // 0.5 = mitad de velocidad (más profundidad)
+        const parallaxCameraX = store.cameraX * parallaxFactor;
+        const parallaxCameraY = store.cameraY * parallaxFactor;
+        
+        const startY = Math.floor(parallaxCameraY / TILE_SIZE) * TILE_SIZE;
+        const endY = parallaxCameraY + canvas.height;
+        const startX = Math.floor(parallaxCameraX / TILE_SIZE) * TILE_SIZE;
+        const endX = parallaxCameraX + canvas.width;
         const numTilesX = Math.ceil((endX - startX) / TILE_SIZE) + 1;
         const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
         
         ctx.save();
-        ctx.translate(-store.cameraX, -store.cameraY);
+        ctx.translate(-parallaxCameraX, -parallaxCameraY);
         
         for (let y = 0; y < numTilesY; y++) {
             for (let x = 0; x < numTilesX; x++) {

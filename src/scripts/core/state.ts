@@ -83,6 +83,7 @@ export const createInitialStore = (): GameStore => ({
             messageText: null,
             gameUiEl: null,
             rightUiEl: null,
+            bottomUiEl: null,
             menuBtn: null,
             restartBtn: null,
             menuBtnDesktop: null,

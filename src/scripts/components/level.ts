@@ -72,8 +72,20 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
         case 'V': {
             const row = map[Math.floor(y / TILE_SIZE)];
             const col = Math.floor(x / TILE_SIZE);
-            const wallOnLeft = col > 0 && row[col - 1] === '1';
-            const direction = wallOnLeft ? 1 : -1;
+            // La víbora debe salir hacia el vacío (tile '0'), no hacia muros o lava
+            const leftTile = col > 0 ? row[col - 1] : null;
+            const rightTile = col < row.length - 1 ? row[col + 1] : null;
+            
+            // Determinar dirección: sale hacia donde hay vacío
+            let direction = 1; // Por defecto a la derecha
+            if (leftTile === '0' && rightTile !== '0') {
+                direction = -1; // Salir a la izquierda
+            } else if (rightTile === '0' && leftTile !== '0') {
+                direction = 1; // Salir a la derecha
+            } else if (leftTile === '0' && rightTile === '0') {
+                direction = Math.random() < 0.5 ? -1 : 1; // Ambos lados vacíos, aleatorio
+            }
+            
             return {
                 x,
                 y,
@@ -248,7 +260,19 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                 }
 
                 if (tile === 'V') {
-                    store.walls.push(createWall(tileX, tileY, '1', store));
+                    // Detectar si la víbora está rodeada de lava
+                    const row = map[rowIndex];
+                    const leftTile = colIndex > 0 ? row[colIndex - 1] : null;
+                    const rightTile = colIndex < row.length - 1 ? row[colIndex + 1] : null;
+                    const topTile = rowIndex > 0 ? map[rowIndex - 1][colIndex] : null;
+                    const bottomTile = rowIndex < map.length - 1 ? map[rowIndex + 1][colIndex] : null;
+                    
+                    // Contar cuántos tiles adyacentes son lava
+                    const lavaCount = [leftTile, rightTile, topTile, bottomTile].filter(t => t === '3').length;
+                    
+                    // Si hay más lava que muro alrededor, usar lava
+                    const wallType = lavaCount >= 2 ? '3' : '1';
+                    store.walls.push(createWall(tileX, tileY, wallType, store));
                 }
                 // Los tentáculos viven en la lava, así que añadimos lava debajo
                 if (tile === 'T') {

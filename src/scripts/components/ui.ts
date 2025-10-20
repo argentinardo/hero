@@ -15,6 +15,29 @@ import {
     initializeAdvancedEditor
 } from './advancedEditor';
 
+// Función para ajustar el ancho de las barras UI al tamaño real del canvas
+export const adjustUIBars = () => {
+    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
+    const gameUi = document.getElementById('game-ui');
+    const bottomUi = document.getElementById('bottom-ui');
+    
+    if (!canvas || !gameUi || !bottomUi) return;
+    
+    // Obtener el tamaño renderizado del canvas (después de object-fit: contain)
+    const rect = canvas.getBoundingClientRect();
+    const canvasWidth = rect.width;
+    const canvasLeft = rect.left;
+    
+    // Calcular el offset desde el borde izquierdo del viewport
+    const leftOffset = canvasLeft;
+    
+    // Aplicar el ancho y posición a las barras UI
+    gameUi.style.width = `${canvasWidth}px`;
+    gameUi.style.left = `${leftOffset}px`;
+    bottomUi.style.width = `${canvasWidth}px`;
+    bottomUi.style.left = `${leftOffset}px`;
+};
+
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
     // Optimizar contexto 2D para rendimiento
@@ -38,6 +61,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.messageText = document.getElementById('message-text');
     ui.gameUiEl = document.getElementById('game-ui');
     ui.rightUiEl = document.getElementById('right-ui');
+    ui.bottomUiEl = document.getElementById('bottom-ui');
     ui.editorPanelEl = document.getElementById('editor-panel');
     ui.paletteEl = document.getElementById('tile-palette');
     ui.confirmationModalEl = document.getElementById('confirmation-modal');
@@ -76,6 +100,9 @@ export const attachDomReferences = (store: GameStore) => {
     // Editor tools
     ui.undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
     ui.redoBtn = document.getElementById('redo-btn') as HTMLButtonElement | null;
+    
+    // Ajustar barras UI cuando cambia el tamaño de la ventana
+    window.addEventListener('resize', adjustUIBars);
 };
 
 const setBodyClass = (state: string) => {
@@ -90,7 +117,7 @@ export const showMenu = (store: GameStore) => {
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
     
-    const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, editorPanelEl, mobileControlsEl, retryBtn } = store.dom.ui;
+    const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
         
@@ -108,6 +135,9 @@ export const showMenu = (store: GameStore) => {
     }
     if (rightUiEl) {
         rightUiEl.style.display = 'none';
+    }
+    if (bottomUiEl) {
+        bottomUiEl.style.display = 'none';
     }
     if (editorPanelEl) {
         editorPanelEl.style.display = 'none';
@@ -277,7 +307,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
-    const { messageOverlay, gameUiEl, rightUiEl, editorPanelEl } = store.dom.ui;
+    const { messageOverlay, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
         // Limpiar el fondo del splash
@@ -293,6 +323,12 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         } else {
             rightUiEl.style.display = 'none';
         }
+    }
+    
+    // Ajustar el ancho de las barras UI al canvas
+    setTimeout(() => adjustUIBars(), 0);
+    if (bottomUiEl) {
+        bottomUiEl.style.display = 'flex';
     }
     if (levelOverride) {
         store.dom.ui.resumeEditorBtn?.classList.remove('hidden');
@@ -343,7 +379,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
 export const startEditor = (store: GameStore) => {
     store.appState = 'editing';
     setBodyClass('editing');
-    const { messageOverlay, gameUiEl, editorPanelEl, levelSelectorEl } = store.dom.ui;
+    const { messageOverlay, gameUiEl, bottomUiEl, editorPanelEl, levelSelectorEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
         // Limpiar el fondo del splash
@@ -352,13 +388,13 @@ export const startEditor = (store: GameStore) => {
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
     }
+    if (bottomUiEl) {
+        bottomUiEl.style.display = 'none';
+    }
     store.dom.ui.resumeEditorBtn?.classList.add('hidden');
     if (editorPanelEl) {
         editorPanelEl.style.display = 'flex';
     }
-    
-    // Inicializar controles de configuración de paredes aplastantes
-    setupCrushingWallControls(store);
     
     // Cargar el nivel actual del selector cuando se inicia el editor
     const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
@@ -682,6 +718,15 @@ const populatePalette = (store: GameStore) => {
                     const py = preview.height - 10;
                     ctx.fillRect(px, py, 60, 10);
                 }
+            } else if (key === 'H' || key === 'J') {
+                // Dibujo manual para paredes aplastantes con color configurado
+                const ctx = preview.getContext('2d');
+                if (ctx) {
+                    const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+                    ctx.clearRect(0, 0, preview.width, preview.height);
+                    ctx.fillStyle = config.color;
+                    ctx.fillRect(0, 0, preview.width, preview.height);
+                }
             } else {
                 drawPaletteEntry(store, key, preview, performance.now());
                 paletteEntries.push({ tile: key, canvas: preview });
@@ -702,16 +747,6 @@ const populatePalette = (store: GameStore) => {
             }
             tileDiv.classList.add('selected');
             store.selectedTile = key;
-            
-            // Mostrar/ocultar panel de configuración de paredes aplastantes
-            const configPanel = document.getElementById('crushing-wall-config');
-            if (configPanel) {
-                if (key === 'H' || key === 'J') {
-                    configPanel.classList.remove('hidden');
-                } else {
-                    configPanel.classList.add('hidden');
-                }
-            }
         });
         
         return tileDiv;
@@ -787,6 +822,89 @@ const populatePalette = (store: GameStore) => {
         });
         
         categorySection.appendChild(tilesGrid);
+        
+        // Si es la categoría de Paredes Aplastantes, agregar controles de configuración
+        if (category.name === 'Paredes Aplastantes') {
+            const configSection = document.createElement('div');
+            configSection.className = 'crushing-wall-controls';
+            configSection.style.cssText = 'padding: 10px; border-top: 1px solid #444; margin-top: 8px;';
+            
+            // Control de velocidad
+            const speedLabel = document.createElement('label');
+            speedLabel.style.cssText = 'display: block; font-size: 11px; margin-bottom: 4px; color: #ccc;';
+            speedLabel.textContent = 'Velocidad:';
+            
+            const speedContainer = document.createElement('div');
+            speedContainer.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 12px;';
+            
+            const speedInput = document.createElement('input');
+            speedInput.type = 'range';
+            speedInput.id = 'wall-speed-palette';
+            speedInput.min = '0.5';
+            speedInput.max = '5';
+            speedInput.step = '0.5';
+            speedInput.value = (store.crushingWallConfig?.speed || 1.5).toString();
+            speedInput.style.cssText = 'flex: 1;';
+            
+            const speedValue = document.createElement('span');
+            speedValue.id = 'wall-speed-value-palette';
+            speedValue.textContent = speedInput.value;
+            speedValue.style.cssText = 'font-size: 11px; color: #fff; min-width: 30px;';
+            
+            speedContainer.appendChild(speedInput);
+            speedContainer.appendChild(speedValue);
+            
+            // Control de color
+            const colorLabel = document.createElement('label');
+            colorLabel.style.cssText = 'display: block; font-size: 11px; margin-bottom: 4px; color: #ccc;';
+            colorLabel.textContent = 'Color:';
+            
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.id = 'wall-color-palette';
+            colorInput.value = store.crushingWallConfig?.color || '#cc0000';
+            colorInput.style.cssText = 'width: 100%; height: 32px; border: 2px solid #fff; cursor: pointer;';
+            
+            configSection.appendChild(speedLabel);
+            configSection.appendChild(speedContainer);
+            configSection.appendChild(colorLabel);
+            configSection.appendChild(colorInput);
+            
+            categorySection.appendChild(configSection);
+            
+            // Event listeners
+            speedInput.addEventListener('input', () => {
+                const value = parseFloat(speedInput.value);
+                if (!store.crushingWallConfig) {
+                    store.crushingWallConfig = { speed: 1.5, color: '#cc0000' };
+                }
+                store.crushingWallConfig.speed = value;
+                speedValue.textContent = value.toString();
+            });
+            
+            colorInput.addEventListener('input', () => {
+                if (!store.crushingWallConfig) {
+                    store.crushingWallConfig = { speed: 1.5, color: '#cc0000' };
+                }
+                store.crushingWallConfig.color = colorInput.value;
+                
+                // Actualizar preview de H y J en la paleta
+                const hPreview = paletteEl.querySelector('.tile-item[data-tile="H"] canvas') as HTMLCanvasElement;
+                const jPreview = paletteEl.querySelector('.tile-item[data-tile="J"] canvas') as HTMLCanvasElement;
+                
+                [hPreview, jPreview].forEach(canvas => {
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.fillStyle = colorInput.value;
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        }
+                    }
+                });
+            });
+        }
+        
         paletteEl.appendChild(categorySection);
     });
     
@@ -807,43 +925,6 @@ const syncLevelSelector = (store: GameStore) => {
     }
 };
 
-// Configurar controles de paredes aplastantes
-const setupCrushingWallControls = (store: GameStore) => {
-    const speedInput = document.getElementById('wall-speed') as HTMLInputElement;
-    const speedValue = document.getElementById('wall-speed-value');
-    const colorInput = document.getElementById('wall-color') as HTMLInputElement;
-    
-    if (!speedInput || !colorInput) return;
-    
-    // Cargar valores desde el store (o usar valores por defecto)
-    if (!store.crushingWallConfig) {
-        store.crushingWallConfig = {
-            speed: 1.5,
-            color: '#cc0000'
-        };
-    }
-    
-    speedInput.value = store.crushingWallConfig.speed.toString();
-    colorInput.value = store.crushingWallConfig.color;
-    if (speedValue) {
-        speedValue.textContent = store.crushingWallConfig.speed.toString();
-    }
-    
-    // Event listeners
-    speedInput.addEventListener('input', () => {
-        const value = parseFloat(speedInput.value);
-        store.crushingWallConfig = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
-        store.crushingWallConfig.speed = value;
-        if (speedValue) {
-            speedValue.textContent = value.toString();
-        }
-    });
-    
-    colorInput.addEventListener('input', () => {
-        store.crushingWallConfig = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
-        store.crushingWallConfig.color = colorInput.value;
-    });
-};
 
 export const setupUI = (store: GameStore) => {
     attachDomReferences(store);
