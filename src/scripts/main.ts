@@ -113,12 +113,26 @@ const updateGameState = () => {
     updateCamera();
 };
 
-const gameLoop = () => {
-    if (store.appState === 'playing') {
-        updateGameState();
-        renderGame(store);
-    } else if (store.appState === 'editing') {
-        renderEditor(store, drawEditor);
+// Control de FPS para 60 FPS consistente
+let lastFrameTime = performance.now();
+let deltaTime = 0;
+const targetFPS = 60;
+const frameTime = 1000 / targetFPS;
+
+const gameLoop = (currentTime: number) => {
+    // Calcular delta time
+    deltaTime = currentTime - lastFrameTime;
+    
+    // Limitar a 60 FPS mínimo (evitar updates demasiado rápidos)
+    if (deltaTime >= frameTime) {
+        lastFrameTime = currentTime - (deltaTime % frameTime);
+        
+        if (store.appState === 'playing') {
+            updateGameState();
+            renderGame(store);
+        } else if (store.appState === 'editing') {
+            renderEditor(store, drawEditor);
+        }
     }
 
     requestAnimationFrame(gameLoop);
@@ -137,7 +151,8 @@ const bootstrap = () => {
     preloadAssets(store, () => {
         loadLevel(store);
         // No llamar startGame automáticamente - esperar a que el usuario presione el botón
-        gameLoop();
+        lastFrameTime = performance.now();
+        requestAnimationFrame(gameLoop);
     });
 };
 

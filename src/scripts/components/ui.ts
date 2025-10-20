@@ -17,7 +17,16 @@ import {
 
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
-    store.dom.ctx = store.dom.canvas?.getContext('2d') ?? null;
+    // Optimizar contexto 2D para rendimiento
+    store.dom.ctx = store.dom.canvas?.getContext('2d', { 
+        alpha: false, // No necesitamos transparencia en el canvas principal
+        desynchronized: true // Permite rendering más rápido
+    }) ?? null;
+    
+    // Configurar propiedades de renderizado para mejor performance
+    if (store.dom.ctx) {
+        store.dom.ctx.imageSmoothingEnabled = false; // Pixel art sin suavizado
+    }
 
     const ui = store.dom.ui;
     ui.livesCountEl = document.getElementById('lives-count');

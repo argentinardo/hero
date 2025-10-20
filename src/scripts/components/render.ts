@@ -447,6 +447,13 @@ const drawGameWorld = (store: GameStore) => {
     const canvas = store.dom.canvas;
     if (!ctx || !canvas) return;
 
+    // Calcular área visible para culling
+    const viewLeft = store.cameraX;
+    const viewRight = store.cameraX + canvas.width;
+    const viewTop = store.cameraY;
+    const viewBottom = store.cameraY + canvas.height;
+    const margin = TILE_SIZE * 2; // Margen para objetos que están parcialmente fuera
+
     // Dibujar fondo con tiles, modo oscuro, o destello de explosión
     const backgroundSprite = store.sprites.background;
     
@@ -502,18 +509,41 @@ const drawGameWorld = (store: GameStore) => {
     ctx.save();
     ctx.translate(-store.cameraX, -store.cameraY);
 
-    // Dibujar luces primero
-    store.lights.forEach(light => drawLight(store, light));
-    // Dibujar plataformas
-    store.platforms.forEach(p => drawPlatform(store, p));
+    // Dibujar luces primero (solo las visibles)
+    store.lights.forEach(light => {
+        if (light.x + light.width >= viewLeft - margin && light.x <= viewRight + margin &&
+            light.y + light.height >= viewTop - margin && light.y <= viewBottom + margin) {
+            drawLight(store, light);
+        }
+    });
+    
+    // Dibujar plataformas (solo las visibles)
+    store.platforms.forEach(p => {
+        if (p.x + p.width >= viewLeft - margin && p.x <= viewRight + margin &&
+            p.y + p.height >= viewTop - margin && p.y <= viewBottom + margin) {
+            drawPlatform(store, p);
+        }
+    });
 
     if (store.isDark) {
         // Modo oscuro: paredes y personajes afectados en gris, no afectados en color normal
         
-        // Separar paredes afectadas y no afectadas
-        const affectedWalls = store.walls.filter(wall => wall.tile !== '3' && wall.affectedByDark);
-        const unaffectedWalls = store.walls.filter(wall => wall.tile !== '3' && !wall.affectedByDark);
-        const lavaWalls = store.walls.filter(wall => wall.tile === '3');
+        // Separar paredes afectadas y no afectadas (con culling)
+        const affectedWalls = store.walls.filter(wall => 
+            wall.tile !== '3' && wall.affectedByDark &&
+            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
+            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
+        );
+        const unaffectedWalls = store.walls.filter(wall => 
+            wall.tile !== '3' && !wall.affectedByDark &&
+            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
+            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
+        );
+        const lavaWalls = store.walls.filter(wall => 
+            wall.tile === '3' &&
+            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
+            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
+        );
 
         // Dibujar paredes no afectadas en color normal
         unaffectedWalls.forEach(wall => drawWall(store, wall));
@@ -529,9 +559,17 @@ const drawGameWorld = (store: GameStore) => {
         // Lava siempre visible
         lavaWalls.forEach(wall => drawWall(store, wall));
 
-        // Separar enemigos afectados y no afectados
-        const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
-        const otherEnemies = store.enemies.filter(enemy => enemy.type !== 'viper');
+        // Separar enemigos afectados y no afectados (con culling)
+        const vipers = store.enemies.filter(enemy => 
+            enemy.type === 'viper' &&
+            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
+            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
+        );
+        const otherEnemies = store.enemies.filter(enemy => 
+            enemy.type !== 'viper' &&
+            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
+            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
+        );
         
         const affectedVipers = vipers.filter(enemy => enemy.affectedByDark);
         const unaffectedVipers = vipers.filter(enemy => !enemy.affectedByDark);
@@ -620,12 +658,36 @@ const drawGameWorld = (store: GameStore) => {
             ctx.fillRect(0, maxY - gradientOffset, levelWidthForGradient, gradientHeight);
         }
     } else {
-        // Modo normal
-        store.walls.forEach(wall => drawWall(store, wall));
-        drawMiner(store);
+        // Modo normal - con culling optimizado
+        // Solo dibujar paredes visibles
+        store.walls.forEach(wall => {
+            if (wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
+                wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin) {
+                drawWall(store, wall);
+            }
+        });
+        
+        // Dibujar minero solo si está visible
+        if (store.miner) {
+            const m = store.miner;
+            if (m.x + m.width >= viewLeft - margin && m.x <= viewRight + margin &&
+                m.y + m.height >= viewTop - margin && m.y <= viewBottom + margin) {
+                drawMiner(store);
+            }
+        }
 
-        const vipers = store.enemies.filter(enemy => enemy.type === 'viper');
-        const otherEnemies = store.enemies.filter(enemy => enemy.type !== 'viper');
+        // Filtrar enemigos visibles
+        const vipers = store.enemies.filter(enemy => 
+            enemy.type === 'viper' &&
+            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
+            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
+        );
+        
+        const otherEnemies = store.enemies.filter(enemy => 
+            enemy.type !== 'viper' &&
+            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
+            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
+        );
 
         otherEnemies.forEach(enemy => drawEnemy(store, enemy));
 
@@ -636,13 +698,21 @@ const drawGameWorld = (store: GameStore) => {
         });
     }
 
-    store.fallingEntities.forEach(entity => drawFallingEntity(store, entity));
-    drawExplosions(store);
-    drawPlayer(store);
-    drawLasers(store);
-    drawBombs(store);
-    drawParticles(store);
-    drawFloatingScores(store);
+    // Dibujar entidades cayendo (solo las visibles)
+    store.fallingEntities.forEach(entity => {
+        if (entity.x + entity.width >= viewLeft - margin && entity.x <= viewRight + margin &&
+            entity.y + entity.height >= viewTop - margin && entity.y <= viewBottom + margin) {
+            drawFallingEntity(store, entity);
+        }
+    });
+    
+    drawExplosions(store); // Las explosiones ya están optimizadas
+    drawPlayer(store); // El jugador siempre está visible
+    drawLasers(store); // Los láseres son pocos, siempre dibujar
+    drawBombs(store); // Las bombas son pocas, siempre dibujar
+    drawParticles(store); // Las partículas son ligeras
+    drawFloatingScores(store); // Los scores son pocos
+    
     ctx.restore();
 };
 

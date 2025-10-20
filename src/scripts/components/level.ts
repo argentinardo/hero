@@ -316,12 +316,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                 leftWall.maxWidth = maxWidth;
                 rightWall.maxWidth = maxWidth;
                 
-                console.log(`🔧 Par de paredes en Y=${leftWall.y}:`);
-                console.log(`   Pared izquierda: ancho inicial ${leftWall.minWidth}px (${leftWall.minWidth / TILE_SIZE} tiles)`);
-                console.log(`   Pared derecha: ancho inicial ${rightWall.minWidth}px (${rightWall.minWidth / TILE_SIZE} tiles)`);
-                console.log(`   Gap: ${gapBetweenWalls}px (${gapBetweenWalls / TILE_SIZE} tiles)`);
-                console.log(`   Cada pared crecerá hasta: ${maxWidth}px (${maxWidth / TILE_SIZE} tiles)`);
-                console.log(`   Crecimiento: ${(gapBetweenWalls / 2)}px (${(gapBetweenWalls / 2) / TILE_SIZE} tiles)`);
+                // Configuración completada para el par de paredes aplastantes
             }
         }
     });
