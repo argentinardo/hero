@@ -29,6 +29,25 @@ const createWall = (x: number, y: number, tile: string): Wall => {
             currentFrame: Math.floor(Math.random() * 11),
         };
     }
+    if (tile === 'H' || tile === 'J') {
+        // Paredes aplastantes - escalan desde los bordes
+        const side = tile === 'H' ? 'left' : 'right';
+        const maxWidth = TILE_SIZE * 8; // Ancho máximo: 8 tiles
+        const minWidth = TILE_SIZE; // Ancho mínimo: 1 tile
+        return {
+            ...base,
+            type: 'crushing',
+            side,
+            minWidth,
+            maxWidth,
+            currentWidth: minWidth, // Empiezan cerradas (mínimo ancho)
+            width: minWidth,
+            originalX: x, // Guardar posición X original
+            animationTimer: 0,
+            animationSpeed: 1.5, // Velocidad de escalado en px por frame
+            isClosing: false, // Empiezan abriéndose
+        };
+    }
 
     return base;
 };
@@ -188,7 +207,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
             const tileX = colIndex * TILE_SIZE;
             const tileY = rowIndex * TILE_SIZE;
 
-            if (STATIC_TILES.has(tile)) {
+            if (STATIC_TILES.has(tile) || tile === 'H' || tile === 'J') {
                 const wall = createWall(tileX, tileY, tile);
                 store.walls.push(wall);
             }
@@ -249,17 +268,140 @@ export const parseLevel = (store: GameStore, map: string[]) => {
 };
 
 export const updateWalls = (store: GameStore) => {
+    // Primero actualizar animación de sprites (lava)
     store.walls.forEach(wall => {
         const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
-        if (!anim || wall.spriteTick === undefined || wall.currentFrame === undefined) {
-            return;
+        if (anim && wall.spriteTick !== undefined && wall.currentFrame !== undefined) {
+            wall.spriteTick += 1;
+            if (wall.spriteTick >= anim.speed) {
+                wall.spriteTick = 0;
+                wall.currentFrame = (wall.currentFrame + 1) % anim.frames;
+            }
         }
-        wall.spriteTick += 1;
-        if (wall.spriteTick < anim.speed) {
-            return;
+    });
+    
+    // Actualizar paredes aplastantes con detección de colisión
+    const crushingWalls = store.walls.filter(w => w.type === 'crushing');
+    
+    // Agrupar pares de paredes por Y (misma fila)
+    const wallPairs = new Map<number, Wall[]>();
+    crushingWalls.forEach(wall => {
+        const key = wall.y;
+        if (!wallPairs.has(key)) {
+            wallPairs.set(key, []);
         }
-        wall.spriteTick = 0;
-        wall.currentFrame = (wall.currentFrame + 1) % anim.frames;
+        wallPairs.get(key)!.push(wall);
+    });
+    
+    // Actualizar cada par de paredes
+    wallPairs.forEach(walls => {
+        if (walls.length === 2) {
+            const leftWall = walls.find(w => w.side === 'left');
+            const rightWall = walls.find(w => w.side === 'right');
+            
+            if (leftWall && rightWall && 
+                leftWall.currentWidth !== undefined && rightWall.currentWidth !== undefined &&
+                leftWall.minWidth !== undefined && rightWall.minWidth !== undefined &&
+                leftWall.maxWidth !== undefined && rightWall.maxWidth !== undefined &&
+                leftWall.originalX !== undefined && rightWall.originalX !== undefined) {
+                
+                const speed = leftWall.animationSpeed ?? 1.5;
+                
+                // Actualizar anchos primero
+                if (leftWall.isClosing) {
+                    // Cerrando: aumentar ancho
+                    leftWall.currentWidth += speed;
+                    rightWall.currentWidth += speed;
+                    
+                    // Limitar al máximo
+                    if (leftWall.currentWidth >= leftWall.maxWidth) {
+                        leftWall.currentWidth = leftWall.maxWidth;
+                        rightWall.currentWidth = rightWall.maxWidth;
+                    }
+                } else {
+                    // Abriendo: reducir ancho
+                    leftWall.currentWidth -= speed;
+                    rightWall.currentWidth -= speed;
+                    
+                    // Limitar al mínimo
+                    if (leftWall.currentWidth <= leftWall.minWidth) {
+                        leftWall.currentWidth = leftWall.minWidth;
+                        rightWall.currentWidth = rightWall.minWidth;
+                    }
+                }
+                
+                // Actualizar ancho (mantener width sincronizado con currentWidth)
+                leftWall.width = leftWall.currentWidth;
+                rightWall.width = rightWall.currentWidth;
+                
+                // Actualizar posiciones: 
+                // Pared izquierda crece hacia la derecha (x fijo)
+                leftWall.x = leftWall.originalX;
+                
+                // Pared derecha crece hacia la izquierda (x se mueve hacia la izquierda)
+                // El borde derecho original está en (originalX + TILE_SIZE)
+                // El nuevo x es: bordeDerechoOriginal - currentWidth
+                rightWall.x = (rightWall.originalX + TILE_SIZE) - rightWall.currentWidth;
+                
+                // Calcular bordes para detección de colisión
+                const leftWallRightEdge = leftWall.x + leftWall.width;
+                const rightWallLeftEdge = rightWall.x;
+                
+                // Detectar colisión (las paredes se tocan o cruzan)
+                const collision = leftWallRightEdge >= rightWallLeftEdge;
+                
+                if (collision && leftWall.isClosing) {
+                    // Se tocaron mientras cerraban, REBOTE: cambiar a abrir
+                    leftWall.isClosing = false;
+                    rightWall.isClosing = false;
+                    
+                    // Ajustar para que no se crucen
+                    const overlap = leftWallRightEdge - rightWallLeftEdge;
+                    leftWall.currentWidth -= overlap / 2;
+                    rightWall.currentWidth -= overlap / 2;
+                    
+                    // Recalcular posiciones después del ajuste
+                    leftWall.width = leftWall.currentWidth;
+                    leftWall.x = leftWall.originalX;
+                    rightWall.width = rightWall.currentWidth;
+                    rightWall.x = (rightWall.originalX + TILE_SIZE) - rightWall.currentWidth;
+                } else if (!collision && !leftWall.isClosing && leftWall.currentWidth <= leftWall.minWidth) {
+                    // Se abrieron completamente, REBOTE: cambiar a cerrar
+                    leftWall.isClosing = true;
+                    rightWall.isClosing = true;
+                }
+            }
+        } else {
+            // Pared solitaria (sin pareja), usar lógica simple
+            walls.forEach(wall => {
+                if (wall.currentWidth !== undefined && wall.minWidth !== undefined && 
+                    wall.maxWidth !== undefined && wall.originalX !== undefined) {
+                    
+                    const speed = wall.animationSpeed ?? 1.5;
+                    
+                    if (wall.isClosing) {
+                        wall.currentWidth += speed;
+                        if (wall.currentWidth >= wall.maxWidth) {
+                            wall.currentWidth = wall.maxWidth;
+                            wall.isClosing = false;
+                        }
+                    } else {
+                        wall.currentWidth -= speed;
+                        if (wall.currentWidth <= wall.minWidth) {
+                            wall.currentWidth = wall.minWidth;
+                            wall.isClosing = true;
+                        }
+                    }
+                    
+                    wall.width = wall.currentWidth;
+                    if (wall.side === 'left') {
+                        wall.x = wall.originalX;
+                    } else {
+                        wall.x = (wall.originalX + TILE_SIZE) - wall.currentWidth;
+                    }
+                }
+            });
+        }
     });
 };
 

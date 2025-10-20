@@ -50,6 +50,61 @@ const drawWall = (store: GameStore, wall: Wall) => {
     if (wall.isDamaged) {
         ctx.globalAlpha = 0.5;
     }
+    
+    // Paredes aplastantes: renderizado especial
+    if (wall.type === 'crushing') {
+        const baseColor = wall.side === 'left' ? '#cc0000' : '#990000';
+        const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y);
+        
+        if (wall.side === 'left') {
+            gradient.addColorStop(0, '#990000');
+            gradient.addColorStop(0.5, baseColor);
+            gradient.addColorStop(1, '#ff4444');
+        } else {
+            gradient.addColorStop(0, '#ff4444');
+            gradient.addColorStop(0.5, baseColor);
+            gradient.addColorStop(1, '#990000');
+        }
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        
+        // Líneas de advertencia
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(wall.x + 2, wall.y + 2, wall.width - 4, wall.height - 4);
+        ctx.setLineDash([]);
+        
+        // Flechas indicando dirección del escalado
+        ctx.fillStyle = '#ffffff';
+        const centerY = wall.y + wall.height / 2;
+        const arrowSize = 8;
+        const arrowSpacing = 30;
+        const numArrows = Math.floor(wall.width / arrowSpacing);
+        
+        for (let i = 0; i < numArrows; i++) {
+            const arrowX = wall.x + (i + 0.5) * arrowSpacing;
+            
+            ctx.beginPath();
+            if (wall.side === 'left') {
+                // Flecha hacia la derecha (crece hacia derecha)
+                ctx.moveTo(arrowX + arrowSize, centerY);
+                ctx.lineTo(arrowX - arrowSize / 2, centerY - arrowSize / 2);
+                ctx.lineTo(arrowX - arrowSize / 2, centerY + arrowSize / 2);
+            } else {
+                // Flecha hacia la izquierda (crece hacia izquierda)
+                ctx.moveTo(arrowX - arrowSize, centerY);
+                ctx.lineTo(arrowX + arrowSize / 2, centerY - arrowSize / 2);
+                ctx.lineTo(arrowX + arrowSize / 2, centerY + arrowSize / 2);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        ctx.restore();
+        return;
+    }
 
 	// Aplicar clip de esquinas redondeadas por esquina según vecinos vacíos (excepto lava y columnas)
 	if (store.levelDesigns && store.levelDesigns[store.currentLevelIndex]) {
@@ -320,7 +375,7 @@ const drawPlayer = (store: GameStore) => {
 const drawLasers = (store: GameStore) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
-    ctx.fillStyle = 'yellow';
+    ctx.fillStyle = 'red';
     store.lasers.forEach(laser => {
         ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
     });
@@ -375,7 +430,58 @@ const drawFloatingScores = (store: GameStore) => {
 
 const drawHud = (store: GameStore) => {
     const { livesCountEl, scoreCountEl, levelCountEl, energyBarEl } = store.dom.ui;
-    if (livesCountEl) livesCountEl.textContent = `${store.lives}`;
+    
+    // Dibujar vidas como miniaturas
+    if (livesCountEl) {
+        livesCountEl.innerHTML = '';
+        const playerSprite = store.sprites.P_die;
+        for (let i = 0; i < store.lives; i++) {
+            if (playerSprite && playerSprite.complete) {
+                const miniCanvas = document.createElement('canvas');
+                miniCanvas.width = 12;
+                miniCanvas.height = 24;
+                miniCanvas.style.imageRendering = 'pixelated';
+                const miniCtx = miniCanvas.getContext('2d');
+                if (miniCtx) {
+                    miniCtx.drawImage(playerSprite, 0, 0, playerSprite.width, playerSprite.height, 0, 0, 12, 24);
+                }
+                livesCountEl.appendChild(miniCanvas);
+            } else {
+                // Fallback: usar texto
+                const span = document.createElement('span');
+                span.textContent = '♥';
+                span.style.color = '#ff0000';
+                livesCountEl.appendChild(span);
+            }
+        }
+    }
+    
+    // Dibujar bombas TNT como miniaturas
+    const bombsCountEl = document.getElementById('bombs-count');
+    if (bombsCountEl) {
+        bombsCountEl.innerHTML = '';
+        const bombSprite = store.sprites.bomb;
+        for (let i = 0; i < store.bombsRemaining; i++) {
+            if (bombSprite && bombSprite.complete) {
+                const miniCanvas = document.createElement('canvas');
+                miniCanvas.width = 16;
+                miniCanvas.height = 16;
+                miniCanvas.style.imageRendering = 'pixelated';
+                const miniCtx = miniCanvas.getContext('2d');
+                if (miniCtx) {
+                    const frameWidth = bombSprite.width / ANIMATION_DATA.bomb.frames;
+                    miniCtx.drawImage(bombSprite, 0, 0, frameWidth, bombSprite.height, 0, 0, 16, 16);
+                }
+                bombsCountEl.appendChild(miniCanvas);
+            } else {
+                // Fallback: usar emoji
+                const span = document.createElement('span');
+                span.textContent = '💣';
+                bombsCountEl.appendChild(span);
+            }
+        }
+    }
+    
     if (scoreCountEl) scoreCountEl.textContent = `${store.score}`;
     if (levelCountEl) levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     if (energyBarEl) energyBarEl.style.width = `${(store.energy / MAX_ENERGY) * 100}%`;
@@ -577,8 +683,8 @@ const drawGameWorld = (store: GameStore) => {
 
     store.fallingEntities.forEach(entity => drawFallingEntity(store, entity));
     drawExplosions(store);
-    drawLasers(store);
     drawPlayer(store);
+    drawLasers(store);
     drawBombs(store);
     drawParticles(store);
     drawFloatingScores(store);

@@ -76,13 +76,27 @@ export interface Enemy extends GameObject {
 }
 
 export interface Wall extends GameObject {
-    type: 'solid' | 'destructible' | 'destructible_v' | 'lava';
+    type: 'solid' | 'destructible' | 'destructible_v' | 'lava' | 'crushing';
     tile: string;
     spriteTick?: number;
     currentFrame?: number;
     health?: number;
     isDamaged?: boolean;
     affectedByDark?: boolean;
+    // Para paredes aplastantes
+    side?: 'left' | 'right';
+    minWidth?: number;
+    maxWidth?: number;
+    currentWidth?: number;
+    originalX?: number;
+    initialX?: number;
+    animationTimer?: number;
+    animationSpeed?: number;
+    isClosing?: boolean;
+    partnerId?: string;
+    state?: 'opening' | 'closing' | 'open' | 'closed' | 'waiting' | 'moving_in' | 'moving_out';
+    waitTimer?: number;
+    speed?: number;
 }
 
 export interface Platform extends GameObject {

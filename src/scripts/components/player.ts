@@ -11,6 +11,12 @@ const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
         playerDie(store);
         return;
     }
+    
+    // Paredes aplastantes: siempre matan al jugador
+    if (wall.type === 'crushing') {
+        playerDie(store);
+        return;
+    }
 
     const overlapX = player.hitbox.x + player.hitbox.width / 2 - (wall.x + TILE_SIZE / 2);
     const overlapY = player.hitbox.y + player.hitbox.height / 2 - (wall.y + TILE_SIZE / 2);

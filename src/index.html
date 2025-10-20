@@ -14,11 +14,18 @@
     <div id="main-container" class="flex flex-col items-center justify-center">
         <!-- Barra de Interfaz de Usuario (UI) del Juego -->
         <div id="game-ui" class="ui-bar w-full max-w-4xl text-sm flex items-center justify-between gap-4">
-            <span>LIVES: <span id="lives-count">3</span></span>
+            <div class="flex items-center gap-2">
+                <span>LIVES:</span>
+                <div id="lives-count" class="flex gap-1"></div>
+            </div>
             <span>LEVEL: <span id="level-count">1</span></span>
             <div class="flex items-center gap-2">
                 <span>ENERGY:</span>
                 <div class="w-40 h-5 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400"></div></div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span>TNT:</span>
+                <div id="bombs-count" class="flex gap-1"></div>
             </div>
             <span>SCORE: <span id="score-count">0</span></span>
             <div class="hidden md:flex items-center gap-2">

@@ -718,7 +718,9 @@ const populatePalette = (store: GameStore) => {
                 { key: 'C', name: 'Columna' },
                 { key: '3', name: 'Lava' },
                 { key: 'L', name: 'Luz' },
-                { key: 'A', name: 'Plataforma' }
+                { key: 'A', name: 'Plataforma' },
+                { key: 'H', name: 'Pared ←' },
+                { key: 'J', name: 'Pared →' }
             ]
         },
         {
