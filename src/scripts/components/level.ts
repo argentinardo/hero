@@ -4,7 +4,7 @@ import { resetPlayer } from './player';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { playSuccessLevelSound, stopAllSfxExceptSuccessLevel, playBackgroundMusic } from './audio';
 
-const createWall = (x: number, y: number, tile: string): Wall => {
+const createWall = (x: number, y: number, tile: string, store: GameStore): Wall => {
     const base: Wall = {
         x,
         y,
@@ -29,25 +29,8 @@ const createWall = (x: number, y: number, tile: string): Wall => {
             currentFrame: Math.floor(Math.random() * 11),
         };
     }
-    if (tile === 'H' || tile === 'J') {
-        // Paredes aplastantes - escalan desde los bordes
-        const side = tile === 'H' ? 'left' : 'right';
-        const maxWidth = TILE_SIZE * 8; // Ancho máximo: 8 tiles
-        const minWidth = TILE_SIZE; // Ancho mínimo: 1 tile
-        return {
-            ...base,
-            type: 'crushing',
-            side,
-            minWidth,
-            maxWidth,
-            currentWidth: minWidth, // Empiezan cerradas (mínimo ancho)
-            width: minWidth,
-            originalX: x, // Guardar posición X original
-            animationTimer: 0,
-            animationSpeed: 1.5, // Velocidad de escalado en px por frame
-            isClosing: false, // Empiezan abriéndose
-        };
-    }
+    // Las paredes aplastantes (H y J) se procesan directamente en parseLevel
+    // para agrupar tiles consecutivos en una sola pared
 
     return base;
 };
@@ -200,15 +183,55 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     const levelPixelWidth = map[0].length * TILE_SIZE;
 
     const STATIC_TILES = new Set(['1', '2', '3', 'C']);
+    
+    // Procesar paredes aplastantes: agrupar H's y J's consecutivos
+    const processedCrushingTiles = new Set<string>(); // Para marcar tiles ya procesados
 
     map.forEach((row, rowIndex) => {
         for (let colIndex = 0; colIndex < row.length; colIndex++) {
             const tile = row[colIndex];
             const tileX = colIndex * TILE_SIZE;
             const tileY = rowIndex * TILE_SIZE;
+            const tileKey = `${rowIndex},${colIndex}`;
 
-            if (STATIC_TILES.has(tile) || tile === 'H' || tile === 'J') {
-                const wall = createWall(tileX, tileY, tile);
+            // Procesar paredes aplastantes (H y J)
+            if ((tile === 'H' || tile === 'J') && !processedCrushingTiles.has(tileKey)) {
+                // Encontrar todos los tiles consecutivos del mismo tipo
+                let endColIndex = colIndex;
+                while (endColIndex < row.length && row[endColIndex] === tile) {
+                    processedCrushingTiles.add(`${rowIndex},${endColIndex}`);
+                    endColIndex++;
+                }
+                
+                // Crear una sola pared que abarca todos los tiles consecutivos
+                const groupWidth = (endColIndex - colIndex) * TILE_SIZE;
+                const side = tile === 'H' ? 'left' : 'right';
+                const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+                
+                const crushingWall: Wall = {
+                    x: tileX,
+                    y: tileY,
+                    width: groupWidth,
+                    height: TILE_SIZE,
+                    type: 'crushing',
+                    tile,
+                    affectedByDark: false,
+                    side,
+                    minWidth: groupWidth, // El ancho inicial del grupo
+                    maxWidth: groupWidth * 2, // Temporal, se calculará después
+                    currentWidth: groupWidth,
+                    originalX: tileX,
+                    animationSpeed: config.speed,
+                    isClosing: true,
+                    color: config.color
+                };
+                
+                store.walls.push(crushingWall);
+                continue;
+            }
+
+            if (STATIC_TILES.has(tile)) {
+                const wall = createWall(tileX, tileY, tile, store);
                 store.walls.push(wall);
             }
 
@@ -225,11 +248,11 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                 }
 
                 if (tile === 'V') {
-                    store.walls.push(createWall(tileX, tileY, '1'));
+                    store.walls.push(createWall(tileX, tileY, '1', store));
                 }
                 // Los tentáculos viven en la lava, así que añadimos lava debajo
                 if (tile === 'T') {
-                    store.walls.push(createWall(tileX, tileY, '3'));
+                    store.walls.push(createWall(tileX, tileY, '3', store));
                 }
                 continue;
             }
@@ -255,6 +278,50 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                 const px = tileX + (TILE_SIZE - width) / 2;
                 const py = tileY + TILE_SIZE - height; // fondo del tile
                 store.platforms.push({ x: px, y: py, width, height, vx: 0, isActive: false });
+            }
+        }
+    });
+
+    // Configurar maxWidth de paredes aplastantes basado en la distancia entre pares
+    const crushingWalls = store.walls.filter(w => w.type === 'crushing');
+    const wallPairsByY = new Map<number, Wall[]>();
+    
+    crushingWalls.forEach(wall => {
+        const key = wall.y;
+        if (!wallPairsByY.has(key)) {
+            wallPairsByY.set(key, []);
+        }
+        wallPairsByY.get(key)!.push(wall);
+    });
+    
+    wallPairsByY.forEach(walls => {
+        if (walls.length === 2) {
+            const leftWall = walls.find(w => w.side === 'left');
+            const rightWall = walls.find(w => w.side === 'right');
+            
+            if (leftWall && rightWall && 
+                leftWall.originalX !== undefined && rightWall.originalX !== undefined &&
+                leftWall.minWidth !== undefined && rightWall.minWidth !== undefined) {
+                
+                // El borde derecho de la pared izquierda (última H)
+                const leftWallRightEdge = leftWall.originalX + leftWall.minWidth;
+                // El borde izquierdo de la pared derecha (primera J)
+                const rightWallLeftEdge = rightWall.originalX;
+                // Gap entre las paredes
+                const gapBetweenWalls = rightWallLeftEdge - leftWallRightEdge;
+                
+                // Cada pared crece hasta la mitad del gap
+                const maxWidth = leftWall.minWidth + (gapBetweenWalls / 2);
+                
+                leftWall.maxWidth = maxWidth;
+                rightWall.maxWidth = maxWidth;
+                
+                console.log(`🔧 Par de paredes en Y=${leftWall.y}:`);
+                console.log(`   Pared izquierda: ancho inicial ${leftWall.minWidth}px (${leftWall.minWidth / TILE_SIZE} tiles)`);
+                console.log(`   Pared derecha: ancho inicial ${rightWall.minWidth}px (${rightWall.minWidth / TILE_SIZE} tiles)`);
+                console.log(`   Gap: ${gapBetweenWalls}px (${gapBetweenWalls / TILE_SIZE} tiles)`);
+                console.log(`   Cada pared crecerá hasta: ${maxWidth}px (${maxWidth / TILE_SIZE} tiles)`);
+                console.log(`   Crecimiento: ${(gapBetweenWalls / 2)}px (${(gapBetweenWalls / 2) / TILE_SIZE} tiles)`);
             }
         }
     });
@@ -294,7 +361,7 @@ export const updateWalls = (store: GameStore) => {
     });
     
     // Actualizar cada par de paredes
-    wallPairs.forEach(walls => {
+    wallPairs.forEach((walls, y) => {
         if (walls.length === 2) {
             const leftWall = walls.find(w => w.side === 'left');
             const rightWall = walls.find(w => w.side === 'right');
@@ -307,69 +374,46 @@ export const updateWalls = (store: GameStore) => {
                 
                 const speed = leftWall.animationSpeed ?? 1.5;
                 
-                // Actualizar anchos primero
+                // Actualizar anchos según la dirección
                 if (leftWall.isClosing) {
-                    // Cerrando: aumentar ancho
+                    // Cerrando: aumentar ancho hacia el centro
                     leftWall.currentWidth += speed;
                     rightWall.currentWidth += speed;
                     
-                    // Limitar al máximo
+                    // Verificar si alcanzaron el máximo (se tocan)
                     if (leftWall.currentWidth >= leftWall.maxWidth) {
                         leftWall.currentWidth = leftWall.maxWidth;
                         rightWall.currentWidth = rightWall.maxWidth;
+                        // REBOTE: cambiar dirección
+                        leftWall.isClosing = false;
+                        rightWall.isClosing = false;
                     }
                 } else {
-                    // Abriendo: reducir ancho
+                    // Abriendo: reducir ancho, volver al tamaño original
                     leftWall.currentWidth -= speed;
                     rightWall.currentWidth -= speed;
                     
-                    // Limitar al mínimo
+                    // Verificar si volvieron al mínimo
                     if (leftWall.currentWidth <= leftWall.minWidth) {
                         leftWall.currentWidth = leftWall.minWidth;
                         rightWall.currentWidth = rightWall.minWidth;
+                        // REBOTE: cambiar dirección
+                        leftWall.isClosing = true;
+                        rightWall.isClosing = true;
                     }
                 }
                 
-                // Actualizar ancho (mantener width sincronizado con currentWidth)
+                // Actualizar width (mantener sincronizado con currentWidth)
                 leftWall.width = leftWall.currentWidth;
                 rightWall.width = rightWall.currentWidth;
                 
                 // Actualizar posiciones: 
-                // Pared izquierda crece hacia la derecha (x fijo)
+                // Pared izquierda (H): x fijo en originalX, crece hacia la derecha
                 leftWall.x = leftWall.originalX;
                 
-                // Pared derecha crece hacia la izquierda (x se mueve hacia la izquierda)
-                // El borde derecho original está en (originalX + TILE_SIZE)
-                // El nuevo x es: bordeDerechoOriginal - currentWidth
-                rightWall.x = (rightWall.originalX + TILE_SIZE) - rightWall.currentWidth;
-                
-                // Calcular bordes para detección de colisión
-                const leftWallRightEdge = leftWall.x + leftWall.width;
-                const rightWallLeftEdge = rightWall.x;
-                
-                // Detectar colisión (las paredes se tocan o cruzan)
-                const collision = leftWallRightEdge >= rightWallLeftEdge;
-                
-                if (collision && leftWall.isClosing) {
-                    // Se tocaron mientras cerraban, REBOTE: cambiar a abrir
-                    leftWall.isClosing = false;
-                    rightWall.isClosing = false;
-                    
-                    // Ajustar para que no se crucen
-                    const overlap = leftWallRightEdge - rightWallLeftEdge;
-                    leftWall.currentWidth -= overlap / 2;
-                    rightWall.currentWidth -= overlap / 2;
-                    
-                    // Recalcular posiciones después del ajuste
-                    leftWall.width = leftWall.currentWidth;
-                    leftWall.x = leftWall.originalX;
-                    rightWall.width = rightWall.currentWidth;
-                    rightWall.x = (rightWall.originalX + TILE_SIZE) - rightWall.currentWidth;
-                } else if (!collision && !leftWall.isClosing && leftWall.currentWidth <= leftWall.minWidth) {
-                    // Se abrieron completamente, REBOTE: cambiar a cerrar
-                    leftWall.isClosing = true;
-                    rightWall.isClosing = true;
-                }
+                // Pared derecha (J): borde derecho fijo, crece hacia la izquierda
+                // El borde derecho original está en (originalX + minWidth)
+                rightWall.x = (rightWall.originalX + rightWall.minWidth) - rightWall.currentWidth;
             }
         } else {
             // Pared solitaria (sin pareja), usar lógica simple
@@ -397,7 +441,8 @@ export const updateWalls = (store: GameStore) => {
                     if (wall.side === 'left') {
                         wall.x = wall.originalX;
                     } else {
-                        wall.x = (wall.originalX + TILE_SIZE) - wall.currentWidth;
+                        // Pared derecha: borde derecho fijo en (originalX + minWidth)
+                        wall.x = (wall.originalX + wall.minWidth) - wall.currentWidth;
                     }
                 }
             });

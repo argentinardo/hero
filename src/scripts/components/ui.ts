@@ -348,6 +348,9 @@ export const startEditor = (store: GameStore) => {
         editorPanelEl.style.display = 'flex';
     }
     
+    // Inicializar controles de configuración de paredes aplastantes
+    setupCrushingWallControls(store);
+    
     // Cargar el nivel actual del selector cuando se inicia el editor
     const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
     store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[currentIndex] ?? []));
@@ -690,6 +693,16 @@ const populatePalette = (store: GameStore) => {
             }
             tileDiv.classList.add('selected');
             store.selectedTile = key;
+            
+            // Mostrar/ocultar panel de configuración de paredes aplastantes
+            const configPanel = document.getElementById('crushing-wall-config');
+            if (configPanel) {
+                if (key === 'H' || key === 'J') {
+                    configPanel.classList.remove('hidden');
+                } else {
+                    configPanel.classList.add('hidden');
+                }
+            }
         });
         
         return tileDiv;
@@ -718,7 +731,12 @@ const populatePalette = (store: GameStore) => {
                 { key: 'C', name: 'Columna' },
                 { key: '3', name: 'Lava' },
                 { key: 'L', name: 'Luz' },
-                { key: 'A', name: 'Plataforma' },
+                { key: 'A', name: 'Plataforma' }
+            ]
+        },
+        {
+            name: 'Paredes Aplastantes',
+            tiles: [
                 { key: 'H', name: 'Pared ←' },
                 { key: 'J', name: 'Pared →' }
             ]
@@ -778,6 +796,44 @@ const syncLevelSelector = (store: GameStore) => {
         option.textContent = `Nivel ${i + 1}`;
         levelSelectorEl.appendChild(option);
     }
+};
+
+// Configurar controles de paredes aplastantes
+const setupCrushingWallControls = (store: GameStore) => {
+    const speedInput = document.getElementById('wall-speed') as HTMLInputElement;
+    const speedValue = document.getElementById('wall-speed-value');
+    const colorInput = document.getElementById('wall-color') as HTMLInputElement;
+    
+    if (!speedInput || !colorInput) return;
+    
+    // Cargar valores desde el store (o usar valores por defecto)
+    if (!store.crushingWallConfig) {
+        store.crushingWallConfig = {
+            speed: 1.5,
+            color: '#cc0000'
+        };
+    }
+    
+    speedInput.value = store.crushingWallConfig.speed.toString();
+    colorInput.value = store.crushingWallConfig.color;
+    if (speedValue) {
+        speedValue.textContent = store.crushingWallConfig.speed.toString();
+    }
+    
+    // Event listeners
+    speedInput.addEventListener('input', () => {
+        const value = parseFloat(speedInput.value);
+        store.crushingWallConfig = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+        store.crushingWallConfig.speed = value;
+        if (speedValue) {
+            speedValue.textContent = value.toString();
+        }
+    });
+    
+    colorInput.addEventListener('input', () => {
+        store.crushingWallConfig = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
+        store.crushingWallConfig.color = colorInput.value;
+    });
 };
 
 export const setupUI = (store: GameStore) => {

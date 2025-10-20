@@ -51,56 +51,11 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.globalAlpha = 0.5;
     }
     
-    // Paredes aplastantes: renderizado especial
+    // Paredes aplastantes: renderizado liso
     if (wall.type === 'crushing') {
-        const baseColor = wall.side === 'left' ? '#cc0000' : '#990000';
-        const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y);
-        
-        if (wall.side === 'left') {
-            gradient.addColorStop(0, '#990000');
-            gradient.addColorStop(0.5, baseColor);
-            gradient.addColorStop(1, '#ff4444');
-        } else {
-            gradient.addColorStop(0, '#ff4444');
-            gradient.addColorStop(0.5, baseColor);
-            gradient.addColorStop(1, '#990000');
-        }
-        
-        ctx.fillStyle = gradient;
+        const wallColor = wall.color || '#cc0000';
+        ctx.fillStyle = wallColor;
         ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-        
-        // Líneas de advertencia
-        ctx.strokeStyle = '#ffff00';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 3]);
-        ctx.strokeRect(wall.x + 2, wall.y + 2, wall.width - 4, wall.height - 4);
-        ctx.setLineDash([]);
-        
-        // Flechas indicando dirección del escalado
-        ctx.fillStyle = '#ffffff';
-        const centerY = wall.y + wall.height / 2;
-        const arrowSize = 8;
-        const arrowSpacing = 30;
-        const numArrows = Math.floor(wall.width / arrowSpacing);
-        
-        for (let i = 0; i < numArrows; i++) {
-            const arrowX = wall.x + (i + 0.5) * arrowSpacing;
-            
-            ctx.beginPath();
-            if (wall.side === 'left') {
-                // Flecha hacia la derecha (crece hacia derecha)
-                ctx.moveTo(arrowX + arrowSize, centerY);
-                ctx.lineTo(arrowX - arrowSize / 2, centerY - arrowSize / 2);
-                ctx.lineTo(arrowX - arrowSize / 2, centerY + arrowSize / 2);
-            } else {
-                // Flecha hacia la izquierda (crece hacia izquierda)
-                ctx.moveTo(arrowX - arrowSize, centerY);
-                ctx.lineTo(arrowX + arrowSize / 2, centerY - arrowSize / 2);
-                ctx.lineTo(arrowX + arrowSize / 2, centerY + arrowSize / 2);
-            }
-            ctx.closePath();
-            ctx.fill();
-        }
         
         ctx.restore();
         return;

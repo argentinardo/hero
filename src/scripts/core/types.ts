@@ -97,6 +97,7 @@ export interface Wall extends GameObject {
     state?: 'opening' | 'closing' | 'open' | 'closed' | 'waiting' | 'moving_in' | 'moving_out';
     waitTimer?: number;
     speed?: number;
+    color?: string;
 }
 
 export interface Platform extends GameObject {
@@ -259,6 +260,13 @@ export interface GameStore {
     currentLevelIndex: number;
     cameraY: number;
     cameraX: number;
+    
+    // Configuración de paredes aplastantes (editor)
+    crushingWallConfig?: {
+        speed: number;
+        color: string;
+    };
+    
     player: Player;
     walls: Wall[];
     enemies: Enemy[];
