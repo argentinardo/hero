@@ -12,13 +12,13 @@
 <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
 
     <div id="main-container">
-        <!-- Barra de UI con acciones rápidas (móvil) -->
-        <div id="right-ui" class="text-sm flex items-center justify-between gap-4" style="display: none;">
-            <div></div>
-            <div class="flex gap-2">
-                <button id="menu-btn" class="bg-gray-700 hover:bg-gray-800 px-3 py-1 border-2 border-white">Menú</button>
-                <button id="restart-btn" class="bg-yellow-700 hover:bg-yellow-800 px-3 py-1 border-2 border-white">Reiniciar</button>
-            </div>
+        <!-- Barra de UI con acciones rápidas (móvil) - Ahora con hamburguesa -->
+        <div id="right-ui" class="text-sm flex items-center justify-end gap-4" style="display: none;">
+            <button id="hamburger-btn-mobile" class="hamburger-btn-mobile" aria-label="Menú">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
 
         <div>
@@ -28,9 +28,19 @@
                 <div id="game-ui" class="text-base" style="display: none;">
                     <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
                     <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
-                    <button id="menu-btn-desktop" class="hidden md:block bg-gray-700 hover:bg-gray-800 px-4 py-2 border-2 border-white text-sm">Menú</button>
-                    <button id="restart-btn-desktop" class="hidden md:block bg-yellow-700 hover:bg-yellow-800 px-4 py-2 border-2 border-white text-sm">Reiniciar</button>
-                    <button id="resume-editor-btn" class="hidden bg-indigo-600 hover:bg-indigo-700 px-4 py-2 border-2 border-white text-sm">Volver al Editor</button>
+                    <button id="hamburger-btn" class="hamburger-btn" aria-label="Menú">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+                
+                <!-- Menú Hamburguesa Desplegable -->
+                <div id="hamburger-menu" class="hamburger-menu hidden">
+                    <button id="pause-resume-btn" class="menu-item">⏸️ Pausar</button>
+                    <button id="restart-game-btn" class="menu-item">🔄 Reiniciar</button>
+                    <button id="back-to-menu-btn-game" class="menu-item">🏠 Volver al Menú</button>
+                    <button id="resume-editor-btn-menu" class="menu-item hidden">📝 Volver al Editor</button>
                 </div>
                 
                 <!-- Canvas del Juego / Editor -->

@@ -481,6 +481,10 @@ export const loadLevel = (store: GameStore) => {
         return;
     }
 
+    // Resetear la secuencia de fin de nivel
+    store.levelEndSequence = null;
+    store.levelEndTimer = 0;
+
     parseLevel(store, store.levelDesigns[store.currentLevelIndex]);
     // La cámara ya se posiciona correctamente en parseLevel centrada en el jugador
     if (store.dom.ui.levelCountEl) {
@@ -496,9 +500,8 @@ export const awardMinerRescue = (store: GameStore) => {
         return;
     }
     
-    // Detener todos los otros sonidos y reproducir el de éxito
+    // Detener todos los sonidos (el sonido de éxito se reproducirá al final)
     stopAllSfxExceptSuccessLevel();
-    playSuccessLevelSound();
     
     store.score += 1000;
     store.floatingScores.push({
@@ -521,6 +524,10 @@ export const awardMinerRescue = (store: GameStore) => {
     store.player.isFrozen = true;
     store.player.vx = 0;
     store.player.vy = 0;
+    
+    // Iniciar la secuencia de fin de nivel
+    store.levelEndSequence = 'energy';
+    store.levelEndTimer = 0;
 };
 
 

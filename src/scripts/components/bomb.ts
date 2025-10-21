@@ -121,6 +121,9 @@ const destroyEnemiesInRadius = (store: GameStore, centerX: number, centerY: numb
 };
 
 export const updateBombs = (store: GameStore) => {
+    // Si está pausado, no actualizar bombas
+    if (store.isPaused) return;
+    
     for (let i = store.bombs.length - 1; i >= 0; i--) {
         const bomb = store.bombs[i];
         bomb.fuse -= 1;
@@ -161,6 +164,9 @@ export const updateBombs = (store: GameStore) => {
 };
 
 export const updateExplosions = (store: GameStore) => {
+    // Si está pausado, no actualizar explosiones
+    if (store.isPaused) return;
+    
     for (let i = store.explosions.length - 1; i >= 0; i--) {
         const explosion = store.explosions[i];
         explosion.timer -= 1;

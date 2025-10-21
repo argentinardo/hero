@@ -668,20 +668,35 @@ const drawGameWorld = (store: GameStore) => {
                 if (store.miner.y < minY) minY = store.miner.y;
                 if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
             }
+            
+            // Crear un único gradiente combinado para la sombra superior e inferior
             const gradientHeight = 240;
             const gradientOffset = 65;
-            const topGradient = ctx.createLinearGradient(0, minY - gradientHeight - gradientOffset, 0, minY - gradientOffset);
-            topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-            topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = topGradient;
             const levelColsForGradient = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
             const levelWidthForGradient = levelColsForGradient * TILE_SIZE;
-            ctx.fillRect(0, minY - gradientHeight - gradientOffset, levelWidthForGradient, gradientHeight);
-            const bottomGradient = ctx.createLinearGradient(0, maxY - gradientOffset, 0, maxY + gradientHeight - gradientOffset);
-            bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-            bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = bottomGradient;
-            ctx.fillRect(0, maxY - gradientOffset, levelWidthForGradient, gradientHeight);
+            
+            // Calcular los límites totales del área de gradiente
+            const topStart = minY - gradientHeight - gradientOffset;
+            const topEnd = minY - gradientOffset;
+            const bottomStart = maxY - gradientOffset;
+            const bottomEnd = maxY + gradientHeight - gradientOffset;
+            
+            // Crear un gradiente vertical unificado que cubre toda el área
+            const unifiedGradient = ctx.createLinearGradient(0, topStart, 0, bottomEnd);
+            const totalHeight = bottomEnd - topStart;
+            const topGradientRatio = gradientHeight / totalHeight;
+            const centerStart = (topEnd - topStart) / totalHeight;
+            const centerEnd = (bottomStart - topStart) / totalHeight;
+            
+            // Agregar color stops para el gradiente unificado
+            unifiedGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Negro completo arriba
+            unifiedGradient.addColorStop(centerStart, 'rgba(0, 0, 0, 0)'); // Transparente al final del gradiente superior
+            unifiedGradient.addColorStop(centerEnd, 'rgba(0, 0, 0, 1)'); // Negro completo al inicio del gradiente inferior
+            unifiedGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparente abajo
+            
+            // Aplicar el gradiente unificado en una sola operación
+            ctx.fillStyle = unifiedGradient;
+            ctx.fillRect(0, topStart, levelWidthForGradient, totalHeight);
         }
     } else {
         // Modo normal - con culling optimizado

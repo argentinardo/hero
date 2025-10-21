@@ -654,11 +654,14 @@ export const updatePlayer = (store: GameStore) => {
     }
 
     // Decrementar energía automáticamente como temporizador con velocidad variable
-    store.energy = Math.max(0, store.energy - store.energyDecrementRate);
-    
-    // Si la energía llega a 0, el jugador muere
-    if (store.energy <= 0 && store.gameState === 'playing') {
-        playerDie(store);
+    // (solo si no estamos en la secuencia de fin de nivel ni pausados)
+    if (!store.levelEndSequence && !store.isPaused) {
+        store.energy = Math.max(0, store.energy - store.energyDecrementRate);
+        
+        // Si la energía llega a 0, el jugador muere
+        if (store.energy <= 0 && store.gameState === 'playing') {
+            playerDie(store);
+        }
     }
 
     updatePlayerAnimation(store);

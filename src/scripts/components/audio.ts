@@ -12,6 +12,7 @@ import successLevelSound from '../../assets/audio/success_level.mp3';
 import toyBounceSound from '../../assets/audio/toy.mp3';
 import brickBounceSound from '../../assets/audio/brick.mp3';
 import bulbOffSound from '../../assets/audio/bulb.mp3';
+import energyDrainSound from '../../assets/audio/energy-drain.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -27,6 +28,7 @@ interface AudioSystem {
         toy: HTMLAudioElement | null;
         brick: HTMLAudioElement | null;
         bulb: HTMLAudioElement | null;
+        energyDrain: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -47,6 +49,7 @@ let audioSystem: AudioSystem = {
         toy: null,
         brick: null,
         bulb: null,
+        energyDrain: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -94,6 +97,10 @@ export const initAudio = () => {
         audioSystem.sounds.bulb = new Audio(bulbOffSound);
         audioSystem.sounds.bulb.volume = audioSystem.sfxVolume;
 
+        audioSystem.sounds.energyDrain = new Audio(energyDrainSound);
+        audioSystem.sounds.energyDrain.loop = true; // Suena en loop mientras drena energía
+        audioSystem.sounds.energyDrain.volume = audioSystem.sfxVolume;
+
         console.log('Sistema de audio inicializado correctamente');
     } catch (error) {
         console.error('Error al inicializar el sistema de audio:', error);
@@ -136,6 +143,26 @@ export const stopJetpackSound = () => {
     }
 };
 
+// Reproducir sonido de drenaje de energía
+export const playEnergyDrainSound = () => {
+    if (audioSystem.sounds.energyDrain && !audioSystem.isMuted) {
+        if (audioSystem.sounds.energyDrain.paused) {
+            audioSystem.sounds.energyDrain.currentTime = 0;
+            audioSystem.sounds.energyDrain.play().catch(error => {
+                console.log('Error al reproducir energy drain:', error);
+            });
+        }
+    }
+};
+
+// Detener sonido de drenaje de energía
+export const stopEnergyDrainSound = () => {
+    if (audioSystem.sounds.energyDrain) {
+        audioSystem.sounds.energyDrain.pause();
+        audioSystem.sounds.energyDrain.currentTime = 0;
+    }
+};
+
 // Reproducir sonido de láser
 export const playLaserSound = () => {
     if (audioSystem.sounds.laser && !audioSystem.isMuted) {
@@ -173,8 +200,8 @@ export const onLifedownEnded = (callback: () => void) => {
 
 // Detener todos los sonidos excepto el de perder vida
 export const stopAllSfxExceptLifedown = () => {
-    const { jetpack, laser, steps, bomb, successLevel } = audioSystem.sounds;
-    [jetpack, steps, bomb, successLevel].forEach(snd => {
+    const { jetpack, laser, steps, bomb, successLevel, energyDrain } = audioSystem.sounds;
+    [jetpack, steps, bomb, successLevel, energyDrain].forEach(snd => {
         if (snd) {
             snd.pause();
             snd.currentTime = 0;
@@ -192,9 +219,9 @@ export const stopAllSfxExceptLifedown = () => {
 
 // Detener todos los sonidos excepto el de éxito de nivel
 export const stopAllSfxExceptSuccessLevel = () => {
-    const { jetpack, laser, steps, bomb, successLevel } = audioSystem.sounds;
+    const { jetpack, laser, steps, bomb, successLevel, energyDrain } = audioSystem.sounds;
     // Pausar todos los SFX que puedan estar en loop o activos, excepto successLevel
-    [jetpack, steps, bomb].forEach(snd => {
+    [jetpack, steps, bomb, energyDrain].forEach(snd => {
         if (snd) {
             snd.pause();
             snd.currentTime = 0;
@@ -241,6 +268,15 @@ export const playBombSound = () => {
     }
 };
 
+// Detener sonido de explosión de bomba
+export const stopBombSound = () => {
+    if (audioSystem.sounds.bomb) {
+        audioSystem.sounds.bomb.pause();
+        audioSystem.sounds.bomb.currentTime = 0;
+    }
+};
+
+
 // Reproducir sonido de éxito al completar nivel
 export const playSuccessLevelSound = () => {
     if (audioSystem.sounds.successLevel && !audioSystem.isMuted) {
@@ -249,6 +285,19 @@ export const playSuccessLevelSound = () => {
             console.log('Error al reproducir success level:', error);
         });
     }
+};
+
+// Ejecutar callback cuando termine el sonido de éxito
+export const onSuccessLevelEnded = (callback: () => void) => {
+    const snd = audioSystem.sounds.successLevel;
+    if (!snd) return;
+    snd.addEventListener('ended', () => {
+        try {
+            callback();
+        } catch (e) {
+            console.error(e);
+        }
+    }, { once: true });
 };
 
 // Reproducir sonido al eliminar enemigo
@@ -296,6 +345,7 @@ export const toggleMute = () => {
         pauseBackgroundMusic();
         stopJetpackSound();
         stopStepsSound();
+        stopEnergyDrainSound();
     } else {
         playBackgroundMusic();
     }

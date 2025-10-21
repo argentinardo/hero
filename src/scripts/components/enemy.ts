@@ -2,8 +2,12 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
 import { loadLevel } from './level';
+import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded } from './audio';
 
 export const updateEnemies = (store: GameStore) => {
+    // Si está pausado, no actualizar enemigos
+    if (store.isPaused) return;
+    
     const canvasWidth = store.dom.canvas?.width ?? 0;
     const player = store.player;
     
@@ -194,13 +198,127 @@ export const updateEnemies = (store: GameStore) => {
     });
 };
 
+const handleLevelEndSequence = (store: GameStore) => {
+    const ENERGY_DRAIN_SPEED = 2; // Puntos de energía que bajan por frame
+    const BOMB_EXPLOSION_INTERVAL = 20; // Frames entre explosiones de dinamitas
+    const POINTS_PER_ENERGY = 10; // Puntos por cada unidad de energía
+    const POINTS_PER_BOMB = 100; // Puntos por cada dinamita
+
+    store.levelEndTimer += 1;
+
+    // Fase 1: Drenar energía
+    if (store.levelEndSequence === 'energy') {
+        // Reproducir sonido de drenaje de energía en loop
+        playEnergyDrainSound();
+
+        // Reducir energía gradualmente
+        if (store.energy > 0) {
+            const energyToReduce = Math.min(ENERGY_DRAIN_SPEED, store.energy);
+            store.energy -= energyToReduce;
+            
+            // Sumar puntos por la energía drenada
+            const pointsToAdd = Math.floor(energyToReduce * POINTS_PER_ENERGY);
+            store.score += pointsToAdd;
+            
+            // Actualizar la barra de energía visualmente
+            const energyBarEl = store.dom.ui.energyBarEl;
+            if (energyBarEl) {
+                const maxEnergy = 200; // MAX_ENERGY
+                energyBarEl.style.width = `${(store.energy / maxEnergy) * 100}%`;
+            }
+        } else {
+            // Energía llegó a 0, detener el sonido de drenaje de energía
+            stopEnergyDrainSound();
+            
+            // Pasar a la siguiente fase: explotar bombas
+            store.levelEndSequence = 'bombs';
+            store.levelEndTimer = 0;
+        }
+        return;
+    }
+
+    // Fase 2: Explotar dinamitas una por una
+    if (store.levelEndSequence === 'bombs') {
+        if (store.bombsRemaining > 0) {
+            // Explotar una dinamita cada BOMB_EXPLOSION_INTERVAL frames
+            if (store.levelEndTimer % BOMB_EXPLOSION_INTERVAL === 0) {
+                store.bombsRemaining -= 1;
+                store.score += POINTS_PER_BOMB;
+                
+                // Reproducir sonido de explosión
+                playBombSound();
+                
+                // Activar flash de explosión para efecto visual
+                store.explosionFlash = 0.5;
+                
+                // Mostrar puntos flotantes en la posición del jugador/minero
+                const displayX = store.miner?.x ?? store.player.x;
+                const displayY = store.miner?.y ?? store.player.y;
+                
+                store.floatingScores.push({
+                    x: displayX,
+                    y: displayY - 20,
+                    text: `+${POINTS_PER_BOMB}`,
+                    life: 60,
+                    opacity: 1,
+                });
+                
+                // Si era la última bomba, detener el sonido de bomba y reproducir el sonido de éxito
+                if (store.bombsRemaining === 0) {
+                    stopBombSound();
+                    playSuccessLevelSound();
+                    
+                    // Cuando termine el sonido, esperar 2 segundos más antes de cargar el nivel
+                    onSuccessLevelEnded(() => {
+                        window.setTimeout(() => {
+                            store.currentLevelIndex += 1;
+                            loadLevel(store);
+                        }, 1000); // 1 segundo adicional después de que termine el sonido
+                    });
+                }
+            }
+        } else {
+            // Todas las bombas explotaron, completar la secuencia
+            store.levelEndSequence = 'complete';
+            store.levelEndTimer = 0;
+        }
+        return;
+    }
+};
+
 export const updateMiner = (store: GameStore) => {
     const miner = store.miner;
     if (!miner) {
         return;
     }
+    
+    // Si está pausado, no actualizar minero (excepto en secuencia de fin de nivel)
+    if (store.isPaused && !store.levelEndSequence) return;
 
     const rescuedAnim = ANIMATION_DATA['9_rescued'];
+    
+    // Manejar la secuencia de fin de nivel
+    if (store.levelEndSequence) {
+        handleLevelEndSequence(store);
+        
+        // Continuar con la animación del minero
+        if (miner.animationState === 'rescued' && miner.currentFrame === rescuedAnim.frames - 1) {
+            return;
+        }
+
+        miner.animationTick += 1;
+        if (miner.animationState === 'rescued') {
+            const anim = ANIMATION_DATA['9_rescued'];
+            if (miner.animationTick >= anim.speed) {
+                miner.animationTick = 0;
+                if (miner.currentFrame < anim.frames - 1) {
+                    miner.currentFrame += 1;
+                }
+            }
+        }
+        return;
+    }
+
     if (miner.animationState === 'rescued' && miner.currentFrame === rescuedAnim.frames - 1) {
         return;
     }

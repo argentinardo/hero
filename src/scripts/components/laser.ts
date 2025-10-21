@@ -71,6 +71,9 @@ const applyColumnCutOrRemove = (store: GameStore, baseGridX: number, action: 'ha
 };
 
 export const updateLasers = (store: GameStore) => {
+    // Si está pausado, no actualizar lásers
+    if (store.isPaused) return;
+    
     const levelWidth = store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE;
 
     for (let i = store.lasers.length - 1; i >= 0; i--) {

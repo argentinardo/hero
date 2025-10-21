@@ -6,6 +6,9 @@ import { playToyBounce, playBrickBounce } from './audio';
 const MAX_FALL_VELOCITY = 8; // Velocidad de caída más lenta y controlada
 
 export const updateParticles = (store: GameStore) => {
+    // Si está pausado, no actualizar partículas
+    if (store.isPaused) return;
+    
     for (let i = store.particles.length - 1; i >= 0; i--) {
         const particle = store.particles[i];
         particle.life -= 1;
@@ -20,6 +23,9 @@ export const updateParticles = (store: GameStore) => {
 };
 
 export const updateFallingEntities = (store: GameStore) => {
+    // Si está pausado, no actualizar entidades que caen
+    if (store.isPaused) return;
+    
     const canvasHeight = store.dom.canvas?.height ?? 0;
     for (let i = store.fallingEntities.length - 1; i >= 0; i--) {
         const entity = store.fallingEntities[i];
@@ -71,6 +77,9 @@ export const updateFallingEntities = (store: GameStore) => {
 };
 
 export const updateFloatingScores = (store: GameStore) => {
+    // Si está pausado, no actualizar puntajes flotantes
+    if (store.isPaused) return;
+    
     for (let i = store.floatingScores.length - 1; i >= 0; i--) {
         const score = store.floatingScores[i];
         score.life -= 1;
@@ -84,6 +93,9 @@ export const updateFloatingScores = (store: GameStore) => {
 };
 
 export const updatePlatforms = (store: GameStore) => {
+    // Si está pausado, no actualizar plataformas
+    if (store.isPaused) return;
+    
     const { platforms, walls } = store;
     platforms.forEach(platform => {
         if (!platform.isActive) return;

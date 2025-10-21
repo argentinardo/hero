@@ -266,6 +266,13 @@ export interface GameStore {
     cameraY: number;
     cameraX: number;
     
+    // Estado de pausa
+    isPaused: boolean;
+    
+    // Secuencia de fin de nivel
+    levelEndSequence: 'energy' | 'bombs' | 'complete' | null;
+    levelEndTimer: number;
+    
     // Configuración de paredes aplastantes (editor)
     crushingWallConfig?: {
         speed: number;
