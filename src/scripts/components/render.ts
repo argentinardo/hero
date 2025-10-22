@@ -8,9 +8,56 @@ import { checkCollision } from '../core/collision';
 import { updateParticles, updateFallingEntities, updateFloatingScores } from './effects';
 import { drawLight } from './light';
 import type { Platform } from '../core/types';
+import levelColors from '../../assets/level_colors.json';
 
 // Paleta para tintar muros por bloques de 3 filas (colores vivos)
 const WALL_TINT_COLORS = ['#ff4d4d', '#00e5ff', '#ffea00', '#00ff85', '#ff6bff', '#ff8c00'];
+
+// Función para obtener el color del nivel actual basado en la posición vertical
+const getLevelColorByPosition = (levelIndex: number, wallY: number, levelHeight: number = 22): string => {
+    const levelNumber = (levelIndex + 1).toString();
+    const levelData = levelColors.levelColors[levelNumber as keyof typeof levelColors.levelColors];
+    
+    if (!levelData?.wallTints) {
+        return '#696969'; // Color por defecto gris
+    }
+    
+    // Dividir el nivel en tres secciones verticales
+    const sectionHeight = levelHeight / 3;
+    const relativeY = wallY / TILE_SIZE; // Posición en tiles
+    
+    // Determinar qué tono usar basado en la posición vertical
+    if (relativeY < sectionHeight) {
+        return levelData.wallTints.light; // Parte superior - tono claro
+    } else if (relativeY < sectionHeight * 2) {
+        return levelData.wallTints.medium; // Parte media - tono medio
+    } else {
+        return levelData.wallTints.dark; // Parte inferior - tono oscuro
+    }
+};
+
+// Función para obtener el color usando los datos directos del nivel (más eficiente)
+const getLevelColorByPattern = (levelIndex: number, wallY: number, levelHeight: number = 22): string => {
+    const levelNumber = (levelIndex + 1).toString();
+    const levelData = levelColors.levelColors[levelNumber as keyof typeof levelColors.levelColors];
+    
+    if (!levelData?.wallTints) {
+        return '#696969'; // Color por defecto gris
+    }
+    
+    // Cambiar color cada 3 tiles de altura
+    const relativeY = wallY / TILE_SIZE; // Posición en tiles
+    const colorIndex = Math.floor(relativeY / 3) % 3; // Cambia cada 3 tiles, cíclico
+    
+    // Determinar qué tono usar basado en la posición vertical
+    if (colorIndex === 0) {
+        return levelData.wallTints.light; // Primeros 3 tiles - tono claro
+    } else if (colorIndex === 1) {
+        return levelData.wallTints.medium; // Siguientes 3 tiles - tono medio
+    } else {
+        return levelData.wallTints.dark; // Últimos 3 tiles - tono oscuro
+    }
+};
 
 // Utilidad: trazar un rectángulo con radios por esquina
 const beginRoundedRectPathCorners = (
@@ -118,15 +165,14 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
     }
 
-    // Aplicar tint por bloques de 3 filas, excepto para lava ('3') y columnas ('C')
+    // Aplicar tint del nivel actual con tres tonos según posición vertical, excepto para lava ('3') y columnas ('C')
     if (wall.tile !== '3' && wall.tile !== 'C') {
-        const rowIndex = Math.floor(wall.y / TILE_SIZE);
-        const blockIndex = Math.floor(rowIndex / 3);
-        const tintColor = WALL_TINT_COLORS[blockIndex % WALL_TINT_COLORS.length];
+        const levelHeight = store.levelDesigns[store.currentLevelIndex]?.length || 22;
+        const levelTintColor = getLevelColorByPattern(store.currentLevelIndex, wall.y, levelHeight);
         const prevAlpha = ctx.globalAlpha;
-        ctx.globalCompositeOperation = 'screen';
-        ctx.globalAlpha = 0.225;
-        ctx.fillStyle = tintColor;
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha = 0.8; // Más saturado para mejor visibilidad del color del nivel
+        ctx.fillStyle = levelTintColor;
         ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
         ctx.globalAlpha = prevAlpha;
         ctx.globalCompositeOperation = 'source-over';
@@ -246,8 +292,8 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
     const anim = !isViperDeath ? ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA] : null;
     
     // Reducir el tamaño de la serpiente muerta a 3/4
-    const width = isViperDeath ? entity.width * 0.75 : entity.width;
-    const height = isViperDeath ? entity.height * 0.75 : entity.height;
+    const width = isViperDeath ? entity.width * 1 : entity.width;
+    const height = isViperDeath ? entity.height * 1 : entity.height;
     
     if (anim && anim.frames > 1) {
         const frameWidth = sprite.width / anim.frames;
@@ -404,19 +450,19 @@ const drawFloatingScores = (store: GameStore) => {
 const drawHud = (store: GameStore) => {
     const { livesCountEl, scoreCountEl, levelCountEl, energyBarEl } = store.dom.ui;
     
-    // Dibujar vidas como miniaturas
+    // Dibujar vidas como miniaturas usando hero-success
     if (livesCountEl) {
         livesCountEl.innerHTML = '';
-        const playerSprite = store.sprites.P_die;
+        const heroSuccessSprite = store.sprites['P_success'];
         for (let i = 0; i < store.lives; i++) {
-            if (playerSprite && playerSprite.complete) {
+            if (heroSuccessSprite && heroSuccessSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
-                miniCanvas.width = 24;
-                miniCanvas.height = 48;
-                miniCanvas.style.imageRendering = 'pixelated';
+                miniCanvas.width = 30;
+                miniCanvas.height = 50;
+                miniCanvas.style.imageRendering = 'auto';
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
-                    miniCtx.drawImage(playerSprite, 0, 0, playerSprite.width, playerSprite.height, 0, 0, 24, 48);
+                    miniCtx.drawImage(heroSuccessSprite, 0, 0, heroSuccessSprite.width, heroSuccessSprite.height, 0, 0, 30, 50);
                 }
                 livesCountEl.appendChild(miniCanvas);
             } else {
@@ -438,13 +484,13 @@ const drawHud = (store: GameStore) => {
         for (let i = 0; i < store.bombsRemaining; i++) {
             if (bombSprite && bombSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
-                miniCanvas.width = 32;
-                miniCanvas.height = 32;
+                miniCanvas.width = 30;
+                miniCanvas.height = 50;
                 miniCanvas.style.imageRendering = 'pixelated';
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
                     const frameWidth = bombSprite.width / ANIMATION_DATA.bomb.frames;
-                    miniCtx.drawImage(bombSprite, 0, 0, frameWidth, bombSprite.height, 0, 0, 32, 32);
+                    miniCtx.drawImage(bombSprite, 0, 0, frameWidth, bombSprite.height, 0, 0, 30, 50);
                 }
                 bombsCountEl.appendChild(miniCanvas);
             } else {
@@ -459,7 +505,10 @@ const drawHud = (store: GameStore) => {
     
     if (scoreCountEl) scoreCountEl.textContent = `${store.score}`;
     if (levelCountEl) levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
-    if (energyBarEl) energyBarEl.style.width = `${(store.energy / MAX_ENERGY) * 100}%`;
+    if (energyBarEl) {
+        const { updateEnergyBarColor } = require('./ui');
+        updateEnergyBarColor(energyBarEl, store.energy, MAX_ENERGY);
+    }
 };
 
 const drawGameWorld = (store: GameStore) => {

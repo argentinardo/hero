@@ -4,19 +4,17 @@ import initialLevelsRaw from '../assets/levels.json';
 import { expandLevelsFromAny } from './utils/levels';
 
 import { createInitialStore } from './core/state';
-import { preloadAssets } from './core/assets';
+import { preloadCriticalAssets, loadSpritesLazy } from './core/assets';
 import { TILE_SIZE } from './core/constants';
 import { setupUI, showMenu, startGame } from './components/ui';
-import { setupEditorState, bindEditorCanvas, drawEditor } from './components/editor';
-import { handlePlayerInput, updatePlayer, checkEnemyCollision } from './components/player';
-import { loadLevel, updateWalls, awardMinerRescue } from './components/level';
-import { updateEnemies, updateMiner } from './components/enemy';
-import { updateLasers } from './components/laser';
-import { updateBombs, updateExplosions } from './components/bomb';
-import { updateParticles, updateFallingEntities, updateFloatingScores, updatePlatforms } from './components/effects';
+// Editor se carga de forma lazy cuando se necesite
+// Solo lo mínimo crítico para la carga inicial
+import { handlePlayerInput, updatePlayer } from './components/player';
+import { loadLevel, updateWalls } from './components/level';
 import { renderGame, renderEditor } from './components/render';
-import { updateLights } from './components/light';
-import { initAudio, playBackgroundMusic } from './components/audio';
+
+// Componentes no críticos se cargan de forma lazy
+import { initAudio, playBackgroundMusic, loadAdditionalSFX } from './components/audio';
 
 const store = createInitialStore();
 const expanded = expandLevelsFromAny(initialLevelsRaw);
@@ -88,16 +86,39 @@ const checkMinerRescue = () => {
         hitbox.y + hitbox.height > zone.y;
 
     if (intersects) {
-        awardMinerRescue(store);
+        // Cargar awardMinerRescue de forma lazy
+        import('./components/level').then(({ awardMinerRescue }) => {
+            awardMinerRescue(store);
+        });
     }
 };
 
-const updateGameState = () => {
+const updateGameState = async () => {
     if (store.gameState !== 'playing' && store.gameState !== 'floating') return;
 
     handlePlayerInput(store);
     updatePlayer(store);
     updateWalls(store);
+    
+    // Cargar componentes no críticos de forma lazy
+    const [
+        { updateEnemies, updateMiner },
+        { updateLasers },
+        { updateBombs, updateExplosions },
+        { updateParticles, updateFallingEntities, updateFloatingScores, updatePlatforms },
+        { updateLights },
+        { checkEnemyCollision },
+        { awardMinerRescue }
+    ] = await Promise.all([
+        import('./components/enemy'),
+        import('./components/laser'),
+        import('./components/bomb'),
+        import('./components/effects'),
+        import('./components/light'),
+        import('./components/player'),
+        import('./components/level')
+    ]);
+    
     updateEnemies(store);
     updateMiner(store);
     updateLasers(store);
@@ -128,10 +149,13 @@ const gameLoop = (currentTime: number) => {
         lastFrameTime = currentTime - (deltaTime % frameTime);
         
         if (store.appState === 'playing') {
-            updateGameState();
+            updateGameState().catch(() => {});
             renderGame(store);
         } else if (store.appState === 'editing') {
-            renderEditor(store, drawEditor);
+            // Cargar editor de forma lazy
+            import('./components/editor').then(({ drawEditor }) => {
+                renderEditor(store, drawEditor);
+            });
         }
     }
 
@@ -140,18 +164,35 @@ const gameLoop = (currentTime: number) => {
 
 const bootstrap = () => {
     setupUI(store);
-    setupEditorState(store);
-    bindEditorCanvas(store);
+    // Cargar editor de forma lazy cuando se necesite
+    // setupEditorState(store);
+    // bindEditorCanvas(store);
     
     // Inicializar sistema de audio
     initAudio();
     
     showMenu(store);
 
-    preloadAssets(store, () => {
+    preloadCriticalAssets(store, () => {
         loadLevel(store);
         // No llamar startGame automáticamente - esperar a que el usuario presione el botón
         lastFrameTime = performance.now();
+        
+        // Cargar assets no críticos en background
+        const nonCriticalSprites = ['P_jump', 'P_fly', 'P_die', 'P_success', '8', 'S', 'V', 'V_death', 'T', '9', 'bomb', 'explosion', '3', 'L'];
+        loadSpritesLazy(store, nonCriticalSprites).then(() => {
+            console.log('Assets no críticos cargados');
+        }).catch(() => {
+            console.warn('Error cargando assets no críticos');
+        });
+        
+        // Cargar efectos de sonido adicionales en background
+        loadAdditionalSFX().then(() => {
+            console.log('Efectos de sonido adicionales cargados');
+        }).catch(() => {
+            console.warn('Error cargando efectos de sonido adicionales');
+        });
+        
         requestAnimationFrame(gameLoop);
     });
 };

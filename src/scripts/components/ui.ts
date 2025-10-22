@@ -7,7 +7,7 @@ import { buildChunkedFile20x18 } from '../utils/levels';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
-import { playBackgroundMusic, pauseBackgroundMusic } from './audio';
+import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState } from './audio';
 import { 
     undo, 
     redo, 
@@ -73,7 +73,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.mobileControlsEl = document.getElementById('mobile-controls');
     ui.joystickZoneEl = document.getElementById('joystick-zone');
     ui.actionZoneEl = document.getElementById('action-zone');
-    ui.volumeBtn = document.getElementById('volume-btn') as HTMLButtonElement | null;
+    ui.volumeToggle = document.getElementById('volume-toggle') as HTMLSpanElement | null;
 
     ui.startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     ui.levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
@@ -116,6 +116,48 @@ export const attachDomReferences = (store: GameStore) => {
     
     // Ajustar barras UI cuando cambia el tamaño de la ventana
     window.addEventListener('resize', adjustUIBars);
+    
+    // Configurar toggle de volumen
+    const volumeToggle = document.getElementById('volume-toggle') as HTMLSpanElement | null;
+    if (volumeToggle) {
+        volumeToggle.addEventListener('click', () => {
+            toggleMute();
+            updateVolumeToggle();
+        });
+        updateVolumeToggle(); // Estado inicial
+    }
+};
+
+const updateVolumeToggle = () => {
+    const volumeToggle = document.getElementById('volume-toggle') as HTMLSpanElement | null;
+    if (volumeToggle) {
+        const audioState = getAudioState();
+        if (audioState.isMuted) {
+            volumeToggle.textContent = 'SOUND: OFF';
+            volumeToggle.classList.add('muted');
+        } else {
+            volumeToggle.textContent = 'SOUND: ON';
+            volumeToggle.classList.remove('muted');
+        }
+    }
+};
+
+// Función helper para actualizar la barra de energía con colores graduales
+export const updateEnergyBarColor = (energyBarEl: HTMLElement, energy: number, maxEnergy: number = 200) => {
+    const energyPercentage = (energy / maxEnergy) * 100;
+    energyBarEl.style.width = `${energyPercentage}%`;
+    
+    // Cambiar color gradualmente de verde a rojo
+    if (energyPercentage > 60) {
+        // Verde cuando está por encima del 60%
+        energyBarEl.style.backgroundColor = '#4ade80'; // green-400
+    } else if (energyPercentage > 30) {
+        // Amarillo cuando está entre 30% y 60%
+        energyBarEl.style.backgroundColor = '#facc15'; // yellow-400
+    } else {
+        // Rojo cuando está por debajo del 30%
+        energyBarEl.style.backgroundColor = '#ef4444'; // red-500
+    }
 };
 
 const setBodyClass = (state: string) => {
@@ -228,7 +270,7 @@ const startJoystick = (store: GameStore) => {
     // Configurar botones de acción
     const shootBtn = document.getElementById('shoot-btn');
     const bombBtn = document.getElementById('bomb-btn');
-    const volumeBtn = store.dom.ui.volumeBtn as HTMLButtonElement | null;
+    const volumeToggle = store.dom.ui.volumeToggle as HTMLSpanElement | null;
 
     if (shootBtn) {
         shootBtn.addEventListener('touchstart', event => {
@@ -293,26 +335,28 @@ const startJoystick = (store: GameStore) => {
         });
     }
 
-    if (volumeBtn) {
-        const updateIcon = () => {
+    if (volumeToggle) {
+        const updateToggle = () => {
             try {
                 // Lazy require para evitar ciclos
                 const { getAudioState } = require('./audio');
                 const state = getAudioState();
-                volumeBtn.textContent = state.isMuted ? '🔇' : '🔊';
+                volumeToggle.textContent = state.isMuted ? 'SOUND: OFF' : 'SOUND: ON';
+                volumeToggle.classList.toggle('muted', state.isMuted);
             } catch {}
         };
-        updateIcon();
+        updateToggle();
         const toggle = () => {
             try {
                 const { toggleMute, getAudioState } = require('./audio');
                 toggleMute();
                 const state = getAudioState();
-                volumeBtn.textContent = state.isMuted ? '🔇' : '🔊';
+                volumeToggle.textContent = state.isMuted ? 'SOUND: OFF' : 'SOUND: ON';
+                volumeToggle.classList.toggle('muted', state.isMuted);
             } catch {}
         };
-        volumeBtn.addEventListener('touchstart', e => { e.preventDefault(); toggle(); });
-        volumeBtn.addEventListener('click', e => { e.preventDefault(); toggle(); });
+        volumeToggle.addEventListener('touchstart', e => { e.preventDefault(); toggle(); });
+        volumeToggle.addEventListener('click', e => { e.preventDefault(); toggle(); });
     }
 };
 
@@ -362,7 +406,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     } catch {}
     
     // Iniciar música de fondo
-    playBackgroundMusic();
+    playBackgroundMusic().catch(() => {});
     
     // Si venimos desde el editor (levelOverride no nulo) mostrar "Volver al Editor" en el menú hamburguesa
     const resumeEditorBtnMenu = document.getElementById('resume-editor-btn-menu');
@@ -387,7 +431,12 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     loadLevel(store);
 };
 
-export const startEditor = (store: GameStore) => {
+export const startEditor = async (store: GameStore) => {
+    // Cargar editor de forma lazy
+    const { setupEditorState, bindEditorCanvas } = await import('./editor');
+    setupEditorState(store);
+    bindEditorCanvas(store);
+    
     store.appState = 'editing';
     setBodyClass('editing');
     const { messageOverlay, gameUiEl, bottomUiEl, editorPanelEl, levelSelectorEl } = store.dom.ui;
@@ -428,8 +477,8 @@ export const startEditor = (store: GameStore) => {
         const levelRows = store.editorLevel.length;
         const levelWidth = levelCols * TILE_SIZE;
         const levelHeight = levelRows * TILE_SIZE;
-        const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE; // Player en 3er tile desde la izquierda
-        const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE; // Player en 4to tile desde arriba
+        const desiredX = playerCol * TILE_SIZE - canvas.width / 2; // Centrar horizontalmente
+        const desiredY = playerRow * TILE_SIZE - canvas.height / 2; // Centrar verticalmente
         const maxCamX = Math.max(0, levelWidth - canvas.width);
         const maxCamY = Math.max(0, levelHeight - canvas.height);
         store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
@@ -456,7 +505,7 @@ export const updateUiBar = (store: GameStore) => {
         scoreCountEl.textContent = `${store.score}`;
     }
     if (energyBarEl) {
-        energyBarEl.style.width = `${(store.energy / 200) * 100}%`;
+        updateEnergyBarColor(energyBarEl, store.energy);
     }
 };
 
@@ -1016,12 +1065,12 @@ const setupHamburgerMenu = (
         
         if (store.isPaused) {
             pauseBackgroundMusic();
-            pauseResumeBtn.textContent = '▶️ Reanudar';
+            pauseResumeBtn.textContent = 'Reanudar';
             // Congelar el juego
             store.player.isFrozen = true;
         } else {
-            playBackgroundMusic();
-            pauseResumeBtn.textContent = '⏸️ Pausar';
+            playBackgroundMusic().catch(() => {});
+            pauseResumeBtn.textContent = 'Pausar';
             // Descongelar el juego
             store.player.isFrozen = false;
         }
@@ -1339,8 +1388,8 @@ const setupLevelData = (store: GameStore) => {
             const levelRows = store.editorLevel.length;
             const levelWidth = levelCols * TILE_SIZE;
             const levelHeight = levelRows * TILE_SIZE;
-            const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
-            const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
+            const desiredX = playerCol * TILE_SIZE - (canvas?.width ?? 0) / 2;
+            const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
             const maxCamX = Math.max(0, levelWidth - canvas.width);
             const maxCamY = Math.max(0, levelHeight - canvas.height);
             store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
@@ -1421,8 +1470,8 @@ const setupLevelData = (store: GameStore) => {
         if (!canvas) return;
         
         // Calcular dimensiones del nivel basado en el canvas
-        // Hacer el nivel más ancho para permitir exploración horizontal (3x el ancho del canvas)
-        const levelWidth = Math.floor(canvas.width / TILE_SIZE) * 3;
+        // Usar exactamente el ancho del canvas para evitar columnas vacías
+        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1440 / 72 = 20 tiles
         const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
         
         // Generar nivel con dificultad basada en el índice
@@ -1452,8 +1501,8 @@ const setupLevelData = (store: GameStore) => {
             const levelRows = store.editorLevel.length;
             const levelWidth = levelCols * TILE_SIZE;
             const levelHeight = levelRows * TILE_SIZE;
-            const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
-            const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
+            const desiredX = playerCol * TILE_SIZE - (canvas?.width ?? 0) / 2;
+            const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
             const maxCamX = Math.max(0, levelWidth - (canvas?.width ?? 0));
             const maxCamY = Math.max(0, levelHeight - (canvas?.height ?? 0));
             store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));

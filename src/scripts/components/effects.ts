@@ -3,7 +3,7 @@ import type { GameStore } from '../core/types';
 import { playToyBounce, playBrickBounce } from './audio';
 
 // Velocidad máxima de caída para enemigos muertos (alcanzada después de 1 segundo)
-const MAX_FALL_VELOCITY = 8; // Velocidad de caída más lenta y controlada
+const MAX_FALL_VELOCITY = 10; // Velocidad de caída más lenta y controlada
 
 export const updateParticles = (store: GameStore) => {
     // Si está pausado, no actualizar partículas

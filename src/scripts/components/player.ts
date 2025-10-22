@@ -93,6 +93,61 @@ const calculateEnergyDecrementRate = (levelLength: number): number => {
     return 0.1 * decrementMultiplier;
 };
 
+// Función para verificar si el jugador está en el suelo al inicializar
+const checkInitialGrounding = (store: GameStore) => {
+    const { player, walls, platforms } = store;
+    
+    // Verificar colisión con paredes (suelo)
+    const playerBottom = player.y + player.height;
+    const playerLeft = player.x;
+    const playerRight = player.x + player.width;
+    
+    // Buscar pared debajo del jugador
+    const wallBelow = walls.find(wall => {
+        const wallTop = wall.y;
+        const wallBottom = wall.y + wall.height;
+        const wallLeft = wall.x;
+        const wallRight = wall.x + wall.width;
+        
+        return wallTop >= playerBottom - 5 && // Tolerancia de 5px
+               wallTop <= playerBottom + 5 &&
+               playerLeft < wallRight &&
+               playerRight > wallLeft;
+    });
+    
+    if (wallBelow) {
+        player.isGrounded = true;
+        player.y = wallBelow.y - player.height;
+        player.hitbox.y = player.y;
+        player.vy = 0;
+        return;
+    }
+    
+    // Verificar colisión con plataformas
+    const platformBelow = platforms.find(platform => {
+        const platformTop = platform.y;
+        const platformBottom = platform.y + platform.height;
+        const platformLeft = platform.x;
+        const platformRight = platform.x + platform.width;
+        
+        return playerBottom >= platformTop - 5 && // Tolerancia de 5px
+               playerBottom <= platformTop + 5 &&
+               playerLeft < platformRight &&
+               playerRight > platformLeft;
+    });
+    
+    if (platformBelow) {
+        player.isGrounded = true;
+        player.y = platformBelow.y - player.height;
+        player.hitbox.y = player.y;
+        player.vy = 0;
+        return;
+    }
+    
+    // Si no hay suelo, el jugador debe caer
+    player.isGrounded = false;
+};
+
 export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY = TILE_SIZE * 1.5) => {
     const { player } = store;
     Object.assign(player, {
@@ -130,6 +185,40 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
     const currentLevel = store.levelDesigns[store.currentLevelIndex];
     const levelLength = currentLevel ? currentLevel.length : 22;
     store.energyDecrementRate = calculateEnergyDecrementRate(levelLength);
+    
+    // Iniciar en estado floating - el héroe desciende desde arriba
+    startFloatingEntry(store, startX, startY);
+};
+
+// Función para iniciar el estado floating al comenzar el juego/nivel
+const startFloatingEntry = (store: GameStore, targetX: number, targetY: number) => {
+    const { player } = store;
+    const canvas = store.dom.canvas;
+    
+    if (!canvas) return;
+    
+    // Guardar la posición objetivo (donde debe aterrizar)
+    player.respawnX = targetX;
+    player.respawnY = targetY;
+    
+    // Posicionar al jugador desde arriba del viewport
+    player.x = targetX;
+    player.y = store.cameraY - TILE_SIZE * 2; // Desde arriba del viewport
+    player.hitbox.x = player.x + TILE_SIZE / 4;
+    player.hitbox.y = player.y;
+    
+    // Configurar estado de floating
+    player.isFloating = true;
+    player.isGrounded = false;
+    player.vy = 4; // Velocidad de descenso moderada
+    player.vx = 0;
+    player.animationState = 'fly';
+    player.animationTick = 0;
+    player.currentFrame = 0;
+    player.floatWaveTime = 0;
+    
+    // Cambiar el estado del juego a floating
+    store.gameState = 'floating';
 };
 
 export const handlePlayerInput = (store: GameStore) => {
@@ -277,7 +366,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     // Reanudar música cuando termine el sonido de perder vida (si no es game over)
     onLifedownEnded(() => {
         if (store.lives > 0 && store.gameState !== 'gameover') {
-            playBackgroundMusic();
+            playBackgroundMusic().catch(() => {});
         }
     });
     
@@ -617,6 +706,9 @@ export const updatePlayer = (store: GameStore) => {
             // Ha llegado a la posición objetivo, detener descenso
             player.y = player.respawnY;
             player.vy = 0;
+            
+            // Verificar si está en el suelo después de aterrizar
+            checkInitialGrounding(store);
         }
         
         // Actualizar hitbox (el waveOffset se aplicará solo en el renderizado)

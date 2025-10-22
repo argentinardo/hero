@@ -11,16 +11,19 @@
 /* Contenedor para canvas + barras superpuestas */
 .canvas-wrapper {
     position: relative;
-    width: 100vw;
+    width: 100%;
+    max-width: 1440px;
     height: 100vh;
+    margin: 0 auto;
 }
 
 /* Canvas - siempre 100vh de alto, escalado proporcional */
 #gameCanvas {
     display: block;
     width: 100%;
-    height: 100%;
-    object-fit: contain; /* Mantiene la proporción sin distorsionar */
+    max-width: 1440px;
+    height: 100vh;
+    margin: 0 auto;
     background-color: #000; /* Fondo negro para las barras laterales si aparecen */
 }
 
@@ -31,14 +34,15 @@
     left: 0;
     width: 100%; /* Se ajustará dinámicamente por JavaScript */
     height: 10vh; /* 10% del alto del viewport */
-    background-color: rgba(0, 0, 0, 0.95); /* Fondo más opaco */
+    background-color: rgba(0, 0, 0, 0.8); /* Fondo más opaco */
     display: flex;
     align-items: center;
     justify-content: center; /* Contenido centrado */
     gap: 3rem; /* Espacio entre elementos */
     z-index: 100;
-    padding: 0 20px;
+    padding: 0 40px;
     box-sizing: border-box;
+    justify-content: space-between;
 }
 
 /* Barra de botones móvil */
@@ -61,14 +65,15 @@
     left: 0;
     width: 100%; /* Se ajustará dinámicamente por JavaScript */
     height: 10vh; /* 10% del alto del viewport */
-    background-color: rgba(0, 0, 0, 0.95); /* Fondo más opaco */
+    background-color: rgba(0, 0, 0, 0.8); /* Fondo más opaco */
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 3rem; /* Espacio uniforme entre elementos */
     z-index: 100;
-    padding: 0 20px;
+    padding: 0 40px;
     box-sizing: border-box;
+    justify-content: space-between;
 }
 
 /* Panel del editor - posicionado a la derecha */
@@ -79,6 +84,30 @@
     height: 100vh;
     overflow-y: auto;
     z-index: 200;
+}
+
+/* Toggle de Volumen */
+.volume-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 1rem;
+    color: white;
+    font-weight: bold;
+    z-index: 101;
+    transition: all 0.3s ease;
+    user-select: none;
+    
+    &:hover {
+        color: #fbbf24;
+        text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+    }
+    
+    &.muted {
+        color: #ff4444;
+        text-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
+    }
 }
 
 /* Botón Hamburguesa */
@@ -139,7 +168,7 @@
 .hamburger-menu {
     position: fixed;
     top: 11vh;
-    left: 50%;
+    right: 0;
     transform: translateX(-50%);
     background-color: rgba(0, 0, 0, 0.95);
     border: 2px solid white;

@@ -71,14 +71,64 @@ module.exports = {
     extensions: ['.tsx', '.ts', '.js'],
   },
   output: {
-    filename: 'bundle.js',
+    filename: '[name].[contenthash].js',
     path: path.resolve(__dirname, 'dist'),
     clean: true,
   },
+        optimization: {
+            usedExports: true,
+            sideEffects: false,
+            minimize: true,
+            splitChunks: {
+                chunks: 'all',
+                maxInitialRequests: 20,
+                maxAsyncRequests: 20,
+                minSize: 10000,
+                maxSize: 300000,
+                cacheGroups: {
+                    vendor: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: 'vendors',
+                        chunks: 'all',
+                        filename: 'vendors.[contenthash].js',
+                        priority: 10,
+                        minChunks: 1,
+                        enforce: true,
+                    },
+                    components: {
+                        test: /[\\/]src[\\/]scripts[\\/]components[\\/]/,
+                        name: 'components',
+                        chunks: 'async',
+                        filename: 'components.[contenthash].js',
+                        priority: 8,
+                        minChunks: 1,
+                        enforce: true,
+                    },
+                    core: {
+                        test: /[\\/]src[\\/]scripts[\\/]core[\\/]/,
+                        name: 'core',
+                        chunks: 'async',
+                        filename: 'core.[contenthash].js',
+                        priority: 7,
+                        minChunks: 1,
+                        enforce: true,
+                    },
+                    utils: {
+                        test: /[\\/]src[\\/]scripts[\\/]utils[\\/]/,
+                        name: 'utils',
+                        chunks: 'async',
+                        filename: 'utils.[contenthash].js',
+                        priority: 6,
+                        minChunks: 1,
+                        enforce: true,
+                    },
+                },
+            },
+        },
   performance: {
     hints: 'warning',
-    maxAssetSize: 2 * 1024 * 1024, // 2 MB
-    maxEntrypointSize: 2 * 1024 * 1024, // 2 MB
+    maxAssetSize: 1.5 * 1024 * 1024, // 1.5 MB
+    maxEntrypointSize: 1.5 * 1024 * 1024, // 1.5 MB
   },
   watchOptions: {
     poll: 1000, // Check for changes every second

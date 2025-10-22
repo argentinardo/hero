@@ -15,9 +15,9 @@ export const generateLevel = (options: LevelGeneratorOptions): string[] => {
         level[y] = '0'.repeat(width);
     }
     
-    // Crear bordes laterales
+    // Crear bordes laterales completos (100% del ancho)
     for (let y = 0; y < height; y++) {
-        level[y] = '1' + level[y].substring(1, width - 1) + '1';
+        level[y] = '1'.repeat(width);
     }
     
     // Crear borde superior
@@ -71,10 +71,8 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
         
         if (platformY >= lastValidY) break; // No crear plataforma muy cerca del fondo
         
-        // Crear plataforma completa primero
-        for (let x = 1; x < width - 1; x++) {
-            level[platformY] = level[platformY].substring(0, x) + '1' + level[platformY].substring(x + 1);
-        }
+        // Crear plataforma completa (ya está llena de '1' por los bordes)
+        // No necesitamos cambiar nada aquí ya que el nivel ya está lleno de '1'
         
         // Determinar posición del hueco principal
         let gapX: number;
@@ -130,9 +128,20 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
 };
 
 const placePlayer = (level: string[], width: number) => {
-    // Colocar player en la parte superior con espacio de 3 tiles
-    const x = 2;
+    // Colocar el jugador más hacia el centro para que se vea correctamente
+    const x = Math.floor(width / 2); // Centro horizontal del nivel
     const y = 1;
+    // Limpiar el espacio del jugador (crear un hueco de 3x3)
+    for (let dy = 0; dy < 3; dy++) {
+        for (let dx = 0; dx < 3; dx++) {
+            const px = x + dx;
+            const py = y + dy;
+            if (px < width && py < level.length) {
+                level[py] = level[py].substring(0, px) + '0' + level[py].substring(px + 1);
+            }
+        }
+    }
+    // Colocar el jugador
     level[y] = level[y].substring(0, x) + 'P' + level[y].substring(x + 1);
 };
 
@@ -143,24 +152,21 @@ const placeMiner = (level: string[], width: number, height: number) => {
     //          1......91  <- Minero pegado al extremo derecho
     //          1========1 <- Borde inferior
     
-    // Elegir lado aleatoriamente (izquierda o derecha)
-    const isLeftSide = Math.random() > 0.5;
-    const minerX = isLeftSide ? 1 : width - 2; // Pegado al borde (junto a la pared)
+    // Colocar el minero en el centro para mejor visibilidad
+    const minerX = Math.floor(width / 2); // Centro horizontal del nivel
     
     // Posición vertical: última fila antes del borde inferior
     const minerY = height - 2; // Justo antes del borde inferior
     
-    // Limpiar los 3 tiles de altura arriba del minero
-    for (let i = 1; i <= 3; i++) {
-        const y = minerY - i;
-        if (y > 0 && y < height - 1) {
-            level[y] = level[y].substring(0, minerX) + '0' + level[y].substring(minerX + 1);
+    // Limpiar un espacio de 3x3 alrededor del minero
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            const mx = minerX + dx;
+            const my = minerY + dy;
+            if (mx >= 0 && mx < width && my >= 0 && my < height) {
+                level[my] = level[my].substring(0, mx) + '0' + level[my].substring(mx + 1);
+            }
         }
-    }
-    
-    // Limpiar el tile donde estará el minero
-    if (minerY > 0 && minerY < height - 1) {
-        level[minerY] = level[minerY].substring(0, minerX) + '0' + level[minerY].substring(minerX + 1);
     }
     
     // Colocar el minero

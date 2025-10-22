@@ -107,7 +107,7 @@ export const createInitialStore = (): GameStore => ({
             mobileControlsEl: null,
             joystickZoneEl: null,
             actionZoneEl: null,
-            volumeBtn: null,
+            volumeToggle: null,
             startGameBtn: null,
             levelEditorBtn: null,
             playTestBtn: null,

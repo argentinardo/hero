@@ -82,33 +82,56 @@ export const TILE_TYPES: TileDictionary = {
     'J': { name: 'Pared Derecha', color: '#cc0000', class: 'crushing-right' },
 };
 
-export const preloadAssets = (store: GameStore, callback: () => void) => {
+// Función para cargar sprites de forma lazy
+export const loadSpritesLazy = async (store: GameStore, spriteKeys: string[] = []) => {
     const entries = Object.entries(SPRITE_SOURCES);
-    if (entries.length === 0) {
-        callback();
-        return;
+    const filteredEntries = spriteKeys.length > 0 
+        ? entries.filter(([key]) => spriteKeys.includes(key))
+        : entries;
+
+    if (filteredEntries.length === 0) {
+        return Promise.resolve();
     }
 
-    let loaded = 0;
-    const total = entries.length;
-
-    entries.forEach(([key, src]) => {
-        const image = new Image();
-        store.sprites[key] = image;
-        image.onload = () => {
-            loaded++;
-            if (loaded === total) {
-                callback();
-            }
-        };
-        image.onerror = () => {
-            console.error(`No se pudo cargar el sprite ${key} desde ${src}`);
-            loaded++;
-            if (loaded === total) {
-                callback();
-            }
-        };
-        image.src = src;
+    const loadPromises = filteredEntries.map(([key, src]) => {
+        return new Promise<void>((resolve, reject) => {
+            const image = new Image();
+            store.sprites[key] = image;
+            image.onload = () => resolve();
+            image.onerror = () => {
+                console.error(`No se pudo cargar el sprite ${key} desde ${src}`);
+                reject(new Error(`Failed to load sprite ${key}`));
+            };
+            image.src = src;
+        });
     });
+
+    return Promise.all(loadPromises);
+};
+
+// Función para cargar sprites críticos primero
+export const preloadCriticalAssets = (store: GameStore, callback: () => void) => {
+    const criticalSprites = ['P_stand', 'P_walk', '1', '2', 'background', 'splash'];
+    
+    loadSpritesLazy(store, criticalSprites)
+        .then(() => {
+            callback();
+        })
+        .catch(() => {
+            console.warn('Error cargando assets críticos, continuando...');
+            callback();
+        });
+};
+
+// Función legacy para compatibilidad
+export const preloadAssets = (store: GameStore, callback: () => void) => {
+    loadSpritesLazy(store)
+        .then(() => {
+            callback();
+        })
+        .catch(() => {
+            console.warn('Error cargando assets, continuando...');
+            callback();
+        });
 };
 

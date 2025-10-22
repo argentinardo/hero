@@ -1,7 +1,7 @@
 /* Game DOM world */
 #game-container { position: relative; width: 1200px; height: 720px; overflow: hidden; border: 4px solid #4a4a4a; background: #000; }
 #game-world { position: absolute; left: 0; top: 0; width: 1200px; height: 99999px; transform: translateY(0); }
-.game-object { position: absolute; image-rendering: pixelated; background-repeat: no-repeat; background-position: 0 0; }
+.game-object { position: absolute; image-rendering: auto; background-repeat: no-repeat; background-position: 0 0; }
 
 /* Walls */
 .wall { width: 60px; height: 60px; background: url('../assets/sprites/wall_small.png'); background-size: 60px 60px; }

@@ -223,8 +223,8 @@ const handleLevelEndSequence = (store: GameStore) => {
             // Actualizar la barra de energía visualmente
             const energyBarEl = store.dom.ui.energyBarEl;
             if (energyBarEl) {
-                const maxEnergy = 200; // MAX_ENERGY
-                energyBarEl.style.width = `${(store.energy / maxEnergy) * 100}%`;
+                const { updateEnergyBarColor } = require('./ui');
+                updateEnergyBarColor(energyBarEl, store.energy, 200);
             }
         } else {
             // Energía llegó a 0, detener el sonido de drenaje de energía
@@ -346,10 +346,11 @@ export const updateMiner = (store: GameStore) => {
             }
 
             if (miner.currentFrame >= anim.frames - 1) {
-                window.setTimeout(() => {
-                    store.currentLevelIndex += 1;
-                    loadLevel(store);
-                }, 2000);
+                // El nivel ya se incrementó en la función anterior, no hacerlo aquí
+                // window.setTimeout(() => {
+                //     store.currentLevelIndex += 1;
+                //     loadLevel(store);
+                // }, 2000);
             }
         }
     }

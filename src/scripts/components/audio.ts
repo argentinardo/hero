@@ -1,7 +1,8 @@
 import type { GameStore } from '../core/types';
 
 // Importar archivos de audio
-import mainMusic from '../../assets/audio/main.mp3';
+// Cargar música de fondo dinámicamente desde el servidor
+const mainMusicUrl = '/src/assets/audio/main.mp3';
 import jetpackSound from '../../assets/audio/jetpack.mp3';
 import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';
@@ -56,34 +57,18 @@ let audioSystem: AudioSystem = {
     sfxVolume: 0.5,
 };
 
-// Inicializar el sistema de audio
+// Inicializar solo efectos de sonido críticos
 export const initAudio = () => {
     try {
-        // Crear audio de música de fondo
-        audioSystem.bgMusic = new Audio(mainMusic);
-        audioSystem.bgMusic.loop = true;
-        audioSystem.bgMusic.volume = audioSystem.musicVolume;
-
-        // Crear efectos de sonido
-        audioSystem.sounds.jetpack = new Audio(jetpackSound);
-        audioSystem.sounds.jetpack.loop = true; // El jetpack suena mientras vuela
-        audioSystem.sounds.jetpack.volume = audioSystem.sfxVolume;
-
+        // Crear solo efectos de sonido críticos (archivos pequeños)
         audioSystem.sounds.laser = new Audio(laserSound);
         audioSystem.sounds.laser.volume = audioSystem.sfxVolume;
 
         audioSystem.sounds.lifedown = new Audio(lifedownSound);
         audioSystem.sounds.lifedown.volume = audioSystem.sfxVolume;
 
-        audioSystem.sounds.steps = new Audio(stepsSound);
-        audioSystem.sounds.steps.loop = true; // Los pasos suenan en loop mientras camina
-        audioSystem.sounds.steps.volume = audioSystem.sfxVolume * 0.6; // Más bajo que otros efectos
-
         audioSystem.sounds.bomb = new Audio(bombSound);
         audioSystem.sounds.bomb.volume = audioSystem.sfxVolume;
-
-        audioSystem.sounds.successLevel = new Audio(successLevelSound);
-        audioSystem.sounds.successLevel.volume = audioSystem.sfxVolume;
 
         audioSystem.sounds.enemyKill = new Audio(enemyKillSound);
         audioSystem.sounds.enemyKill.volume = audioSystem.sfxVolume;
@@ -97,22 +82,106 @@ export const initAudio = () => {
         audioSystem.sounds.bulb = new Audio(bulbOffSound);
         audioSystem.sounds.bulb.volume = audioSystem.sfxVolume;
 
-        audioSystem.sounds.energyDrain = new Audio(energyDrainSound);
-        audioSystem.sounds.energyDrain.loop = true; // Suena en loop mientras drena energía
-        audioSystem.sounds.energyDrain.volume = audioSystem.sfxVolume;
-
-        console.log('Sistema de audio inicializado correctamente');
+        console.log('Audio crítico inicializado correctamente');
     } catch (error) {
         console.error('Error al inicializar el sistema de audio:', error);
     }
 };
 
-// Reproducir música de fondo
-export const playBackgroundMusic = () => {
-    if (audioSystem.bgMusic && !audioSystem.isMuted) {
-        audioSystem.bgMusic.play().catch(error => {
-            console.log('No se pudo reproducir la música automáticamente:', error);
+// Función para cargar música de fondo de forma lazy
+export const loadBackgroundMusic = async (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        if (audioSystem.bgMusic) {
+            resolve();
+            return;
+        }
+
+        // Cargar dinámicamente el archivo de audio
+        const audio = new Audio();
+        audio.loop = true;
+        audio.volume = audioSystem.musicVolume;
+        audio.preload = 'none'; // No precargar para evitar incluirlo en el bundle
+        
+        audio.addEventListener('canplaythrough', () => {
+            audioSystem.bgMusic = audio;
+            console.log('Música de fondo cargada dinámicamente');
+            resolve();
         });
+        
+        audio.addEventListener('error', () => {
+            console.warn('No se pudo cargar la música de fondo');
+            reject(new Error('Failed to load background music'));
+        });
+        
+        // Cargar el archivo solo cuando se necesite
+        audio.src = mainMusicUrl;
+        audio.load();
+    });
+};
+
+// Función para cargar efectos de sonido adicionales de forma lazy
+export const loadAdditionalSFX = async (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        const sfxToLoad = [
+            { key: 'jetpack', src: jetpackSound, loop: true },
+            { key: 'steps', src: stepsSound, loop: true },
+            { key: 'successLevel', src: successLevelSound, loop: false },
+            { key: 'energyDrain', src: energyDrainSound, loop: true }
+        ];
+
+        let loaded = 0;
+        const total = sfxToLoad.length;
+
+        if (total === 0) {
+            resolve();
+            return;
+        }
+
+        sfxToLoad.forEach(({ key, src, loop }) => {
+            const audio = new Audio();
+            if (loop) audio.loop = true;
+            audio.volume = audioSystem.sfxVolume;
+            audio.preload = 'none'; // No precargar para evitar incluirlo en el bundle
+            
+            audio.addEventListener('canplaythrough', () => {
+                audioSystem.sounds[key as keyof typeof audioSystem.sounds] = audio;
+                loaded++;
+                if (loaded === total) {
+                    console.log('Efectos de sonido adicionales cargados dinámicamente');
+                    resolve();
+                }
+            });
+            
+            audio.addEventListener('error', () => {
+                console.warn(`No se pudo cargar el efecto de sonido: ${key}`);
+                loaded++;
+                if (loaded === total) {
+                    resolve(); // Continuar aunque algunos fallen
+                }
+            });
+            
+            // Cargar el archivo solo cuando se necesite
+            audio.src = src;
+            audio.load();
+        });
+    });
+};
+
+// Reproducir música de fondo (con lazy loading)
+export const playBackgroundMusic = async () => {
+    try {
+        // Cargar música de fondo si no está cargada
+        if (!audioSystem.bgMusic) {
+            await loadBackgroundMusic();
+        }
+        
+        if (audioSystem.bgMusic && !audioSystem.isMuted) {
+            audioSystem.bgMusic.play().catch(error => {
+                console.log('No se pudo reproducir la música automáticamente:', error);
+            });
+        }
+    } catch (error) {
+        console.warn('Error cargando música de fondo:', error);
     }
 };
 
@@ -347,7 +416,7 @@ export const toggleMute = () => {
         stopStepsSound();
         stopEnergyDrainSound();
     } else {
-        playBackgroundMusic();
+        playBackgroundMusic().catch(() => {});
     }
     
     return audioSystem.isMuted;

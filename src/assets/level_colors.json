@@ -1,0 +1,215 @@
+{
+    "levelColors": {
+        "1": {
+          "wallTints": {
+            "light": "#702d0f",
+            "medium": "#8c4221",
+            "dark": "#a65a38"
+          },
+          "name": "Brown",
+          "description": "Classic brown cave walls"
+        },
+        "2": {
+          "wallTints": {
+            "light": "#0f7010",
+            "medium": "#218c23",
+            "dark": "#38a639"
+          },
+          "name": "Green",
+          "description": "Mossy green cave walls"
+        },
+        "3": {
+          "wallTints": {
+            "light": "#0f3c70",
+            "medium": "#21548c",
+            "dark": "#386ba6"
+          },
+          "name": "Blue",
+          "description": "Cool blue cave walls"
+        },
+        "4": {
+          "wallTints": {
+            "light": "#242424",
+            "medium": "#484848",
+            "dark": "#6d6d6d"
+          },
+          "name": "Gray",
+          "description": "Neutral gray cave walls"
+        },
+        "5": {
+          "wallTints": {
+            "light": "#702d0f",
+            "medium": "#8c4221",
+            "dark": "#a65a38"
+          },
+          "name": "Brown",
+          "description": "Classic brown cave walls"
+        },
+        "6": {
+          "wallTints": {
+            "light": "#0f7010",
+            "medium": "#8c2a44",
+            "dark": "#38a639"
+          },
+          "name": "Green",
+          "description": "Mossy green cave walls"
+        },
+        "7": {
+          "wallTints": {
+            "light": "#0f3c70",
+            "medium": "#8c2a44",
+            "dark": "#386ba6"
+          },
+          "name": "Blue",
+          "description": "Cool blue cave walls"
+        },
+        "8": {
+          "wallTints": {
+            "light": "#242424",
+            "medium": "#8c2a44",
+            "dark": "#6d6d6d"
+          },
+          "name": "Gray",
+          "description": "Neutral gray cave walls"
+        },
+        "9": {
+          "wallTints": {
+            "light": "#702d0f",
+            "medium": "#8c2a44",
+            "dark": "#a65a38"
+          },
+          "name": "Brown",
+          "description": "Classic brown cave walls"
+        },
+        "10": {
+          "wallTints": {
+            "light": "#0f7010",
+            "medium": "#8c2a44",
+            "dark": "#38a639"
+          },
+          "name": "Green",
+          "description": "Mossy green cave walls"
+        },
+        "11": {
+          "wallTints": {
+            "light": "#0f3c70",
+            "medium": "#8c2a44",
+            "dark": "#386ba6"
+          },
+          "name": "Blue",
+          "description": "Cool blue cave walls"
+        },
+        "12": {
+          "wallTints": {
+            "light": "#242424",
+            "medium": "#8c2a44",
+            "dark": "#6d6d6d"
+          },
+          "name": "Gray",
+          "description": "Neutral gray cave walls"
+        },
+        "13": {
+          "wallTints": {
+            "light": "#702d0f",
+            "medium": "#8c2a44",
+            "dark": "#a65a38"
+          },
+          "name": "Brown",
+          "description": "Classic brown cave walls"
+        },
+        "14": {
+          "wallTints": {
+            "light": "#0f7010",
+            "medium": "#8c2a44",
+            "dark": "#38a639"
+          },
+          "name": "Green",
+          "description": "Mossy green cave walls"
+        },
+        "15": {
+          "wallTints": {
+            "light": "#0f3c70",
+            "medium": "#8c2a44",
+            "dark": "#386ba6"
+          },
+          "name": "Blue",
+          "description": "Cool blue cave walls"
+        },
+        "16": {
+          "wallTints": {
+            "light": "#242424",
+            "medium": "#8c2a44",
+            "dark": "#6d6d6d"
+          },
+          "name": "Gray",
+          "description": "Neutral gray cave walls"
+        },
+        "17": {
+          "wallTints": {
+            "light": "#702d0f",
+            "medium": "#8c2a44",
+            "dark": "#a65a38"
+          },
+          "name": "Brown",
+          "description": "Classic brown cave walls"
+        },
+        "18": {
+          "wallTints": {
+            "light": "#0f7010",
+            "medium": "#8c2a44",
+            "dark": "#38a639"
+          },
+          "name": "Green",
+          "description": "Mossy green cave walls"
+        },
+        "19": {
+          "wallTints": {
+            "light": "#0f3c70",
+            "medium": "#8c2a44",
+            "dark": "#386ba6"
+          },
+          "name": "Blue",
+          "description": "Cool blue cave walls"
+        },
+        "20": {
+          "wallTints": {
+            "light": "#242424",
+            "medium": "#8c2a44",
+            "dark": "#6d6d6d"
+          },
+          "name": "Gray",
+          "description": "Neutral gray cave walls"
+        }
+      },
+  "colorPattern": {
+    "description": "Colors repeat every 4 levels",
+    "pattern": ["brown", "green", "blue", "gray"],
+    "hexValues": {
+      "brown": {
+        "light": "#CD853F",
+        "medium": "#8B4513",
+        "dark": "#A0522D"
+      },
+      "green": {
+        "light": "#3CB371",
+        "medium": "#228B22",
+        "dark": "#006400"
+      },
+      "blue": {
+        "light": "#6495ED",
+        "medium": "#4169E1",
+        "dark": "#00008B"
+      },
+      "gray": {
+        "light": "#A9A9A9",
+        "medium": "#696969",
+        "dark": "#4F4F4F"
+      }
+    }
+  },
+  "additionalElements": {
+    "description": "Magenta accent blocks appear from level 6 onwards",
+    "magentaTint": "#FF00FF",
+    "startLevel": 6
+  }
+}

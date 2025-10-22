@@ -232,7 +232,7 @@ export interface UiElements {
     mobileControlsEl: HTMLElement | null;
     joystickZoneEl: HTMLElement | null;
     actionZoneEl: HTMLElement | null;
-    volumeBtn?: HTMLButtonElement | null;
+    volumeToggle?: HTMLSpanElement | null;
     startGameBtn: HTMLButtonElement | null;
     levelEditorBtn: HTMLButtonElement | null;
     playTestBtn: HTMLButtonElement | null;

@@ -491,7 +491,7 @@ export const loadLevel = (store: GameStore) => {
         store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     }
     // Reanudar música principal al comenzar un nuevo nivel
-    playBackgroundMusic();
+    playBackgroundMusic().catch(() => {});
 };
 
 export const awardMinerRescue = (store: GameStore) => {
