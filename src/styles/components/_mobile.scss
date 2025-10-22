@@ -1,29 +1,26 @@
-/* iPhone 14 y Google Pixel 8 - Modo Portrait */
-@media (max-width: 428px) and (orientation: portrait) {
-    body::before {
-        content: "Por favor, gira tu dispositivo";
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.95);
-        color: white;
-        padding: 20px;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.8rem;
-        text-align: center;
-        z-index: 9999;
-        border: 3px solid white;
-        border-radius: 10px;
-    }
-    
-    #main-container {
-        display: none;
-    }
+/* ========================================
+   RESPONSIVE SIMPLIFICADO: PC Y MÓVIL
+   ======================================== */
+
+/* ========================================
+   VARIABLES Y MIXINS
+   ======================================== */
+:root {
+    --mobile-ui-font-size: 12px;
+    --mobile-ui-gap: 3px;
+    --mobile-ui-z-index: 30;
+    --mobile-ui-padding: 0;
+    --mobile-miniature-size: 20px;
+    --mobile-miniature-height: 25px;
+    --mobile-energy-bar-width: 33.33%;
+    --mobile-energy-bar-height: 16px;
 }
 
-/* iPhone 14 - Landscape (1170x2532) */
-@media (max-width: 1170px) and (orientation: landscape) {
+/* ========================================
+   MÓVIL - LANDSCAPE
+   ======================================== */
+@media (max-width: 1024px) and (orientation: landscape) {
+    /* Layout base */
     body, html {
         overflow: hidden;
         height: 100%;
@@ -53,24 +50,27 @@
         display: block;
     }
     
-    /* Level y Score para iPhone 14 */
+    /* UI Elements - Game UI (Level y Score) */
     #game-ui {
-        position: fixed;
-        top: 12%;
-        left: 4%;
-        width: auto;
-        z-index: 30;
-        padding: 0;
-        font-size: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        pointer-events: none;
-        background: transparent;
+        position: fixed !important;
+        top: 20px !important;
+        left: 20px !important;
+        width: auto !important;
+        z-index: var(--mobile-ui-z-index) !important;
+        padding: var(--mobile-ui-padding) !important;
+        font-size: var(--mobile-ui-font-size) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: var(--mobile-ui-gap) !important;
+        pointer-events: none !important;
+        background: transparent !important;
+        justify-content: flex-start !important;
+        align-items: flex-start !important;
+        height: auto !important;
         
         > span:first-child,
         > span:nth-child(2) {
-            font-size: 12px;
+            font-size: var(--mobile-ui-font-size);
             color: white;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
             font-weight: bold;
@@ -81,406 +81,152 @@
         }
     }
     
-    /* UI de vidas, power y TNT para iPhone 14 */
+    /* UI Elements - Bottom UI (Lives, Power, TNT) */
     #bottom-ui {
         position: fixed;
-        bottom: 12%;
-        left: 4%;
-        width: 50px;
-        z-index: 30;
-        padding: 0;
+        bottom: 20px;
+        left: 20px;
+        width: auto;
+        z-index: var(--mobile-ui-z-index);
+        padding: var(--mobile-ui-padding);
         display: flex;
         flex-direction: column;
         gap: 8px;
         pointer-events: none;
-        background: transparent;
+        background: rgba(0, 0, 0, 0);
+        align-items: flex-start;
+        height: auto;
+        /* Ocultar todas las etiquetas de texto en mobile */
+        span {
+            display: none !important;
+        }
         
-        #lives {
+        /* Lives y Bombs - estilos compartidos */
+        #lives, #bombs {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: var(--mobile-ui-gap);
             align-items: center;
             
             span {
-                display: none !important; /* Ocultar completamente las letras */
+                display: none !important;
             }
             
-            /* Miniaturas de vidas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
-            canvas {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-            
-            img {
-                width: 30px !important;
-                height: 37.5px !important;
+            canvas, img {
+                width: var(--mobile-miniature-size) !important;
+                height: var(--mobile-miniature-height) !important;
             }
         }
         
+        /* Contenedores específicos para lives-count y bombs-count */
+        #lives-count, #bombs-count {
+            display: flex;
+            gap: 2px;
+            
+            canvas, img {
+                max-width: 24px !important;
+                width: 24px !important;
+                height: 48px !important;
+            }
+        }
+        .energy-bar-container {
+            width: 130px;
+            position: relative;
+            &::after {
+                content: "POWER";
+                position: absolute;
+                color: black;
+                font-size: 10px;
+                font-weight: bold;
+                font-family: 'Press Start 2P', monospace;
+                z-index: 10;
+                text-align: center;
+                line-height: 1;
+                pointer-events: none;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+        }
+        /* Energy Bar */
         #energy-bar {
-            width: 33.33%; /* Un tercio del ancho actual */
-            height: 16px;
             position: relative;
             background: transparent;
             margin: 0 auto;
-            
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-        }
-        
-        #bombs {
             display: flex;
-            flex-direction: column;
-            gap: 2px;
             align-items: center;
+            justify-content: center;
+            
+            /* Texto POWER centrado sobre la barra */
+
             
             span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-            
-            /* Miniaturas de bombas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
-            canvas {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-            
-            img {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-        }
-    }
-}
-
-/* Google Pixel 8 - Landscape (1080x2400) */
-@media (max-width: 1080px) and (orientation: landscape) {
-    body, html {
-        overflow: hidden;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-
-    #main-container {
-        width: 100vw;
-        height: 100vh;
-        padding: 0;
-        margin: 0;
-        max-width: none;
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-    }
-
-    #gameCanvas {
-        width: auto !important;
-        height: 100vh !important;
-        max-height: 100vh;
-        aspect-ratio: 4/3;
-        margin: 0 auto;
-        display: block;
-    }
-    
-    /* Level y Score para Google Pixel 8 */
-    #game-ui {
-        position: fixed;
-        top: 10%;
-        left: 3%;
-        width: auto;
-        z-index: 30;
-        padding: 0;
-        font-size: 11px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        pointer-events: none;
-        background: transparent;
-        
-        > span:first-child,
-        > span:nth-child(2) {
-            font-size: 11px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-            font-weight: bold;
-        }
-        
-        #lives, #energy-bar, #bombs, #volume-toggle, button {
-            display: none;
-        }
-    }
-    
-    /* UI de vidas, power y TNT para Google Pixel 8 */
-    #bottom-ui {
-        position: fixed;
-        bottom: 10%;
-        left: 3%;
-        width: 45px;
-        z-index: 30;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        pointer-events: none;
-        background: transparent;
-        
-        #lives {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            align-items: center;
-            
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-            
-            /* Miniaturas de vidas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
-            canvas {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-            
-            img {
-                width: 30px !important;
-                height: 37.5px !important;
+                display: none !important;
             }
         }
         
-        #energy-bar {
-            width: 33.33%; /* Un tercio del ancho actual */
-            height: 14px;
-            position: relative;
-            background: transparent;
-            margin: 0 auto;
+        /* Contenedor de la barra de energía */
+        #bottom-ui .flex.items-center.gap-3:nth-child(2) {
+            width: 100%;
+            justify-content: center;
             
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-        }
-        
-        #bombs {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            align-items: center;
-            
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-            
-            /* Miniaturas de bombas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
-            canvas {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-            
-            img {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-        }
-    }
-}
-
-/* Forzar siempre modo landscape en móviles genéricos */
-@media (max-width: 900px) and (orientation: portrait) {
-    body::before {
-        content: "Por favor, gira tu dispositivo";
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.95);
-        color: white;
-        padding: 20px;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 1rem;
-        text-align: center;
-        z-index: 9999;
-        border: 3px solid white;
-        border-radius: 10px;
-    }
-    
-    #main-container {
-        display: none;
-    }
-}
-
-@media (max-width: 768px) and (orientation: landscape) {
-    body, html {
-        overflow: hidden;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-
-    #main-container {
-        width: 100vw;
-        height: 100vh;
-        padding: 0;
-        margin: 0;
-        max-width: none;
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-    }
-
-    #gameCanvas {
-        width: auto !important;
-        height: 100vh !important;
-        max-height: 100vh;
-        aspect-ratio: 4/3;
-        margin: 0 auto;
-        display: block;
-    }
-    
-    /* Level y Score arriba a la izquierda sobre el joystick, font 14px, sin background */
-    #game-ui {
-        position: fixed;
-        top: 15%;
-        left: 5%;
-        width: auto;
-        z-index: 30;
-        padding: 0;
-        font-size: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        pointer-events: none;
-        background: transparent;
-        
-        /* Level y Score con font 14px */
-        > span:first-child,
-        > span:nth-child(2) {
-            font-size: 14px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-            font-weight: bold;
-        }
-        
-        /* Ocultar otros elementos del game-ui */
-        #lives, #energy-bar, #bombs, #volume-toggle, button {
-            display: none;
-        }
-    }
-    
-    /* UI de vidas, power y TNT a la izquierda debajo del joystick, sin background */
-    #bottom-ui {
-        position: fixed;
-        bottom: 15%;
-        left: 5%;
-        width: 60px;
-        z-index: 30;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        pointer-events: none;
-        background: transparent;
-        
-        /* Lives - solo iconos sin texto, apilados verticalmente */
-        #lives {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            align-items: center;
-            
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-            
-            /* Miniaturas de vidas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
-            canvas {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-            
-            img {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-        }
-        
-        /* Energy bar - solo la barra sin texto, un tercio del ancho */
-        #energy-bar {
-            width: 33.33%; /* Un tercio del ancho actual */
-            height: 20px;
-            position: relative;
-            background: transparent;
-            margin: 0 auto;
-            
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-        }
-        
-        /* TNT - solo miniaturas, apiladas verticalmente */
-        #bombs {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            align-items: center;
-            
-            span {
-                display: none !important; /* Ocultar completamente las letras */
-            }
-            
-            /* Miniaturas de bombas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
-            canvas {
-                width: 30px !important;
-                height: 37.5px !important;
-            }
-            
-            img {
-                width: 30px !important;
-                height: 37.5px !important;
+            > div:last-child {
+                width: 50% !important;
+                height: var(--mobile-energy-bar-height);
+                background: rgba(55, 65, 81, 0.8) !important;
+                border: 2px solid rgba(255, 255, 255, 0.6) !important;
+                border-radius: 4px;
+                overflow: hidden;
+                position: relative;
+                
+                #energy-bar {
+                    width: 100% !important;
+                    height: 100% !important;
+                    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%) !important;
+                    transform-origin: left center !important;
+                    transition: transform 0.3s ease-in-out !important;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                }
             }
         }
     }
     
-    /* Panel derecho: igual que game-ui pero anclado a la derecha */
+    /* UI Elements - Right Panel */
     #right-ui {
         position: fixed;
         top: 0.5%;
         right: 0.5%;
-        z-index: 30;
-        background-color: rgba(115, 255, 0, 0.85);
+        z-index: var(--mobile-ui-z-index);
         padding: 8px;
         font-size: 0.4rem;
         display: flex;
         flex-direction: column;
         gap: 4px;
         border-radius: 8px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        pointer-events: auto; /* Necesario para que los botones sean clicables */
+        pointer-events: auto;
     }
     
+    /* Editor Panel */
     #editor-panel {
         display: none !important;
     }
 
-    #message-overlay p {
-       display: none;
-    }
+    /* Message Overlay */
     #message-overlay {
         position: fixed;
-        z-index: 50; /* por encima de #mobile-controls (z-index: 20) */
+        z-index: 50;
+        
+        p {
+            display: none;
+        }
     }
     
-    /* Editor móvil: solo canvas y paleta */
+    /* Editor móvil */
     body.state-editing {
-        #mobile-controls {
-            display: none !important;
-        }
-        
-        #game-ui {
-            display: none !important;
-        }
-        
+        #mobile-controls,
+        #game-ui,
         #right-ui {
             display: none !important;
         }
@@ -507,52 +253,17 @@
                 overflow-x: hidden;
                 
                 canvas {
-                    width: 100%;
-                    height: 100%;
-                    aspect-ratio: 1;
-                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    width: 30px;
+                    height: 30px;
+                    border: 1px solid #ccc;
                     cursor: pointer;
-                    
-                    &:active {
-                        border-color: rgba(255, 255, 255, 1);
-                        background-color: rgba(255, 255, 255, 0.2);
-                    }
+                    image-rendering: pixelated;
                 }
             }
-            
-            button {
-                font-size: 0.5rem;
-                padding: 8px;
-                margin: 3px 0;
-            }
-            
-            textarea {
-                display: none;
-            }
-            
-            select {
-                font-size: 0.5rem;
-                padding: 5px;
-            }
-        }
-        
-        #gameCanvas {
-            width: 60% !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            max-width: none !important;
-            object-fit: contain !important;
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            aspect-ratio: auto !important;
-        }
-
-        #main-container {
-            justify-content: flex-start;
         }
     }
 
+    /* Controles móviles */
     #mobile-controls {
         display: none;
         z-index: 20;
@@ -563,256 +274,62 @@
         height: 100%;
         pointer-events: none;
         background: transparent;
+
+        &[data-active="true"] {
+            display: block;
+        }
     }
 
-    #mobile-controls[data-active="true"] {
-        display: block;
-    }
-
-    /* Toda el área izquierda es zona de joystick */
+    /* Zona de joystick */
     #joystick-zone {
         position: absolute;
-        top: 0;
+        bottom: 20px;
         left: 0;
         width: 50%;
         height: 100vh;
         pointer-events: auto;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        
-		#joystick-visual {
-			position: fixed;
-			left: 0.5%;
-			top: 50%;
-			transform: translateY(-50%);
-			width: 34vh;
-			height: 34vh;
-			opacity: 0.25;
-			border-radius: 50%;
-			border: 2px solid rgba(255, 255, 255, 0.5);
-			box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.1);
-			pointer-events: none;
-		}
-		#joystick-visual::before,
-		#joystick-visual::after {
-			content: "";
-			position: absolute;
-			left: 50%;
-			top: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(255, 255, 255, 0.6);
-			pointer-events: none;
-		}
-		#joystick-visual::before { /* línea vertical */
-			width: 2px;
-			height: 80%;
-		}
-		#joystick-visual::after { /* línea horizontal */
-			height: 2px;
-			width: 80%;
-		}
-
-        .volume-btn {
-            display: none; /* Ocultar el botón de volumen independiente */
-        }
+        align-items: end;
+        justify-content: left;
     }
 
-    /* Área derecha para botones - ajustada para dejar espacio al UI */
-    #action-zone {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 25%;
-        height: 100vh;
-        pointer-events: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 2vh;
-        justify-content: center;
-        align-items: center;
-        padding: 120px 10px 10px 10px; /* Padding superior para dejar espacio al UI */
-    }
-
-    /* Botones más pequeños para que entren con el UI */
-    .action-button {
-        width: 70%;
-        height: 38vh; /* Reducido de 45vh a 38vh para dejar espacio al UI */
-        background-color: rgba(255, 255, 255, 0.15);
-        border: 3px solid rgba(255, 255, 255, 0.6);
-        border-radius: 20px; /* redondo */
-        color: white;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.7rem;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        transition: all 0.1s ease;
-        
-        &:active {
-            background-color: rgba(255, 255, 255, 0.4);
-            transform: scale(0.95);
-            border-color: rgba(255, 255, 255, 1);
-        }
-
-        &.sticky-active {
-            background-color: rgba(255, 255, 255, 0.35);
-            border-color: rgba(255, 255, 255, 1);
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2) inset;
-        }
-    }
-}
-
-/* Estilos específicos para landscape en móviles - tablets */
-@media (max-width: 1024px) and (orientation: landscape) {
-    body, html {
-        overflow: hidden;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-
-    #main-container {
-        width: 100vw;
-        height: 100vh;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
+    /* Visualización del joystick */
+    #joystick-visual {
         position: relative;
-    }
-
-    #gameCanvas {
-        width: auto !important;
-        height: 100vh !important;
-        max-height: 100vh;
-        aspect-ratio: 4/3;
-        margin: 0 auto;
-        display: block;
-    }
-
-    /* UI compacto en la columna derecha, arriba de los botones */
-    #game-ui {
-        position: fixed;
-        top: 0.5%;
-        left: 0.5%;
-        width: 18%;
-        z-index: 30;
-        padding: 8px;
-        font-size: 0.4rem;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+        width: 34vh;
+        height: 34vh;
+        opacity: 0.25;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.1);
         pointer-events: none;
+        left: 20px;
+        bottom: 39%;
         
-        > span, > div {
-            text-align: left;
-            white-space: nowrap;
+        &::before,
+        &::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+            border-radius: 10px;
         }
         
-        > div { /* ENERGY */
-            width: 100%;
-            font-size: 0.35rem;
+        &::before {
+            width: 20px;
+            height: 80%;
         }
         
-        button {
-            display: none;
-        }
-    }
-
-    /* Panel derecho: igual que game-ui pero anclado a la derecha */
-    #right-ui { 
-        width:60px;
-        align-items: center;
-        justify-content: center;
-        position: fixed;
-        top: 0;
-        right: 0;
-        z-index: 30;
-        padding: 8px;
-        font-size: 0.4rem;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        border-radius: 8px;
-        pointer-events: auto; /* Necesario para que los botones sean clicables */
-    }
-
-    #mobile-controls {
-        display: none;
-        z-index: 20;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        background: transparent;
-    }
-
-    #mobile-controls[data-active="true"] {
-        display: block;
-    }
-
-    /* Toda el área izquierda es zona de joystick */
-    #joystick-zone {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 50%;
-        height: 100vh;
-        pointer-events: auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        
-		#joystick-visual {
-			position: fixed;
-			left: 3%;
-			top: 50%;
-			transform: translateY(-50%);
-			width: 28vh;
-			height: 28vh;
-			opacity: 0.25;
-			border-radius: 50%;
-			border: 2px solid rgba(255, 255, 255, 0.5);
-			box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.1);
-			pointer-events: none;
-		}
-		#joystick-visual::before,
-		#joystick-visual::after {
-			content: "";
-			position: absolute;
-			left: 50%;
-			top: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(255, 255, 255, 0.6);
-			pointer-events: none;
-		}
-		#joystick-visual::before { /* línea vertical */
-			width: 24px;
-			height: 80%;
-            border-radius: 8px;
-		}
-		#joystick-visual::after { /* línea horizontal */
-			height: 24px;
-			width: 80%;
-            border-radius: 8px;
-
-		}
-
-        .volume-btn {
-            display: none; /* Ocultar el botón de volumen independiente */
+        &::after {
+            height: 20px;
+            width: 80%;
         }
     }
 
-    /* Área derecha para botones - ajustada para dejar espacio al UI */
+    /* Área de botones de acción */
     #action-zone {
         position: absolute;
         top: 0;
@@ -825,126 +342,67 @@
         gap: 2vh;
         justify-content: center;
         align-items: center;
-        padding: 130px 10px 10px 10px; /* Padding superior para dejar espacio al UI */
+        padding: 130px 10px 10px 10px;
     }
 
-    /* Botones más pequeños para que entren con el UI */
+    /* Botones de acción */
     .action-button {
-        width:100%;
-        height: 36vh; /* Reducido de 45vh a 38vh para dejar espacio al UI */
-        background-color: rgba(255, 255, 255, 0.15);
-        border: 3px solid rgba(255, 255, 255, 0.6);
-        border-radius: 20px; /* redondo */
-        color: white;
-        font-family: 'Press Start 2P', monospace;
-        font-size: 0.7rem;
-        touch-action: none;
-        user-select: none;
-        -webkit-user-select: none;
+        width: 100%;
+        height: 100%;
+        border-radius: 40px;
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        background: rgba(243, 46, 20, 0.35);
+        color: #fff;
+        font-size: 20px;
+        line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        text-align: center;
-        transition: all 0.1s ease;
-        
-        &:active {
-            background-color: rgba(255, 255, 255, 0.4);
-            transform: scale(0.95);
-            border-color: rgba(255, 255, 255, 1);
-        }
-
-        &.sticky-active {
-            background-color: rgba(255, 255, 255, 0.35);
-            border-color: rgba(255, 255, 255, 1);
-            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2) inset;
-        }
+        pointer-events: auto;
     }
 
-    #message-overlay {
+    /* Volume button */
+    .volume-btn {
+        display: none;
+    }
+}
+
+/* ========================================
+   MÓVIL - PORTRAIT (Forzar landscape)
+   ======================================== */
+@media (max-width: 1024px) and (orientation: portrait) {
+    body::before {
+        content: "Por favor, gira tu dispositivo";
         position: fixed;
-        z-index: 50; /* por encima de #mobile-controls (z-index: 20) */
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 20px;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 0.8rem;
+        text-align: center;
+        z-index: 9999;
+        border: 3px solid white;
+        border-radius: 10px;
     }
+    
+    #main-container {
+        display: none;
+    }
+}
 
-    #editor-panel {
+/* ========================================
+   PC - ESCRITORIO
+   ======================================== */
+@media (min-width: 1025px) {
+    #mobile-controls {
         display: none !important;
     }
     
-    /* Editor móvil: solo canvas y paleta */
-    body.state-editing {
-        #mobile-controls {
-            display: none !important;
-        }
-        
-        #game-ui {
-            display: none !important;
-        }
-        
-        #right-ui {
-            display: none !important;
-        }
-        
-        #editor-panel {
-            display: flex !important;
-            position: fixed;
-            top: 0;
-            right: 0;
-            width: 40%;
-            height: 100vh;
-            flex-direction: column;
-            background-color: rgba(0, 0, 0, 0.95);
-            padding: 10px;
-            z-index: 100;
-            overflow-y: auto;
-            overflow-x: hidden;
-            
-            #tile-palette {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr); /* igual que desktop */
-                gap: 3px;
-                margin-bottom: 10px;
-                overflow-x: hidden;
-                
-                canvas {
-                    width: 100%;
-                    height: 100%;
-                    aspect-ratio: 1;
-                    cursor: pointer;
-                    
-                    &:active {
-                        background-color: rgba(255, 255, 255, 0.2);
-                    }
-                }
-            }
-            
-            button {
-                font-size: 0.5rem;
-                padding: 8px;
-                margin: 3px 0;
-            }
-            
-            textarea {
-                display: none;
-            }
-            
-            select {
-                font-size: 0.5rem;
-                padding: 5px;
-            }
-        }
-        
-        #gameCanvas {
-            height: 100vh !important;
-            margin: 0 !important;
-            max-width: none !important;
-            object-fit: contain !important;
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            aspect-ratio: auto !important;
-        }
-
-        #main-container {
-            justify-content: flex-start;
-        }
+    #game-ui,
+    #bottom-ui {
+        /* Mantener estilos por defecto para PC */
     }
 }

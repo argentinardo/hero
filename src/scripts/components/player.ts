@@ -201,16 +201,16 @@ const startFloatingEntry = (store: GameStore, targetX: number, targetY: number) 
     player.respawnX = targetX;
     player.respawnY = targetY;
     
-    // Posicionar al jugador desde arriba del viewport
+    // Posicionar al jugador desde arriba del viewport (trayecto más corto)
     player.x = targetX;
-    player.y = store.cameraY - TILE_SIZE * 2; // Desde arriba del viewport
+    player.y = store.cameraY - TILE_SIZE * 0.5; // Desde arriba del viewport (trayecto más corto)
     player.hitbox.x = player.x + TILE_SIZE / 4;
     player.hitbox.y = player.y;
     
     // Configurar estado de floating
     player.isFloating = true;
     player.isGrounded = false;
-    player.vy = 4; // Velocidad de descenso moderada
+    player.vy = 6; // Velocidad de descenso más rápida
     player.vx = 0;
     player.animationState = 'fly';
     player.animationTick = 0;

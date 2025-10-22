@@ -500,7 +500,10 @@ export const awardMinerRescue = (store: GameStore) => {
         return;
     }
     
-    // Detener todos los sonidos (el sonido de éxito se reproducirá al final)
+    // 1. Reproducir sonido de éxito inmediatamente al rescatar al minero
+    playSuccessLevelSound();
+    
+    // Detener todos los otros sonidos
     stopAllSfxExceptSuccessLevel();
     
     store.score += 1000;

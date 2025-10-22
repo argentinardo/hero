@@ -272,6 +272,7 @@ export interface GameStore {
     // Secuencia de fin de nivel
     levelEndSequence: 'energy' | 'bombs' | 'complete' | null;
     levelEndTimer: number;
+    virtualEnergyDrain: number | null;
     
     // Configuración de paredes aplastantes (editor)
     crushingWallConfig?: {

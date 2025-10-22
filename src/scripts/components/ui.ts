@@ -32,8 +32,8 @@ export const adjustUIBars = () => {
     const leftOffset = canvasLeft;
     
     // Aplicar el ancho y posición a las barras UI
-    // solo en mobile
-    if (window.innerWidth >= 900) {
+    // solo en desktop (no en mobile)
+    if (window.innerWidth >= 1025) {
         gameUi.style.width = `${canvasWidth}px`;
         gameUi.style.left = `${leftOffset}px`;
         bottomUi.style.width = `${canvasWidth}px`;
@@ -148,7 +148,10 @@ const updateVolumeToggle = () => {
 // Función helper para actualizar la barra de energía con colores graduales
 export const updateEnergyBarColor = (energyBarEl: HTMLElement, energy: number, maxEnergy: number = 200) => {
     const energyPercentage = (energy / maxEnergy) * 100;
-    energyBarEl.style.width = `${energyPercentage}%`;
+    
+    // Usar transform scaleX para escalar de izquierda a derecha
+    energyBarEl.style.transform = `scaleX(${energyPercentage / 100})`;
+    energyBarEl.style.transformOrigin = 'left center';
     
     // Cambiar color gradualmente de verde a rojo
     if (energyPercentage > 60) {

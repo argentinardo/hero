@@ -206,29 +206,46 @@ const handleLevelEndSequence = (store: GameStore) => {
 
     store.levelEndTimer += 1;
 
-    // Fase 1: Drenar energía
+    // Fase 1: Drenar energía (VIRTUAL - solo para puntos y efectos visuales)
     if (store.levelEndSequence === 'energy') {
+        // Timeout de seguridad: si lleva más de 5 segundos drenando, forzar el paso siguiente
+        if (store.levelEndTimer > 300) { // 300 frames = 5 segundos a 60fps
+            stopEnergyDrainSound();
+            store.virtualEnergyDrain = null;
+            store.levelEndSequence = 'bombs';
+            store.levelEndTimer = 0;
+            return;
+        }
+
         // Reproducir sonido de drenaje de energía en loop
         playEnergyDrainSound();
 
-        // Reducir energía gradualmente
-        if (store.energy > 0) {
-            const energyToReduce = Math.min(ENERGY_DRAIN_SPEED, store.energy);
-            store.energy -= energyToReduce;
+        // Crear una variable virtual para el drenaje (no afecta la energía real del héroe)
+        if (store.virtualEnergyDrain === null || store.virtualEnergyDrain === undefined) {
+            store.virtualEnergyDrain = store.energy; // Inicializar con la energía actual
+        }
+
+        // Reducir energía virtual gradualmente
+        if (store.virtualEnergyDrain > 0) {
+            const energyToReduce = Math.min(ENERGY_DRAIN_SPEED, store.virtualEnergyDrain);
+            store.virtualEnergyDrain -= energyToReduce;
             
-            // Sumar puntos por la energía drenada
+            // Sumar puntos por la energía drenada virtualmente
             const pointsToAdd = Math.floor(energyToReduce * POINTS_PER_ENERGY);
             store.score += pointsToAdd;
             
-            // Actualizar la barra de energía visualmente
+            // Actualizar la barra de energía visualmente (usando la energía virtual)
             const energyBarEl = store.dom.ui.energyBarEl;
             if (energyBarEl) {
                 const { updateEnergyBarColor } = require('./ui');
-                updateEnergyBarColor(energyBarEl, store.energy, 200);
+                updateEnergyBarColor(energyBarEl, store.virtualEnergyDrain, 200);
             }
         } else {
-            // Energía llegó a 0, detener el sonido de drenaje de energía
+            // Energía virtual llegó a 0, detener el sonido de drenaje de energía
             stopEnergyDrainSound();
+            
+            // Limpiar la variable virtual
+            store.virtualEnergyDrain = null;
             
             // Pasar a la siguiente fase: explotar bombas
             store.levelEndSequence = 'bombs';
@@ -280,9 +297,6 @@ const handleLevelEndSequence = (store: GameStore) => {
 
     // Fase 3: Completar nivel
     if (store.levelEndSequence === 'complete') {
-        // Reproducir sonido de éxito y avanzar al siguiente nivel
-        playSuccessLevelSound();
-        
         // Avanzar al siguiente nivel después de un breve delay
         window.setTimeout(() => {
             store.currentLevelIndex += 1;
