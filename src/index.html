@@ -51,15 +51,15 @@
                 <!-- Barra Inferior (superpuesta) -->
                 <div id="bottom-ui" class="text-base" style="display: none;">
                     <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold">LIVES:</span>
+                        <span class="text-lg font-bold hidden sm:inline">LIVES:</span>
                         <div id="lives-count" class="flex gap-1"></div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold">POWER:</span>
+                        <span class="text-lg font-bold hidden sm:inline">POWER:</span>
                         <div class="w-96 h-8 bg-gray-700 border-2 border-white"><div id="energy-bar" class="h-full bg-yellow-400 transition-all duration-300 ease-in-out"></div></div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold">TNT:</span>
+                        <span class="text-lg font-bold hidden sm:inline">TNT:</span>
                         <div id="bombs-count" class="flex gap-1"></div>
                     </div>
                 </div>
@@ -150,7 +150,6 @@
         <div id="mobile-controls" class="hidden">
             <div id="joystick-zone">
                 <div id="joystick-visual"></div>
-                    <span id="volume-toggle" class="volume-toggle" aria-label="Volumen">SOUND: ON</span>
             </div>
             <div id="action-zone">
                 <button id="shoot-btn" class="action-button">LÁSER</button>

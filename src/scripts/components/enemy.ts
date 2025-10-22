@@ -239,49 +239,59 @@ const handleLevelEndSequence = (store: GameStore) => {
 
     // Fase 2: Explotar dinamitas una por una
     if (store.levelEndSequence === 'bombs') {
-        if (store.bombsRemaining > 0) {
-            // Explotar una dinamita cada BOMB_EXPLOSION_INTERVAL frames
-            if (store.levelEndTimer % BOMB_EXPLOSION_INTERVAL === 0) {
-                store.bombsRemaining -= 1;
-                store.score += POINTS_PER_BOMB;
-                
-                // Reproducir sonido de explosión
-                playBombSound();
-                
-                // Activar flash de explosión para efecto visual
-                store.explosionFlash = 0.5;
-                
-                // Mostrar puntos flotantes en la posición del jugador/minero
-                const displayX = store.miner?.x ?? store.player.x;
-                const displayY = store.miner?.y ?? store.player.y;
-                
-                store.floatingScores.push({
-                    x: displayX,
-                    y: displayY - 20,
-                    text: `+${POINTS_PER_BOMB}`,
-                    life: 60,
-                    opacity: 1,
-                });
-                
-                // Si era la última bomba, detener el sonido de bomba y reproducir el sonido de éxito
-                if (store.bombsRemaining === 0) {
-                    stopBombSound();
-                    playSuccessLevelSound();
-                    
-                    // Cuando termine el sonido, esperar 2 segundos más antes de cargar el nivel
-                    onSuccessLevelEnded(() => {
-                        window.setTimeout(() => {
-                            store.currentLevelIndex += 1;
-                            loadLevel(store);
-                        }, 1000); // 1 segundo adicional después de que termine el sonido
-                    });
-                }
-            }
-        } else {
-            // Todas las bombas explotaron, completar la secuencia
+        // Si no hay bombas, pasar directamente al siguiente nivel
+        if (store.bombsRemaining === 0) {
             store.levelEndSequence = 'complete';
             store.levelEndTimer = 0;
+            return;
         }
+        
+        // Explotar una dinamita cada BOMB_EXPLOSION_INTERVAL frames
+        if (store.levelEndTimer % BOMB_EXPLOSION_INTERVAL === 0) {
+            store.bombsRemaining -= 1;
+            store.score += POINTS_PER_BOMB;
+            
+            // Reproducir sonido de explosión
+            playBombSound();
+            
+            // Activar flash de explosión para efecto visual
+            store.explosionFlash = 0.5;
+            
+            // Mostrar puntos flotantes en la posición del jugador/minero
+            const displayX = store.miner?.x ?? store.player.x;
+            const displayY = store.miner?.y ?? store.player.y;
+            
+            store.floatingScores.push({
+                x: displayX,
+                y: displayY - 20,
+                text: `+${POINTS_PER_BOMB}`,
+                life: 60,
+                opacity: 1,
+            });
+            
+            // Si era la última bomba, completar la secuencia
+            if (store.bombsRemaining === 0) {
+                store.levelEndSequence = 'complete';
+                store.levelEndTimer = 0;
+            }
+        }
+        return;
+    }
+
+    // Fase 3: Completar nivel
+    if (store.levelEndSequence === 'complete') {
+        // Reproducir sonido de éxito y avanzar al siguiente nivel
+        playSuccessLevelSound();
+        
+        // Avanzar al siguiente nivel después de un breve delay
+        window.setTimeout(() => {
+            store.currentLevelIndex += 1;
+            loadLevel(store);
+        }, 2000); // 2 segundos de delay
+        
+        // Limpiar la secuencia de fin de nivel
+        store.levelEndSequence = null;
+        store.levelEndTimer = 0;
         return;
     }
 };

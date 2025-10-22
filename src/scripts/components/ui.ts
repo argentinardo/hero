@@ -32,10 +32,13 @@ export const adjustUIBars = () => {
     const leftOffset = canvasLeft;
     
     // Aplicar el ancho y posición a las barras UI
-    gameUi.style.width = `${canvasWidth}px`;
-    gameUi.style.left = `${leftOffset}px`;
-    bottomUi.style.width = `${canvasWidth}px`;
-    bottomUi.style.left = `${leftOffset}px`;
+    // solo en mobile
+    if (window.innerWidth >= 900) {
+        gameUi.style.width = `${canvasWidth}px`;
+        gameUi.style.left = `${leftOffset}px`;
+        bottomUi.style.width = `${canvasWidth}px`;
+        bottomUi.style.left = `${leftOffset}px`;
+    }
 };
 
 export const attachDomReferences = (store: GameStore) => {

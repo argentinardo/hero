@@ -1,5 +1,291 @@
-/* Forzar siempre modo landscape en móviles */
-@media (max-width: 768px) and (orientation: portrait) {
+/* iPhone 14 y Google Pixel 8 - Modo Portrait */
+@media (max-width: 428px) and (orientation: portrait) {
+    body::before {
+        content: "Por favor, gira tu dispositivo";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 20px;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 0.8rem;
+        text-align: center;
+        z-index: 9999;
+        border: 3px solid white;
+        border-radius: 10px;
+    }
+    
+    #main-container {
+        display: none;
+    }
+}
+
+/* iPhone 14 - Landscape (1170x2532) */
+@media (max-width: 1170px) and (orientation: landscape) {
+    body, html {
+        overflow: hidden;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    #main-container {
+        width: 100vw;
+        height: 100vh;
+        padding: 0;
+        margin: 0;
+        max-width: none;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+    }
+
+    #gameCanvas {
+        width: auto !important;
+        height: 100vh !important;
+        max-height: 100vh;
+        aspect-ratio: 4/3;
+        margin: 0 auto;
+        display: block;
+    }
+    
+    /* Level y Score para iPhone 14 */
+    #game-ui {
+        position: fixed;
+        top: 12%;
+        left: 4%;
+        width: auto;
+        z-index: 30;
+        padding: 0;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        pointer-events: none;
+        background: transparent;
+        
+        > span:first-child,
+        > span:nth-child(2) {
+            font-size: 12px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+            font-weight: bold;
+        }
+        
+        #lives, #energy-bar, #bombs, #volume-toggle, button {
+            display: none;
+        }
+    }
+    
+    /* UI de vidas, power y TNT para iPhone 14 */
+    #bottom-ui {
+        position: fixed;
+        bottom: 12%;
+        left: 4%;
+        width: 50px;
+        z-index: 30;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+        background: transparent;
+        
+        #lives {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+            
+            /* Miniaturas de vidas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
+            canvas {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+            
+            img {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+        }
+        
+        #energy-bar {
+            width: 33.33%; /* Un tercio del ancho actual */
+            height: 16px;
+            position: relative;
+            background: transparent;
+            margin: 0 auto;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+        }
+        
+        #bombs {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+            
+            /* Miniaturas de bombas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
+            canvas {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+            
+            img {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+        }
+    }
+}
+
+/* Google Pixel 8 - Landscape (1080x2400) */
+@media (max-width: 1080px) and (orientation: landscape) {
+    body, html {
+        overflow: hidden;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    #main-container {
+        width: 100vw;
+        height: 100vh;
+        padding: 0;
+        margin: 0;
+        max-width: none;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+    }
+
+    #gameCanvas {
+        width: auto !important;
+        height: 100vh !important;
+        max-height: 100vh;
+        aspect-ratio: 4/3;
+        margin: 0 auto;
+        display: block;
+    }
+    
+    /* Level y Score para Google Pixel 8 */
+    #game-ui {
+        position: fixed;
+        top: 10%;
+        left: 3%;
+        width: auto;
+        z-index: 30;
+        padding: 0;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        pointer-events: none;
+        background: transparent;
+        
+        > span:first-child,
+        > span:nth-child(2) {
+            font-size: 11px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+            font-weight: bold;
+        }
+        
+        #lives, #energy-bar, #bombs, #volume-toggle, button {
+            display: none;
+        }
+    }
+    
+    /* UI de vidas, power y TNT para Google Pixel 8 */
+    #bottom-ui {
+        position: fixed;
+        bottom: 10%;
+        left: 3%;
+        width: 45px;
+        z-index: 30;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        pointer-events: none;
+        background: transparent;
+        
+        #lives {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+            
+            /* Miniaturas de vidas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
+            canvas {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+            
+            img {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+        }
+        
+        #energy-bar {
+            width: 33.33%; /* Un tercio del ancho actual */
+            height: 14px;
+            position: relative;
+            background: transparent;
+            margin: 0 auto;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+        }
+        
+        #bombs {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+            
+            /* Miniaturas de bombas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
+            canvas {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+            
+            img {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+        }
+    }
+}
+
+/* Forzar siempre modo landscape en móviles genéricos */
+@media (max-width: 900px) and (orientation: portrait) {
     body::before {
         content: "Por favor, gira tu dispositivo";
         position: fixed;
@@ -52,34 +338,108 @@
         display: block;
     }
     
-    /* UI compacto en la columna derecha, arriba de los botones */
+    /* Level y Score arriba a la izquierda sobre el joystick, font 14px, sin background */
     #game-ui {
         position: fixed;
-        top: 0.5%;
-        left: 0.5%;
-        width: 18%;
+        top: 15%;
+        left: 5%;
+        width: auto;
         z-index: 30;
-        background-color: rgba(115, 255, 0, 0.85);
-        padding: 8px;
-        font-size: 0.4rem;
+        padding: 0;
+        font-size: 14px;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        border-radius: 8px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
         pointer-events: none;
+        background: transparent;
         
-        > span, > div {
-            text-align: left;
-            white-space: nowrap;
+        /* Level y Score con font 14px */
+        > span:first-child,
+        > span:nth-child(2) {
+            font-size: 14px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+            font-weight: bold;
         }
         
-        > div { /* ENERGY */
-            width: 100%;
-            font-size: 0.35rem;
+        /* Ocultar otros elementos del game-ui */
+        #lives, #energy-bar, #bombs, #volume-toggle, button {
+            display: none;
+        }
+    }
+    
+    /* UI de vidas, power y TNT a la izquierda debajo del joystick, sin background */
+    #bottom-ui {
+        position: fixed;
+        bottom: 15%;
+        left: 5%;
+        width: 60px;
+        z-index: 30;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        pointer-events: none;
+        background: transparent;
+        
+        /* Lives - solo iconos sin texto, apilados verticalmente */
+        #lives {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+            
+            /* Miniaturas de vidas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
+            canvas {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+            
+            img {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
         }
         
-        button { display: none; }
+        /* Energy bar - solo la barra sin texto, un tercio del ancho */
+        #energy-bar {
+            width: 33.33%; /* Un tercio del ancho actual */
+            height: 20px;
+            position: relative;
+            background: transparent;
+            margin: 0 auto;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+        }
+        
+        /* TNT - solo miniaturas, apiladas verticalmente */
+        #bombs {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+            
+            span {
+                display: none !important; /* Ocultar completamente las letras */
+            }
+            
+            /* Miniaturas de bombas con 3/4 de la altura del juego (30x50 -> 30x37.5) */
+            canvas {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+            
+            img {
+                width: 30px !important;
+                height: 37.5px !important;
+            }
+        }
     }
     
     /* Panel derecho: igual que game-ui pero anclado a la derecha */
@@ -87,7 +447,6 @@
         position: fixed;
         top: 0.5%;
         right: 0.5%;
-        width: 18%;
         z-index: 30;
         background-color: rgba(115, 255, 0, 0.85);
         padding: 8px;
@@ -203,6 +562,7 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+        background: transparent;
     }
 
     #mobile-controls[data-active="true"] {
@@ -254,21 +614,7 @@
 		}
 
         .volume-btn {
-            position: fixed;
-            left: 1.2%;
-            bottom: 2.5%;
-            width: 54px;
-            height: 54px;
-            border-radius: 9999px;
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            background: rgba(0, 0, 0, 0.35);
-            color: #fff;
-            font-size: 22px;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: auto;
+            display: none; /* Ocultar el botón de volumen independiente */
         }
     }
 
@@ -294,7 +640,7 @@
         height: 38vh; /* Reducido de 45vh a 38vh para dejar espacio al UI */
         background-color: rgba(255, 255, 255, 0.15);
         border: 3px solid rgba(255, 255, 255, 0.6);
-        border-radius: 9999px; /* redondo */
+        border-radius: 20px; /* redondo */
         color: white;
         font-family: 'Press Start 2P', monospace;
         font-size: 0.7rem;
@@ -358,14 +704,11 @@
         left: 0.5%;
         width: 18%;
         z-index: 30;
-        background-color: rgba(0, 0, 0, 0.85);
         padding: 8px;
         font-size: 0.4rem;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        border-radius: 8px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
         pointer-events: none;
         
         > span, > div {
@@ -384,20 +727,20 @@
     }
 
     /* Panel derecho: igual que game-ui pero anclado a la derecha */
-    #right-ui {
+    #right-ui { 
+        width:60px;
+        align-items: center;
+        justify-content: center;
         position: fixed;
-        top: 0.5%;
-        right: 0.5%;
-        width: 18%;
+        top: 0;
+        right: 0;
         z-index: 30;
-        background-color: rgba(0, 0, 0, 0.85);
         padding: 8px;
         font-size: 0.4rem;
         display: flex;
         flex-direction: column;
         gap: 4px;
         border-radius: 8px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
         pointer-events: auto; /* Necesario para que los botones sean clicables */
     }
 
@@ -410,6 +753,7 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+        background: transparent;
     }
 
     #mobile-controls[data-active="true"] {
@@ -464,21 +808,7 @@
 		}
 
         .volume-btn {
-            position: fixed;
-            left: 1.2%;
-            bottom: 2.5%;
-            width: 48px;
-            height: 48px;
-            border-radius: 9999px;
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            background: rgba(0, 0, 0, 0.35);
-            color: #fff;
-            font-size: 20px;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: auto;
+            display: none; /* Ocultar el botón de volumen independiente */
         }
     }
 
@@ -504,7 +834,7 @@
         height: 36vh; /* Reducido de 45vh a 38vh para dejar espacio al UI */
         background-color: rgba(255, 255, 255, 0.15);
         border: 3px solid rgba(255, 255, 255, 0.6);
-        border-radius: 9999px; /* redondo */
+        border-radius: 20px; /* redondo */
         color: white;
         font-family: 'Press Start 2P', monospace;
         font-size: 0.7rem;

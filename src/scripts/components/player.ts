@@ -355,6 +355,11 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     if (store.gameState === 'respawning' || store.gameState === 'gameover' || store.gameState === 'floating') {
         return;
     }
+    
+    // Si el jugador está en secuencia de fin de nivel, es invulnerable
+    if (store.levelEndSequence) {
+        return;
+    }
 
     const { player } = store;
     
@@ -750,8 +755,8 @@ export const updatePlayer = (store: GameStore) => {
     if (!store.levelEndSequence && !store.isPaused) {
         store.energy = Math.max(0, store.energy - store.energyDecrementRate);
         
-        // Si la energía llega a 0, el jugador muere
-        if (store.energy <= 0 && store.gameState === 'playing') {
+        // Si la energía llega a 0, el jugador muere (solo si no está en secuencia de fin de nivel)
+        if (store.energy <= 0 && store.gameState === 'playing' && !store.levelEndSequence) {
             playerDie(store);
         }
     }
@@ -761,6 +766,11 @@ export const updatePlayer = (store: GameStore) => {
 
 export const checkEnemyCollision = (store: GameStore) => {
     const { player, enemies } = store;
+    
+    // Si el jugador está en secuencia de fin de nivel, es invulnerable
+    if (store.levelEndSequence) {
+        return;
+    }
     enemies.forEach(enemy => {
         if (enemy.type === 'viper' && !enemy.isHidden && enemy.initialX !== undefined) {
             let headHitbox: Enemy | null = null;

@@ -48,14 +48,12 @@
 /* Barra de botones móvil */
 #right-ui {
     position: absolute;
-    top: 10vh;
-    left: 50%;
-    transform: translateX(-50%);
-    width: auto;
+    top: 0;
+    right: 0;
     height: auto;
-    background-color: rgba(0, 0, 0, 0.8);
     padding: 8px 20px;
     z-index: 99;
+    width: auto;
 }
 
 /* Barra inferior - superpuesta sobre el canvas */
@@ -127,7 +125,7 @@
     
     span {
         display: block;
-        width: 30px;
+        width: 20px;
         height: 3px;
         background-color: white;
         border-radius: 2px;
@@ -212,7 +210,14 @@
 }
 
 /* Ajuste para móvil */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+    #bottom-ui {
+        z-index: 100;
+        padding: 0 40px;
+        box-sizing: border-box;
+        justify-content: space-between;
+        left: 0;
+    }
     .hamburger-menu {
         left: 50%;
         transform: translateX(-50%);
