@@ -4,21 +4,21 @@ import { emitParticles } from './player';
 import { playEnemyKillSound } from './audio';
 
 const splitDestructibleWall = (store: GameStore, wall: Wall) => {
-    const quarterWidth = TILE_SIZE / 2;
-    const quarterHeight = TILE_SIZE / 2;
-    for (let i = 0; i < 4; i++) {
-        const offsetX = (i % 2) * quarterWidth;
-        const offsetY = Math.floor(i / 2) * quarterHeight;
+    const halfWidth = TILE_SIZE / 2;
+    
+    // Dividir el ladrillo en solo 2 mitades (izquierda y derecha)
+    for (let i = 0; i < 2; i++) {
+        const offsetX = i * halfWidth;
         store.fallingEntities.push({
             x: wall.x + offsetX,
-            y: wall.y + offsetY,
-            width: quarterWidth,
-            height: quarterHeight,
+            y: wall.y,
+            width: halfWidth,
+            height: TILE_SIZE,
             vy: Math.random() * -4 - 1,
             vx: (Math.random() - 0.5) * 6,
             tile: wall.tile,
             srcTileOffsetX: offsetX,
-            srcTileOffsetY: offsetY,
+            srcTileOffsetY: 0,
         });
     }
 };
@@ -31,13 +31,23 @@ const applyColumnCutOrRemove = (store: GameStore, baseGridX: number, action: 'ha
     if (action === 'remove') {
         // Dejar caer cualquier mitad restante y eliminar
         colWalls.forEach(wall => {
-            const leftX = wall.x;
-            const rightX = wall.x + wall.width;
-            const dropLeftWidth = Math.min(wall.width, TILE_SIZE / 2);
-            const dropRightWidth = Math.min(wall.width, TILE_SIZE / 2);
-            // Soltar dos ladrillos (superior e inferior) del bloque restante
-            store.fallingEntities.push({ x: wall.x, y: wall.y, width: wall.width, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
-            store.fallingEntities.push({ x: wall.x, y: wall.y + TILE_SIZE / 2, width: wall.width, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            // Usar el ancho actual de la pared (puede ser la mitad si ya fue cortada)
+            const currentWidth = wall.visualWidth ?? wall.width;
+            const currentX = wall.visualX ?? wall.x;
+            const offsetX = wall.cutSide === 'left' ? TILE_SIZE / 2 : 0;
+            
+            // Soltar solo 2 mitades verticales con el ancho y textura correctos
+            store.fallingEntities.push({ 
+                x: currentX, 
+                y: wall.y, 
+                width: currentWidth, 
+                height: TILE_SIZE, 
+                vy: Math.random() * -4 - 1, 
+                vx: (Math.random() - 0.5) * 6, 
+                tile: wall.tile,
+                srcTileOffsetX: offsetX,
+                srcTileOffsetY: 0
+            });
         });
         store.walls = store.walls.filter(w => !(w.type === 'destructible_v' && Math.floor(w.x / TILE_SIZE) === baseGridX));
         return;
@@ -48,19 +58,37 @@ const applyColumnCutOrRemove = (store: GameStore, baseGridX: number, action: 'ha
         // Si ya está a la mitad, no volver a cortar
         if (wall.visualWidth && wall.visualWidth <= TILE_SIZE / 2 + 0.01) return;
         if (side === 'left') {
-            // Caer mitad izquierda
-            store.fallingEntities.push({ x: wall.x, y: wall.y, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
-            store.fallingEntities.push({ x: wall.x, y: wall.y + TILE_SIZE / 2, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            // Caer mitad izquierda - solo 1 fragmento completo
+            store.fallingEntities.push({ 
+                x: wall.x, 
+                y: wall.y, 
+                width: TILE_SIZE / 2, 
+                height: TILE_SIZE, 
+                vy: Math.random() * -4 - 1, 
+                vx: (Math.random() - 0.5) * 6, 
+                tile: wall.tile,
+                srcTileOffsetX: 0,
+                srcTileOffsetY: 0
+            });
             // Conservar mitad derecha VISUALMENTE, pero mantener colisión completa
             wall.visualX = baseX + TILE_SIZE / 2;
             wall.visualWidth = TILE_SIZE / 2;
             wall.cutSide = 'left';
             // La colisión (wall.x y wall.width) permanece igual
         } else {
-            // Caer mitad derecha
+            // Caer mitad derecha - solo 1 fragmento completo
             const rightX = baseX + TILE_SIZE / 2;
-            store.fallingEntities.push({ x: rightX, y: wall.y, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -3, vx: (Math.random() - 0.5) * 4, tile: '1' });
-            store.fallingEntities.push({ x: rightX, y: wall.y + TILE_SIZE / 2, width: TILE_SIZE / 2, height: TILE_SIZE / 2, vy: -2, vx: (Math.random() - 0.5) * 4, tile: '1' });
+            store.fallingEntities.push({ 
+                x: rightX, 
+                y: wall.y, 
+                width: TILE_SIZE / 2, 
+                height: TILE_SIZE, 
+                vy: Math.random() * -4 - 1, 
+                vx: (Math.random() - 0.5) * 6, 
+                tile: wall.tile,
+                srcTileOffsetX: TILE_SIZE / 2,
+                srcTileOffsetY: 0
+            });
             // Conservar mitad izquierda VISUALMENTE, pero mantener colisión completa
             wall.visualX = baseX;
             wall.visualWidth = TILE_SIZE / 2;

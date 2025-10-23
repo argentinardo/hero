@@ -21,6 +21,16 @@ const createWall = (x: number, y: number, tile: string, store: GameStore): Wall 
     if (tile === 'C') {
         return { ...base, type: 'destructible_v', health: 60, isDamaged: false };
     }
+    if (tile === 'K') {
+        return { 
+            ...base, 
+            type: 'destructible_v', 
+            health: 60, 
+            isDamaged: false,
+            spriteTick: Math.floor(Math.random() * 50),
+            currentFrame: Math.floor(Math.random() * 11),
+        };
+    }
     if (tile === '3') {
         return {
             ...base,
@@ -194,7 +204,7 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     let playerStartY = TILE_SIZE * 1.5;
     const levelPixelWidth = map[0].length * TILE_SIZE;
 
-    const STATIC_TILES = new Set(['1', '2', '3', 'C']);
+    const STATIC_TILES = new Set(['1', '2', '3', 'C', 'K']);
     
     // Procesar paredes aplastantes: agrupar H's y J's consecutivos
     const processedCrushingTiles = new Set<string>(); // Para marcar tiles ya procesados

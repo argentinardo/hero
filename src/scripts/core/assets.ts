@@ -60,6 +60,7 @@ export const ANIMATION_DATA: AnimationMap = {
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
     '3': { frames: 16, speed: 19, sprite: '3' },
+    K: { frames: 16, speed: 19, sprite: '3' },
     bomb: { frames: 6, speed: 15, sprite: 'bomb', loop: false },
     explosion: { frames: 6, speed: 2, sprite: 'explosion', loop: false },
 };
@@ -70,6 +71,7 @@ export const TILE_TYPES: TileDictionary = {
     '1': { name: 'Muro', color: '#6d6d6d', class: 'wall', sprite: '1' },
     '2': { name: 'Tierra', color: '#a5682a', class: 'destructible-wall', sprite: '2' },
     C: { name: 'Columna', color: '#c5853f', class: 'destructible-wall', sprite: 'C' },
+    K: { name: 'Columna Lava', color: '#ff4500', class: 'lava-column', sprite: '3' },
     '3': { name: 'Lava', color: '#ff4500', class: 'lava', sprite: '3' },
     '8': { name: 'Murciélago', color: '#9400d3', class: 'bat', sprite: '8' },
     S: { name: 'Araña', color: '#ff8c00', class: 'spider', sprite: 'S' },

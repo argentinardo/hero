@@ -57,8 +57,8 @@ export const updateFallingEntities = (store: GameStore) => {
                             entity.vy = -Math.abs(entity.vy) * 0.5;
                             entity.vx *= 0.9;
                             entity.hasBounced = true;
-                            // Brick sound para ladrillos normales ('1') y de columna ('C'); resto usa toy
-                            const isBrickTile = entity.tile === '1' || entity.tile === 'C';
+                            // Brick sound para ladrillos normales ('1'), columna ('C') y columna de lava ('K'); resto usa toy
+                            const isBrickTile = entity.tile === '1' || entity.tile === 'C' || entity.tile === 'K';
                             if (isBrickTile) {
                                 playBrickBounce();
                             } else {

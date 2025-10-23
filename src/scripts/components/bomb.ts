@@ -150,7 +150,7 @@ export const updateBombs = (store: GameStore) => {
         emitParticles(store, centerX, centerY, 30, 'white');
         // Vibración al explotar bomba (patrón corto)
         vibrate([30, 50, 30]);
-        const explosionRadius = 70;
+        const explosionRadius = 100;
         destroyWallsInRadius(store, centerX, centerY, explosionRadius);
         destroyEnemiesInRadius(store, centerX, centerY, explosionRadius);
         const player = store.player;

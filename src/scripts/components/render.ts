@@ -137,7 +137,9 @@ const drawWall = (store: GameStore, wall: Wall) => {
 		}
 	}
 
-    const sprite = store.sprites[wall.tile];
+    // Mapear tile 'K' (columna lava) al sprite de lava '3'
+    const spriteKey = wall.tile === 'K' ? '3' : wall.tile;
+    const sprite = store.sprites[spriteKey];
     if (sprite) {
         const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
         if (anim && wall.currentFrame !== undefined) {
@@ -165,8 +167,8 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
     }
 
-    // Aplicar tint del nivel actual con tres tonos según posición vertical, excepto para lava ('3') y columnas ('C')
-    if (wall.tile !== '3' && wall.tile !== 'C') {
+    // Aplicar tint del nivel actual con tres tonos según posición vertical, excepto para lava ('3'), columnas ('C') y columnas de lava ('K')
+    if (wall.tile !== '3' && wall.tile !== 'C' && wall.tile !== 'K') {
         const levelHeight = store.levelDesigns[store.currentLevelIndex]?.length || 22;
         const levelTintColor = getLevelColorByPattern(store.currentLevelIndex, wall.y, levelHeight);
         const prevAlpha = ctx.globalAlpha;
@@ -273,8 +275,13 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
     
-    // Si es una víbora, usar el sprite de muerte (imagen estática)
-    const spriteKey = entity.tile === 'V' ? 'V_death' : entity.tile;
+    // Mapear tiles a sus sprites correspondientes
+    let spriteKey = entity.tile;
+    if (entity.tile === 'V') {
+        spriteKey = 'V_death'; // Víbora usa sprite de muerte
+    } else if (entity.tile === 'K') {
+        spriteKey = '3'; // Columna lava usa sprite de lava
+    }
     const sprite = store.sprites[spriteKey];
     if (!sprite) return;
 
@@ -618,17 +625,17 @@ const drawGameWorld = (store: GameStore) => {
         
         // Separar paredes afectadas y no afectadas (con culling)
         const affectedWalls = store.walls.filter(wall => 
-            wall.tile !== '3' && wall.affectedByDark &&
+            wall.tile !== '3' && wall.tile !== 'K' && wall.affectedByDark &&
             wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
             wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
         );
         const unaffectedWalls = store.walls.filter(wall => 
-            wall.tile !== '3' && !wall.affectedByDark &&
+            wall.tile !== '3' && wall.tile !== 'K' && !wall.affectedByDark &&
             wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
             wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
         );
         const lavaWalls = store.walls.filter(wall => 
-            wall.tile === '3' &&
+            (wall.tile === '3' || wall.tile === 'K') &&
             wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
             wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
         );
@@ -698,27 +705,7 @@ const drawGameWorld = (store: GameStore) => {
             if (wall) drawWall(store, wall);
         });
 
-        // Dibujar enemigos afectados en gris
-        ctx.save();
-        ctx.filter = 'grayscale(100%) brightness(0.9)';
-        affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
-        affectedVipers.forEach(enemy => {
-            drawEnemy(store, enemy);
-        });
-        ctx.restore();
-        
-        // Dibujar paredes de víboras afectadas siempre en negro
-        ctx.save();
-        ctx.fillStyle = 'black';
-        affectedVipers.forEach(enemy => {
-            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
-            if (wall) {
-                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-            }
-        });
-        ctx.restore();
-
-        // Finalmente, aplicar el degradé sobre todo (incluyendo enemigos y minero)
+        // Primero, aplicar el degradé oscuro de fondo
         if (hasAffectedObjects) {
             let minY = Infinity;
             let maxY = -Infinity;
@@ -760,6 +747,26 @@ const drawGameWorld = (store: GameStore) => {
             ctx.fillStyle = unifiedGradient;
             ctx.fillRect(0, topStart, levelWidthForGradient, totalHeight);
         }
+        
+        // Después del degradé oscuro, dibujar enemigos afectados en gris (encima de la sombra)
+        ctx.save();
+        ctx.filter = 'grayscale(100%) brightness(0.9)';
+        affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
+        affectedVipers.forEach(enemy => {
+            drawEnemy(store, enemy);
+        });
+        ctx.restore();
+        
+        // Dibujar paredes de víboras afectadas siempre en negro
+        ctx.save();
+        ctx.fillStyle = 'black';
+        affectedVipers.forEach(enemy => {
+            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
+            if (wall) {
+                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+            }
+        });
+        ctx.restore();
     } else {
         // Modo normal - con culling optimizado
         // Solo dibujar paredes visibles

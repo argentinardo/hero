@@ -839,6 +839,7 @@ const populatePalette = (store: GameStore) => {
             name: 'Elementos',
             tiles: [
                 { key: 'C', name: 'Columna' },
+                { key: 'K', name: 'Col. Lava' },
                 { key: '3', name: 'Lava' },
                 { key: 'L', name: 'Luz' },
                 { key: 'A', name: 'Plataforma' }

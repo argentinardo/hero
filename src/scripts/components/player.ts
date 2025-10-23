@@ -7,8 +7,8 @@ import { vibrate } from '../utils/device';
 
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
-    if (wall.type === 'lava') {
-        playerDie(store);
+    if (wall.type === 'lava' || wall.tile === 'K') {
+        playerDie(store, undefined, true); // Pasar flag de muerte por lava
         return;
     }
     
@@ -351,7 +351,7 @@ export const emitParticles = (store: GameStore, x: number, y: number, count: num
     }
 };
 
-export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
+export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?: boolean) => {
     if (store.gameState === 'respawning' || store.gameState === 'gameover' || store.gameState === 'floating') {
         return;
     }
@@ -385,14 +385,51 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy) => {
     const levelWidthTiles = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
     const levelWidthPx = levelWidthTiles * TILE_SIZE;
     const clampedX = Math.max(0, Math.min(player.x, levelWidthPx - player.width));
-    player.respawnX = clampedX;
-    player.respawnY = player.y;
-    // Guardar también coordenadas de tile para un respawn exacto por grilla
-    player.respawnTileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
-    player.respawnTileY = Math.floor((player.y + player.height) / TILE_SIZE) - 1;
-    // Guardar offsets sub-tile para evitar saltos horizontales/verticales
-    player.respawnOffsetX = (player.x + player.width / 2) - (player.respawnTileX * TILE_SIZE + TILE_SIZE / 2);
-    player.respawnOffsetY = (player.y + player.height) - ((player.respawnTileY + 1) * TILE_SIZE);
+    
+    // Si murió por lava, buscar un tile seguro arriba para respawn
+    if (killedByLava) {
+        const level = store.levelDesigns[store.currentLevelIndex];
+        const currentTileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
+        const currentTileY = Math.floor((player.y + player.height) / TILE_SIZE);
+        
+        // Buscar hacia arriba un tile vacío con suelo debajo
+        let safeTileY = currentTileY - 2; // Empezar 2 tiles arriba
+        let foundSafe = false;
+        
+        for (let y = safeTileY; y >= 0; y--) {
+            const tileAbove = level[y]?.[currentTileX];
+            const tileBelow = level[y + 1]?.[currentTileX];
+            
+            // Buscar un espacio vacío con un tile sólido debajo (no lava)
+            if (tileAbove === '0' && tileBelow && tileBelow !== '0' && tileBelow !== '3' && tileBelow !== 'K') {
+                safeTileY = y;
+                foundSafe = true;
+                break;
+            }
+        }
+        
+        // Si no encontró un lugar seguro, subir al menos 3 tiles
+        if (!foundSafe) {
+            safeTileY = Math.max(0, currentTileY - 3);
+        }
+        
+        player.respawnX = clampedX;
+        player.respawnY = safeTileY * TILE_SIZE;
+        player.respawnTileX = currentTileX;
+        player.respawnTileY = safeTileY;
+        player.respawnOffsetX = 0;
+        player.respawnOffsetY = 0;
+    } else {
+        // Muerte normal (por enemigo u otro)
+        player.respawnX = clampedX;
+        player.respawnY = player.y;
+        // Guardar también coordenadas de tile para un respawn exacto por grilla
+        player.respawnTileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
+        player.respawnTileY = Math.floor((player.y + player.height) / TILE_SIZE) - 1;
+        // Guardar offsets sub-tile para evitar saltos horizontales/verticales
+        player.respawnOffsetX = (player.x + player.width / 2) - (player.respawnTileX * TILE_SIZE + TILE_SIZE / 2);
+        player.respawnOffsetY = (player.y + player.height) - ((player.respawnTileY + 1) * TILE_SIZE);
+    }
 
     // Cambiar animación a muerte
     player.animationState = 'die';
