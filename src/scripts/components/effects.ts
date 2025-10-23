@@ -87,8 +87,17 @@ export const updateFloatingScores = (store: GameStore) => {
             store.floatingScores.splice(i, 1);
             continue;
         }
-        score.y -= 0.5;
-        score.opacity = score.life / 60;
+        
+        // Movimiento ascendente más suave
+        score.y -= 1.2;
+        
+        // Fade out más gradual y visible
+        const fadeStart = 40; // Empezar a desvanecer en los últimos 40 frames
+        if (score.life > fadeStart) {
+            score.opacity = 1; // Completamente visible al principio
+        } else {
+            score.opacity = score.life / fadeStart; // Fade out gradual
+        }
     }
 };
 

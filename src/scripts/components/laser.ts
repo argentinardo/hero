@@ -129,11 +129,24 @@ export const updateLasers = (store: GameStore) => {
                     const colWalls = store.walls.filter(w => w.type === 'destructible_v' && Math.floor(w.x / TILE_SIZE) === baseGridX);
                     colWalls.forEach(w => { w.health = (w.health ?? 40) - 1; });
                     const minHealth = Math.min(...colWalls.map(w => w.health ?? 40));
-                    if (minHealth <= 0) {
-                        applyColumnCutOrRemove(store, baseGridX, 'remove', side);
-                    } else if (minHealth <= 20) {
-                        applyColumnCutOrRemove(store, baseGridX, 'half', side);
-                    }
+        if (minHealth <= 0) {
+            applyColumnCutOrRemove(store, baseGridX, 'remove', side);
+            // Generar puntos por destruir columna completa (75 puntos total, no por tile)
+            const colWalls = store.walls.filter(w => w.type === 'destructible_v' && Math.floor(w.x / TILE_SIZE) === baseGridX);
+            if (colWalls.length > 0) {
+                const centerWall = colWalls[Math.floor(colWalls.length / 2)]; // Punto central de la columna
+                store.floatingScores.push({ 
+                    x: centerWall.x + centerWall.width / 2, 
+                    y: centerWall.y + centerWall.height / 2, 
+                    text: '+75', 
+                    life: 60, 
+                    opacity: 1 
+                });
+                store.score += 75; // Solo 75 puntos por toda la columna
+            }
+        } else if (minHealth <= 20) {
+            applyColumnCutOrRemove(store, baseGridX, 'half', side);
+        }
                     store.lasers.splice(i, 1);
                     removed = true;
                     break;
@@ -147,6 +160,15 @@ export const updateLasers = (store: GameStore) => {
                     }
                     if (wall.health <= 0) {
                         splitDestructibleWall(store, wall);
+                        // Generar puntos por destruir pared con láser
+                        store.floatingScores.push({ 
+                            x: wall.x + wall.width / 2, 
+                            y: wall.y + wall.height / 2, 
+                            text: '+75', 
+                            life: 60, 
+                            opacity: 1 
+                        });
+                        store.score += 75;
                         store.walls.splice(j, 1);
                     }
                 }
@@ -186,9 +208,12 @@ export const updateLasers = (store: GameStore) => {
                 rotation: 0,
                 rotationSpeed: 0.1,
             });
-            store.floatingScores.push({ x: enemy.x, y: enemy.y, text: '+100', life: 60, opacity: 1 });
+            // Puntos diferentes según el tipo de enemigo
+            const points = enemy.type === 'spider' ? 50 : 100;
+            const text = `+${points}`;
+            store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
             store.enemies.splice(j, 1);
-            store.score += 100;
+            store.score += points;
             // Reproducir sonido al eliminar enemigo por láser
             playEnemyKillSound();
             break;

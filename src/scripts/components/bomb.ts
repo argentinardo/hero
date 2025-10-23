@@ -79,7 +79,52 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
         return;
     }
 
-    toRemove.forEach(wall => addFallingChunks(store, wall));
+    // Agrupar paredes por columna para columnas destructibles
+    const columnGroups = new Map<number, Wall[]>();
+    const regularWalls: Wall[] = [];
+    
+    toRemove.forEach(wall => {
+        if (wall.type === 'destructible_v') {
+            const colX = Math.floor(wall.x / TILE_SIZE);
+            if (!columnGroups.has(colX)) {
+                columnGroups.set(colX, []);
+            }
+            columnGroups.get(colX)!.push(wall);
+        } else {
+            regularWalls.push(wall);
+        }
+    });
+    
+    // Procesar paredes regulares (75 puntos cada una)
+    regularWalls.forEach(wall => {
+        addFallingChunks(store, wall);
+        store.floatingScores.push({ 
+            x: wall.x + wall.width / 2, 
+            y: wall.y + wall.height / 2, 
+            text: '+75', 
+            life: 60, 
+            opacity: 1 
+        });
+        store.score += 75;
+    });
+    
+    // Procesar columnas (75 puntos por columna completa)
+    columnGroups.forEach(columnWalls => {
+        columnWalls.forEach(wall => addFallingChunks(store, wall));
+        
+        // Solo generar puntos una vez por columna
+        if (columnWalls.length > 0) {
+            const centerWall = columnWalls[Math.floor(columnWalls.length / 2)];
+            store.floatingScores.push({ 
+                x: centerWall.x + centerWall.width / 2, 
+                y: centerWall.y + centerWall.height / 2, 
+                text: '+75', 
+                life: 60, 
+                opacity: 1 
+            });
+            store.score += 75; // Solo 75 puntos por toda la columna
+        }
+    });
     store.walls = store.walls.filter(wall => !toRemove.has(wall));
 };
 
@@ -110,14 +155,18 @@ const destroyEnemiesInRadius = (store: GameStore, centerX: number, centerY: numb
             rotation: 0,
             rotationSpeed: 0.1,
         });
-        store.floatingScores.push({ x: enemy.x, y: enemy.y, text: '+100', life: 60, opacity: 1 });
+        
+        // Puntos diferentes según el tipo de enemigo
+        const points = enemy.type === 'spider' ? 50 : 100;
+        const text = `+${points}`;
+        store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
+        store.score += points;
     });
     // Reproducir sonido de kill si hubo al menos un enemigo eliminado
     if (toRemove.size > 0) {
         playEnemyKillSound();
     }
     store.enemies = store.enemies.filter(enemy => !toRemove.has(enemy));
-    store.score += toRemove.size * 100;
 };
 
 export const updateBombs = (store: GameStore) => {

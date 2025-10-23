@@ -445,12 +445,20 @@ const drawParticles = (store: GameStore) => {
 const drawFloatingScores = (store: GameStore) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
-    ctx.font = "24px 'Press Start 2P'";
-    ctx.fillStyle = 'white';
+    
     store.floatingScores.forEach(score => {
+        ctx.save();
         ctx.globalAlpha = score.opacity;
+        
+        // Texto con sombra para mejor visibilidad
+        ctx.font = "bold 20px 'Press Start 2P'";
+        ctx.fillStyle = '#000000';
+        ctx.fillText(score.text, score.x + 2, score.y + 2); // Sombra
+        
+        ctx.fillStyle = '#ffff00'; // Amarillo brillante
         ctx.fillText(score.text, score.x, score.y);
-        ctx.globalAlpha = 1;
+        
+        ctx.restore();
     });
 };
 
