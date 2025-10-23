@@ -710,11 +710,18 @@ export const drawEditor = (store: GameStore) => {
             }
             
             if (tile === 'A') {
-                // Plataforma: rectángulo amarillo 60x10 apoyado al fondo del tile
-                ctx.fillStyle = '#ffff00';
+                // Plataforma: usar sprite base.png 60x15 apoyado al fondo del tile
+                const baseSprite = store.sprites.base;
                 const px = colIndex * TILE_SIZE + (TILE_SIZE - 60) / 2;
-                const py = rowIndex * TILE_SIZE + TILE_SIZE - 10;
-                ctx.fillRect(px, py, 60, 10);
+                const py = rowIndex * TILE_SIZE + TILE_SIZE - 15; // 15px de altura
+                
+                if (baseSprite) {
+                    ctx.drawImage(baseSprite, px, py, 60, 15);
+                } else {
+                    // Fallback al rectángulo amarillo si no se ha cargado el sprite
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fillRect(px, py, 60, 15);
+                }
                 continue;
             }
 

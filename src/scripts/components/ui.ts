@@ -2,7 +2,7 @@ import nipplejs from 'nipplejs';
 import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nipplejs';
 
 import type { GameStore } from '../core/types';
-import { TILE_TYPES, preloadAssets, ANIMATION_DATA } from '../core/assets';
+import { TILE_TYPES, preloadAssets, ANIMATION_DATA, SPRITE_SOURCES } from '../core/assets';
 import { buildChunkedFile20x18 } from '../utils/levels';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
@@ -687,22 +687,79 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
             totalFrames = 6;
         }
         
-        // Caso especial para la luz (tiene 2 frames: encendida/apagada)
-        if (tile === 'L') {
-            const frameWidth = sprite.width / 2; // 2 frames
-            ctx.drawImage(
-                sprite,
-                0, // Frame 0 (encendida)
-                0,
-                frameWidth,
-                sprite.height,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-            return;
+    // Caso especial para la luz (tiene 2 frames: encendida/apagada)
+    if (tile === 'L') {
+        const frameWidth = sprite.width / 2; // 2 frames
+        ctx.drawImage(
+            sprite,
+            0, // Frame 0 (encendida)
+            0,
+            frameWidth,
+            sprite.height,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+        return;
+    }
+
+    // Caso especial para la plataforma (usar sprite base.png)
+    if (tile === 'A') {
+        const baseSprite = store.sprites.base;
+        console.log('Dibujando plataforma en paleta:', {
+            tile,
+            baseSprite,
+            naturalWidth: baseSprite?.naturalWidth,
+            naturalHeight: baseSprite?.naturalHeight,
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height
+        });
+        
+        // Intentar cargar el sprite si no está disponible
+        if (!baseSprite || baseSprite.naturalWidth === 0) {
+            const baseSrc = SPRITE_SOURCES.base;
+            if (baseSrc) {
+                const img = new Image();
+                img.onload = () => {
+                    store.sprites.base = img;
+                    console.log('Sprite base cargado dinámicamente:', img);
+                    // Redibujar este tile específico
+                    drawPaletteEntry(store, tile, canvas, timestamp);
+                };
+                img.src = baseSrc;
+            }
         }
+        
+        if (baseSprite && baseSprite.naturalWidth > 0) {
+            // Centrar la plataforma en el canvas de la paleta
+            const scaleX = canvas.width / 60; // 60px es el ancho del sprite
+            const scaleY = canvas.height / 15; // 15px es la altura del sprite
+            const scale = Math.min(scaleX, scaleY); // Mantener proporción
+            const scaledWidth = 60 * scale;
+            const scaledHeight = 15 * scale;
+            const offsetX = (canvas.width - scaledWidth) / 2;
+            const offsetY = (canvas.height - scaledHeight) / 2;
+            
+            ctx.drawImage(
+                baseSprite,
+                0,
+                0,
+                60,
+                15,
+                offsetX,
+                offsetY,
+                scaledWidth,
+                scaledHeight
+            );
+        } else {
+            // Fallback al rectángulo amarillo si no se ha cargado el sprite
+            console.log('Usando fallback amarillo para plataforma');
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
         
         if (anim && effectiveFrames > 0 && totalFrames > 0) {
             const frameDuration = Math.max(1, anim.speed) * (1000 / 60);
@@ -745,6 +802,28 @@ const populatePalette = (store: GameStore) => {
     paletteEntries.length = 0;
     stopPaletteAnimation();
     
+    // Asegurar que el sprite base se cargue antes de dibujar la paleta
+    if (!store.sprites.base) {
+        const baseSrc = SPRITE_SOURCES.base;
+        console.log('Cargando sprite base:', baseSrc);
+        if (baseSrc) {
+            const img = new Image();
+            img.onload = () => {
+                console.log('Sprite base cargado:', img);
+                store.sprites.base = img;
+                // Redibujar la paleta cuando se cargue el sprite
+                setTimeout(() => {
+                    populatePalette(store);
+                }, 100);
+            };
+            img.onerror = (error) => {
+                console.error('Error cargando sprite base:', error);
+            };
+            img.src = baseSrc;
+            return; // Salir temprano hasta que se cargue
+        }
+    }
+    
     // Función para crear botones de tile
     const createTileButton = (key: string, name: string) => {
         const tileDiv = document.createElement('div');
@@ -778,15 +857,9 @@ const populatePalette = (store: GameStore) => {
                 }
             }
             if (key === 'A') {
-                // Dibujo manual para plataforma en la paleta (60x10 centrado al fondo)
-                const ctx = preview.getContext('2d');
-                if (ctx) {
-                    ctx.clearRect(0, 0, preview.width, preview.height);
-                    ctx.fillStyle = '#ffff00';
-                    const px = (preview.width - 60) / 2;
-                    const py = preview.height - 10;
-                    ctx.fillRect(px, py, 60, 10);
-                }
+                // Usar drawPaletteEntry para dibujar el sprite base.png
+                drawPaletteEntry(store, key, preview, performance.now());
+                paletteEntries.push({ tile: key, canvas: preview });
             } else if (key === 'H' || key === 'J') {
                 // Dibujo manual para paredes aplastantes con color configurado
                 const ctx = preview.getContext('2d');

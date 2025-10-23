@@ -306,9 +306,9 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                     isOn: true,
                 });
             } else if (tile === 'A') {
-                // Plataforma amarilla: 60x10, apoyada en el piso del tile (parte inferior)
+                // Plataforma base: 60x15, apoyada en el piso del tile (parte inferior)
                 const width = 60;
-                const height = 10;
+                const height = 15;
                 const px = tileX + (TILE_SIZE - width) / 2;
                 const py = tileY + TILE_SIZE - height; // fondo del tile
                 store.platforms.push({ x: px, y: py, width, height, vx: 0, isActive: false });

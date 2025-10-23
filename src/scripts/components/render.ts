@@ -266,8 +266,17 @@ const drawPlatform = (store: GameStore, platform: Platform) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
     ctx.save();
-    ctx.fillStyle = '#ffff00';
-    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+    
+    // Usar el sprite base.png en lugar del rectángulo amarillo
+    const baseSprite = store.sprites.base;
+    if (baseSprite) {
+        ctx.drawImage(baseSprite, platform.x, platform.y, platform.width, platform.height);
+    } else {
+        // Fallback al rectángulo amarillo si no se ha cargado el sprite
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+    }
+    
     ctx.restore();
 };
 
@@ -620,13 +629,7 @@ const drawGameWorld = (store: GameStore) => {
         }
     });
     
-    // Dibujar plataformas (solo las visibles)
-    store.platforms.forEach(p => {
-        if (p.x + p.width >= viewLeft - margin && p.x <= viewRight + margin &&
-            p.y + p.height >= viewTop - margin && p.y <= viewBottom + margin) {
-            drawPlatform(store, p);
-        }
-    });
+    // Las plataformas se dibujan después del jugador para que vayan por delante
 
     if (store.isDark) {
         // Modo oscuro: paredes y personajes afectados en gris, no afectados en color normal
@@ -826,6 +829,15 @@ const drawGameWorld = (store: GameStore) => {
     
     drawExplosions(store); // Las explosiones ya están optimizadas
     drawPlayer(store); // El jugador siempre está visible
+    
+    // Dibujar plataformas después del jugador para que vayan por delante
+    store.platforms.forEach(p => {
+        if (p.x + p.width >= viewLeft - margin && p.x <= viewRight + margin &&
+            p.y + p.height >= viewTop - margin && p.y <= viewBottom + margin) {
+            drawPlatform(store, p);
+        }
+    });
+    
     drawLasers(store); // Los láseres son pocos, siempre dibujar
     drawBombs(store); // Las bombas son pocas, siempre dibujar
     drawParticles(store); // Las partículas son ligeras

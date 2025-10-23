@@ -19,6 +19,7 @@ import lavaSrc from '../../assets/sprites/lava.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splash.png';
+import baseSrc from '../../assets/sprites/base.png';
 
 import type { AnimationMap, GameStore, TileDictionary } from './types';
 
@@ -44,6 +45,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     L: lightSrc,
     background: backgroundSrc,
     splash: splashSrc,
+    base: baseSrc,
 };
 
 export const ANIMATION_DATA: AnimationMap = {
@@ -113,7 +115,7 @@ export const loadSpritesLazy = async (store: GameStore, spriteKeys: string[] = [
 
 // Función para cargar sprites críticos primero
 export const preloadCriticalAssets = (store: GameStore, callback: () => void) => {
-    const criticalSprites = ['P_stand', 'P_walk', '1', '2', 'background', 'splash'];
+    const criticalSprites = ['P_stand', 'P_walk', '1', '2', 'background', 'splash', 'base'];
     
     loadSpritesLazy(store, criticalSprites)
         .then(() => {

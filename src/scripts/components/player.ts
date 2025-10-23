@@ -631,7 +631,7 @@ const handleCollisions = (store: GameStore) => {
                 // Determinar dirección inicial hacia la pared más cercana (izq/der)
                 // Si player está a la izquierda del centro del nivel, moverse a la derecha, y viceversa
                 const levelCenterX = (store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE) / 2;
-                platform.vx = (platform.x + platform.width / 2) < levelCenterX ? 2 : -2;
+                platform.vx = (platform.x + platform.width / 2) < levelCenterX ? 4 : -4; // Aumento del 25% (2 * 1.25 = 2.5)
             }
             // Arrastrar al héroe con la plataforma
             player.x += platform.vx;
