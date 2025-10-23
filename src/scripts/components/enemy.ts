@@ -234,18 +234,15 @@ const handleLevelEndSequence = (store: GameStore) => {
             const pointsToAdd = Math.floor(energyToReduce * POINTS_PER_ENERGY);
             store.score += pointsToAdd;
             
-            // Actualizar la barra de energía visualmente (usando la energía virtual)
-            const energyBarEl = store.dom.ui.energyBarEl;
-            if (energyBarEl) {
-                const { updateEnergyBarColor } = require('./ui');
-                updateEnergyBarColor(energyBarEl, store.virtualEnergyDrain, 200);
-            }
+            // La actualización visual de la barra de energía se maneja en drawHud usando virtualEnergyDrain
         } else {
             // Energía virtual llegó a 0, detener el sonido de drenaje de energía
             stopEnergyDrainSound();
             
-            // Limpiar la variable virtual
-            store.virtualEnergyDrain = null;
+            // Dejar un mínimo de energía (0.1% de 200 = 0.2) para evitar muerte del héroe
+            const MIN_ENERGY = 15;
+            store.energy = MIN_ENERGY;
+            store.virtualEnergyDrain = 0; // Mantener en 0 para visual
             
             // Pasar a la siguiente fase: explotar bombas
             store.levelEndSequence = 'bombs';
@@ -303,9 +300,10 @@ const handleLevelEndSequence = (store: GameStore) => {
             loadLevel(store);
         }, 2000); // 2 segundos de delay
         
-        // Limpiar la secuencia de fin de nivel
+        // Limpiar la secuencia de fin de nivel y energía virtual
         store.levelEndSequence = null;
         store.levelEndTimer = 0;
+        store.virtualEnergyDrain = null;
         return;
     }
 };

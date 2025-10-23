@@ -454,12 +454,15 @@ const drawHud = (store: GameStore) => {
     if (livesCountEl) {
         livesCountEl.innerHTML = '';
         const heroSuccessSprite = store.sprites['P_success'];
-        for (let i = 0; i < store.lives; i++) {
+        const maxLives = 5; // Número máximo de vidas a mostrar
+        
+        for (let i = 0; i < maxLives; i++) {
             if (heroSuccessSprite && heroSuccessSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
                 miniCanvas.width = 30;
                 miniCanvas.height = 50;
                 miniCanvas.style.imageRendering = 'auto';
+                miniCanvas.style.opacity = i < store.lives ? '1' : '0';
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
                     miniCtx.drawImage(heroSuccessSprite, 0, 0, heroSuccessSprite.width, heroSuccessSprite.height, 0, 0, 30, 50);
@@ -471,6 +474,7 @@ const drawHud = (store: GameStore) => {
                 span.textContent = '♥';
                 span.style.color = '#ff0000';
                 span.style.fontSize = '1.5rem';
+                span.style.opacity = i < store.lives ? '1' : '0';
                 livesCountEl.appendChild(span);
             }
         }
@@ -481,12 +485,15 @@ const drawHud = (store: GameStore) => {
     if (bombsCountEl) {
         bombsCountEl.innerHTML = '';
         const bombSprite = store.sprites.bomb;
-        for (let i = 0; i < store.bombsRemaining; i++) {
+        const maxBombs = 5; // Número máximo de TNT a mostrar
+        
+        for (let i = 0; i < maxBombs; i++) {
             if (bombSprite && bombSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
                 miniCanvas.width = 30;
                 miniCanvas.height = 50;
                 miniCanvas.style.imageRendering = 'pixelated';
+                miniCanvas.style.opacity = i < store.bombsRemaining ? '1' : '0';
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
                     const frameWidth = bombSprite.width / ANIMATION_DATA.bomb.frames;
@@ -498,6 +505,7 @@ const drawHud = (store: GameStore) => {
                 const span = document.createElement('span');
                 span.textContent = '💣';
                 span.style.fontSize = '1.5rem';
+                span.style.opacity = i < store.bombsRemaining ? '1' : '0';
                 bombsCountEl.appendChild(span);
             }
         }
@@ -507,7 +515,12 @@ const drawHud = (store: GameStore) => {
     if (levelCountEl) levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
     if (energyBarEl) {
         const { updateEnergyBarColor } = require('./ui');
-        updateEnergyBarColor(energyBarEl, store.energy, MAX_ENERGY);
+        // Durante la secuencia de fin de nivel, usar la energía virtual para el drenaje visual
+        // Si estamos en cualquier fase del fin de nivel y hay energía virtual, usarla
+        const displayEnergy = (store.levelEndSequence && store.virtualEnergyDrain !== null && store.virtualEnergyDrain !== undefined)
+            ? store.virtualEnergyDrain 
+            : store.energy;
+        updateEnergyBarColor(energyBarEl, displayEnergy, MAX_ENERGY);
     }
 };
 
