@@ -74,6 +74,8 @@ export const createInitialStore = (): GameStore => ({
     initialLevels: [],
     editorHistory: [],
     editorHistoryIndex: -1,
+    duplicateRowMode: false,
+    deleteRowMode: false,
     dom: {
         canvas: null,
         ctx: null,
@@ -122,6 +124,8 @@ export const createInitialStore = (): GameStore => ({
             cancelSaveBtn: null,
             undoBtn: null,
             redoBtn: null,
+            duplicateRowBtn: null,
+            deleteRowBtn: null,
         },
     },
 });

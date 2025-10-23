@@ -14,6 +14,7 @@ import {
     updateUndoRedoButtons, 
     initializeAdvancedEditor
 } from './advancedEditor';
+import { activateDuplicateRowMode, activateDeleteRowMode } from './editor';
 
 // Función para ajustar el ancho de las barras UI al tamaño real del canvas
 export const adjustUIBars = () => {
@@ -113,6 +114,8 @@ export const attachDomReferences = (store: GameStore) => {
     // Editor tools
     ui.undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
     ui.redoBtn = document.getElementById('redo-btn') as HTMLButtonElement | null;
+    ui.duplicateRowBtn = document.getElementById('duplicate-row-btn') as HTMLButtonElement | null;
+    ui.deleteRowBtn = document.getElementById('delete-row-btn') as HTMLButtonElement | null;
     
     // Configurar el menú hamburguesa
     setupHamburgerMenu(store, hamburgerBtn, hamburgerBtnMobile, hamburgerMenu, pauseResumeBtn, restartGameBtn, backToMenuBtnGame, resumeEditorBtnMenu);
@@ -1640,6 +1643,14 @@ const setupLevelData = (store: GameStore) => {
     store.dom.ui.redoBtn?.addEventListener('click', () => {
         redo(store);
         updateUndoRedoButtons(store);
+    });
+    
+    store.dom.ui.duplicateRowBtn?.addEventListener('click', () => {
+        activateDuplicateRowMode(store);
+    });
+    
+    store.dom.ui.deleteRowBtn?.addEventListener('click', () => {
+        activateDeleteRowMode(store);
     });
 
 

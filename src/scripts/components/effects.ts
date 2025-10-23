@@ -29,11 +29,9 @@ export const updateFallingEntities = (store: GameStore) => {
     const canvasHeight = store.dom.canvas?.height ?? 0;
     for (let i = store.fallingEntities.length - 1; i >= 0; i--) {
         const entity = store.fallingEntities[i];
-        // Aplicar gravedad con límite de velocidad máxima
-        entity.vy += GRAVITY;
-        if (entity.vy > MAX_FALL_VELOCITY) {
-            entity.vy = MAX_FALL_VELOCITY;
-        }
+        // Aplicar gravedad con triple velocidad y sin límite de aceleración
+        entity.vy += GRAVITY * 3; // Triple velocidad de caída
+        // Sin límite de velocidad máxima
         entity.y += entity.vy;
         entity.x += entity.vx;
         if (entity.rotationSpeed) {
@@ -54,8 +52,8 @@ export const updateFallingEntities = (store: GameStore) => {
                         const groundY = gridYBelow * TILE_SIZE - entity.height;
                         if (entity.y >= groundY) {
                             entity.y = groundY;
-                            entity.vy = -Math.abs(entity.vy) * 0.5;
-                            entity.vx *= 0.9;
+                            entity.vy = -Math.abs(entity.vy) * 0.1; // Rebote mínimo (10% de la velocidad)
+                            entity.vx *= 0.3; // Fricción horizontal más fuerte
                             entity.hasBounced = true;
                             // Brick sound para ladrillos normales ('1'), columna ('C') y columna de lava ('K'); resto usa toy
                             const isBrickTile = entity.tile === '1' || entity.tile === 'C' || entity.tile === 'K';

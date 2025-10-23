@@ -182,6 +182,18 @@ export const bindEditorCanvas = (store: GameStore) => {
             return;
         }
         if (event.button === 0) {
+            // Si estamos en modo de duplicación de fila
+            if (store.duplicateRowMode) {
+                duplicateRowAtPosition(store, store.mouse.gridY);
+                return;
+            }
+            
+            // Si estamos en modo de borrado de fila
+            if (store.deleteRowMode) {
+                deleteRowAtPosition(store, store.mouse.gridY);
+                return;
+            }
+            
             store.mouse.isDown = true;
             store.mouse.isDragging = false;
             store.mouse.startX = store.mouse.gridX;
@@ -1376,6 +1388,131 @@ export const drawEditor = (store: GameStore) => {
         ctx.globalAlpha = 1;
     }
 
+    // Feedback visual para modo de duplicación de fila
+    if (store.duplicateRowMode) {
+        const mouseRow = store.mouse.gridY;
+        if (mouseRow >= 0 && mouseRow < store.editorLevel.length) {
+            // Dibujar overlay de la fila completa
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#00ff00'; // Verde semitransparente
+            ctx.fillRect(0, mouseRow * TILE_SIZE, store.editorLevel[0]?.length * TILE_SIZE, TILE_SIZE);
+            
+            // Dibujar borde de la fila
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, mouseRow * TILE_SIZE, store.editorLevel[0]?.length * TILE_SIZE, TILE_SIZE);
+            
+            ctx.restore();
+        }
+    }
+
+    // Feedback visual para modo de borrado de fila
+    if (store.deleteRowMode) {
+        const mouseRow = store.mouse.gridY;
+        if (mouseRow >= 0 && mouseRow < store.editorLevel.length) {
+            // Dibujar overlay de la fila completa
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#ff0000'; // Rojo semitransparente
+            ctx.fillRect(0, mouseRow * TILE_SIZE, store.editorLevel[0]?.length * TILE_SIZE, TILE_SIZE);
+            
+            // Dibujar borde de la fila
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, mouseRow * TILE_SIZE, store.editorLevel[0]?.length * TILE_SIZE, TILE_SIZE);
+            
+            // Dibujar X de borrado en el centro
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            const centerX = (store.editorLevel[0]?.length * TILE_SIZE) / 2;
+            const centerY = mouseRow * TILE_SIZE + TILE_SIZE / 2;
+            const crossSize = TILE_SIZE / 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX - crossSize, centerY - crossSize);
+            ctx.lineTo(centerX + crossSize, centerY + crossSize);
+            ctx.moveTo(centerX + crossSize, centerY - crossSize);
+            ctx.lineTo(centerX - crossSize, centerY + crossSize);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+    }
+
     ctx.restore();
+};
+
+// Función para activar el modo de duplicación de fila
+export const activateDuplicateRowMode = (store: GameStore) => {
+    store.duplicateRowMode = true;
+    // Cambiar el cursor para indicar el modo especial
+    if (store.dom.canvas) {
+        store.dom.canvas.style.cursor = 'copy';
+    }
+};
+
+// Función para duplicar la fila en la posición del mouse
+export const duplicateRowAtPosition = (store: GameStore, rowIndex: number) => {
+    const level = store.editorLevel;
+    if (!level || level.length === 0) return;
+    
+    if (rowIndex < 0 || rowIndex >= level.length) return;
+    
+    // Guardar en historial antes de hacer cambios
+    saveToHistory(store);
+    
+    // Crear una copia profunda de la fila actual
+    const rowToDuplicate = [...level[rowIndex]];
+    
+    // Insertar la fila duplicada justo debajo de la fila actual
+    level.splice(rowIndex + 1, 0, rowToDuplicate);
+    
+    // Actualizar botones de undo/redo
+    updateUndoRedoButtons(store);
+    
+    // Desactivar el modo de duplicación
+    store.duplicateRowMode = false;
+    if (store.dom.canvas) {
+        store.dom.canvas.style.cursor = 'default';
+    }
+};
+
+// Función para activar el modo de borrado de fila
+export const activateDeleteRowMode = (store: GameStore) => {
+    store.deleteRowMode = true;
+    // Cambiar el cursor para indicar el modo especial
+    if (store.dom.canvas) {
+        store.dom.canvas.style.cursor = 'not-allowed';
+    }
+};
+
+// Función para borrar la fila en la posición del mouse
+export const deleteRowAtPosition = (store: GameStore, rowIndex: number) => {
+    const level = store.editorLevel;
+    if (!level || level.length === 0) return;
+    
+    if (rowIndex < 0 || rowIndex >= level.length) return;
+    
+    // No permitir borrar si solo queda una fila
+    if (level.length <= 1) return;
+    
+    // Guardar en historial antes de hacer cambios
+    saveToHistory(store);
+    
+    // Eliminar la fila
+    level.splice(rowIndex, 1);
+    
+    // Actualizar botones de undo/redo
+    updateUndoRedoButtons(store);
+    
+    // Desactivar el modo de borrado
+    store.deleteRowMode = false;
+    if (store.dom.canvas) {
+        store.dom.canvas.style.cursor = 'default';
+    }
 };
 

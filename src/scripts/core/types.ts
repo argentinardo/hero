@@ -246,6 +246,8 @@ export interface UiElements {
     cancelSaveBtn: HTMLButtonElement | null;
     undoBtn: HTMLButtonElement | null;
     redoBtn: HTMLButtonElement | null;
+    duplicateRowBtn: HTMLButtonElement | null;
+    deleteRowBtn: HTMLButtonElement | null;
 }
 
 export interface DomReferences {
@@ -308,6 +310,8 @@ export interface GameStore {
     initialLevels: string[][];
     editorHistory: string[][][];
     editorHistoryIndex: number;
+    duplicateRowMode: boolean;
+    deleteRowMode: boolean;
     dom: DomReferences;
 }
 
