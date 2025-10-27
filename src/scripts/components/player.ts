@@ -454,14 +454,10 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
                 retryBtn.classList.remove('hidden');
             }
 
-            // Desactivar controles móviles y destruir joystick para no bloquear clicks en overlay
+            // Desactivar controles móviles
             const mobileControlsEl = store.dom.ui.mobileControlsEl;
             if (mobileControlsEl) {
                 mobileControlsEl.dataset.active = 'false';
-            }
-            if (store.joystickManager) {
-                try { store.joystickManager.destroy(); } catch {}
-                store.joystickManager = null;
             }
             // Resetear entradas de movimiento/disparo
             store.keys.ArrowUp = false;

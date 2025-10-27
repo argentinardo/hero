@@ -230,6 +230,10 @@
         #right-ui {
             display: none !important;
         }
+
+        #main-container {
+            justify-content: start;
+        }        
         
         #editor-panel {
             display: flex !important;
@@ -246,16 +250,8 @@
             overflow-x: hidden;
             
             #tile-palette {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 3px;
-                margin-bottom: 10px;
-                overflow-x: hidden;
                 
                 canvas {
-                    width: 30px;
-                    height: 30px;
-                    border: 1px solid #ccc;
                     cursor: pointer;
                     image-rendering: pixelated;
                 }
@@ -293,39 +289,88 @@
         justify-content: left;
     }
 
-    /* Visualización del joystick */
-    #joystick-visual {
+    /* Botones direccionales */
+    #directional-buttons {
         position: relative;
         width: 34vh;
         height: 34vh;
-        opacity: 0.25;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.5);
-        box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.1);
-        pointer-events: none;
         left: 20px;
         bottom: 39%;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        pointer-events: none;
+    }
+
+    .button-row {
+        display: flex;
+        gap: 3px;
+        justify-content: center;
+        align-items: center;
         
-        &::before,
-        &::after {
-            content: "";
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.6);
-            pointer-events: none;
-            border-radius: 10px;
+        &:first-child {
+            height: auto; /* Doble de alto para la primera fila */
         }
         
-        &::before {
+        &:last-child {
+            height: 15vh; /* Altura normal para la segunda fila */
+            justify-content: space-between; /* Distribuir los botones en los extremos */
+        }
+    }
+
+    .directional-btn {
+        width: 100%;
+        height: 18vh;
+        border-radius: 10px; /* Botones cuadrados con esquinas redondeadas */
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-size: 2vh;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        transition: all 0.1s ease;
+        
+        /* Estilos para los iconos SVG */
+        svg {
             width: 20px;
-            height: 80%;
+            height: 20px;
+            stroke: currentColor;
+            stroke-width: 2;
         }
         
-        &::after {
-            height: 20px;
-            width: 80%;
+        &:active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(0.95);
+        }
+        
+        /* Botones superiores (primera fila) rectangulares */
+        .button-row:first-child & {
+            width: 12vh;
+            height: 15vh;
+            border-radius: 10px;
+            
+            svg {
+                width: 24px;
+                height: 24px;
+            }
+        }
+        
+        /* Botones de la segunda fila ocupan 50% de ancho y son cuadrados */
+        .button-row:last-child & {
+            width: 50%;
+            height: 100%;
+            border-radius: 10px;
+            
+            svg {
+                width: 28px;
+                height: 28px;
+            }
         }
     }
 
@@ -399,10 +444,5 @@
 @media (min-width: 1025px) {
     #mobile-controls {
         display: none !important;
-    }
-    
-    #game-ui,
-    #bottom-ui {
-        /* Mantener estilos por defecto para PC */
     }
 }

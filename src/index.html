@@ -163,7 +163,37 @@
         <!-- Controles Móviles -->
         <div id="mobile-controls" class="hidden">
             <div id="joystick-zone">
-                <div id="joystick-visual"></div>
+                <div id="directional-buttons">
+                    <div class="button-row">
+                        <button id="btn-up-left" class="directional-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);">
+                                <path d="M12 19V5M5 12l7-7 7 7"/>
+                            </svg>
+                        </button>
+                        <button id="btn-up" class="directional-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 19V5M5 12l7-7 7 7"/>
+                            </svg>
+                        </button>
+                        <button id="btn-up-right" class="directional-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);">
+                                <path d="M12 19V5M5 12l7-7 7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="button-row">
+                        <button id="btn-left" class="directional-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <button id="btn-right" class="directional-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div id="action-zone">
                 <button id="shoot-btn" class="action-button">LÁSER</button>
