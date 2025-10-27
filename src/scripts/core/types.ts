@@ -1,6 +1,9 @@
 export type AppState = 'menu' | 'playing' | 'editing';
 export type GameState = 'start' | 'playing' | 'respawning' | 'floating' | 'gameover' | 'win';
 
+// Importar tipos de nipplejs
+import type { JoystickManager } from 'nipplejs';
+
 export interface AnimationData {
     frames: number;
     speed: number;
@@ -301,6 +304,7 @@ export interface GameStore {
     mouse: MouseState;
     keys: Record<string, boolean>;
     sprites: Record<string, HTMLImageElement>;
+    joystickManager: JoystickManager | null;
     // Estado de UI móvil
     isLaserSticky: boolean;
     lastShootTap: number;

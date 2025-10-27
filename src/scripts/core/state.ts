@@ -68,6 +68,7 @@ export const createInitialStore = (): GameStore => ({
     mouse: { x: 0, y: 0, gridX: 0, gridY: 0, isDown: false },
     keys: {},
     sprites: {},
+    joystickManager: null,
     isLaserSticky: false,
     lastShootTap: 0,
     initialLevels: [],

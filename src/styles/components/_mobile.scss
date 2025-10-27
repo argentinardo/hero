@@ -84,7 +84,7 @@
     /* UI Elements - Bottom UI (Lives, Power, TNT) */
     #bottom-ui {
         position: fixed;
-        bottom: 20px;
+        top: 90px;
         left: 20px;
         width: auto;
         z-index: var(--mobile-ui-z-index);
@@ -93,9 +93,9 @@
         flex-direction: column;
         gap: 8px;
         pointer-events: none;
+        z-index: 20; /* Asegurar que estén por encima del joystick flotante */
         background: rgba(0, 0, 0, 0);
         align-items: flex-start;
-        height: auto;
         /* Ocultar todas las etiquetas de texto en mobile */
         span {
             display: none !important;
@@ -279,27 +279,33 @@
     /* Zona de joystick */
     #joystick-zone {
         position: absolute;
-        bottom: 20px;
-        left: 0;
-        width: 50%;
+        left: 20%;
+        width: 60%;
+        bottom: 0;
         height: 100vh;
         pointer-events: auto;
         display: flex;
         align-items: end;
         justify-content: left;
+        
+        /* Asegurar que el joystick flotante no interfiera con los botones */
+        .nipple {
+            z-index: 10;
+        }
     }
 
     /* Botones direccionales */
     #directional-buttons {
-        position: relative;
-        width: 34vh;
+        position: absolute;
+        width: 38vh;
         height: 34vh;
         left: 20px;
-        bottom: 39%;
+        bottom: 1%;
         display: flex;
         flex-direction: column;
         gap: 2px;
         pointer-events: none;
+        z-index: 20; /* Asegurar que estén por encima del joystick flotante */
     }
 
     .button-row {

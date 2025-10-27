@@ -1,3 +1,6 @@
+import nipplejs from 'nipplejs';
+import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nipplejs';
+
 import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA, SPRITE_SOURCES } from '../core/assets';
 import { buildChunkedFile20x18 } from '../utils/levels';
@@ -219,6 +222,10 @@ export const showMenu = (store: GameStore) => {
     if ('ontouchstart' in window && mobileControlsEl) {
         mobileControlsEl.dataset.active = 'false';
     }
+    if (store.joystickManager) {
+        store.joystickManager.destroy();
+        store.joystickManager = null;
+    }
 };
 
 const startJoystick = (store: GameStore) => {
@@ -229,11 +236,51 @@ const startJoystick = (store: GameStore) => {
     if (mobileControlsEl) {
         mobileControlsEl.dataset.active = 'true';
     }
-    if (!joystickZoneEl) {
+    if (!joystickZoneEl || store.joystickManager) {
         return;
     }
 
-    // Configurar botones direccionales
+    // Crear joystick virtual flotante (nipplejs) - funciona fuera del área de botones
+    store.joystickManager = nipplejs.create({
+        zone: joystickZoneEl,
+        mode: 'dynamic', // Modo flotante - aparece donde tocas
+        position: { left: '50%', top: '50%' },
+        color: 'white',
+        catchforce: true,
+    });
+
+    store.joystickManager.on('move', (_evt: NippleEvent, data: NippleJoystick) => {
+        const angle = data.angle.radian;
+        const force = data.force;
+        if (force <= 0.2) {
+            return;
+        }
+        const up = Math.sin(angle);
+        const right = Math.cos(angle);
+        store.keys.ArrowUp = up > 0.5;
+        // No activar ArrowDown con joystick, se usa el botón dedicado de bomba
+        if (Math.abs(right) > 0.3) {
+            if (right > 0) {
+                store.keys.ArrowRight = true;
+                store.keys.ArrowLeft = false;
+            } else {
+                store.keys.ArrowLeft = true;
+                store.keys.ArrowRight = false;
+            }
+        } else {
+            store.keys.ArrowLeft = false;
+            store.keys.ArrowRight = false;
+        }
+    });
+
+    store.joystickManager.on('end', () => {
+        store.keys.ArrowUp = false;
+        store.keys.ArrowLeft = false;
+        store.keys.ArrowRight = false;
+        // No resetear ArrowDown aquí, se controla con el botón de bomba
+    });
+
+    // Configurar botones direccionales (funcionan independientemente)
     const setupDirectionalButton = (buttonId: string, keys: string[]) => {
         const button = document.getElementById(buttonId);
         if (!button) return;
