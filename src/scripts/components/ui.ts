@@ -323,6 +323,27 @@ const startJoystick = (store: GameStore) => {
     // Configurar seguimiento global del dedo para cambios fluidos entre botones
     let currentTouchTarget: HTMLElement | null = null;
     
+    // Mapeo de botones a direcciones
+    const buttonDirections: Record<string, string[]> = {
+        'btn-up': ['ArrowUp'],
+        'btn-left': ['ArrowLeft'],
+        'btn-right': ['ArrowRight'],
+        'btn-up-left': ['ArrowUp', 'ArrowLeft'],
+        'btn-up-right': ['ArrowUp', 'ArrowRight']
+    };
+    
+    const activateDirections = (keys: string[]) => {
+        // Desactivar todas las direcciones
+        store.keys.ArrowUp = false;
+        store.keys.ArrowLeft = false;
+        store.keys.ArrowRight = false;
+        
+        // Activar las direcciones especificadas
+        keys.forEach(key => {
+            store.keys[key as keyof typeof store.keys] = true;
+        });
+    };
+    
     const handleGlobalTouchMove = (event: TouchEvent) => {
         if (!currentTouchTarget) return;
         
@@ -335,31 +356,11 @@ const startJoystick = (store: GameStore) => {
             currentTouchTarget.classList.remove('active');
             directionalButton.classList.add('active');
             
-            // Desactivar todas las direcciones
-            store.keys.ArrowUp = false;
-            store.keys.ArrowLeft = false;
-            store.keys.ArrowRight = false;
-            
             // Activar las direcciones del nuevo botón
             const buttonId = directionalButton.id;
-            switch (buttonId) {
-                case 'btn-up':
-                    store.keys.ArrowUp = true;
-                    break;
-                case 'btn-left':
-                    store.keys.ArrowLeft = true;
-                    break;
-                case 'btn-right':
-                    store.keys.ArrowRight = true;
-                    break;
-                case 'btn-up-left':
-                    store.keys.ArrowUp = true;
-                    store.keys.ArrowLeft = true;
-                    break;
-                case 'btn-up-right':
-                    store.keys.ArrowUp = true;
-                    store.keys.ArrowRight = true;
-                    break;
+            const keys = buttonDirections[buttonId];
+            if (keys) {
+                activateDirections(keys);
             }
             
             currentTouchTarget = directionalButton;
@@ -385,12 +386,10 @@ const startJoystick = (store: GameStore) => {
     document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
     document.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true });
 
-    // Configurar cada botón direccional
-    setupDirectionalButton('btn-up', ['ArrowUp']);
-    setupDirectionalButton('btn-left', ['ArrowLeft']);
-    setupDirectionalButton('btn-right', ['ArrowRight']);
-    setupDirectionalButton('btn-up-left', ['ArrowUp', 'ArrowLeft']);
-    setupDirectionalButton('btn-up-right', ['ArrowUp', 'ArrowRight']);
+    // Configurar cada botón direccional usando el mapeo
+    Object.entries(buttonDirections).forEach(([buttonId, keys]) => {
+        setupDirectionalButton(buttonId, keys);
+    });
 
     // Configurar botones de acción
     const shootBtn = document.getElementById('shoot-btn');
@@ -556,7 +555,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     loadLevel(store);
 };
 
-export const startEditor = async (store: GameStore) => {
+export const startEditor = async (store: GameStore, preserveCurrentLevel: boolean = false) => {
     // Cargar editor de forma lazy
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
     setupEditorState(store);
@@ -581,9 +580,12 @@ export const startEditor = async (store: GameStore) => {
         editorPanelEl.style.display = 'flex';
     }
     
-    // Cargar el nivel actual del selector cuando se inicia el editor
-    const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
-    store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[currentIndex] ?? []));
+    // Solo cargar desde levelDataStore si no estamos preservando el nivel actual
+    if (!preserveCurrentLevel) {
+        // Cargar el nivel actual del selector cuando se inicia el editor
+        const currentIndex = parseInt(levelSelectorEl?.value ?? '0', 10);
+        store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[currentIndex] ?? []));
+    }
     
     // Centrar la cámara del editor en el jugador si existe
     const canvas = store.dom.canvas;
@@ -1360,7 +1362,13 @@ const setupHamburgerMenu = (
             store.player.isFrozen = false;
             if (pauseResumeBtn) pauseResumeBtn.textContent = '⏸️ Pausar';
         }
-        startEditor(store);
+        
+        // Conservar el nivel actual antes de volver al editor
+        const index = store.currentLevelIndex;
+        const levelRows = store.levelDesigns[index] ?? [];
+        store.editorLevel = levelRows.map(row => row.split(''));
+        
+        startEditor(store, true);
     });
     
     // Actualizar visibilidad del botón "Volver al Editor" cuando sea necesario
@@ -1744,16 +1752,15 @@ const setupLevelData = (store: GameStore) => {
     resumeEditorBtn?.addEventListener('click', () => {
         // Volver al editor preservando el nivel actual
         if (store.appState === 'playing') {
-            startEditor(store);
             // Conservar el índice de nivel y el buffer actual del nivel
             const index = store.currentLevelIndex;
             // Sincronizar el editor con el nivel que se está jugando actualmente
             // levelDesigns es string[] (filas como strings); convertir a string[][] para el editor
             const levelRows = store.levelDesigns[index] ?? [];
             store.editorLevel = levelRows.map(row => row.split(''));
-            // Reinicializar el editor avanzado para alinear historial y UI con el buffer actual
-            initializeAdvancedEditor(store);
-            // No resetear levelDesigns aquí para mantener cambios locales hasta guardar
+            
+            // Iniciar editor preservando el nivel actual
+            startEditor(store, true);
         }
     });
 
