@@ -117,28 +117,28 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
             };
         }
         case 'T': {
-            // Tentáculo en lava - ocupa 2 tiles verticalmente
+            // Tentáculo - tamaño 60x120, caja de colisión de 75px de alto
+            // Desfasado 72px hacia arriba desde la posición actual
             return {
                 x,
-                y: y - TILE_SIZE, // Empezar un tile arriba
-                width: TILE_SIZE,
-                height: TILE_SIZE * 2, // Ocupa 2 tiles de altura
+                y: y - 72, // Desfasado 72px hacia arriba
+                width: 60, // Ancho del sprite
+                height: 120, // Alto del sprite
                 vx: 0,
                 vy: 0,
                 type: 'tentacle',
                 tile,
                 initialX: x,
-                initialY: y - TILE_SIZE, // Guardar posición inicial ajustada
-                state: 'idle',
+                initialY: y - 72, // Posición inicial también desfasada
                 spriteTick: 0,
                 currentFrame: 0,
-                isHidden: true,
+                isHidden: false,
                 affectedByDark: false,
-                detectionRange: TILE_SIZE * 4, // Detecta al héroe a 4 tiles
-                attackRange: TILE_SIZE * 6, // Alcance máximo del tentáculo
-                detectionDelay: 30, // 30 frames de delay antes de atacar
-                playerStillTimer: 0,
-                extensionLength: 0,
+                // Propiedades específicas del tentáculo
+                tentacleState: 'standby',
+                tentacleFrame: 0,
+                tentacleAnimationSpeed: 8,
+                collisionHeight: 75, // Altura de la caja de colisión (75% de 120px)
             };
         }
         default:
@@ -283,10 +283,6 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                     // Si hay más lava que muro alrededor, usar lava
                     const wallType = lavaCount >= 2 ? '3' : '1';
                     store.walls.push(createWall(tileX, tileY, wallType, store));
-                }
-                // Los tentáculos viven en la lava, así que añadimos lava debajo
-                if (tile === 'T') {
-                    store.walls.push(createWall(tileX, tileY, '3', store));
                 }
                 continue;
             }

@@ -60,7 +60,7 @@ export interface Enemy extends GameObject {
     initialX?: number;
     initialY?: number;
     maxLength?: number;
-    state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended' | 'detecting' | 'attacking';
+    state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended';
     idleTimer?: number;
     waitTimer?: number;
     spriteTick: number;
@@ -69,11 +69,11 @@ export interface Enemy extends GameObject {
     isDead?: boolean;
     isHidden?: boolean;
     affectedByDark?: boolean;
-    detectionRange?: number;
-    attackRange?: number;
-    detectionDelay?: number;
-    playerStillTimer?: number;
-    extensionLength?: number;
+    // Propiedades específicas del tentáculo
+    tentacleState?: 'standby' | 'whipping';
+    tentacleFrame?: number;
+    tentacleAnimationSpeed?: number;
+    collisionHeight?: number; // Altura de la caja de colisión (75px)
 }
 
 export interface Wall extends GameObject {

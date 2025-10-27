@@ -8,13 +8,14 @@ import batSrc from '../../assets/sprites/bat_small.png';
 import spiderSrc from '../../assets/sprites/spider_small.png';
 import viperSrc from '../../assets/sprites/serpiente_small.png';
 import viperDeathSrc from '../../assets/sprites/serpiente_death.png';
-import tentacleSrc from '../../assets/sprites/tentaculo.png';
 import minerSrc from '../../assets/sprites/miner_small.png';
+import tentacleSrc from '../../assets/sprites/tentaculo.png';
 import bombSrc from '../../assets/sprites/bomba.png';
 import explosionSrc from '../../assets/sprites/boooom.png';
 import wallSrc from '../../assets/sprites/wall_small.png';
 import dirtSrc from '../../assets/sprites/tierra_small.png';
-import columnSrc from '../../assets/sprites/tierra_small.png';
+import aguaSrc from '../../assets/sprites/agua_small.png';
+import columnSrc from '../../assets/sprites/weakwall.png';
 import lavaSrc from '../../assets/sprites/lava.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
@@ -34,12 +35,12 @@ export const SPRITE_SOURCES: Record<string, string> = {
     S: spiderSrc,
     V: viperSrc,
     V_death: viperDeathSrc,
-    T: tentacleSrc,
     '9': minerSrc,
+    T: tentacleSrc,
     bomb: bombSrc,
     explosion: explosionSrc,
     '1': wallSrc,
-    '2': dirtSrc,
+    '2': aguaSrc,
     C: columnSrc,
     '3': lavaSrc,
     L: lightSrc,
@@ -58,7 +59,8 @@ export const ANIMATION_DATA: AnimationMap = {
     '8': { frames: 6, speed: 2, sprite: '8' },
     S: { frames: 15, speed: 7, sprite: 'S' },
     V: { frames: 4, speed: 8, sprite: 'V' },
-    T: { frames: 4, speed: 8, sprite: 'T' },
+    T: { frames: 26, speed: 8, sprite: 'T' },
+    '2': { frames: 4, speed: 8, sprite: '2' }, // Agua con 2x2 frames
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
     '3': { frames: 16, speed: 19, sprite: '3' },
@@ -71,7 +73,7 @@ export const TILE_TYPES: TileDictionary = {
     '0': { name: 'Vacío', color: '#000', class: '' },
     P: { name: 'Player', color: '#ff0000', class: 'player' },
     '1': { name: 'Muro', color: '#6d6d6d', class: 'wall', sprite: '1' },
-    '2': { name: 'Tierra', color: '#a5682a', class: 'destructible-wall', sprite: '2' },
+    '2': { name: 'agua', color: '#a5682a', class: 'destructible-wall', sprite: '2' },
     C: { name: 'Columna', color: '#c5853f', class: 'destructible-wall', sprite: 'C' },
     K: { name: 'Columna Lava', color: '#ff4500', class: 'lava-column', sprite: '3' },
     '3': { name: 'Lava', color: '#ff4500', class: 'lava', sprite: '3' },

@@ -144,13 +144,36 @@ const drawWall = (store: GameStore, wall: Wall) => {
         const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
         if (anim && wall.currentFrame !== undefined) {
             const frameWidth = sprite.width / anim.frames;
-            // Si es columna cortada, recortar el sprite apropiadamente
-            if (wall.visualWidth !== undefined && wall.cutSide) {
-                const srcX = wall.cutSide === 'left' ? frameWidth / 2 : 0;
-                const srcWidth = frameWidth / 2;
-                ctx.drawImage(sprite, wall.currentFrame * frameWidth + srcX, 0, srcWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+            
+            // Renderizado específico para agua (grilla 2x2)
+            if (wall.tile === '2') {
+                const frameHeight = sprite.height / 2; // 2 filas
+                const framesPerRow = 2; // 2 frames por fila
+                
+                const row = Math.floor(wall.currentFrame / framesPerRow);
+                const col = wall.currentFrame % framesPerRow;
+                
+                const sourceX = col * frameWidth;
+                const sourceY = row * frameHeight;
+                
+                // Si es columna cortada, recortar el sprite apropiadamente
+                if (wall.visualWidth !== undefined && wall.cutSide) {
+                    const srcX = wall.cutSide === 'left' ? frameWidth / 2 : 0;
+                    const srcWidth = frameWidth / 2;
+                    ctx.drawImage(sprite, sourceX + srcX, sourceY, srcWidth, frameHeight, renderX, wall.y, renderWidth, wall.height);
+                } else {
+                    ctx.drawImage(sprite, sourceX, sourceY, frameWidth, frameHeight, renderX, wall.y, renderWidth, wall.height);
+                }
             } else {
-                ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+                // Renderizado normal para otros muros
+                // Si es columna cortada, recortar el sprite apropiadamente
+                if (wall.visualWidth !== undefined && wall.cutSide) {
+                    const srcX = wall.cutSide === 'left' ? frameWidth / 2 : 0;
+                    const srcWidth = frameWidth / 2;
+                    ctx.drawImage(sprite, wall.currentFrame * frameWidth + srcX, 0, srcWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+                } else {
+                    ctx.drawImage(sprite, wall.currentFrame * frameWidth, 0, frameWidth, sprite.height, renderX, wall.y, renderWidth, wall.height);
+                }
             }
         } else {
             // Si es columna cortada, recortar el sprite apropiadamente
@@ -195,43 +218,11 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
     let flip = enemy.vx < 0;
     if (enemy.type === 'viper') {
         flip = enemy.direction === -1;
+    } else if (enemy.type === 'tentacle') {
+        flip = enemy.direction === -1; // Espejar cuando mira a la izquierda
     }
     
-    // Dibujar tentáculo con "cuerpo" extendido
-    if (enemy.type === 'tentacle' && enemy.extensionLength && enemy.extensionLength > 0) {
-        // Dibujar el "cuerpo" del tentáculo (línea ondulada desde la lava hasta la cabeza)
-        const startX = enemy.initialX ?? enemy.x;
-        const startY = enemy.initialY ?? enemy.y;
-        const endX = enemy.x + enemy.width / 2;
-        const endY = enemy.y + enemy.height / 2;
-        
-        ctx.strokeStyle = '#228b22'; // Verde oscuro
-        ctx.lineWidth = 8;
-        ctx.lineCap = 'round';
-        
-        // Dibujar línea ondulada
-        ctx.beginPath();
-        ctx.moveTo(startX + TILE_SIZE / 2, startY + TILE_SIZE / 2);
-        
-        const segments = 10;
-        for (let i = 1; i <= segments; i++) {
-            const t = i / segments;
-            const x = startX + TILE_SIZE / 2 + (endX - startX - TILE_SIZE / 2) * t;
-            const y = startY + TILE_SIZE / 2 + (endY - startY - TILE_SIZE / 2) * t;
-            
-            // Añadir ondulación
-            const waveOffset = Math.sin(t * Math.PI * 3 + Date.now() / 100) * 5;
-            const perpX = -(endY - startY - TILE_SIZE / 2) / enemy.extensionLength;
-            const perpY = (endX - startX - TILE_SIZE / 2) / enemy.extensionLength;
-            
-            ctx.lineTo(x + perpX * waveOffset, y + perpY * waveOffset);
-        }
-        
-        ctx.stroke();
-        
-        // Dibujar la cabeza del tentáculo
-        ctx.translate(enemy.x, enemy.y);
-    } else if (flip) {
+    if (flip) {
         ctx.translate(enemy.x + enemy.width, enemy.y);
         ctx.scale(-1, 1);
     } else {
@@ -254,7 +245,32 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
     const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
     if (anim) {
         const frameWidth = sprite.width / anim.frames;
-        ctx.drawImage(sprite, enemy.currentFrame * frameWidth, 0, frameWidth, sprite.height, 0, 0, enemy.width, enemy.height);
+        
+        // Renderizado específico para el tentáculo
+        if (enemy.type === 'tentacle') {
+            // Usar tentacleFrame en lugar de currentFrame
+            const frameIndex = enemy.tentacleFrame ?? 0;
+            
+            // Calcular posición en la grilla 6x5 (frames de 60x120)
+            const frameWidth = 60;  // Ancho de cada frame
+            const frameHeight = 120; // Alto de cada frame
+            const framesPerRow = 6;   // Frames por fila
+            
+            const row = Math.floor(frameIndex / framesPerRow);
+            const col = frameIndex % framesPerRow;
+            
+            const sourceX = col * frameWidth;
+            const sourceY = row * frameHeight;
+            
+            ctx.drawImage(
+                sprite, 
+                sourceX, sourceY, frameWidth, frameHeight,
+                0, 0, enemy.width, enemy.height
+            );
+        } else {
+            // Renderizado normal para otros enemigos
+            ctx.drawImage(sprite, enemy.currentFrame * frameWidth, 0, frameWidth, sprite.height, 0, 0, enemy.width, enemy.height);
+        }
     } else {
         ctx.drawImage(sprite, 0, 0, enemy.width, enemy.height);
     }

@@ -930,24 +930,32 @@ export const drawEditor = (store: GameStore) => {
                     ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
                 }
             } else if (tile === 'T') {
-                // Dibujar tentáculo con sprite tentaculo.png - ocupando 2 tiles de altura
+                // Dibujar tentáculo con sprite tentaculo.png - tamaño 60x120
                 const tentacleSprite = store.sprites.T;
                 if (tentacleSprite) {
                     const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, 'T');
                     if (anim && effectiveFrames > 0 && totalFrames > 0) {
                         const frameDuration = Math.max(1, anim.speed) * msPerTick;
                         const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
-                        const frameWidth = tentacleSprite.width / totalFrames;
+                        
+                        // Calcular posición en la grilla 6x5 (frames de 60x120)
+                        const frameWidth = 60;  // Ancho de cada frame
+                        const frameHeight = 120; // Alto de cada frame
+                        const framesPerRow = 6;   // Frames por fila
+                        
+                        const row = Math.floor(frameIndex / framesPerRow);
+                        const col = frameIndex % framesPerRow;
+                        
+                        const sourceX = col * frameWidth;
+                        const sourceY = row * frameHeight;
+                        
                         ctx.drawImage(
                             tentacleSprite,
-                            frameIndex * frameWidth,
-                            0,
-                            frameWidth,
-                            tentacleSprite.height,
+                            sourceX, sourceY, frameWidth, frameHeight,
                             colIndex * TILE_SIZE,
-                            rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                            TILE_SIZE,
-                            TILE_SIZE * 2
+                            rowIndex * TILE_SIZE,
+                            60, // Ancho del sprite
+                            120  // Alto del sprite
                         );
                     } else {
                         ctx.drawImage(
@@ -957,15 +965,15 @@ export const drawEditor = (store: GameStore) => {
                             tentacleSprite.width,
                             tentacleSprite.height,
                             colIndex * TILE_SIZE,
-                            rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                            TILE_SIZE,
-                            TILE_SIZE * 2
+                            rowIndex * TILE_SIZE,
+                            60,
+                            120
                         );
                     }
                 } else {
-                    // Fallback: rectángulo verde ocupando 2 tiles verticalmente
+                    // Fallback: rectángulo verde
                     ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
-                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, 60, 120);
                 }
             }
         }
@@ -1159,8 +1167,9 @@ export const drawEditor = (store: GameStore) => {
             ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
             ctx.globalAlpha = 1;
         }
-    } else if (store.selectedTile === 'T') {
-        // Preview del tentáculo con sprite tentaculo.png - ocupando 2 tiles de altura
+    }
+    else if (store.selectedTile === 'T') {
+        // Preview del tentáculo con sprite tentaculo.png - tamaño 60x120
         const tentacleSprite = store.sprites.T;
         if (tentacleSprite) {
             ctx.globalAlpha = 0.5;
@@ -1168,17 +1177,25 @@ export const drawEditor = (store: GameStore) => {
             if (anim && effectiveFrames > 0 && totalFrames > 0) {
                 const frameDuration = Math.max(1, anim.speed) * msPerTick;
                 const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
-                const frameWidth = tentacleSprite.width / totalFrames;
+                
+                // Calcular posición en la grilla 6x5 (frames de 60x120)
+                const frameWidth = 60;  // Ancho de cada frame
+                const frameHeight = 120; // Alto de cada frame
+                const framesPerRow = 6;   // Frames por fila
+                
+                const row = Math.floor(frameIndex / framesPerRow);
+                const col = frameIndex % framesPerRow;
+                
+                const sourceX = col * frameWidth;
+                const sourceY = row * frameHeight;
+                
                 ctx.drawImage(
                     tentacleSprite,
-                    frameIndex * frameWidth,
-                    0,
-                    frameWidth,
-                    tentacleSprite.height,
+                    sourceX, sourceY, frameWidth, frameHeight,
                     store.mouse.gridX * TILE_SIZE,
-                    store.mouse.gridY * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                    TILE_SIZE,
-                    TILE_SIZE * 2
+                    store.mouse.gridY * TILE_SIZE,
+                    60, // Ancho del sprite
+                    120  // Alto del sprite
                 );
             } else {
                 ctx.drawImage(
@@ -1188,20 +1205,21 @@ export const drawEditor = (store: GameStore) => {
                     tentacleSprite.width,
                     tentacleSprite.height,
                     store.mouse.gridX * TILE_SIZE,
-                    store.mouse.gridY * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                    TILE_SIZE,
-                    TILE_SIZE * 2
+                    store.mouse.gridY * TILE_SIZE,
+                    60,
+                    120
                 );
             }
             ctx.globalAlpha = 1;
         } else {
-            // Fallback: rectángulo verde ocupando 2 tiles verticalmente
+            // Fallback: rectángulo verde
             ctx.globalAlpha = 0.5;
             ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
-            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, 60, 120);
             ctx.globalAlpha = 1;
         }
-    } else if (store.selectedTile === 'L') {
+    }
+    else if (store.selectedTile === 'L') {
         // Preview de luz con sprite
         const lightSprite = store.sprites.L;
         if (lightSprite) {

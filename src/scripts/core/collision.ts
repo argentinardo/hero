@@ -14,7 +14,7 @@ export const checkCollision = (a: GameObject, b: GameObject) =>
  * @returns true si el tile está en un bloque con altura
  */
 export const isInHeightBlock = (wall: Wall, walls: Wall[]): boolean => {
-    // Solo verificar tiles de muro ('1'), tierra ('2') y columnas ('C')
+    // Solo verificar tiles de muro ('1'), agua ('2') y columnas ('C')
     if (wall.tile !== '1' && wall.tile !== '2' && wall.tile !== 'C') {
         return false;
     }

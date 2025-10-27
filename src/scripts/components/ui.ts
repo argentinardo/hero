@@ -719,48 +719,6 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
         return;
     }
 
-    // Caso especial para el tentáculo (ocupa 2 tiles de alto con animación)
-    if (tile === 'T') {
-        const tentacleSprite = store.sprites['T'];
-        if (tentacleSprite && tentacleSprite.naturalWidth > 0) {
-            const anim = ANIMATION_DATA['T'];
-            if (anim) {
-                const msPerTick = 1000 / 60;
-                const frameDuration = Math.max(1, anim.speed) * msPerTick;
-                const frameIndex = Math.floor(timestamp / frameDuration) % anim.frames;
-                const frameWidth = tentacleSprite.width / anim.frames;
-                
-                ctx.drawImage(
-                    tentacleSprite,
-                    frameIndex * frameWidth,
-                    0,
-                    frameWidth,
-                    tentacleSprite.height,
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height
-                );
-            } else {
-                ctx.drawImage(
-                    tentacleSprite,
-                    0,
-                    0,
-                    tentacleSprite.width,
-                    tentacleSprite.height,
-                    0,
-                    0,
-                    canvas.width,
-                    canvas.height
-                );
-            }
-        } else {
-            // Fallback: rectángulo verde
-            ctx.fillStyle = 'rgba(34, 139, 34, 0.5)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        return;
-    }
 
     // Caso especial para la luz
     if (tile === 'L') {
@@ -1026,7 +984,7 @@ const populatePalette = (store: GameStore) => {
             tiles: [
                 { key: '0', name: 'Vacío' },
                 { key: '1', name: 'Muro' },
-                { key: '2', name: 'Tierra' }
+                { key: '2', name: 'agua' }
             ]
         },
         {

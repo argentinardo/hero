@@ -2,7 +2,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
 import { loadLevel } from './level';
-import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded } from './audio';
+import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound } from './audio';
 
 export const updateEnemies = (store: GameStore) => {
     // Si está pausado, no actualizar enemigos
@@ -95,101 +95,133 @@ export const updateEnemies = (store: GameStore) => {
                 break;
             }
             case 'tentacle': {
+                // Comportamiento del tentáculo: deslizarse por toda el agua siguiendo al héroe
+                const player = store.player;
+                
                 // Calcular distancia al jugador
-                const dx = (player.x + player.width / 2) - (enemy.initialX ?? enemy.x);
-                const dy = (player.y + player.height / 2) - (enemy.initialY ?? enemy.y);
+                const dx = (player.x + player.width / 2) - (enemy.x + enemy.width / 2);
+                const dy = (player.y + player.height / 2) - (enemy.y + enemy.height / 2);
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                const speed = 3;
+                // Determinar dirección para el espejado (mirar al héroe)
+                enemy.direction = dx > 0 ? 1 : -1; // 1 = derecha, -1 = izquierda
                 
-                switch (enemy.state) {
-                    case 'idle':
-                        // Permanece oculto en la lava
-                        enemy.isHidden = true;
-                        enemy.extensionLength = 0;
-                        
-                        // Detectar si el héroe está cerca
-                        if (distance <= (enemy.detectionRange ?? TILE_SIZE * 4)) {
-                            enemy.state = 'detecting';
-                            enemy.detectionDelay = 30; // Delay de 30 frames
+                // Función para encontrar el agua más cercana en una fila
+                const findWaterInRow = (rowIndex: number): { start: number, end: number } | null => {
+                    if (rowIndex < 0 || rowIndex >= store.levelDesigns[store.currentLevelIndex].length) {
+                        return null;
+                    }
+                    
+                    const row = store.levelDesigns[store.currentLevelIndex][rowIndex];
+                    if (!row) return null;
+                    
+                    let start = -1;
+                    let end = -1;
+                    
+                    // Encontrar el primer y último tile de agua en la fila
+                    for (let i = 0; i < row.length; i++) {
+                        if (row[i] === '2') {
+                            if (start === -1) start = i;
+                            end = i;
                         }
-                        break;
+                    }
+                    
+                    return start !== -1 ? { start, end } : null;
+                };
+                
+                // Función para verificar si hay agua en una posición
+                const isWaterAt = (x: number, y: number): boolean => {
+                    const gridX = Math.floor(x / TILE_SIZE);
+                    const gridY = Math.floor(y / TILE_SIZE);
+                    
+                    // Verificar si la posición está dentro del mapa
+                    if (gridY < 0 || gridY >= store.levelDesigns[store.currentLevelIndex].length) {
+                        return false;
+                    }
+                    
+                    const row = store.levelDesigns[store.currentLevelIndex][gridY];
+                    if (!row || gridX < 0 || gridX >= row.length) {
+                        return false;
+                    }
+                    
+                    return row[gridX] === '2'; // '2' es el tile de agua
+                };
+                
+                // Encontrar agua en la fila actual del tentáculo
+                const currentRow = Math.floor(enemy.y / TILE_SIZE);
+                const waterRange = findWaterInRow(currentRow);
+                
+                if (waterRange) {
+                    const followSpeed = 2.0; // Velocidad de seguimiento
+                    const waterStartX = waterRange.start * TILE_SIZE;
+                    const waterEndX = (waterRange.end + 1) * TILE_SIZE;
+                    
+                    // Calcular la posición objetivo del héroe en el agua
+                    const playerGridX = Math.floor(player.x / TILE_SIZE);
+                    let targetX = player.x;
+                    
+                    // Si el héroe está fuera del agua, seguir su posición X pero mantenerse en el agua
+                    if (playerGridX < waterRange.start) {
+                        targetX = waterStartX;
+                    } else if (playerGridX > waterRange.end) {
+                        targetX = waterEndX - enemy.width;
+                    } else {
+                        // El héroe está en el agua, seguir su posición X
+                        targetX = Math.max(waterStartX, Math.min(waterEndX - enemy.width, player.x));
+                    }
+                    
+                    // Moverse hacia la posición objetivo
+                    const moveDistance = targetX - enemy.x;
+                    if (Math.abs(moveDistance) > 1) {
+                        const moveDirection = moveDistance > 0 ? 1 : -1;
+                        enemy.x += moveDirection * followSpeed;
                         
-                    case 'detecting':
-                        // Delay antes de atacar
-                        enemy.detectionDelay = (enemy.detectionDelay ?? 0) - 1;
-                        
-                        // Si el héroe se aleja, volver a idle
-                        if (distance > (enemy.detectionRange ?? TILE_SIZE * 4)) {
-                            enemy.state = 'idle';
-                            break;
-                        }
-                        
-                        // Después del delay, atacar
-                        if ((enemy.detectionDelay ?? 0) <= 0) {
-                            enemy.state = 'attacking';
-                            enemy.isHidden = false;
-                            enemy.playerStillTimer = 0;
-                        }
-                        break;
-                        
-                    case 'attacking':
-                        // Extender tentáculo hacia el jugador
-                        const maxExtension = enemy.attackRange ?? TILE_SIZE * 6;
-                        const targetExtension = Math.min(distance, maxExtension);
-                        
-                        // Mover el tentáculo hacia el jugador
-                        if ((enemy.extensionLength ?? 0) < targetExtension) {
-                            enemy.extensionLength = (enemy.extensionLength ?? 0) + speed;
-                            
-                            // Actualizar posición de la "cabeza" del tentáculo
-                            const angle = Math.atan2(dy, dx);
-                            enemy.x = (enemy.initialX ?? enemy.x) + Math.cos(angle) * (enemy.extensionLength ?? 0);
-                            enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(angle) * (enemy.extensionLength ?? 0);
-                        } else {
-                            // Ya alcanzó la extensión objetivo
-                            enemy.extensionLength = targetExtension;
-                            
-                            // Actualizar posición siguiendo al jugador
-                            const angle = Math.atan2(dy, dx);
-                            enemy.x = (enemy.initialX ?? enemy.x) + Math.cos(angle) * targetExtension;
-                            enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(angle) * targetExtension;
-                        }
-                        
-                        // Detectar si el jugador se queda quieto
-                        if (Math.abs(player.vx) < 0.1 && Math.abs(player.vy) < 0.1) {
-                            enemy.playerStillTimer = (enemy.playerStillTimer ?? 0) + 1;
-                        } else {
-                            enemy.playerStillTimer = 0;
-                        }
-                        
-                        // Si el jugador se aleja mucho, retraer
-                        if (distance > maxExtension + TILE_SIZE * 2) {
-                            enemy.state = 'retracting';
-                        }
-                        break;
-                        
-                    case 'retracting':
-                        // Retraer tentáculo a la posición inicial
-                        if ((enemy.extensionLength ?? 0) > 0) {
-                            enemy.extensionLength = Math.max(0, (enemy.extensionLength ?? 0) - speed * 2);
-                            
-                            // Mover hacia la posición inicial
-                            const angle = Math.atan2(dy, dx);
-                            enemy.x = (enemy.initialX ?? enemy.x) + Math.cos(angle) * (enemy.extensionLength ?? 0);
-                            enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(angle) * (enemy.extensionLength ?? 0);
-                        } else {
-                            // Ya se retrajo completamente
-                            enemy.x = enemy.initialX ?? enemy.x;
-                            enemy.y = enemy.initialY ?? enemy.y;
-                            enemy.state = 'idle';
-                            enemy.isHidden = true;
-                        }
-                        break;
-                        
-                    default:
-                        break;
+                        // Asegurar que se mantenga dentro del agua
+                        enemy.x = Math.max(waterStartX, Math.min(waterEndX - enemy.width, enemy.x));
+                    }
                 }
+                
+                // Actualizar animación según el estado
+                if (enemy.tentacleState === 'standby') {
+                    // Frames 0-14 en loop para standby (frames 1-15 en numeración 1-based)
+                    // Velocidad reducida a un tercio: cada 3 frames del juego = 1 frame de animación
+                    enemy.tentacleAnimationSpeed = (enemy.tentacleAnimationSpeed ?? 0) + 1;
+                    if (enemy.tentacleAnimationSpeed >= 3) { // Cada 3 frames del juego
+                        enemy.tentacleAnimationSpeed = 0;
+                        enemy.tentacleFrame = (enemy.tentacleFrame ?? 0) + 1;
+                        if (enemy.tentacleFrame >= 15) {
+                            enemy.tentacleFrame = 0; // Loop de frames 0-14
+                        }
+                    }
+                    
+                    // Si el héroe está cerca, cambiar a modo latigazo
+                    if (distance < 80) { // Distancia de activación
+                        enemy.tentacleState = 'whipping';
+                        enemy.tentacleFrame = 15; // Empezar desde el frame 15 (frame 16 en numeración 1-based)
+                        enemy.tentacleAnimationSpeed = 0; // Resetear contador de animación
+                    }
+                } else if (enemy.tentacleState === 'whipping') {
+                    // Frames 15-25 para latigazo (frames 16-26 en numeración 1-based)
+                    // Velocidad reducida a un tercio: cada 3 frames del juego = 1 frame de animación
+                    enemy.tentacleAnimationSpeed = (enemy.tentacleAnimationSpeed ?? 0) + 1;
+                    if (enemy.tentacleAnimationSpeed >= 3) { // Cada 3 frames del juego
+                        enemy.tentacleAnimationSpeed = 0;
+                        enemy.tentacleFrame = (enemy.tentacleFrame ?? 15) + 1;
+                        
+                        // Reproducir sonido del latigazo en el primer frame del latigazo (frame 15)
+                        if (enemy.tentacleFrame === 16) { // Segundo frame del latigazo para dar tiempo al sonido
+                            // Reproducir sonido del latigazo
+                            playLaserSound();
+                        }
+                        
+                        // Cuando termine la animación de latigazo, volver a standby
+                        if (enemy.tentacleFrame > 25) {
+                            enemy.tentacleState = 'standby';
+                            enemy.tentacleFrame = 0;
+                        }
+                    }
+                }
+                
                 break;
             }
             default:

@@ -260,7 +260,7 @@ const addBlockingDestructibles = (level: string[], width: number, height: number
         const blockType = Math.random() > 0.5 ? 'horizontal' : 'vertical';
         
         if (blockType === 'horizontal') {
-            // Bloquear un camino horizontal con tierra (2)
+            // Bloquear un camino horizontal con agua (2)
             addHorizontalBlocker(level, width, height, platforms);
         } else {
             // Bloquear un camino vertical con columnas (C)
@@ -278,7 +278,7 @@ const addHorizontalBlocker = (level: string[], width: number, height: number, pl
         
         // Verificar que estamos en un espacio vacío (no en una plataforma)
         if (level[y][x] === '0' && level[y][x + 1] === '0') {
-            // Crear bloqueador horizontal de 2-3 tiles de tierra
+            // Crear bloqueador horizontal de 2-3 tiles de agua
             const blockLength = Math.random() > 0.5 ? 2 : 3;
             let canPlace = true;
             

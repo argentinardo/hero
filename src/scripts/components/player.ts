@@ -831,31 +831,19 @@ export const checkEnemyCollision = (store: GameStore) => {
                 playerDie(store, enemy);
             }
         } else if (enemy.type === 'tentacle' && !enemy.isHidden) {
-            // Para el tentáculo, verificar colisión con el "cuerpo" extendido
-            if (enemy.extensionLength && enemy.extensionLength > 0) {
-                // Colisión con la cabeza del tentáculo
-                if (checkCollision(player.hitbox, enemy)) {
-                    playerDie(store, enemy);
-                }
-                
-                // Verificar colisión con el "cuerpo" del tentáculo (aproximación con línea gruesa)
-                const startX = (enemy.initialX ?? enemy.x) + TILE_SIZE / 2;
-                const startY = (enemy.initialY ?? enemy.y) + TILE_SIZE / 2;
-                const endX = enemy.x + enemy.width / 2;
-                const endY = enemy.y + enemy.height / 2;
-                
-                const playerCenterX = player.hitbox.x + player.hitbox.width / 2;
-                const playerCenterY = player.hitbox.y + player.hitbox.height / 2;
-                
-                // Distancia del jugador a la línea del tentáculo
-                const lineLength = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
-                const distance = Math.abs((endY - startY) * playerCenterX - (endX - startX) * playerCenterY + endX * startY - endY * startX) / lineLength;
-                
-                // Si está cerca de la línea y dentro del rango de extensión
-                const t = ((playerCenterX - startX) * (endX - startX) + (playerCenterY - startY) * (endY - startY)) / (lineLength * lineLength);
-                if (distance < 15 && t >= 0 && t <= 1) {
-                    playerDie(store, enemy);
-                }
+            // Colisión específica del tentáculo: solo la caja de colisión de 75px de alto
+            const collisionHeight = enemy.collisionHeight ?? 75;
+            const collisionY = enemy.y + enemy.height - collisionHeight; // Alineado debajo
+            
+            const tentacleHitbox = {
+                x: enemy.x,
+                y: collisionY,
+                width: enemy.width,
+                height: collisionHeight,
+            };
+            
+            if (checkCollision(player.hitbox, tentacleHitbox)) {
+                playerDie(store, enemy);
             }
         } else if (!enemy.isHidden && checkCollision(player.hitbox, enemy)) {
             playerDie(store, enemy);

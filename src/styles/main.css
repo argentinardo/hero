@@ -19,7 +19,7 @@ textarea{ background-color:#111; border:2px solid #4a4a4a; width:100%; height:10
 #game-world{ position:absolute; left:0; top:0; width:1200px; height:99999px; transform:translateY(0) }
 .game-object{ position:absolute; image-rendering:pixelated; background-repeat:no-repeat; background-position:0 0 }
 .wall{ width:60px; height:60px; background:url("../assets/sprites/wall_small.png"); background-size:60px 60px }
-.destructible-wall{ width:60px; height:60px; background:url("../assets/sprites/tierra_small.png"); background-size:60px 60px }
+.destructible-wall{ width:60px; height:60px; background:url("../assets/sprites/agua_small.png"); background-size:60px 60px }
 .player{ width:60px; height:120px }
 .bat{ width:60px; height:60px }
 .spider{ width:60px; height:60px }
