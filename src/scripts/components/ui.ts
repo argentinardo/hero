@@ -286,15 +286,28 @@ const startJoystick = (store: GameStore) => {
         if (!button) return;
 
         const handleStart = () => {
+            // Desactivar todas las direcciones primero
+            store.keys.ArrowUp = false;
+            store.keys.ArrowLeft = false;
+            store.keys.ArrowRight = false;
+            
+            // Activar las direcciones correspondientes
             keys.forEach(key => {
                 store.keys[key as keyof typeof store.keys] = true;
             });
+            
+            // Marcar como activo
+            button.classList.add('active');
         };
 
         const handleEnd = () => {
-            keys.forEach(key => {
-                store.keys[key as keyof typeof store.keys] = false;
-            });
+            // Desactivar todas las direcciones
+            store.keys.ArrowUp = false;
+            store.keys.ArrowLeft = false;
+            store.keys.ArrowRight = false;
+            
+            // Remover clase activa
+            button.classList.remove('active');
         };
 
         button.addEventListener('touchstart', handleStart, { passive: true });
@@ -306,6 +319,71 @@ const startJoystick = (store: GameStore) => {
         button.addEventListener('mouseup', handleEnd);
         button.addEventListener('mouseleave', handleEnd);
     };
+
+    // Configurar seguimiento global del dedo para cambios fluidos entre botones
+    let currentTouchTarget: HTMLElement | null = null;
+    
+    const handleGlobalTouchMove = (event: TouchEvent) => {
+        if (!currentTouchTarget) return;
+        
+        const touch = event.touches[0];
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
+        const directionalButton = elementBelow?.closest('.directional-btn') as HTMLElement;
+        
+        if (directionalButton && directionalButton !== currentTouchTarget) {
+            // Cambiar al nuevo botón
+            currentTouchTarget.classList.remove('active');
+            directionalButton.classList.add('active');
+            
+            // Desactivar todas las direcciones
+            store.keys.ArrowUp = false;
+            store.keys.ArrowLeft = false;
+            store.keys.ArrowRight = false;
+            
+            // Activar las direcciones del nuevo botón
+            const buttonId = directionalButton.id;
+            switch (buttonId) {
+                case 'btn-up':
+                    store.keys.ArrowUp = true;
+                    break;
+                case 'btn-left':
+                    store.keys.ArrowLeft = true;
+                    break;
+                case 'btn-right':
+                    store.keys.ArrowRight = true;
+                    break;
+                case 'btn-up-left':
+                    store.keys.ArrowUp = true;
+                    store.keys.ArrowLeft = true;
+                    break;
+                case 'btn-up-right':
+                    store.keys.ArrowUp = true;
+                    store.keys.ArrowRight = true;
+                    break;
+            }
+            
+            currentTouchTarget = directionalButton;
+        }
+    };
+    
+    const handleGlobalTouchStart = (event: TouchEvent) => {
+        const elementBelow = document.elementFromPoint(event.touches[0].clientX, event.touches[0].clientY) as HTMLElement;
+        const directionalButton = elementBelow?.closest('.directional-btn') as HTMLElement;
+        
+        if (directionalButton) {
+            currentTouchTarget = directionalButton;
+        }
+    };
+    
+    const handleGlobalTouchEnd = () => {
+        currentTouchTarget = null;
+    };
+    
+    // Agregar listeners globales para seguimiento del dedo
+    document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
+    document.addEventListener('touchend', handleGlobalTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', handleGlobalTouchEnd, { passive: true });
 
     // Configurar cada botón direccional
     setupDirectionalButton('btn-up', ['ArrowUp']);

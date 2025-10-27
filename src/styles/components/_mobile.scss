@@ -130,7 +130,7 @@
             }
         }
         .energy-bar-container {
-            width: 130px;
+            width: 156px;
             position: relative;
             &::after {
                 content: "POWER";
@@ -353,6 +353,12 @@
         &:active {
             background: rgba(255, 255, 255, 0.4);
             transform: scale(0.95);
+        }
+        
+        /* Estado activo para tracking visual */
+        &.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
         }
         
         /* Botones superiores (primera fila) rectangulares */
