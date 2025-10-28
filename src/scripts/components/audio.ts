@@ -14,6 +14,7 @@ import toyBounceSound from '../../assets/audio/toy.mp3';
 import brickBounceSound from '../../assets/audio/brick.mp3';
 import bulbOffSound from '../../assets/audio/bulb.mp3';
 import energyDrainSound from '../../assets/audio/energy-drain.mp3';
+import tentacleSound from '../../assets/audio/tentacle.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -30,6 +31,7 @@ interface AudioSystem {
         brick: HTMLAudioElement | null;
         bulb: HTMLAudioElement | null;
         energyDrain: HTMLAudioElement | null;
+        tentacle: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -51,6 +53,7 @@ let audioSystem: AudioSystem = {
         brick: null,
         bulb: null,
         energyDrain: null,
+        tentacle: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -126,7 +129,8 @@ export const loadAdditionalSFX = async (): Promise<void> => {
             { key: 'jetpack', src: jetpackSound, loop: true },
             { key: 'steps', src: stepsSound, loop: true },
             { key: 'successLevel', src: successLevelSound, loop: false },
-            { key: 'energyDrain', src: energyDrainSound, loop: true }
+            { key: 'energyDrain', src: energyDrainSound, loop: true },
+            { key: 'tentacle', src: tentacleSound, loop: false }
         ];
 
         let loaded = 0;
@@ -376,6 +380,15 @@ export const playEnemyKillSound = () => {
         const killClone = audioSystem.sounds.enemyKill.cloneNode(true) as HTMLAudioElement;
         killClone.volume = audioSystem.sfxVolume;
         killClone.play().catch(() => {});
+    }
+};
+
+// Reproducir sonido del latigazo del tentáculo
+export const playTentacleSound = () => {
+    if (audioSystem.sounds.tentacle && !audioSystem.isMuted) {
+        const tentacleClone = audioSystem.sounds.tentacle.cloneNode(true) as HTMLAudioElement;
+        tentacleClone.volume = audioSystem.sfxVolume;
+        tentacleClone.play().catch(() => {});
     }
 };
 

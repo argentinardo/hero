@@ -98,11 +98,53 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.globalAlpha = 0.5;
     }
     
-    // Paredes aplastantes: renderizado liso
+    // Paredes aplastantes: renderizado con efectos eléctricos
     if (wall.type === 'crushing') {
         const wallColor = wall.color || '#cc0000';
-        ctx.fillStyle = wallColor;
+        
+        // Efecto de brillo (glow) exterior
+        ctx.shadowColor = '#00ffff'; // Color eléctrico azul-cian
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        
+        // Tint eléctrico con gradiente
+        const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y + wall.height);
+        gradient.addColorStop(0, wallColor);
+        gradient.addColorStop(0.5, '#ff4444'); // Rojo más brillante en el centro
+        gradient.addColorStop(1, wallColor);
+        
+        ctx.fillStyle = gradient;
         ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        
+        // Efecto de parpadeo eléctrico
+        const time = Date.now() * 0.01;
+        const flickerIntensity = Math.sin(time) * 0.3 + 0.7; // Oscila entre 0.4 y 1.0
+        
+        ctx.globalAlpha = flickerIntensity;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(wall.x + 2, wall.y + 2, wall.width - 4, wall.height - 4);
+        
+        // Efecto de arco eléctrico en los bordes
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = flickerIntensity * 0.8;
+        
+        // Dibujar líneas eléctricas en los bordes
+        ctx.beginPath();
+        ctx.moveTo(wall.x, wall.y);
+        ctx.lineTo(wall.x + wall.width, wall.y);
+        ctx.moveTo(wall.x, wall.y + wall.height);
+        ctx.lineTo(wall.x + wall.width, wall.y + wall.height);
+        ctx.moveTo(wall.x, wall.y);
+        ctx.lineTo(wall.x, wall.y + wall.height);
+        ctx.moveTo(wall.x + wall.width, wall.y);
+        ctx.lineTo(wall.x + wall.width, wall.y + wall.height);
+        ctx.stroke();
+        
+        // Resetear efectos
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
         
         ctx.restore();
         return;
@@ -147,6 +189,7 @@ const drawWall = (store: GameStore, wall: Wall) => {
             
             // Renderizado específico para agua (grilla 2x2)
             if (wall.tile === '2') {
+                const frameWidth = sprite.width / 2; // 2 frames por fila
                 const frameHeight = sprite.height / 2; // 2 filas
                 const framesPerRow = 2; // 2 frames por fila
                 
@@ -321,13 +364,30 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
 
     // Si es una víbora muerta, no usar animación (es una imagen estática)
     const isViperDeath = entity.tile === 'V';
-    const anim = !isViperDeath ? ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA] : null;
+    const isTentacleDeath = entity.tile === 'T' && entity.tentacleState === 'dying';
+    const anim = !isViperDeath && !isTentacleDeath ? ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA] : null;
     
     // Reducir el tamaño de la serpiente muerta a 3/4
     const width = isViperDeath ? entity.width * 1 : entity.width;
     const height = isViperDeath ? entity.height * 1 : entity.height;
     
-    if (anim && anim.frames > 1) {
+    if (isTentacleDeath && entity.tentacleFrame !== undefined) {
+        // Renderizado específico para tentáculo muerto con frame fijo
+        const frameIndex = entity.tentacleFrame;
+        
+        // Calcular posición en la grilla 6x5 (frames de 60x120)
+        const frameWidth = 60;  // Ancho de cada frame
+        const frameHeight = 120; // Alto de cada frame
+        const framesPerRow = 6;   // Frames por fila
+        
+        const row = Math.floor(frameIndex / framesPerRow);
+        const col = frameIndex % framesPerRow;
+        
+        const sourceX = col * frameWidth;
+        const sourceY = row * frameHeight;
+        
+        ctx.drawImage(sprite, sourceX, sourceY, frameWidth, frameHeight, -width / 2, -height / 2, width, height);
+    } else if (anim && anim.frames > 1) {
         const frameWidth = sprite.width / anim.frames;
         ctx.drawImage(sprite, 0, 0, frameWidth, sprite.height, -width / 2, -height / 2, width, height);
     } else {
@@ -652,12 +712,12 @@ const drawGameWorld = (store: GameStore) => {
         
         // Separar paredes afectadas y no afectadas (con culling)
         const affectedWalls = store.walls.filter(wall => 
-            wall.tile !== '3' && wall.tile !== 'K' && wall.affectedByDark &&
+            wall.tile !== '3' && wall.tile !== 'K' && wall.tile !== '2' && wall.affectedByDark &&
             wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
             wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
         );
         const unaffectedWalls = store.walls.filter(wall => 
-            wall.tile !== '3' && wall.tile !== 'K' && !wall.affectedByDark &&
+            wall.tile !== '3' && wall.tile !== 'K' && wall.tile !== '2' && !wall.affectedByDark &&
             wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
             wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
         );
@@ -796,9 +856,10 @@ const drawGameWorld = (store: GameStore) => {
         ctx.restore();
     } else {
         // Modo normal - con culling optimizado
-        // Solo dibujar paredes visibles
+        // Solo dibujar paredes visibles (excepto agua)
         store.walls.forEach(wall => {
-            if (wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
+            if (wall.type !== 'water' && 
+                wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
                 wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin) {
                 drawWall(store, wall);
             }
@@ -845,6 +906,15 @@ const drawGameWorld = (store: GameStore) => {
     
     drawExplosions(store); // Las explosiones ya están optimizadas
     drawPlayer(store); // El jugador siempre está visible
+    
+    // Dibujar agua después del jugador para que se vea por detrás
+    store.walls.forEach(wall => {
+        if (wall.type === 'water' && 
+            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
+            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin) {
+            drawWall(store, wall);
+        }
+    });
     
     // Dibujar plataformas después del jugador para que vayan por delante
     store.platforms.forEach(p => {

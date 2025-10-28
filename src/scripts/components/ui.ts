@@ -749,6 +749,46 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
         return;
     }
 
+    // Caso especial para el tentáculo
+    if (tile === 'T') {
+        const tentacleSprite = store.sprites.T;
+        if (tentacleSprite && tentacleSprite.naturalWidth > 0) {
+            // Usar frame de standby (frame 0) para la paleta
+            const frameIndex = 0;
+            
+            // Calcular posición en la grilla 6x5 (frames de 60x120)
+            const frameWidth = 60;  // Ancho de cada frame
+            const frameHeight = 120; // Alto de cada frame
+            const framesPerRow = 6;   // Frames por fila
+            
+            const row = Math.floor(frameIndex / framesPerRow);
+            const col = frameIndex % framesPerRow;
+            
+            const sourceX = col * frameWidth;
+            const sourceY = row * frameHeight;
+            
+            // Escalar para que quepa en el canvas de la paleta
+            const scaleX = canvas.width / frameWidth;
+            const scaleY = canvas.height / frameHeight;
+            const scale = Math.min(scaleX, scaleY);
+            const scaledWidth = frameWidth * scale;
+            const scaledHeight = frameHeight * scale;
+            const offsetX = (canvas.width - scaledWidth) / 2;
+            const offsetY = (canvas.height - scaledHeight) / 2;
+            
+            ctx.drawImage(
+                tentacleSprite,
+                sourceX, sourceY, frameWidth, frameHeight,
+                offsetX, offsetY, scaledWidth, scaledHeight
+            );
+        } else {
+            // Fallback: rectángulo verde
+            ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        return;
+    }
+
     const spriteKey = TILE_TYPES[tile]?.sprite;
     const sprite = spriteKey ? store.sprites[spriteKey] : undefined;
     if (sprite && sprite.naturalWidth > 0 && sprite.naturalHeight > 0) {

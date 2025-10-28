@@ -60,10 +60,22 @@ module.exports = {
       {
         test: /\.(png|svg|jpg|jpeg|gif)$/i,
         type: 'asset/resource',
+        generator: {
+          filename: 'images/[name].[contenthash][ext]',
+        },
+        // Optimizar imágenes
+        parser: {
+          dataUrlCondition: {
+            maxSize: 8 * 1024, // 8KB - imágenes pequeñas se convierten a base64
+          },
+        },
       },
       {
         test: /\.(mp3|wav|ogg)$/i,
         type: 'asset/resource',
+        generator: {
+          filename: 'audio/[name].[contenthash][ext]',
+        },
       },
     ],
   },

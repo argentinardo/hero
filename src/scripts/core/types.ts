@@ -47,6 +47,10 @@ export interface Player extends GameObject {
     respawnTileY?: number;
     respawnOffsetX?: number;
     respawnOffsetY?: number;
+    // Propiedades para sumersión en agua
+    isInWater?: boolean;
+    waterSubmersionLevel?: number; // 0 = no sumergido, 1 = completamente sumergido
+    waterResistance?: number; // Resistencia al movimiento en agua
 }
 
 export type EnemyType = 'bat' | 'viper' | 'spider' | 'tentacle' | 'miner';
@@ -70,14 +74,15 @@ export interface Enemy extends GameObject {
     isHidden?: boolean;
     affectedByDark?: boolean;
     // Propiedades específicas del tentáculo
-    tentacleState?: 'standby' | 'whipping';
+    tentacleState?: 'standby' | 'whipping' | 'dying';
     tentacleFrame?: number;
     tentacleAnimationSpeed?: number;
     collisionHeight?: number; // Altura de la caja de colisión (75px)
+    deathTimer?: number; // Temporizador para eliminar después de mostrar frame de muerte
 }
 
 export interface Wall extends GameObject {
-    type: 'solid' | 'destructible' | 'destructible_v' | 'lava' | 'crushing';
+    type: 'solid' | 'destructible' | 'destructible_v' | 'lava' | 'crushing' | 'water';
     tile: string;
     spriteTick?: number;
     currentFrame?: number;
@@ -149,6 +154,9 @@ export interface FallingEntity extends GameObject {
     // Ej.: 0 o TILE_SIZE/2 para cuartos de ladrillo
     srcTileOffsetX?: number;
     srcTileOffsetY?: number;
+    // Propiedades específicas del tentáculo muerto
+    tentacleFrame?: number;
+    tentacleState?: 'dying';
 }
 
 export interface Particle {

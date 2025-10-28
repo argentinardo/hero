@@ -5,11 +5,85 @@ import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
 import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
 import { vibrate } from '../utils/device';
 
+const handleWaterCollision = (store: GameStore, wall: Wall) => {
+    const { player } = store;
+    
+    // Calcular qué tan sumergido está el héroe
+    const playerBottom = player.y + player.height;
+    const waterTop = wall.y;
+    const waterBottom = wall.y + wall.height;
+    
+    // Si el héroe está tocando el agua
+    if (playerBottom > waterTop && player.y < waterBottom) {
+        player.isInWater = true;
+        
+        // Calcular nivel de sumersión (0 = no sumergido, 1 = completamente sumergido)
+        const submersionDepth = Math.min(playerBottom - waterTop, player.height) / player.height;
+        player.waterSubmersionLevel = submersionDepth;
+        
+        // Si está sumergido más de 1/3, morir
+        if (submersionDepth > 1/3) {
+            playerDie(store, undefined, true); // Muerte por agua
+            return;
+        }
+        
+        // Aplicar resistencia al movimiento
+        const resistanceFactor = 0.3 + (submersionDepth * 0.7); // 30% a 100% de resistencia
+        player.waterResistance = resistanceFactor;
+        
+        // Aplicar resistencia al movimiento horizontal
+        if (player.isApplyingThrust) {
+            // Con jetpack, resistencia horizontal reducida para permitir movimiento
+            player.vx *= (1 - resistanceFactor * 0.3); // Solo 30% de la resistencia normal
+        } else {
+            player.vx *= (1 - resistanceFactor);
+        }
+        
+        // Aplicar resistencia al movimiento vertical
+        if (!player.isApplyingThrust) {
+            player.vy *= (1 - resistanceFactor);
+        } else {
+            // Con jetpack, resistencia moderada para ascenso más lento
+            player.vy *= (1 - resistanceFactor * 0.4); // 40% de la resistencia normal
+        }
+        
+        // Empujar al héroe hacia arriba si está muy sumergido
+        if (submersionDepth > 0.1) {
+            if (player.isApplyingThrust) {
+                // Con jetpack, empuje moderado hacia arriba
+                const pushForce = submersionDepth * 0.8; // Empuje moderado con jetpack
+                player.vy -= pushForce;
+            } else {
+                // Sin jetpack, empuje moderado
+                const pushForce = submersionDepth * 0.5;
+                player.vy -= pushForce;
+            }
+        }
+        
+        // Aplicar gravedad adicional solo si no está usando jetpack
+        if (submersionDepth < 0.3 && !player.isApplyingThrust) { // Solo si no está muy sumergido y no usa jetpack
+            const additionalGravity = 0.3;
+            player.vy += additionalGravity;
+        }
+    } else {
+        // El héroe no está en agua
+        player.isInWater = false;
+        player.waterSubmersionLevel = 0;
+        player.waterResistance = 0;
+    }
+};
+
 const resolvePlayerWallCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
     if (wall.type === 'lava' || wall.tile === 'K') {
         playerDie(store, undefined, true); // Pasar flag de muerte por lava
         return;
+    }
+    
+    // Agua: manejar sumersión progresiva
+    if (wall.type === 'water') {
+        handleWaterCollision(store, wall);
+        return; // No aplicar colisión de bloqueo normal
     }
     
     // Paredes aplastantes: siempre matan al jugador
@@ -554,7 +628,10 @@ const updateFlightState = (store: GameStore) => {
     }
 
     if (player.isApplyingThrust) {
-        player.vy -= THRUST_POWER;
+        // Jetpack menos potente cuando está en agua para ascenso más lento
+        const thrustPower = player.isInWater ? THRUST_POWER * 0.8 : THRUST_POWER;
+        player.vy -= thrustPower;
+        
         const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
         const jetX = player.x + baseOffsetX;
         const jetY = player.y + player.height - 42;
@@ -831,7 +908,7 @@ export const checkEnemyCollision = (store: GameStore) => {
             if (headHitbox && headHitbox.width > 0 && checkCollision(player.hitbox, headHitbox)) {
                 playerDie(store, enemy);
             }
-        } else if (enemy.type === 'tentacle' && !enemy.isHidden) {
+        } else if (enemy.type === 'tentacle' && !enemy.isHidden && !enemy.isDead) {
             // Colisión específica del tentáculo: solo la caja de colisión de 75px de alto
             const collisionHeight = enemy.collisionHeight ?? 75;
             const collisionY = enemy.y + enemy.height - collisionHeight; // Alineado debajo
@@ -846,7 +923,7 @@ export const checkEnemyCollision = (store: GameStore) => {
             if (checkCollision(player.hitbox, tentacleHitbox)) {
                 playerDie(store, enemy);
             }
-        } else if (!enemy.isHidden && checkCollision(player.hitbox, enemy)) {
+        } else if (!enemy.isHidden && !enemy.isDead && checkCollision(player.hitbox, enemy)) {
             playerDie(store, enemy);
         }
     });

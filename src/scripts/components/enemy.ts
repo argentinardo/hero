@@ -2,7 +2,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
 import { loadLevel } from './level';
-import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound } from './audio';
+import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound, playTentacleSound } from './audio';
 
 export const updateEnemies = (store: GameStore) => {
     // Si está pausado, no actualizar enemigos
@@ -12,12 +12,15 @@ export const updateEnemies = (store: GameStore) => {
     const player = store.player;
     
     store.enemies.forEach(enemy => {
-        const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
-        if (anim) {
-            enemy.spriteTick += 1;
-            if (enemy.spriteTick >= anim.speed) {
-                enemy.spriteTick = 0;
-                enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;
+        // No procesar animación para tentáculo muerto
+        if (!(enemy.type === 'tentacle' && enemy.tentacleState === 'dying')) {
+            const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
+            if (anim) {
+                enemy.spriteTick += 1;
+                if (enemy.spriteTick >= anim.speed) {
+                    enemy.spriteTick = 0;
+                    enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;
+                }
             }
         }
 
@@ -107,63 +110,66 @@ export const updateEnemies = (store: GameStore) => {
                 enemy.direction = dx > 0 ? 1 : -1; // 1 = derecha, -1 = izquierda
                 
                 // Movimiento del tentáculo: limitado por la fila de agua de abajo
-                const followSpeed = 2.0; // Velocidad de seguimiento
-                
-                // Función para encontrar el rango de agua en una fila específica
-                const findWaterRangeInRow = (rowIndex: number): { start: number, end: number } | null => {
-                    if (rowIndex < 0 || rowIndex >= store.levelDesigns[store.currentLevelIndex].length) {
-                        return null;
-                    }
+                // Solo moverse si no está muriendo
+                if (enemy.tentacleState !== 'dying') {
+                    const followSpeed = 2.0; // Velocidad de seguimiento
                     
-                    const row = store.levelDesigns[store.currentLevelIndex][rowIndex];
-                    if (!row) return null;
-                    
-                    let start = -1;
-                    let end = -1;
-                    
-                    // Encontrar el primer y último tile de agua en la fila
-                    for (let i = 0; i < row.length; i++) {
-                        if (row[i] === '2') {
-                            if (start === -1) start = i;
-                            end = i;
+                    // Función para encontrar el rango de agua en una fila específica
+                    const findWaterRangeInRow = (rowIndex: number): { start: number, end: number } | null => {
+                        if (rowIndex < 0 || rowIndex >= store.levelDesigns[store.currentLevelIndex].length) {
+                            return null;
                         }
-                    }
-                    
-                    return start !== -1 ? { start, end } : null;
-                };
-                
-                // Verificar si hay agua en la fila de abajo del tentáculo
-                const tentacleBottomRow = Math.floor((enemy.y + enemy.height) / TILE_SIZE);
-                const waterRange = findWaterRangeInRow(tentacleBottomRow);
-                
-                if (waterRange) {
-                    const waterStartX = waterRange.start * TILE_SIZE;
-                    const waterEndX = (waterRange.end + 1) * TILE_SIZE;
-                    
-                    // Calcular posición objetivo basada en el héroe
-                    const playerGridX = Math.floor(player.x / TILE_SIZE);
-                    let targetX = enemy.x; // Mantener posición actual por defecto
-                    
-                    // Si el héroe está en la misma fila de agua, seguir su posición X
-                    if (playerGridX >= waterRange.start && playerGridX <= waterRange.end) {
-                        targetX = player.x;
-                    } else {
-                        // Si el héroe está fuera del agua, moverse hacia el extremo más cercano
-                        if (playerGridX < waterRange.start) {
-                            targetX = waterStartX;
-                        } else if (playerGridX > waterRange.end) {
-                            targetX = waterEndX - enemy.width;
-                        }
-                    }
-                    
-                    // Moverse hacia la posición objetivo
-                    const moveDx = targetX - enemy.x;
-                    if (Math.abs(moveDx) > 2) {
-                        const moveDirection = moveDx > 0 ? 1 : -1;
-                        enemy.x += moveDirection * followSpeed;
                         
-                        // Asegurar que se mantenga dentro del agua
-                        enemy.x = Math.max(waterStartX, Math.min(waterEndX - enemy.width, enemy.x));
+                        const row = store.levelDesigns[store.currentLevelIndex][rowIndex];
+                        if (!row) return null;
+                        
+                        let start = -1;
+                        let end = -1;
+                        
+                        // Encontrar el primer y último tile de agua en la fila
+                        for (let i = 0; i < row.length; i++) {
+                            if (row[i] === '2') {
+                                if (start === -1) start = i;
+                                end = i;
+                            }
+                        }
+                        
+                        return start !== -1 ? { start, end } : null;
+                    };
+                    
+                    // Verificar si hay agua en la fila de abajo del tentáculo
+                    const tentacleBottomRow = Math.floor((enemy.y + enemy.height) / TILE_SIZE);
+                    const waterRange = findWaterRangeInRow(tentacleBottomRow);
+                    
+                    if (waterRange) {
+                        const waterStartX = waterRange.start * TILE_SIZE;
+                        const waterEndX = (waterRange.end + 1) * TILE_SIZE;
+                        
+                        // Calcular posición objetivo basada en el héroe
+                        const playerGridX = Math.floor(player.x / TILE_SIZE);
+                        let targetX = enemy.x; // Mantener posición actual por defecto
+                        
+                        // Si el héroe está en la misma fila de agua, seguir su posición X
+                        if (playerGridX >= waterRange.start && playerGridX <= waterRange.end) {
+                            targetX = player.x;
+                        } else {
+                            // Si el héroe está fuera del agua, moverse hacia el extremo más cercano
+                            if (playerGridX < waterRange.start) {
+                                targetX = waterStartX;
+                            } else if (playerGridX > waterRange.end) {
+                                targetX = waterEndX - enemy.width;
+                            }
+                        }
+                        
+                        // Moverse hacia la posición objetivo
+                        const moveDx = targetX - enemy.x;
+                        if (Math.abs(moveDx) > 2) {
+                            const moveDirection = moveDx > 0 ? 1 : -1;
+                            enemy.x += moveDirection * followSpeed;
+                            
+                            // Asegurar que se mantenga dentro del agua
+                            enemy.x = Math.max(waterStartX, Math.min(waterEndX - enemy.width, enemy.x));
+                        }
                     }
                 }
                 
@@ -179,9 +185,9 @@ export const updateEnemies = (store: GameStore) => {
                             enemy.tentacleFrame = 0; // Loop de frames 0-14
                         }
                     }
-                    
-                    // Si el héroe está cerca, cambiar a modo latigazo
-                    if (distance < 150) { // Distancia de activación más amplia (antes era 80)
+
+                    // Si el héroe está cerca, cambiar a modo latigazo (solo si no está muriendo)
+                    if (distance < 150 && enemy.tentacleState === 'standby') { // Distancia de activación más amplia (antes era 80)
                         enemy.tentacleState = 'whipping';
                         enemy.tentacleFrame = 15; // Empezar desde el frame 15 (frame 16 en numeración 1-based)
                         enemy.tentacleAnimationSpeed = 0; // Resetear contador de animación
@@ -193,18 +199,49 @@ export const updateEnemies = (store: GameStore) => {
                     if (enemy.tentacleAnimationSpeed >= 3) { // Cada 3 frames del juego
                         enemy.tentacleAnimationSpeed = 0;
                         enemy.tentacleFrame = (enemy.tentacleFrame ?? 15) + 1;
-                        
+
                         // Reproducir sonido del latigazo en el primer frame del latigazo (frame 15)
                         if (enemy.tentacleFrame === 16) { // Segundo frame del latigazo para dar tiempo al sonido
-                            // Reproducir sonido del latigazo
-                            playLaserSound();
+                            // Reproducir sonido del latigazo del tentáculo
+                            playTentacleSound();
                         }
-                        
+
                         // Cuando termine la animación de latigazo (hasta el frame 26), volver a standby
                         // La animación SIEMPRE debe llegar hasta el frame 26, sin importar el contacto
                         if (enemy.tentacleFrame > 26) {
                             enemy.tentacleState = 'standby';
                             enemy.tentacleFrame = 0;
+                        }
+                    }
+                } else if (enemy.tentacleState === 'dying') {
+                    // Estado de muerte: mantener el frame 27 y aplicar física de salto/caída
+                    enemy.tentacleFrame = 26;
+                    
+                    // Aplicar gravedad al tentáculo moribundo
+                    enemy.vy += 0.5; // Gravedad
+                    enemy.y += enemy.vy; // Aplicar movimiento vertical
+                    
+                    // Decrementar temporizador de muerte
+                    if (enemy.deathTimer !== undefined) {
+                        enemy.deathTimer--;
+                        if (enemy.deathTimer <= 0) {
+                            // Después de mostrar el frame de muerte por medio segundo, hacer que el tentáculo caiga como entidad
+                            store.fallingEntities.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                width: enemy.width,
+                                height: enemy.height,
+                                vy: enemy.vy, // Usar la velocidad actual del tentáculo
+                                vx: 0, // Sin movimiento horizontal
+                                tile: enemy.tile,
+                                rotation: 0,
+                                rotationSpeed: 0, // Sin rotación
+                                // Propiedades específicas para el tentáculo muerto
+                                tentacleFrame: 26, // Frame de muerte fijo
+                                tentacleState: 'dying',
+                            });
+                            // Eliminar el tentáculo de la lista de enemigos
+                            enemy.isHidden = true;
                         }
                     }
                 }

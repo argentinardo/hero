@@ -1,6 +1,6 @@
 import { ANIMATION_DATA, TILE_TYPES } from '../core/assets';
 import { TILE_SIZE, MAX_ENERGY } from '../core/constants';
-import { resetPlayer } from './player';
+import { resetPlayer, emitParticles } from './player';
 import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { playSuccessLevelSound, stopAllSfxExceptSuccessLevel, playBackgroundMusic } from './audio';
 
@@ -16,7 +16,7 @@ const createWall = (x: number, y: number, tile: string, store: GameStore): Wall 
     };
 
     if (tile === '2') {
-        return { ...base, type: 'destructible', health: 60, isDamaged: false };
+        return { ...base, type: 'water', health: 0, isDamaged: false, spriteTick: Math.floor(Math.random() * 50), currentFrame: Math.floor(Math.random() * 4) };
     }
     if (tile === 'C') {
         return { ...base, type: 'destructible_v', health: 60, isDamaged: false };
@@ -487,6 +487,34 @@ export const updateWalls = (store: GameStore) => {
                         wall.x = (wall.originalX + wall.minWidth) - wall.currentWidth;
                     }
                 }
+            });
+        }
+    });
+    
+    // Generar partículas eléctricas alrededor de las paredes aplastantes
+    crushingWalls.forEach(wall => {
+        // Generar partículas eléctricas con baja probabilidad para no sobrecargar
+        if (Math.random() < 0.1) { // 10% de probabilidad por frame
+            // Partículas en los bordes de la pared
+            const edgePositions = [
+                { x: wall.x, y: wall.y + wall.height / 2 }, // Borde izquierdo
+                { x: wall.x + wall.width, y: wall.y + wall.height / 2 }, // Borde derecho
+                { x: wall.x + wall.width / 2, y: wall.y }, // Borde superior
+                { x: wall.x + wall.width / 2, y: wall.y + wall.height }, // Borde inferior
+            ];
+            
+            // Seleccionar una posición aleatoria del borde
+            const edgePos = edgePositions[Math.floor(Math.random() * edgePositions.length)];
+            
+            // Generar partícula eléctrica
+            store.particles.push({
+                x: edgePos.x + (Math.random() - 0.5) * 10,
+                y: edgePos.y + (Math.random() - 0.5) * 10,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                size: Math.random() * 2 + 1,
+                life: Math.random() * 20 + 10,
+                color: Math.random() > 0.5 ? '#00ffff' : '#ffffff', // Azul eléctrico o blanco
             });
         }
     });

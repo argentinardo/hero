@@ -121,6 +121,13 @@ export const updateLasers = (store: GameStore) => {
                 laser.x + laser.width > wall.x &&
                 laser.y < wall.y + wall.height &&
                 laser.y + laser.height > wall.y) {
+                // El agua no es destructible por láser
+                if (wall.type === 'water') {
+                    store.lasers.splice(i, 1);
+                    removed = true;
+                    break;
+                }
+                
                 // Columnas (destructible_v): 40 golpes total -> a los 20 cortar, a los 40 eliminar
                 if (wall.type === 'destructible_v') {
                     const side: 'left' | 'right' = laser.vx >= 0 ? 'left' : 'right';
@@ -184,7 +191,7 @@ export const updateLasers = (store: GameStore) => {
 
         for (let j = store.enemies.length - 1; j >= 0; j--) {
             const enemy = store.enemies[j];
-            if (enemy.isHidden) {
+            if (enemy.isHidden || enemy.isDead) {
                 continue;
             }
             const intersects =
@@ -196,6 +203,28 @@ export const updateLasers = (store: GameStore) => {
                 continue;
             }
             store.lasers.splice(i, 1);
+            
+            // Caso especial para el tentáculo: animación de muerte dramática
+            if (enemy.type === 'tentacle') {
+                enemy.tentacleState = 'dying';
+                enemy.tentacleFrame = 27; // Frame de muerte (fila 5, columna 3 en numeración 1-based = fila 4, columna 2 en 0-based = frame 27)
+                enemy.isDead = true;
+                enemy.deathTimer = 30; // Mostrar frame de muerte por 30 frames (medio segundo)
+                // Hacer que el tentáculo salte hacia arriba
+                enemy.vy = -8; // Velocidad hacia arriba para el salto
+                enemy.vx = 0; // Sin movimiento horizontal
+                // No eliminar inmediatamente, dejar que se muestre el frame de muerte y caiga
+                emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15, 'white');
+                // Puntos por matar tentáculo
+                const points = 100;
+                const text = `+${points}`;
+                store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
+                store.score += points;
+                playEnemyKillSound();
+                break;
+            }
+            
+            // Comportamiento normal para otros enemigos
             emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15, 'white');
             store.fallingEntities.push({
                 x: enemy.x,

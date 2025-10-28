@@ -769,10 +769,62 @@ export const drawEditor = (store: GameStore) => {
                 }
                 // Si no hay sprite de fondo, no dibujar nada (mantener transparente)
             } else if (tile === 'H' || tile === 'J') {
-                // Paredes aplastantes: dibujar con color configurado
+                // Paredes aplastantes: dibujar con efectos eléctricos
                 const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
-                ctx.fillStyle = config.color;
+                
+                // Efecto de brillo (glow) exterior
+                ctx.shadowColor = '#00ffff'; // Color eléctrico azul-cian
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                
+                // Tint eléctrico con gradiente
+                const gradient = ctx.createLinearGradient(
+                    colIndex * TILE_SIZE, 
+                    rowIndex * TILE_SIZE, 
+                    (colIndex + 1) * TILE_SIZE, 
+                    (rowIndex + 1) * TILE_SIZE
+                );
+                gradient.addColorStop(0, config.color);
+                gradient.addColorStop(0.5, '#ff4444'); // Rojo más brillante en el centro
+                gradient.addColorStop(1, config.color);
+                
+                ctx.fillStyle = gradient;
                 ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                
+                // Efecto de parpadeo eléctrico
+                const time = Date.now() * 0.01;
+                const flickerIntensity = Math.sin(time) * 0.3 + 0.7; // Oscila entre 0.4 y 1.0
+                
+                ctx.globalAlpha = flickerIntensity;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(
+                    colIndex * TILE_SIZE + 2, 
+                    rowIndex * TILE_SIZE + 2, 
+                    TILE_SIZE - 4, 
+                    TILE_SIZE - 4
+                );
+                
+                // Efecto de arco eléctrico en los bordes
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = flickerIntensity * 0.8;
+                
+                // Dibujar líneas eléctricas en los bordes
+                ctx.beginPath();
+                ctx.moveTo(colIndex * TILE_SIZE, rowIndex * TILE_SIZE);
+                ctx.lineTo((colIndex + 1) * TILE_SIZE, rowIndex * TILE_SIZE);
+                ctx.moveTo(colIndex * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
+                ctx.lineTo((colIndex + 1) * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
+                ctx.moveTo(colIndex * TILE_SIZE, rowIndex * TILE_SIZE);
+                ctx.lineTo(colIndex * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
+                ctx.moveTo((colIndex + 1) * TILE_SIZE, rowIndex * TILE_SIZE);
+                ctx.lineTo((colIndex + 1) * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
+                ctx.stroke();
+                
+                // Resetear efectos
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
             } else {
                 // Tiles normales
                 const spriteKey = TILE_TYPES[tile]?.sprite;
@@ -933,43 +985,28 @@ export const drawEditor = (store: GameStore) => {
                 // Dibujar tentáculo vertical con sprite tentaculo.png - tamaño 64x128 (dos tiles)
                 const tentacleSprite = store.sprites.T;
                 if (tentacleSprite) {
-                    const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, 'T');
-                    if (anim && effectiveFrames > 0 && totalFrames > 0) {
-                        const frameDuration = Math.max(1, anim.speed) * msPerTick;
-                        const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
-                        
-                        // Calcular posición en la grilla 6x5 (frames de 60x120)
-                        const frameWidth = 60;  // Ancho de cada frame
-                        const frameHeight = 120; // Alto de cada frame
-                        const framesPerRow = 6;   // Frames por fila
-                        
-                        const row = Math.floor(frameIndex / framesPerRow);
-                        const col = frameIndex % framesPerRow;
-                        
-                        const sourceX = col * frameWidth;
-                        const sourceY = row * frameHeight;
-                        
-                        ctx.drawImage(
-                            tentacleSprite,
-                            sourceX, sourceY, frameWidth, frameHeight,
-                            colIndex * TILE_SIZE,
-                            (rowIndex - 1) * TILE_SIZE, // Un tile arriba para ser vertical
-                            TILE_SIZE, // Ancho del sprite
-                            TILE_SIZE * 2  // Alto del sprite (dos tiles)
-                        );
-                    } else {
-                        ctx.drawImage(
-                            tentacleSprite,
-                            0,
-                            0,
-                            tentacleSprite.width,
-                            tentacleSprite.height,
-                            colIndex * TILE_SIZE,
-                            rowIndex * TILE_SIZE,
-                            60,
-                            120
-                        );
-                    }
+                    // Usar animación específica del tentáculo (standby por defecto en editor)
+                    const frameIndex = 0; // Frame de standby para el editor
+                    
+                    // Calcular posición en la grilla 6x5 (frames de 60x120)
+                    const frameWidth = 60;  // Ancho de cada frame
+                    const frameHeight = 120; // Alto de cada frame
+                    const framesPerRow = 6;   // Frames por fila
+                    
+                    const row = Math.floor(frameIndex / framesPerRow);
+                    const col = frameIndex % framesPerRow;
+                    
+                    const sourceX = col * frameWidth;
+                    const sourceY = row * frameHeight;
+                    
+                    ctx.drawImage(
+                        tentacleSprite,
+                        sourceX, sourceY, frameWidth, frameHeight,
+                        colIndex * TILE_SIZE,
+                        (rowIndex - 1) * TILE_SIZE, // Un tile arriba para ser vertical
+                        TILE_SIZE, // Ancho del sprite
+                        TILE_SIZE * 2  // Alto del sprite (dos tiles)
+                    );
                 } else {
                     // Fallback: rectángulo verde
                     ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';

@@ -30,6 +30,10 @@ const createInitialPlayer = (): Player => ({
     respawnX: 0,
     respawnY: 0,
     floatWaveTime: 0,
+    // Propiedades para sumersión en agua
+    isInWater: false,
+    waterSubmersionLevel: 0,
+    waterResistance: 0,
 });
 
 export const createInitialStore = (): GameStore => ({
