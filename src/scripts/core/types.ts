@@ -248,6 +248,7 @@ export interface UiElements {
     resumeEditorBtn: HTMLButtonElement | null;
     loadLevelBtn: HTMLButtonElement | null;
     saveLevelBtn: HTMLButtonElement | null;
+    addLevelBtn: HTMLButtonElement | null;
     generateLevelBtn: HTMLButtonElement | null;
     saveAllBtn: HTMLButtonElement | null;
     backToMenuBtn: HTMLButtonElement | null;

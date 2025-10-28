@@ -86,6 +86,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.resumeEditorBtn = document.getElementById('resume-editor-btn') as HTMLButtonElement | null;
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
     ui.saveLevelBtn = document.getElementById('save-level-btn') as HTMLButtonElement | null;
+    ui.addLevelBtn = document.getElementById('add-level-btn') as HTMLButtonElement | null;
     ui.generateLevelBtn = document.getElementById('generate-level-btn') as HTMLButtonElement | null;
     ui.saveAllBtn = document.getElementById('save-all-btn') as HTMLButtonElement | null;
     ui.backToMenuBtn = document.getElementById('back-to-menu-btn') as HTMLButtonElement | null;
@@ -548,7 +549,10 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     } else if (levelOverride) {
         store.levelDesigns = [levelOverride];
     } else {
-        store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
+        // Usar levelDataStore que contiene todos los niveles (incluyendo los nuevos)
+        store.levelDesigns = store.levelDataStore.map(level => 
+            level.map(row => row.join(''))
+        );
     }
     // Establecer índice inicial
     store.currentLevelIndex = startIndex ?? 0;
@@ -560,6 +564,9 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
     setupEditorState(store);
     bindEditorCanvas(store);
+    
+    // Actualizar el selector de niveles para mostrar todos los niveles disponibles
+    syncLevelSelector(store);
     
     store.appState = 'editing';
     setBodyClass('editing');
@@ -1176,7 +1183,8 @@ const syncLevelSelector = (store: GameStore) => {
         return;
     }
     levelSelectorEl.innerHTML = '';
-    for (let i = 0; i < TOTAL_LEVELS; i++) {
+    const totalLevels = store.levelDataStore.length;
+    for (let i = 0; i < totalLevels; i++) {
         const option = document.createElement('option');
         option.value = `${i}`;
         option.textContent = `Nivel ${i + 1}`;
@@ -1667,6 +1675,61 @@ const setupLevelData = (store: GameStore) => {
         // Actualizar también el nivel del editor con la versión limpia
         store.editorLevel = cleanedLevel;
         showNotification(store, '✅ Guardado', `Nivel ${index + 1} guardado en la sesión.\nFilas y columnas vacías eliminadas.`);
+    });
+
+    store.dom.ui.addLevelBtn?.addEventListener('click', () => {
+        // Crear un nuevo nivel vacío
+        const canvas = store.dom.canvas;
+        if (!canvas) return;
+        
+        // Calcular dimensiones del nivel basado en el canvas
+        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1440 / 72 = 20 tiles
+        const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
+        
+        // Crear nivel vacío con solo el jugador en el centro
+        const newLevel: string[][] = [];
+        for (let row = 0; row < levelHeight; row++) {
+            const levelRow: string[] = [];
+            for (let col = 0; col < levelWidth; col++) {
+                if (row === Math.floor(levelHeight / 2) && col === Math.floor(levelWidth / 2)) {
+                    levelRow.push('P'); // Jugador en el centro
+                } else {
+                    levelRow.push('0'); // Espacio vacío
+                }
+            }
+            newLevel.push(levelRow);
+        }
+        
+        // Agregar el nuevo nivel al final del array
+        store.levelDataStore.push(JSON.parse(JSON.stringify(newLevel)));
+        store.initialLevels.push(JSON.parse(JSON.stringify(newLevel)));
+        
+        // Cargar el nuevo nivel en el editor
+        store.editorLevel = JSON.parse(JSON.stringify(newLevel));
+        
+        // Actualizar el selector de niveles
+        syncLevelSelector(store);
+        
+        // Seleccionar el nuevo nivel
+        const newIndex = store.levelDataStore.length - 1;
+        if (store.dom.ui.levelSelectorEl) {
+            store.dom.ui.levelSelectorEl.value = newIndex.toString();
+        }
+        
+        // Centrar la cámara en el jugador
+        const playerCol = Math.floor(levelWidth / 2);
+        const playerRow = Math.floor(levelHeight / 2);
+        const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
+        const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
+        const maxCamX = Math.max(0, levelWidth * TILE_SIZE - canvas.width);
+        const maxCamY = Math.max(0, levelHeight * TILE_SIZE - canvas.height);
+        store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+        store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
+        
+        // Reinicializar el editor avanzado
+        initializeAdvancedEditor(store);
+        
+        showNotification(store, '➕ Nuevo Nivel', `Nivel ${newIndex + 1} creado.\nComienza a diseñar tu nivel.`);
     });
 
     generateLevelBtn?.addEventListener('click', () => {

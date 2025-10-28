@@ -17,6 +17,8 @@ const store = createInitialStore();
 const expanded = expandLevelsFromAny(initialLevelsRaw);
 store.initialLevels = expanded;
 store.levelDesigns = JSON.parse(JSON.stringify(expanded));
+// Inicializar levelDataStore con los niveles expandidos
+store.levelDataStore = expanded.map(level => level.map(row => row.split('')));
 
 const updateCamera = () => {
     const canvas = store.dom.canvas;

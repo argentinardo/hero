@@ -30,10 +30,15 @@ const ensureLevelHeight = (level: string[][], minRows: number) => {
 
 export const setupEditorState = (store: GameStore) => {
     store.editorLevel = (store.levelDesigns[0] ?? []).map(row => row.split(''));
-    store.levelDataStore = Array.from({ length: TOTAL_LEVELS }, (_, index) => {
-        const level = store.initialLevels[index] ?? store.initialLevels[0];
-        return level ? level.map(row => row.split('')) : [];
-    });
+    
+    // Solo inicializar levelDataStore si está vacío o tiene menos niveles que initialLevels
+    if (store.levelDataStore.length < store.initialLevels.length) {
+        store.levelDataStore = Array.from({ length: store.initialLevels.length }, (_, index) => {
+            const level = store.initialLevels[index] ?? store.initialLevels[0];
+            return level ? level.map(row => row.split('')) : [];
+        });
+    }
+    
     store.selectedTile = '1';
     store.mouse = { x: 0, y: 0, gridX: 0, gridY: 0, isDown: false };
     
