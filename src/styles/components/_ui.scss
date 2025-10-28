@@ -114,31 +114,30 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 8px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
+    min-width: 60px;
     height: 40px;
     z-index: 101;
-    font-size: 24px;
+    font-size: 14px;
     color: white;
+    font-family: 'Press Start 2P', monospace;
     
     &::before {
-        content: "☰";
-        top: 47%;
-        position: absolute;
-        left: 50%;
-        transform: translate(-50%, -55%);
-        
+        content: "Menu";
+        position: relative;
+        top: 0;
+        left: 0;
+        transform: none;
+        font-size: 18px;
+
     }
     
     &.active::before {
-        content: "✕";
-        top: 47%;
-        position: absolute;
-        left: 50%;
-        transform: translate(-50%, -55%);
+        content: "Cerrar ✕";
+        font-size: 18px;
     }
 }
 
@@ -155,10 +154,9 @@
 
 /* Menú Hamburguesa Desplegable */
 .hamburger-menu {
-    position: fixed;
-    top: 11vh;
+    position: absolute;
+    top: 10vh;
     right: 0;
-    transform: translateX(-50%);
     background-color: rgba(0, 0, 0, 0.95);
     border: 2px solid white;
     border-radius: 4px;

@@ -16,7 +16,7 @@ export const updateParticles = (store: GameStore) => {
             store.particles.splice(i, 1);
             continue;
         }
-        particle.vy += 0.05;
+        particle.vy += particle.gravity ?? 0.05; // Usar gravedad personalizada o 0.05 por defecto
         particle.x += particle.vx;
         particle.y += particle.vy;
     }

@@ -167,6 +167,7 @@ export interface Particle {
     size: number;
     life: number;
     color: string;
+    gravity?: number; // Gravedad personalizada por partícula
 }
 
 export interface FloatingScore {

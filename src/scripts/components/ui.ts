@@ -190,9 +190,10 @@ export const showMenu = (store: GameStore) => {
         const splashSprite = store.sprites.splash;
         if (splashSprite) {
             messageOverlay.style.backgroundImage = `url(${splashSprite.src})`;
-            messageOverlay.style.backgroundSize = 'cover';
+            messageOverlay.style.backgroundSize = 'contain';
             messageOverlay.style.backgroundPosition = 'center';
             messageOverlay.style.backgroundRepeat = 'no-repeat';
+            messageOverlay.style.imageRendering = 'pixelated'
         }
     }
     if (gameUiEl) {
@@ -1678,7 +1679,7 @@ const setupLevelData = (store: GameStore) => {
     });
 
     store.dom.ui.addLevelBtn?.addEventListener('click', () => {
-        // Crear un nuevo nivel vacío
+        // Crear un nuevo nivel con el patrón por defecto
         const canvas = store.dom.canvas;
         if (!canvas) return;
         
@@ -1686,16 +1687,32 @@ const setupLevelData = (store: GameStore) => {
         const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1440 / 72 = 20 tiles
         const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
         
-        // Crear nivel vacío con solo el jugador en el centro
+        // Patrón por defecto especificado por el usuario
+        const defaultPattern = [
+            "11111111111111111111",
+            "11000001000000001111",
+            "11000001000000001111",
+            "10P0000C000000000111",
+            "1000000C000000000111",
+            "1000000C000000000111",
+            "11111111100111111111",
+            "11111111100111111111",
+            "11111111100111111111"
+        ];
+
+        // Crear nuevo nivel usando el patrón por defecto
         const newLevel: string[][] = [];
-        for (let row = 0; row < levelHeight; row++) {
+        
+        // Aplicar el patrón por defecto
+        for (let row = 0; row < defaultPattern.length; row++) {
+            newLevel.push(defaultPattern[row].split(''));
+        }
+        
+        // Completar el resto del nivel con espacios vacíos
+        for (let row = defaultPattern.length; row < levelHeight; row++) {
             const levelRow: string[] = [];
             for (let col = 0; col < levelWidth; col++) {
-                if (row === Math.floor(levelHeight / 2) && col === Math.floor(levelWidth / 2)) {
-                    levelRow.push('P'); // Jugador en el centro
-                } else {
-                    levelRow.push('0'); // Espacio vacío
-                }
+                levelRow.push('0'); // Espacio vacío
             }
             newLevel.push(levelRow);
         }

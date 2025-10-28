@@ -426,6 +426,25 @@ export const updateWalls = (store: GameStore) => {
                     if (leftWall.currentWidth >= leftWall.maxWidth) {
                         leftWall.currentWidth = leftWall.maxWidth;
                         rightWall.currentWidth = rightWall.maxWidth;
+                        
+                        // EMITIR PARTÍCULAS DE CHOQUE - 3 veces más que las normales
+                        const centerX = leftWall.x + leftWall.currentWidth;
+                        const centerY = leftWall.y + leftWall.height / 2;
+                        
+                        // Generar muchas partículas en el punto de choque
+                        for (let i = 0; i < 15; i++) { // 3 veces más que las 5 normales
+                            store.particles.push({
+                                x: centerX + (Math.random() - 0.5) * 20,
+                                y: centerY + (Math.random() - 0.5) * 20,
+                                vx: (Math.random() - 0.5) * 6, // Velocidad más alta para el choque
+                                vy: (Math.random() - 0.5) * 6 - 2, // Gravedad inicial hacia abajo
+                                size: Math.random() * 4 + 2, // Partículas más grandes
+                                life: Math.random() * 40 + 20, // Vida más larga
+                                color: '#ffffff', // Partículas blancas
+                                gravity: 0.3, // Más gravedad que las normales (0.05)
+                            });
+                        }
+                        
                         // REBOTE: cambiar dirección
                         leftWall.isClosing = false;
                         rightWall.isClosing = false;
