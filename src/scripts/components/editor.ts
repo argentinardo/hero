@@ -930,7 +930,7 @@ export const drawEditor = (store: GameStore) => {
                     ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
                 }
             } else if (tile === 'T') {
-                // Dibujar tentáculo con sprite tentaculo.png - tamaño 60x120
+                // Dibujar tentáculo vertical con sprite tentaculo.png - tamaño 64x128 (dos tiles)
                 const tentacleSprite = store.sprites.T;
                 if (tentacleSprite) {
                     const { anim, effectiveFrames, totalFrames } = resolveAnimation(tile, 'T');
@@ -953,9 +953,9 @@ export const drawEditor = (store: GameStore) => {
                             tentacleSprite,
                             sourceX, sourceY, frameWidth, frameHeight,
                             colIndex * TILE_SIZE,
-                            rowIndex * TILE_SIZE,
-                            60, // Ancho del sprite
-                            120  // Alto del sprite
+                            (rowIndex - 1) * TILE_SIZE, // Un tile arriba para ser vertical
+                            TILE_SIZE, // Ancho del sprite
+                            TILE_SIZE * 2  // Alto del sprite (dos tiles)
                         );
                     } else {
                         ctx.drawImage(

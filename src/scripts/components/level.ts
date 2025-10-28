@@ -117,19 +117,36 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
             };
         }
         case 'T': {
-            // Tentáculo - tamaño 60x120, caja de colisión de 75px de alto
-            // Desfasado 72px hacia arriba desde la posición actual
+            // Tentáculo vertical - ocupa dos tiles de alto
+            // El tentáculo debe aparecer siempre sobre agua
+            const rowIndex = Math.floor(y / TILE_SIZE);
+            const colIndex = Math.floor(x / TILE_SIZE);
+            
+            // Asegurar que el tile donde aparece el tentáculo sea agua
+            if (rowIndex >= 0 && rowIndex < map.length && colIndex >= 0 && colIndex < map[rowIndex].length) {
+                // Convertir el tile a agua modificando el string de la fila
+                const row = map[rowIndex];
+                map[rowIndex] = row.substring(0, colIndex) + '2' + row.substring(colIndex + 1);
+            }
+            
+            // También asegurar que el tile de arriba sea agua (para el tentáculo vertical)
+            const topRowIndex = rowIndex - 1;
+            if (topRowIndex >= 0 && topRowIndex < map.length && colIndex >= 0 && colIndex < map[topRowIndex].length) {
+                const topRow = map[topRowIndex];
+                map[topRowIndex] = topRow.substring(0, colIndex) + '2' + topRow.substring(colIndex + 1);
+            }
+            
             return {
                 x,
-                y: y - 72, // Desfasado 72px hacia arriba
-                width: 60, // Ancho del sprite
-                height: 120, // Alto del sprite
+                y: y - TILE_SIZE, // Desfasado un tile hacia arriba para ser vertical
+                width: TILE_SIZE,
+                height: TILE_SIZE * 2, // Dos tiles de alto
                 vx: 0,
                 vy: 0,
                 type: 'tentacle',
                 tile,
                 initialX: x,
-                initialY: y - 72, // Posición inicial también desfasada
+                initialY: y - TILE_SIZE,
                 spriteTick: 0,
                 currentFrame: 0,
                 isHidden: false,

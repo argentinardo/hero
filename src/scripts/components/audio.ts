@@ -2,7 +2,7 @@ import type { GameStore } from '../core/types';
 
 // Importar archivos de audio
 // Cargar música de fondo dinámicamente desde el servidor
-const mainMusicUrl = '/src/assets/audio/main.mp3';
+import mainMusicUrl from '../../assets/audio/main.mp3';
 import jetpackSound from '../../assets/audio/jetpack.mp3';
 import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';

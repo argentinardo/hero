@@ -376,7 +376,8 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     });
     
     // Si muere por enemigo, matar al enemigo también (sin puntos)
-    if (killedByEnemy) {
+    // EXCEPCIÓN: El tentáculo no debe desaparecer cuando mata al héroe
+    if (killedByEnemy && killedByEnemy.type !== 'tentacle') {
         killedByEnemy.isDead = true;
         killedByEnemy.isHidden = true;
     }

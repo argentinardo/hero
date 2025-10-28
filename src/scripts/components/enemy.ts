@@ -106,8 +106,11 @@ export const updateEnemies = (store: GameStore) => {
                 // Determinar dirección para el espejado (mirar al héroe)
                 enemy.direction = dx > 0 ? 1 : -1; // 1 = derecha, -1 = izquierda
                 
-                // Función para encontrar el agua más cercana en una fila
-                const findWaterInRow = (rowIndex: number): { start: number, end: number } | null => {
+                // Movimiento del tentáculo: limitado por la fila de agua de abajo
+                const followSpeed = 2.0; // Velocidad de seguimiento
+                
+                // Función para encontrar el rango de agua en una fila específica
+                const findWaterRangeInRow = (rowIndex: number): { start: number, end: number } | null => {
                     if (rowIndex < 0 || rowIndex >= store.levelDesigns[store.currentLevelIndex].length) {
                         return null;
                     }
@@ -129,51 +132,34 @@ export const updateEnemies = (store: GameStore) => {
                     return start !== -1 ? { start, end } : null;
                 };
                 
-                // Función para verificar si hay agua en una posición
-                const isWaterAt = (x: number, y: number): boolean => {
-                    const gridX = Math.floor(x / TILE_SIZE);
-                    const gridY = Math.floor(y / TILE_SIZE);
-                    
-                    // Verificar si la posición está dentro del mapa
-                    if (gridY < 0 || gridY >= store.levelDesigns[store.currentLevelIndex].length) {
-                        return false;
-                    }
-                    
-                    const row = store.levelDesigns[store.currentLevelIndex][gridY];
-                    if (!row || gridX < 0 || gridX >= row.length) {
-                        return false;
-                    }
-                    
-                    return row[gridX] === '2'; // '2' es el tile de agua
-                };
-                
-                // Encontrar agua en la fila actual del tentáculo
-                const currentRow = Math.floor(enemy.y / TILE_SIZE);
-                const waterRange = findWaterInRow(currentRow);
+                // Verificar si hay agua en la fila de abajo del tentáculo
+                const tentacleBottomRow = Math.floor((enemy.y + enemy.height) / TILE_SIZE);
+                const waterRange = findWaterRangeInRow(tentacleBottomRow);
                 
                 if (waterRange) {
-                    const followSpeed = 2.0; // Velocidad de seguimiento
                     const waterStartX = waterRange.start * TILE_SIZE;
                     const waterEndX = (waterRange.end + 1) * TILE_SIZE;
                     
-                    // Calcular la posición objetivo del héroe en el agua
+                    // Calcular posición objetivo basada en el héroe
                     const playerGridX = Math.floor(player.x / TILE_SIZE);
-                    let targetX = player.x;
+                    let targetX = enemy.x; // Mantener posición actual por defecto
                     
-                    // Si el héroe está fuera del agua, seguir su posición X pero mantenerse en el agua
-                    if (playerGridX < waterRange.start) {
-                        targetX = waterStartX;
-                    } else if (playerGridX > waterRange.end) {
-                        targetX = waterEndX - enemy.width;
+                    // Si el héroe está en la misma fila de agua, seguir su posición X
+                    if (playerGridX >= waterRange.start && playerGridX <= waterRange.end) {
+                        targetX = player.x;
                     } else {
-                        // El héroe está en el agua, seguir su posición X
-                        targetX = Math.max(waterStartX, Math.min(waterEndX - enemy.width, player.x));
+                        // Si el héroe está fuera del agua, moverse hacia el extremo más cercano
+                        if (playerGridX < waterRange.start) {
+                            targetX = waterStartX;
+                        } else if (playerGridX > waterRange.end) {
+                            targetX = waterEndX - enemy.width;
+                        }
                     }
                     
                     // Moverse hacia la posición objetivo
-                    const moveDistance = targetX - enemy.x;
-                    if (Math.abs(moveDistance) > 1) {
-                        const moveDirection = moveDistance > 0 ? 1 : -1;
+                    const moveDx = targetX - enemy.x;
+                    if (Math.abs(moveDx) > 2) {
+                        const moveDirection = moveDx > 0 ? 1 : -1;
                         enemy.x += moveDirection * followSpeed;
                         
                         // Asegurar que se mantenga dentro del agua
@@ -184,9 +170,9 @@ export const updateEnemies = (store: GameStore) => {
                 // Actualizar animación según el estado
                 if (enemy.tentacleState === 'standby') {
                     // Frames 0-14 en loop para standby (frames 1-15 en numeración 1-based)
-                    // Velocidad reducida a un tercio: cada 3 frames del juego = 1 frame de animación
+                    // Velocidad reducida a la mitad: cada 6 frames del juego = 1 frame de animación
                     enemy.tentacleAnimationSpeed = (enemy.tentacleAnimationSpeed ?? 0) + 1;
-                    if (enemy.tentacleAnimationSpeed >= 3) { // Cada 3 frames del juego
+                    if (enemy.tentacleAnimationSpeed >= 6) { // Cada 6 frames del juego (el doble más lento)
                         enemy.tentacleAnimationSpeed = 0;
                         enemy.tentacleFrame = (enemy.tentacleFrame ?? 0) + 1;
                         if (enemy.tentacleFrame >= 15) {
@@ -195,13 +181,13 @@ export const updateEnemies = (store: GameStore) => {
                     }
                     
                     // Si el héroe está cerca, cambiar a modo latigazo
-                    if (distance < 80) { // Distancia de activación
+                    if (distance < 150) { // Distancia de activación más amplia (antes era 80)
                         enemy.tentacleState = 'whipping';
                         enemy.tentacleFrame = 15; // Empezar desde el frame 15 (frame 16 en numeración 1-based)
                         enemy.tentacleAnimationSpeed = 0; // Resetear contador de animación
                     }
                 } else if (enemy.tentacleState === 'whipping') {
-                    // Frames 15-25 para latigazo (frames 16-26 en numeración 1-based)
+                    // Frames 15-26 para latigazo (frames 16-27 en numeración 1-based)
                     // Velocidad reducida a un tercio: cada 3 frames del juego = 1 frame de animación
                     enemy.tentacleAnimationSpeed = (enemy.tentacleAnimationSpeed ?? 0) + 1;
                     if (enemy.tentacleAnimationSpeed >= 3) { // Cada 3 frames del juego
@@ -214,8 +200,9 @@ export const updateEnemies = (store: GameStore) => {
                             playLaserSound();
                         }
                         
-                        // Cuando termine la animación de latigazo, volver a standby
-                        if (enemy.tentacleFrame > 25) {
+                        // Cuando termine la animación de latigazo (hasta el frame 26), volver a standby
+                        // La animación SIEMPRE debe llegar hasta el frame 26, sin importar el contacto
+                        if (enemy.tentacleFrame > 26) {
                             enemy.tentacleState = 'standby';
                             enemy.tentacleFrame = 0;
                         }
