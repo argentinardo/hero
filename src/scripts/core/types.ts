@@ -60,7 +60,7 @@ export interface Enemy extends GameObject {
     initialX?: number;
     initialY?: number;
     maxLength?: number;
-    state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended';
+    state?: 'extending' | 'retracting' | 'idle' | 'waiting_extended' | 'attacking';
     idleTimer?: number;
     waitTimer?: number;
     spriteTick: number;
