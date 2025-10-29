@@ -220,6 +220,7 @@ export interface UiElements {
     messageText: HTMLElement | null;
     retryBtn?: HTMLButtonElement | null;
     gameUiEl: HTMLElement | null;
+    heroLogoEl: HTMLElement | null;
     rightUiEl: HTMLElement | null;
     bottomUiEl: HTMLElement | null;
     menuBtn: HTMLButtonElement | null;

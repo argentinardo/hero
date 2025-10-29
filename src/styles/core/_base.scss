@@ -3,6 +3,9 @@ body {
     background-color: #581600;
     color: #fff;
     overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
 }
 canvas {
     display: block;

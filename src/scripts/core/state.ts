@@ -92,6 +92,7 @@ export const createInitialStore = (): GameStore => ({
             messageTitle: null,
             messageText: null,
             gameUiEl: null,
+            heroLogoEl: null,
             rightUiEl: null,
             bottomUiEl: null,
             menuBtn: null,

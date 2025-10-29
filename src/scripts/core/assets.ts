@@ -21,6 +21,7 @@ import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splash.png';
 import baseSrc from '../../assets/sprites/base.png';
+import heroLogoSrc from '../../assets/sprites/hero-logo.png';
 
 import type { AnimationMap, GameStore, TileDictionary } from './types';
 
@@ -47,6 +48,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     background: backgroundSrc,
     splash: splashSrc,
     base: baseSrc,
+    heroLogo: heroLogoSrc,
 };
 
 export const ANIMATION_DATA: AnimationMap = {

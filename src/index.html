@@ -36,7 +36,10 @@
             <div class="canvas-wrapper">
                 <!-- Barra Superior (superpuesta) -->
                 <div id="game-ui" class="text-base" style="display: none;">
-                    <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
+                    <div class="flex items-center gap-2">
+                        <img id="hero-logo" alt="Hero" style="display: none; image-rendering: pixelated;">
+                        <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
+                    </div>
                     <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
                     <span id="volume-toggle" class="volume-toggle" aria-label="Volumen">SOUND: ON</span>
                     

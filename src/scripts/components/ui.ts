@@ -64,6 +64,11 @@ export const attachDomReferences = (store: GameStore) => {
     ui.messageTitle = document.getElementById('message-title');
     ui.messageText = document.getElementById('message-text');
     ui.gameUiEl = document.getElementById('game-ui');
+    ui.heroLogoEl = document.getElementById('hero-logo');
+    // Establecer la URL del logo usando la ruta procesada por webpack
+    if (ui.heroLogoEl && SPRITE_SOURCES.heroLogo) {
+        (ui.heroLogoEl as HTMLImageElement).src = SPRITE_SOURCES.heroLogo;
+    }
     ui.rightUiEl = document.getElementById('right-ui');
     ui.bottomUiEl = document.getElementById('bottom-ui');
     ui.editorPanelEl = document.getElementById('editor-panel');
@@ -182,7 +187,7 @@ export const showMenu = (store: GameStore) => {
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
     
-    const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn } = store.dom.ui;
+    const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn, heroLogoEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
         
@@ -198,6 +203,9 @@ export const showMenu = (store: GameStore) => {
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
+    }
+    if (heroLogoEl) {
+        heroLogoEl.style.display = 'none';
     }
     if (rightUiEl) {
         rightUiEl.style.display = 'none';
@@ -490,7 +498,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
-    const { messageOverlay, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl } = store.dom.ui;
+    const { messageOverlay, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, heroLogoEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
         // Limpiar el fondo del splash
@@ -498,6 +506,9 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'flex';
+    }
+    if (heroLogoEl) {
+        heroLogoEl.style.display = 'block';
     }
     if (rightUiEl) {
         const isMobileLandscape = window.matchMedia('(max-width: 1024px) and (orientation: landscape)').matches || window.matchMedia('(max-width: 768px) and (orientation: landscape)').matches;

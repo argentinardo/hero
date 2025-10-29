@@ -43,6 +43,26 @@
     padding: 0 40px;
     box-sizing: border-box;
     justify-content: space-between;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    
+    /* Todos los textos dentro de la barra UI */
+    span, div {
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+    }
+    
+    /* Logo del hero */
+    #hero-logo {
+        height: 60px;
+        width: auto;
+        user-select: none;
+        -webkit-user-select: none;
+        pointer-events: none;
+        cursor: default;
+    }
 }
 
 /* Barra de botones móvil */
@@ -72,6 +92,16 @@
     padding: 0 40px;
     box-sizing: border-box;
     justify-content: space-between;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    
+    /* Todos los textos dentro de la barra UI */
+    span, div {
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+    }
 }
 
 /* Panel del editor - posicionado a la derecha */
@@ -164,6 +194,9 @@
     z-index: 150;
     min-width: 200px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
     
     &.hidden {
         display: none;
@@ -182,6 +215,8 @@
         transition: all 0.2s ease;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         font-family: 'Press Start 2P', monospace;
+        user-select: none;
+        -webkit-user-select: none;
         
         &:last-child {
             border-bottom: none;
@@ -195,6 +230,67 @@
         &.hidden {
             display: none;
         }
+    }
+}
+
+/* Message Overlay - Pantalla de mensajes */
+#message-overlay {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    
+    p, span, button, div {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    
+    button {
+        cursor: pointer; /* Los botones sí deben tener cursor pointer */
+    }
+    
+    p, span {
+        cursor: default;
+    }
+}
+
+/* Editor Panel */
+#editor-panel {
+    user-select: none;
+    -webkit-user-select: none;
+    
+    span, div, label {
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+    }
+    
+    button {
+        cursor: pointer; /* Los botones sí deben tener cursor pointer */
+    }
+    
+    select, input, textarea {
+        cursor: pointer; /* Los inputs sí pueden tener cursor pointer/text */
+        user-select: text; /* Permitir selección de texto en inputs */
+        -webkit-user-select: text;
+    }
+}
+
+/* Modal de confirmación y notificación */
+#confirmation-modal,
+#notification-modal,
+#exit-modal {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    
+    p, span, h2 {
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+    }
+    
+    button {
+        cursor: pointer; /* Los botones sí deben tener cursor pointer */
     }
 }
 
