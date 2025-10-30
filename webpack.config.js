@@ -138,9 +138,9 @@ module.exports = {
             },
         },
   performance: {
-    hints: 'warning',
-    maxAssetSize: 1.5 * 1024 * 1024, // 1.5 MB
-    maxEntrypointSize: 1.5 * 1024 * 1024, // 1.5 MB
+    hints: false, // Desactivar warnings de tamaño
+    // maxAssetSize: 1.5 * 1024 * 1024, // 1.5 MB
+    // maxEntrypointSize: 1.5 * 1024 * 1024, // 1.5 MB
   },
   watchOptions: {
     poll: 1000, // Check for changes every second

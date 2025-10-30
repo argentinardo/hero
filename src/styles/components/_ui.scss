@@ -1,4 +1,9 @@
 /* Contenedor principal con posicionamiento para las barras */
+body {
+    background-color: #000;
+}
+
+
 #main-container {
     position: relative;
     display: flex;
@@ -6,25 +11,66 @@
     align-items: center;
     height: 100vh;
     overflow: hidden;
+
 }
 
 /* Contenedor para canvas + barras superpuestas */
 .canvas-wrapper {
     position: relative;
-    width: 100%;
-    max-width: 1920px;
+    width: min(100vw, calc(100vh * 4 / 3));
     height: 100vh;
     margin: 0 auto;
+    /* Fondos laterales: skins específicos izquierda/derecha */
+    background-image: url('../assets/sprites/skin-left.png'), url('../assets/sprites/skin-right.png');
+    background-repeat: no-repeat, no-repeat;
+    background-position: left center, right center;
+    background-size: contain, contain;
+
+    /* Efecto CRT Scanlines */
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.3) 0px, rgba(0, 0, 0, 0.4) 2px,transparent 2px,transparent 4px
+        );
+        pointer-events: none;
+        z-index: 10;
+        mix-blend-mode: overlay;
+    }
+    
+    /* Efecto Vignette (oscurecimiento en los bordes) */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+            ellipse at center,
+            transparent 0%,
+            transparent 40%,
+            rgba(0, 0, 0, 0.7) 100%
+        );
+        pointer-events: none;
+        z-index: 11;
+    }
 }
 
 /* Canvas - siempre 100vh de alto, escalado proporcional */
 #gameCanvas {
     display: block;
     width: 100%;
-    max-width: 1920px;
-    height: 100vh;
+    height: auto;
+    max-height: 100vh;
+    aspect-ratio: 4 / 3;
     margin: 0 auto;
-    background-color: #000; /* Fondo negro para las barras laterales si aparecen */
+    background-color: #000; /* Fondo negro para las bandas laterales */
+    /* Efecto de brillo sutil tipo CRT */
+    filter: brightness(1.8) contrast(1.1);
 }
 
 /* Barra superior - superpuesta sobre el canvas */
@@ -35,7 +81,7 @@
     width: 100%; /* Se ajustará dinámicamente por JavaScript */
     height: 10vh; /* 10% del alto del viewport */
     background-color: rgba(0, 0, 0, 0.8); /* Fondo más opaco */
-    display: flex;
+    display: flex !important; /* forzar sobre inline style */
     align-items: center;
     justify-content: center; /* Contenido centrado */
     gap: 3rem; /* Espacio entre elementos */
@@ -56,6 +102,7 @@
     
     /* Logo del hero */
     #hero-logo {
+        display: none !important;
         height: 60px;
         width: auto;
         user-select: none;
@@ -176,11 +223,7 @@
     margin-left: 2rem;
 }
 
-.hamburger-btn-mobile {
-    background-color: rgba(0, 0, 0, 0.8);
-    border: 2px solid white;
-    border-radius: 4px;
-}
+
 
 /* Menú Hamburguesa Desplegable */
 .hamburger-menu {
