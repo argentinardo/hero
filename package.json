@@ -36,6 +36,7 @@
   "dependencies": {
     "nipplejs": "^0.10.2",
     "@netlify/blobs": "^6.5.0",
-    "@netlify/neon": "0.1.0"
+    "@netlify/neon": "0.1.0",
+    "@neondatabase/serverless": "^0.9.3"
   }
 }
