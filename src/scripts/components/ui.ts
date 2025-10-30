@@ -1253,9 +1253,24 @@ export const setupUI = (store: GameStore) => {
     syncLevelSelector(store);
     setupLevelData(store);
     setupMenuButtons(store);
+    // Netlify Identity: cerrar modal y continuar a editor tras login
+    try {
+        const ni: any = (window as any).netlifyIdentity;
+        if (ni) {
+            ni.on('login', () => {
+                // Si el usuario inició sesión desde el menú, abrir editor
+                if (store.appState === 'menu') {
+                    startEditor(store);
+                }
+                ni.close();
+            });
+        }
+    } catch {}
     preloadAssets(store, () => {
         populatePalette(store);
         showMenu(store);
+        // Intentar cargar niveles del usuario si está logueado
+        tryLoadUserLevels(store);
         requestAnimationFrame(() => {
             const ctx = store.dom.ctx;
             if (ctx && store.dom.canvas) {
@@ -1263,6 +1278,27 @@ export const setupUI = (store: GameStore) => {
             }
         });
     });
+};
+
+// Cargar niveles personalizados del usuario si está autenticado
+const tryLoadUserLevels = async (store: GameStore) => {
+    try {
+        const ni: any = (window as any).netlifyIdentity;
+        const user = ni?.currentUser?.();
+        if (!user) return;
+        const token = await user.jwt();
+        const res = await fetch('/.netlify/functions/levels', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data?.levels)) {
+            // data.levels es array de niveles (array de strings por fila)
+            store.levelDataStore = data.levels.map((lvl: string[]) => lvl.map((row: string) => row.split('')));
+            store.initialLevels = JSON.parse(JSON.stringify(store.levelDataStore));
+            syncLevelSelector(store);
+        }
+    } catch {}
 };
 
 const setupHamburgerMenu = (
@@ -1441,7 +1477,14 @@ const setupHamburgerMenu = (
 const setupMenuButtons = (store: GameStore) => {
     const { startGameBtn, levelEditorBtn, retryBtn, menuBtn, restartBtn, menuBtnDesktop, restartBtnDesktop, exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
     startGameBtn?.addEventListener('click', () => startGame(store));
-    levelEditorBtn?.addEventListener('click', () => startEditor(store));
+    levelEditorBtn?.addEventListener('click', () => {
+        const ni: any = (window as any).netlifyIdentity;
+        if (ni && !ni.currentUser()) {
+            ni.open('login');
+            return;
+        }
+        startEditor(store);
+    });
     retryBtn?.addEventListener('click', () => startGame(store));
     window.addEventListener('keydown', event => {
         store.keys[event.code] = true;
@@ -1904,6 +1947,10 @@ const setupLevelData = (store: GameStore) => {
         const levelsAsStrings = cleanedLevels.map(level => level.map(row => row.join('')));
         const payload = buildChunkedFile20x18(levelsAsStrings);
 
+        const ni: any = (window as any).netlifyIdentity;
+        const user = ni?.currentUser?.();
+        const token = user ? await user.jwt() : null;
+
         const downloadFallback = () => {
             const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1915,25 +1962,22 @@ const setupLevelData = (store: GameStore) => {
             document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
             showNotification(store, '⬇️ Descarga Manual', 'No se pudo guardar automáticamente.\nSe descargó un archivo levels.json con los datos.');
-            
-            // Asegurar que permanecemos en el editor
             ensureEditorVisible(store);
         };
 
         try {
-            const response = await fetch('/api/save-levels', {
+            const response = await fetch('/.netlify/functions/levels', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(payload),
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            showNotification(store, '💾 Guardado Exitoso', '¡Todos los niveles se han guardado en levels.json!');
-            
-            // Asegurar que permanecemos en el editor
+            showNotification(store, '💾 Guardado Exitoso', '¡Tus niveles se han guardado en tu cuenta!');
             ensureEditorVisible(store);
         } catch (error) {
             console.error('Error saving levels:', error);

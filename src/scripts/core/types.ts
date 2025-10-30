@@ -43,6 +43,7 @@ export interface Player extends GameObject {
     respawnX: number;
     respawnY: number;
     floatWaveTime: number;
+    canWake?: boolean; // Puede tomar control tras finalizar descenso de respawn
     respawnTileX?: number;
     respawnTileY?: number;
     respawnOffsetX?: number;

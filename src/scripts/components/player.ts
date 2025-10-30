@@ -290,6 +290,7 @@ const startFloatingEntry = (store: GameStore, targetX: number, targetY: number) 
     player.animationTick = 0;
     player.currentFrame = 0;
     player.floatWaveTime = 0;
+    player.canWake = false;
     
     // Cambiar el estado del juego a floating
     store.gameState = 'floating';
@@ -305,13 +306,13 @@ export const handlePlayerInput = (store: GameStore) => {
 
     // Si está flotando, ignorar inputs hasta estar en posición y detenido
     if (store.gameState === 'floating' && player.isFloating) {
-        // Verificar si ya llegó a la posición de respawn y está detenido
-        const hasArrived = player.y >= player.respawnY && player.vy === 0;
+        // Verificar si ya llegó a la posición de respawn, se detuvo y está apoyado
+        const hasArrived = player.y >= player.respawnY && player.vy === 0 && player.isGrounded;
         
         if (hasArrived) {
             // Ya llegó y está detenido, ahora puede tomar control con cualquier tecla
             const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
-            if (anyKeyPressed) {
+            if (anyKeyPressed && player.canWake) {
                 // Si es disparo láser, crear el láser
                 if (keys.Space && player.shootCooldown === 0) {
                     const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
@@ -555,10 +556,12 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         
         // Recalcular respawnX/Y desde las coordenadas de tile si están presentes
         if (player.respawnTileX !== undefined && player.respawnTileY !== undefined) {
-            const baseXCenter = player.respawnTileX * TILE_SIZE + TILE_SIZE / 2;
+            // Buscar un tile seguro cercano al deseado
+            const safe = findSafeRespawnTile(store, player.respawnTileX, player.respawnTileY);
+            const baseXCenter = safe.x * TILE_SIZE + TILE_SIZE / 2;
             const rxCenter = baseXCenter + (player.respawnOffsetX ?? 0);
             const rx = rxCenter - player.width / 2;
-            const ryBottom = (player.respawnTileY + 1) * TILE_SIZE + (player.respawnOffsetY ?? 0);
+            const ryBottom = (safe.y + 1) * TILE_SIZE + (player.respawnOffsetY ?? 0);
             const ry = ryBottom - player.height;
             const levelWidthTiles2 = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
             const levelWidthPx2 = levelWidthTiles2 * TILE_SIZE;
@@ -590,6 +593,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         player.vx = 0;
         player.deathTimer = 0;
         player.floatWaveTime = 0; // Resetear tiempo de onda
+        player.canWake = false;
         
         // Restaurar energía al 100% después de morir
         store.energy = MAX_ENERGY;
@@ -599,6 +603,45 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         // Objetivo: posición de respawn un tile más arriba
         player.respawnY = player.respawnY - TILE_SIZE;
     }, 1000);
+};
+
+// Buscar un tile seguro para respawn: vacío con suelo sólido (no lava ni agua) debajo
+const findSafeRespawnTile = (store: GameStore, desiredX: number, desiredY: number): { x: number; y: number } => {
+    const level = store.levelDesigns[store.currentLevelIndex];
+    const rows = level.length;
+    const cols = level[0]?.length ?? 0;
+    const isSolid = (t: string | undefined) => !!t && t !== '0' && t !== '2' && t !== '3' && t !== 'K';
+    const isEmpty = (t: string | undefined) => (t ?? '0') === '0';
+    const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && y < rows && x < cols;
+    // Primero probar el deseado y hacia arriba algunas filas
+    for (let dy = 0; dy <= 5; dy++) {
+        const y = Math.max(0, desiredY - dy);
+        const x = desiredX;
+        if (!inBounds(x, y)) continue;
+        const here = level[y][x];
+        const below = level[y + 1]?.[x];
+        if (isEmpty(here) && isSolid(below)) {
+            return { x, y };
+        }
+    }
+    // Explorar vecindario alrededor (radio 3) buscando vacío con suelo sólido
+    const radius = 3;
+    for (let r = 1; r <= radius; r++) {
+        for (let dx = -r; dx <= r; dx++) {
+            for (let dy = -r; dy <= r; dy++) {
+                const x = desiredX + dx;
+                const y = Math.max(0, desiredY + dy);
+                if (!inBounds(x, y)) continue;
+                const here = level[y][x];
+                const below = level[y + 1]?.[x];
+                if (isEmpty(here) && isSolid(below)) {
+                    return { x, y };
+                }
+            }
+        }
+    }
+    // Fallback: clamp dentro del nivel y usar fila superior disponible
+    return { x: Math.max(0, Math.min(desiredX, cols - 1)), y: Math.max(0, Math.min(desiredY, rows - 2)) };
 };
 
 const updateFlightState = (store: GameStore) => {
@@ -829,6 +872,10 @@ export const updatePlayer = (store: GameStore) => {
             
             // Verificar si está en el suelo después de aterrizar
             checkInitialGrounding(store);
+            // Permitir despertar solo cuando esté apoyado y tras fijar posición
+            if (player.isGrounded) {
+                player.canWake = true;
+            }
         }
         
         // Actualizar hitbox (el waveOffset se aplicará solo en el renderizado)
