@@ -1257,13 +1257,14 @@ export const setupUI = (store: GameStore) => {
     try {
         const ni: any = (window as any).netlifyIdentity;
         if (ni) {
-            ni.on('login', () => {
-                // Si el usuario inició sesión desde el menú, abrir editor
+            const afterAuth = () => {
                 if (store.appState === 'menu') {
                     startEditor(store);
                 }
-                ni.close();
-            });
+                try { ni.close(); } catch {}
+            };
+            ni.on('login', afterAuth);
+            ni.on('signup', afterAuth);
         }
     } catch {}
     preloadAssets(store, () => {
@@ -1476,14 +1477,43 @@ const setupHamburgerMenu = (
 
 const setupMenuButtons = (store: GameStore) => {
     const { startGameBtn, levelEditorBtn, retryBtn, menuBtn, restartBtn, menuBtnDesktop, restartBtnDesktop, exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
+    const signupBtn = document.getElementById('signup-btn') as HTMLButtonElement | null;
     startGameBtn?.addEventListener('click', () => startGame(store));
     levelEditorBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
         if (ni && !ni.currentUser()) {
-            ni.open('login');
+            // Mostrar modal de elección
+            const modal = document.getElementById('auth-choice-modal');
+            modal?.classList.remove('hidden');
             return;
         }
         startEditor(store);
+    });
+
+    signupBtn?.addEventListener('click', () => {
+        const ni: any = (window as any).netlifyIdentity;
+        if (!ni) return;
+        ni.open('signup');
+    });
+
+    // Modal autenticación: handlers
+    const authModal = document.getElementById('auth-choice-modal');
+    const authLoginBtn = document.getElementById('auth-login-btn') as HTMLButtonElement | null;
+    const authSignupBtn = document.getElementById('auth-signup-btn') as HTMLButtonElement | null;
+    const authCancelBtn = document.getElementById('auth-cancel-btn') as HTMLButtonElement | null;
+    const closeAuthModal = () => authModal?.classList.add('hidden');
+    authCancelBtn?.addEventListener('click', closeAuthModal);
+    authLoginBtn?.addEventListener('click', () => {
+        const ni: any = (window as any).netlifyIdentity;
+        if (!ni) return;
+        ni.open('login');
+        closeAuthModal();
+    });
+    authSignupBtn?.addEventListener('click', () => {
+        const ni: any = (window as any).netlifyIdentity;
+        if (!ni) return;
+        ni.open('signup');
+        closeAuthModal();
     });
     retryBtn?.addEventListener('click', () => startGame(store));
     window.addEventListener('keydown', event => {

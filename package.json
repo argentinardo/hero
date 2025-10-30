@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "nipplejs": "^0.10.2",
-    "@netlify/blobs": "^6.5.0"
+    "@netlify/blobs": "^6.5.0",
+    "@netlify/neon": "^0.7.0"
   }
 }
