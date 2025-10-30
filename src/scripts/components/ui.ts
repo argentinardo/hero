@@ -256,6 +256,16 @@ export const showMenu = (store: GameStore) => {
         store.joystickManager.destroy();
         store.joystickManager = null;
     }
+
+    // Actualizar botón de editor según estado de login
+    const updateEditorButton = () => {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+        if (levelEditorBtn) {
+            levelEditorBtn.textContent = isLoggedIn ? 'Editar niveles' : 'Ingresar';
+        }
+    };
+    updateEditorButton();
 };
 
 const startJoystick = (store: GameStore) => {
@@ -647,6 +657,19 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     store.dom.ui.resumeEditorBtn?.classList.add('hidden');
     if (editorPanelEl) {
         editorPanelEl.style.display = 'flex';
+        // Actualizar área de usuario
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const username = localStorage.getItem('username');
+        const userArea = document.getElementById('user-area');
+        const usernameDisplay = document.getElementById('username-display');
+        if (userArea && usernameDisplay) {
+            if (isLoggedIn && username) {
+                usernameDisplay.textContent = username;
+                userArea.style.display = 'block';
+            } else {
+                userArea.style.display = 'none';
+            }
+        }
         // Mostrar tirador y abrir por defecto
         const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
         if (toggle) {
@@ -1281,14 +1304,42 @@ export const setupUI = (store: GameStore) => {
     try {
         const ni: any = (window as any).netlifyIdentity;
         if (ni) {
-            const afterAuth = () => {
-                if (store.appState === 'menu') {
-                    startEditor(store);
+            // Verificar si ya hay un usuario logueado al cargar
+            const currentUser = ni.currentUser();
+            if (currentUser && currentUser.email) {
+                const username = currentUser.email.split('@')[0];
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('username', username);
+            }
+            
+            const afterAuth = (user: any) => {
+                if (user && user.email) {
+                    const username = user.email.split('@')[0];
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    // Actualizar botones y área de usuario
+                    const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+                    if (levelEditorBtn) {
+                        levelEditorBtn.textContent = 'Editar niveles';
+                    }
+                    if (store.appState === 'menu') {
+                        startEditor(store);
+                    }
                 }
                 try { ni.close(); } catch {}
             };
             ni.on('login', afterAuth);
             ni.on('signup', afterAuth);
+            
+            // Escuchar cuando se cierre sesión
+            ni.on('logout', () => {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('username');
+                const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+                if (levelEditorBtn) {
+                    levelEditorBtn.textContent = 'Ingresar';
+                }
+            });
         }
     } catch {}
     preloadAssets(store, () => {
@@ -1512,10 +1563,43 @@ const setupMenuButtons = (store: GameStore) => {
     const pauseMainMenuBtn = document.getElementById('pause-mainmenu-btn') as HTMLButtonElement | null;
     const pauseCreditsBtn = document.getElementById('pause-credits-btn') as HTMLButtonElement | null;
     const pauseCancelBtn = document.getElementById('pause-cancel-btn') as HTMLButtonElement | null;
+    // Función para verificar si el usuario está logueado
+    const checkLoginStatus = (): { isLoggedIn: boolean; username: string | null } => {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const username = localStorage.getItem('username');
+        return { isLoggedIn, username: username || null };
+    };
+
+    // Función para actualizar el botón de editor según el estado de login
+    const updateEditorButton = () => {
+        const { isLoggedIn } = checkLoginStatus();
+        if (levelEditorBtn) {
+            levelEditorBtn.textContent = isLoggedIn ? 'Editar niveles' : 'Ingresar';
+        }
+    };
+
+    // Función para actualizar el área de usuario en el editor
+    const updateUserArea = () => {
+        const { isLoggedIn, username } = checkLoginStatus();
+        const userArea = document.getElementById('user-area');
+        const usernameDisplay = document.getElementById('username-display');
+        if (userArea && usernameDisplay) {
+            if (isLoggedIn && username) {
+                usernameDisplay.textContent = username;
+                userArea.style.display = 'block';
+            } else {
+                userArea.style.display = 'none';
+            }
+        }
+    };
+
+    // Actualizar el botón al cargar
+    updateEditorButton();
+
     startGameBtn?.addEventListener('click', () => startGame(store));
     levelEditorBtn?.addEventListener('click', () => {
-        const ni: any = (window as any).netlifyIdentity;
-        if (ni && !ni.currentUser()) {
+        const { isLoggedIn } = checkLoginStatus();
+        if (!isLoggedIn) {
             // Mostrar modal de elección
             const modal = document.getElementById('auth-choice-modal');
             modal?.classList.remove('hidden');
@@ -1547,15 +1631,79 @@ const setupMenuButtons = (store: GameStore) => {
     authCancelBtn?.addEventListener('click', closeAuthModal);
     authLoginBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
-        if (!ni) return;
-        ni.open('login');
+        if (ni) {
+            ni.open('login');
+            // Escuchar cuando se complete el login
+            ni.on('login', (user: any) => {
+                if (user && user.email) {
+                    const username = user.email.split('@')[0]; // Usar parte antes del @ como username
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    updateEditorButton();
+                    updateUserArea();
+                    closeAuthModal();
+                    startEditor(store);
+                }
+            });
+        } else {
+            // Login simple para demo (sin Netlify Identity)
+            const username = prompt('Ingresa tu nombre de usuario:');
+            if (username) {
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('username', username);
+                updateEditorButton();
+                updateUserArea();
+                closeAuthModal();
+                startEditor(store);
+            }
+        }
         closeAuthModal();
     });
     authSignupBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
-        if (!ni) return;
-        ni.open('signup');
+        if (ni) {
+            ni.open('signup');
+            // Escuchar cuando se complete el registro
+            ni.on('signup', (user: any) => {
+                if (user && user.email) {
+                    const username = user.email.split('@')[0];
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    updateEditorButton();
+                    updateUserArea();
+                    closeAuthModal();
+                    startEditor(store);
+                }
+            });
+        } else {
+            // Registro simple para demo
+            const username = prompt('Ingresa tu nombre de usuario:');
+            if (username) {
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('username', username);
+                updateEditorButton();
+                updateUserArea();
+                closeAuthModal();
+                startEditor(store);
+            }
+        }
         closeAuthModal();
+    });
+
+    // Handler del botón de cerrar sesión
+    const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
+    logoutBtn?.addEventListener('click', () => {
+        // Cerrar sesión en Netlify Identity si está disponible
+        const ni: any = (window as any).netlifyIdentity;
+        if (ni && ni.currentUser()) {
+            ni.logout();
+        }
+        // Limpiar localStorage
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('username');
+        updateEditorButton();
+        updateUserArea();
+        showMenu(store);
     });
     retryBtn?.addEventListener('click', () => startGame(store));
     window.addEventListener('keydown', event => {

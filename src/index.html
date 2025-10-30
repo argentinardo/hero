@@ -108,6 +108,11 @@
         <!-- Panel del Editor (drawer izquierdo) -->
         <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden bg-gray-800">
                 <h2 class="text-center text-lg mb-2">EDITOR</h2>
+                <!-- Área de usuario (izquierda) -->
+                <div id="user-area" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
+                    <p id="user-greeting" class="text-sm mb-2">Hola <span id="username-display">Usuario</span></p>
+                    <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs">Cerrar sesión</button>
+                </div>
                 <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
                 
                 <div id="tile-palette" class="flex flex-col gap-4">
