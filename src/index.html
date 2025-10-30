@@ -60,13 +60,18 @@
                         <img id="hero-logo" alt="Hero" style="display: none; image-rendering: pixelated;">
                         <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
                     </div>
+                
+                <!-- Barra de créditos (debajo de la barra superior) -->
+
                     <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
                     <span id="volume-toggle" class="volume-toggle" aria-label="Volumen">SOUND: ON</span>
                     
                     <button id="hamburger-btn" class="hamburger-btn" aria-label="Menú">
                     </button>
                 </div>
-                
+                <div id="credit-bar" class="text-xs">
+                    <span style="opacity: 0.85;">developed by <a href="https://www.damiannardini.com" target="_blank" rel="noopener" style="text-decoration: underline;">argentinardo</a></span>
+                </div>
                 <!-- Menú Hamburguesa Desplegable -->
                 <div id="hamburger-menu" class="hamburger-menu hidden">
                     <button id="pause-resume-btn" class="menu-item">Pausar</button>
@@ -174,6 +179,20 @@
             </div>
         </div>
 
+        <!-- Menú flotante (pausa) -->
+        <div id="pause-menu-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
+            <div class="bg-gray-800 p-8 border-4 border-white max-w-sm w-80 max-h-[80vh] overflow-y-auto">
+                <h2 class="text-2xl mb-6">Menú</h2>
+                <div class="flex flex-col gap-3">
+                    <button id="pause-resume-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Continuar</button>
+                    <button id="pause-restart-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white">Reiniciar</button>
+                    <button id="pause-mainmenu-btn" class="bg-red-600 hover:bg-red-700 p-3 border-2 border-white">Volver al menú</button>
+                    <button id="pause-credits-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white">Créditos</button>
+                    <button id="pause-cancel-btn" class="bg-gray-700 hover:bg-gray-800 p-3 border-2 border-white">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal de Notificación -->
         <div id="notification-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-30">
             <div class="bg-gray-800 p-8 border-4 border-white max-w-lg">
@@ -186,8 +205,8 @@
         </div>
 
         <!-- Modal de Autenticación: elegir Entrar o Crear cuenta -->
-        <div id="auth-choice-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-sm w-80">
+        <div id="auth-choice-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 10000;">
+            <div class="bg-gray-800 p-8 border-4 border-white max-w-sm">
                 <h2 class="text-2xl mb-6">Autenticación</h2>
                 <p class="mb-6 text-sm">Para editar niveles, inicia sesión o crea una cuenta.</p>
                 <div class="flex flex-col gap-3">
@@ -198,14 +217,29 @@
             </div>
         </div>
 
+        <!-- Splash animado -->
+        <div id="splash-container"></div>
+
         <!-- Pantalla de Mensajes (Inicio / Game Over) -->
-        <div id="message-overlay" class="absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center items-center text-center" style="padding-top: 56vh;">
+        <div id="message-overlay" class="absolute inset-0 flex flex-col justify-center items-center text-center" style="padding-top: 56vh; background: transparent; z-index: 2;">
             <p id="message-text" class="text-sm opacity-90"></p>
             <div class="flex gap-4 mt-6">
-                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Comenzar</button>
-                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white">Editar</button>
-                <button id="signup-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Crear cuenta</button>
+                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Jugar</button>
+                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white">Ingresar</button>
                 <button id="retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white hidden">Volver a jugar</button>
+            </div>
+        </div>
+
+        <!-- Modal Créditos -->
+        <div id="credits-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
+            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg mx-6">
+                <h2 class="text-2xl mb-4">Créditos</h2>
+                <p class="mb-6 text-sm leading-relaxed">
+                    desarrollado por <strong>Damián Nardini</strong>, sitio web
+                    <a href="https://www.damiannardini.com" target="_blank" rel="noopener" class="underline">www.damiannardini.com</a>
+                    — para mi hijo Paolo ❤ con amor
+                </p>
+                <button id="credits-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Cerrar</button>
             </div>
         </div>
 

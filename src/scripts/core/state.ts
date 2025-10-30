@@ -81,6 +81,9 @@ export const createInitialStore = (): GameStore => ({
     editorHistoryIndex: -1,
     duplicateRowMode: false,
     deleteRowMode: false,
+    splashAnimationFrame: 0,
+    splashAnimationTick: 0,
+    splashAnimationDirection: 1,
     dom: {
         canvas: null,
         ctx: null,

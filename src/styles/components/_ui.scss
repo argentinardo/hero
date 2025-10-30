@@ -116,6 +116,30 @@ body {
     }
 }
 
+/* Barra de créditos alineada al canvas (debajo del game-ui) */
+#credit-bar {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: auto !important;
+    width: 56% !important;
+    z-index: var(--mobile-ui-z-index) !important;
+    padding: 6px 12px !important;
+    display: none !important; /* visible solo en mobile */
+    flex-direction: row !important;
+    gap: var(--mobile-ui-gap) !important;
+    pointer-events: none !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    justify-content: end !important;
+    align-items: center !important;
+    height: 8vh !important;
+    text-align: right;
+}
+
+@media (max-width: 1024px) {
+    #credit-bar {
+        display: flex !important; /* visible solo en mobile */
+    }
+}
 /* Barra de botones móvil */
 #right-ui {
     position: absolute;
@@ -289,6 +313,22 @@ body {
             display: none;
         }
     }
+}
+
+/* Splash animado - fondo del menú */
+#splash-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: 2000% 100%; /* 20 frames horizontales: ancho = 20 * 100% */
+    background-repeat: no-repeat;
+    background-position: 0% 0%;
+    image-rendering: pixelated;
+    -webkit-image-rendering: pixelated;
+    z-index: 1;
+    display: none; /* Oculto por defecto, se muestra en el menú */
 }
 
 /* Message Overlay - Pantalla de mensajes */

@@ -43,6 +43,8 @@ export interface Player extends GameObject {
     respawnX: number;
     respawnY: number;
     floatWaveTime: number;
+    respawnSettledFrames?: number;
+    wantsToWake?: boolean;
     canWake?: boolean; // Puede tomar control tras finalizar descenso de respawn
     respawnTileX?: number;
     respawnTileY?: number;
@@ -327,6 +329,9 @@ export interface GameStore {
     editorHistoryIndex: number;
     duplicateRowMode: boolean;
     deleteRowMode: boolean;
+    splashAnimationFrame: number;
+    splashAnimationTick: number;
+    splashAnimationDirection: number; // 1 = hacia adelante, -1 = hacia atrás
     dom: DomReferences;
 }
 

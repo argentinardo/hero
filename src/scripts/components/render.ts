@@ -486,9 +486,25 @@ const drawPlayer = (store: GameStore) => {
 const drawLasers = (store: GameStore) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
-    ctx.fillStyle = 'red';
     store.lasers.forEach(laser => {
+        ctx.save();
+        // Glow exterior
+        ctx.shadowColor = 'rgba(255, 0, 0, 0.95)';
+        ctx.shadowBlur = 18;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        // Cuerpo del láser (núcleo brillante)
+        const gradient = ctx.createLinearGradient(laser.x, laser.y, laser.x + laser.width, laser.y + laser.height);
+        gradient.addColorStop(0, '#ff8080');
+        gradient.addColorStop(0.5, '#ffffff');
+        gradient.addColorStop(1, '#ff8080');
+        ctx.fillStyle = gradient;
         ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+        // Borde interno para intensificar el haz
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)';
+        ctx.strokeRect(laser.x + 0.5, laser.y + 0.5, Math.max(0, laser.width - 1), Math.max(0, laser.height - 1));
+        ctx.restore();
     });
 };
 
@@ -959,6 +975,49 @@ const drawGameWorld = (store: GameStore) => {
     drawFloatingScores(store); // Los scores son pocos
     
     ctx.restore();
+};
+
+// Animar splash en div con background (tira horizontal de 20 frames, animación ping-pong a 8 fps)
+export const animateSplash = (store: GameStore) => {
+    const splashContainer = document.getElementById('splash-container');
+    if (!splashContainer) return;
+    
+    const splashSprite = store.sprites.splash;
+    if (!splashSprite || splashSprite.complete === false) return;
+    
+    // Configurar background-image solo una vez
+    if (!splashContainer.style.backgroundImage) {
+        splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+    }
+    
+    const totalFrames = 20; // Tira horizontal de 20 frames
+    const fps = 8;
+    const framesPerSecond = 60 / fps; // frames de juego por frame de animación
+    
+    // Actualizar animación
+    store.splashAnimationTick++;
+    if (store.splashAnimationTick >= framesPerSecond) {
+        store.splashAnimationTick = 0;
+        
+        // Ping-pong: avanzar o retroceder según dirección
+        store.splashAnimationFrame += store.splashAnimationDirection;
+        
+        // Cambiar dirección al llegar a los extremos
+        if (store.splashAnimationFrame >= totalFrames - 1) {
+            store.splashAnimationFrame = totalFrames - 1;
+            store.splashAnimationDirection = -1;
+        } else if (store.splashAnimationFrame <= 0) {
+            store.splashAnimationFrame = 0;
+            store.splashAnimationDirection = 1;
+        }
+    }
+    
+    // Calcular porcentaje de background-position en el eje X
+    // Para 20 frames: cada frame ocupa 100% / 19 espacios entre frames (0% a 100%)
+    const bgXPercent = (store.splashAnimationFrame / (totalFrames - 1)) * 100;
+    
+    // Actualizar solo background-position-x (mantener Y en 0%)
+    splashContainer.style.backgroundPosition = `${bgXPercent}% 0%`;
 };
 
 export const renderGame = (store: GameStore) => {

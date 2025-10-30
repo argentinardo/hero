@@ -21,6 +21,7 @@ export const adjustUIBars = () => {
     const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
     const gameUi = document.getElementById('game-ui');
     const bottomUi = document.getElementById('bottom-ui');
+    const creditBar = document.getElementById('credit-bar');
     
     if (!canvas || !gameUi || !bottomUi) return;
     
@@ -39,6 +40,14 @@ export const adjustUIBars = () => {
         gameUi.style.left = `${leftOffset}px`;
         bottomUi.style.width = `${canvasWidth}px`;
         bottomUi.style.left = `${leftOffset}px`;
+        if (creditBar) creditBar.style.display = 'none';
+    } else {
+        // En mobile: ancho completo y visible pegado abajo
+        if (creditBar) {
+            creditBar.style.width = '100%';
+            creditBar.style.left = '0px';
+            creditBar.style.display = 'flex';
+        }
     }
 };
 
@@ -200,18 +209,13 @@ export const showMenu = (store: GameStore) => {
     pauseBackgroundMusic();
     
     const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn, heroLogoEl } = store.dom.ui;
+    const splashContainer = document.getElementById('splash-container');
+    if (splashContainer) {
+        splashContainer.style.display = 'block';
+    }
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
-        
-        // Agregar imagen splash como fondo del menú
-        const splashSprite = store.sprites.splash;
-        if (splashSprite) {
-            messageOverlay.style.backgroundImage = `url(${splashSprite.src})`;
-            messageOverlay.style.backgroundSize = 'contain';
-            messageOverlay.style.backgroundPosition = 'center';
-            messageOverlay.style.backgroundRepeat = 'no-repeat';
-            messageOverlay.style.imageRendering = 'pixelated'
-        }
+        messageOverlay.style.backgroundImage = 'none';
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
@@ -510,6 +514,10 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
+    const splashContainer = document.getElementById('splash-container');
+    if (splashContainer) {
+        splashContainer.style.display = 'none';
+    }
     const { messageOverlay, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, heroLogoEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
@@ -518,6 +526,10 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'flex';
+    }
+    const creditBarEl = document.getElementById('credit-bar');
+    if (creditBarEl) {
+        creditBarEl.style.display = 'flex';
     }
     if (heroLogoEl) {
         heroLogoEl.style.display = 'block';
@@ -608,6 +620,10 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     
     store.appState = 'editing';
     setBodyClass('editing');
+    const splashContainer = document.getElementById('splash-container');
+    if (splashContainer) {
+        splashContainer.style.display = 'none';
+    }
     const { messageOverlay, gameUiEl, bottomUiEl, editorPanelEl, levelSelectorEl } = store.dom.ui;
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
@@ -616,6 +632,10 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     }
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
+    }
+    const creditBarEl2 = document.getElementById('credit-bar');
+    if (creditBarEl2) {
+        creditBarEl2.style.display = 'none';
     }
     if (bottomUiEl) {
         bottomUiEl.style.display = 'none';
@@ -1478,6 +1498,16 @@ const setupHamburgerMenu = (
 const setupMenuButtons = (store: GameStore) => {
     const { startGameBtn, levelEditorBtn, retryBtn, menuBtn, restartBtn, menuBtnDesktop, restartBtnDesktop, exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
     const signupBtn = document.getElementById('signup-btn') as HTMLButtonElement | null;
+    const creditsBtn = document.getElementById('credits-btn') as HTMLButtonElement | null;
+    const creditsModal = document.getElementById('credits-modal');
+    const creditsCloseBtn = document.getElementById('credits-close-btn') as HTMLButtonElement | null;
+    // Modal de menú (pausa)
+    const pauseMenu = document.getElementById('pause-menu-modal');
+    const pauseResumeBtn = document.getElementById('pause-resume-btn') as HTMLButtonElement | null;
+    const pauseRestartBtn = document.getElementById('pause-restart-btn') as HTMLButtonElement | null;
+    const pauseMainMenuBtn = document.getElementById('pause-mainmenu-btn') as HTMLButtonElement | null;
+    const pauseCreditsBtn = document.getElementById('pause-credits-btn') as HTMLButtonElement | null;
+    const pauseCancelBtn = document.getElementById('pause-cancel-btn') as HTMLButtonElement | null;
     startGameBtn?.addEventListener('click', () => startGame(store));
     levelEditorBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
@@ -1494,6 +1524,14 @@ const setupMenuButtons = (store: GameStore) => {
         const ni: any = (window as any).netlifyIdentity;
         if (!ni) return;
         ni.open('signup');
+    });
+
+    // Créditos
+    creditsBtn?.addEventListener('click', () => {
+        creditsModal?.classList.remove('hidden');
+    });
+    creditsCloseBtn?.addEventListener('click', () => {
+        creditsModal?.classList.add('hidden');
     });
 
     // Modal autenticación: handlers
@@ -1549,11 +1587,10 @@ const setupMenuButtons = (store: GameStore) => {
         exitCancelBtn?.addEventListener('click', cancelHandler);
     };
 
-    menuBtn?.addEventListener('click', () => {
-        openExitModal('Volver al Menú', '¿Deseas volver al menú principal?', () => {
-            showMenu(store);
-        });
-    });
+    // Abrir menú flotante
+    const openPauseMenu = () => pauseMenu?.classList.remove('hidden');
+    const closePauseMenu = () => pauseMenu?.classList.add('hidden');
+    menuBtn?.addEventListener('click', openPauseMenu);
 
     restartBtn?.addEventListener('click', () => {
         openExitModal('Reiniciar Nivel', '¿Deseas reiniciar el nivel actual?', () => {
@@ -1562,11 +1599,24 @@ const setupMenuButtons = (store: GameStore) => {
     });
 
     // Desktop duplicates
-    menuBtnDesktop?.addEventListener('click', () => {
-        openExitModal('Volver al Menú', '¿Deseas volver al menú principal?', () => {
-            showMenu(store);
-        });
+    menuBtnDesktop?.addEventListener('click', openPauseMenu);
+    // Acciones del menú flotante
+    pauseResumeBtn?.addEventListener('click', () => {
+        closePauseMenu();
     });
+    pauseRestartBtn?.addEventListener('click', () => {
+        closePauseMenu();
+        startGame(store, null, store.currentLevelIndex, true);
+    });
+    pauseMainMenuBtn?.addEventListener('click', () => {
+        closePauseMenu();
+        showMenu(store);
+    });
+    pauseCreditsBtn?.addEventListener('click', () => {
+        closePauseMenu();
+        creditsModal?.classList.remove('hidden');
+    });
+    pauseCancelBtn?.addEventListener('click', closePauseMenu);
 
     restartBtnDesktop?.addEventListener('click', () => {
         openExitModal('Reiniciar Nivel', '¿Deseas reiniciar el nivel actual?', () => {

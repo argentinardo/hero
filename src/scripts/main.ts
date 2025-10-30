@@ -9,7 +9,7 @@ import { TILE_SIZE } from './core/constants';
 import { setupUI, showMenu, startGame } from './components/ui';
 import { handlePlayerInput, updatePlayer } from './components/player';
 import { loadLevel, updateWalls } from './components/level';
-import { renderGame, renderEditor } from './components/render';
+import { renderGame, renderEditor, animateSplash } from './components/render';
 
 import { initAudio, playBackgroundMusic, loadAdditionalSFX } from './components/audio';
 
@@ -142,6 +142,8 @@ const gameLoop = (currentTime: number) => {
             import('./components/editor').then(({ drawEditor }) => {
                 renderEditor(store, drawEditor);
             });
+        } else if (store.appState === 'menu') {
+            animateSplash(store);
         }
     }
 

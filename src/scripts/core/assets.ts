@@ -19,7 +19,7 @@ import columnSrc from '../../assets/sprites/weakwall.png';
 import lavaSrc from '../../assets/sprites/lava.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
-import splashSrc from '../../assets/sprites/splash.png';
+import splashSrc from '../../assets/sprites/splashSprite.jpg';
 import baseSrc from '../../assets/sprites/base.png';
 import heroLogoSrc from '../../assets/sprites/hero-logo.png';
 

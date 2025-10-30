@@ -304,41 +304,19 @@ export const handlePlayerInput = (store: GameStore) => {
         return;
     }
 
-    // Si está flotando, ignorar inputs hasta estar en posición y detenido
+    // Si está flotando, despertar apenas esté en su posición de respawn
     if (store.gameState === 'floating' && player.isFloating) {
-        // Verificar si ya llegó a la posición de respawn, se detuvo y está apoyado
-        const hasArrived = player.y >= player.respawnY && player.vy === 0 && player.isGrounded;
-        
-        if (hasArrived) {
-            // Ya llegó y está detenido, ahora puede tomar control con cualquier tecla
+        const hasArrived = player.y >= player.respawnY && player.vy === 0;
+        if (hasArrived && player.canWake) {
             const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
-            if (anyKeyPressed && player.canWake) {
-                // Si es disparo láser, crear el láser
-                if (keys.Space && player.shootCooldown === 0) {
-                    const laserX = player.direction === 1 ? player.x + player.width / 2 : player.x;
-                    const laserY = player.y + player.height / 4;
-                    lasers.push({
-                        x: laserX,
-                        y: laserY,
-                        width: 30,
-                        height: 5,
-                        vx: LASER_SPEED * player.direction,
-                        startX: laserX - 20,
-                    });
-                    player.shootCooldown = 6;
-                    
-                    // Reproducir sonido de láser
-                    playLaserSound();
-                }
-                
-                // Salir del estado flotante (misma lógica para cualquier tecla)
+            if (anyKeyPressed) {
                 player.isFloating = false;
                 player.animationState = 'fly';
                 store.gameState = 'playing';
+                // Evitar disparo fantasma al despertar
+                if (keys.Space) keys.Space = false;
             }
         }
-        
-        // No permitir ningún input mientras no haya llegado completamente
         return;
     }
 
@@ -866,16 +844,10 @@ export const updatePlayer = (store: GameStore) => {
         if (player.y < player.respawnY) {
             player.y += player.vy;
         } else {
-            // Ha llegado a la posición objetivo, detener descenso
+            // Ha llegado a la posición objetivo: flotar quieto y permitir despertar
             player.y = player.respawnY;
             player.vy = 0;
-            
-            // Verificar si está en el suelo después de aterrizar
-            checkInitialGrounding(store);
-            // Permitir despertar solo cuando esté apoyado y tras fijar posición
-            if (player.isGrounded) {
-                player.canWake = true;
-            }
+            player.canWake = true;
         }
         
         // Actualizar hitbox (el waveOffset se aplicará solo en el renderizado)

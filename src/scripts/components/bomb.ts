@@ -83,6 +83,7 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
     // Agrupar paredes por columna para columnas destructibles
     const columnGroups = new Map<number, Wall[]>();
     const regularWalls: Wall[] = [];
+    const destroyedWallCenters: Array<{ x: number; y: number }> = [];
     
     toRemove.forEach(wall => {
         if (wall.type === 'destructible_v') {
@@ -99,6 +100,7 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
     // Procesar paredes regulares (75 puntos cada una)
     regularWalls.forEach(wall => {
         addFallingChunks(store, wall);
+        destroyedWallCenters.push({ x: wall.x + wall.width / 2, y: wall.y + wall.height / 2 });
         store.floatingScores.push({ 
             x: wall.x + wall.width / 2, 
             y: wall.y + wall.height / 2, 
@@ -112,7 +114,10 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
     
     // Procesar columnas (75 puntos por columna completa)
     columnGroups.forEach(columnWalls => {
-        columnWalls.forEach(wall => addFallingChunks(store, wall));
+        columnWalls.forEach(wall => {
+            addFallingChunks(store, wall);
+            destroyedWallCenters.push({ x: wall.x + wall.width / 2, y: wall.y + wall.height / 2 });
+        });
         
         // Solo generar puntos una vez por columna
         if (columnWalls.length > 0) {
@@ -129,6 +134,45 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
         }
     });
     store.walls = store.walls.filter(wall => !toRemove.has(wall));
+
+    // Daño colateral: matar enemigos cercanos a paredes destruidas
+    if (destroyedWallCenters.length > 0) {
+        const collateralRadius = TILE_SIZE * 1.25;
+        const toRemoveEnemies = new Set<Enemy>();
+        store.enemies.forEach(enemy => {
+            if (enemy.isDead || enemy.isHidden) return;
+            const ex = enemy.x + enemy.width / 2;
+            const ey = enemy.y + enemy.height / 2;
+            for (const c of destroyedWallCenters) {
+                if (Math.hypot(ex - c.x, ey - c.y) <= collateralRadius) {
+                    toRemoveEnemies.add(enemy);
+                    break;
+                }
+            }
+        });
+        if (toRemoveEnemies.size > 0) {
+            toRemoveEnemies.forEach(enemy => {
+                store.fallingEntities.push({
+                    x: enemy.x,
+                    y: enemy.y,
+                    width: enemy.width,
+                    height: enemy.height,
+                    vy: -5,
+                    vx: 0,
+                    tile: enemy.tile,
+                    rotation: 0,
+                    rotationSpeed: 0.1,
+                });
+                const points = enemy.type === 'spider' ? 50 : 100;
+                const text = `+${points}`;
+                store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
+                store.score += points;
+                awardExtraLifeByScore(store);
+            });
+            playEnemyKillSound();
+            store.enemies = store.enemies.filter(e => !toRemoveEnemies.has(e));
+        }
+    }
 };
 
 const destroyEnemiesInRadius = (store: GameStore, centerX: number, centerY: number, radius: number) => {
