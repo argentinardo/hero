@@ -554,28 +554,57 @@ const drawHud = (store: GameStore) => {
     if (livesCountEl) {
         livesCountEl.innerHTML = '';
         const heroSuccessSprite = store.sprites['P_success'];
-        const maxLives = 5; // Número máximo de vidas a mostrar
-        
-        for (let i = 0; i < maxLives; i++) {
+        const isMobileLandscape = window.matchMedia('(max-width: 1024px) and (orientation: landscape)').matches || window.matchMedia('(max-width: 768px) and (orientation: landscape)').matches;
+
+        if (isMobileLandscape && store.lives > 6) {
+            // En móvil: mostrar contador "Nx" y una sola miniatura
+            const label = document.createElement('span');
+            label.textContent = `${store.lives}x`;
+            label.style.color = '#fff';
+            label.style.fontFamily = '"Press Start 2P", monospace';
+            label.style.fontSize = '12px';
+            label.style.marginRight = '6px';
+            livesCountEl.appendChild(label);
+
             if (heroSuccessSprite && heroSuccessSprite.complete) {
                 const miniCanvas = document.createElement('canvas');
-                miniCanvas.width = 30;
-                miniCanvas.height = 50;
-                miniCanvas.style.imageRendering = 'auto';
-                miniCanvas.style.opacity = i < store.lives ? '1' : '0';
+                miniCanvas.width = 24;
+                miniCanvas.height = 40;
                 const miniCtx = miniCanvas.getContext('2d');
                 if (miniCtx) {
-                    miniCtx.drawImage(heroSuccessSprite, 0, 0, heroSuccessSprite.width, heroSuccessSprite.height, 0, 0, 30, 50);
+                    miniCtx.drawImage(heroSuccessSprite, 0, 0, heroSuccessSprite.width, heroSuccessSprite.height, 0, 0, 24, 40);
                 }
                 livesCountEl.appendChild(miniCanvas);
             } else {
-                // Fallback: usar texto
                 const span = document.createElement('span');
                 span.textContent = '♥';
                 span.style.color = '#ff0000';
-                span.style.fontSize = '1.5rem';
-                span.style.opacity = i < store.lives ? '1' : '0';
+                span.style.fontSize = '1.2rem';
                 livesCountEl.appendChild(span);
+            }
+        } else {
+            const maxLives = 5; // Número máximo de vidas a mostrar en barra
+            for (let i = 0; i < maxLives; i++) {
+                if (heroSuccessSprite && heroSuccessSprite.complete) {
+                    const miniCanvas = document.createElement('canvas');
+                    miniCanvas.width = 30;
+                    miniCanvas.height = 50;
+                    miniCanvas.style.imageRendering = 'auto';
+                    miniCanvas.style.opacity = i < store.lives ? '1' : '0';
+                    const miniCtx = miniCanvas.getContext('2d');
+                    if (miniCtx) {
+                        miniCtx.drawImage(heroSuccessSprite, 0, 0, heroSuccessSprite.width, heroSuccessSprite.height, 0, 0, 30, 50);
+                    }
+                    livesCountEl.appendChild(miniCanvas);
+                } else {
+                    // Fallback: usar texto
+                    const span = document.createElement('span');
+                    span.textContent = '♥';
+                    span.style.color = '#ff0000';
+                    span.style.fontSize = '1.5rem';
+                    span.style.opacity = i < store.lives ? '1' : '0';
+                    livesCountEl.appendChild(span);
+                }
             }
         }
     }

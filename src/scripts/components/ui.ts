@@ -555,6 +555,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     
     store.lives = 5;
     store.score = 0;
+    store.scoreLifeMilestone = 0;
     // Configurar niveles
     if (preserveLevels) {
         // Mantener store.levelDesigns tal como lo preparó el llamador
@@ -569,6 +570,16 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     // Establecer índice inicial
     store.currentLevelIndex = startIndex ?? 0;
     loadLevel(store);
+};
+
+// Otorgar una vida extra por cada 20000 puntos acumulados
+export const awardExtraLifeByScore = (store: GameStore) => {
+    const milestone = Math.floor(store.score / 20000);
+    if (milestone > (store.scoreLifeMilestone || 0)) {
+        const delta = milestone - (store.scoreLifeMilestone || 0);
+        store.lives += delta;
+        store.scoreLifeMilestone = milestone;
+    }
 };
 
 export const startEditor = async (store: GameStore, preserveCurrentLevel: boolean = false) => {

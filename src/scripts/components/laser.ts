@@ -1,3 +1,4 @@
+import { awardExtraLifeByScore } from './ui';
 import type { GameStore, Wall } from '../core/types';
 import { TILE_SIZE } from '../core/constants';
 import { emitParticles } from './player';
@@ -150,6 +151,7 @@ export const updateLasers = (store: GameStore) => {
                     opacity: 1 
                 });
                 store.score += 75; // Solo 75 puntos por toda la columna
+                awardExtraLifeByScore(store);
             }
         } else if (minHealth <= 20) {
             applyColumnCutOrRemove(store, baseGridX, 'half', side);
@@ -176,6 +178,7 @@ export const updateLasers = (store: GameStore) => {
                             opacity: 1 
                         });
                         store.score += 75;
+                        awardExtraLifeByScore(store);
                         store.walls.splice(j, 1);
                     }
                 }
@@ -220,6 +223,7 @@ export const updateLasers = (store: GameStore) => {
                 const text = `+${points}`;
                 store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
                 store.score += points;
+                awardExtraLifeByScore(store);
                 playEnemyKillSound();
                 break;
             }
@@ -243,6 +247,7 @@ export const updateLasers = (store: GameStore) => {
             store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
             store.enemies.splice(j, 1);
             store.score += points;
+            awardExtraLifeByScore(store);
             // Reproducir sonido al eliminar enemigo por láser
             playEnemyKillSound();
             break;

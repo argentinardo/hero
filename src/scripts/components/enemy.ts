@@ -2,6 +2,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
 import { loadLevel } from './level';
+import { awardExtraLifeByScore } from './ui';
 import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound, playTentacleSound } from './audio';
 
 export const updateEnemies = (store: GameStore) => {
@@ -289,6 +290,7 @@ const handleLevelEndSequence = (store: GameStore) => {
             // Sumar puntos por la energía drenada virtualmente
             const pointsToAdd = Math.floor(energyToReduce * POINTS_PER_ENERGY);
             store.score += pointsToAdd;
+            awardExtraLifeByScore(store);
             
             // La actualización visual de la barra de energía se maneja en drawHud usando virtualEnergyDrain
         } else {
@@ -320,6 +322,7 @@ const handleLevelEndSequence = (store: GameStore) => {
         if (store.levelEndTimer % BOMB_EXPLOSION_INTERVAL === 0) {
             store.bombsRemaining -= 1;
             store.score += POINTS_PER_BOMB;
+            awardExtraLifeByScore(store);
             
             // Reproducir sonido de explosión
             playBombSound();

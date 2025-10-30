@@ -123,7 +123,6 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         width: 56% !important;
         z-index: var(--mobile-ui-z-index) !important;
         padding: 6px 12px !important;
-        font-size: var(--mobile-ui-font-size) !important;
         display: flex !important;
         flex-direction: row !important;
         gap: var(--mobile-ui-gap) !important;
@@ -135,7 +134,6 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         
         > span:first-child,
         > span:nth-child(2) {
-            font-size: var(--mobile-ui-font-size);
             color: white;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
             font-weight: bold;

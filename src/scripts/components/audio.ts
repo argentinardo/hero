@@ -180,6 +180,10 @@ export const playBackgroundMusic = async () => {
         }
         
         if (audioSystem.bgMusic && !audioSystem.isMuted) {
+            // Evitar solapamientos: si ya está sonando, no reiniciar
+            if (!audioSystem.bgMusic.paused && audioSystem.bgMusic.currentTime > 0) {
+                return;
+            }
             audioSystem.bgMusic.play().catch(error => {
                 console.log('No se pudo reproducir la música automáticamente:', error);
             });

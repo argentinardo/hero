@@ -1,3 +1,4 @@
+import { awardExtraLifeByScore } from './ui';
 import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE, BOMB_FUSE } from '../core/constants';
 import type { Enemy, GameStore, Wall } from '../core/types';
@@ -106,6 +107,7 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
             opacity: 1 
         });
         store.score += 75;
+        awardExtraLifeByScore(store);
     });
     
     // Procesar columnas (75 puntos por columna completa)
@@ -123,6 +125,7 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
                 opacity: 1 
             });
             store.score += 75; // Solo 75 puntos por toda la columna
+            awardExtraLifeByScore(store);
         }
     });
     store.walls = store.walls.filter(wall => !toRemove.has(wall));
@@ -161,6 +164,7 @@ const destroyEnemiesInRadius = (store: GameStore, centerX: number, centerY: numb
         const text = `+${points}`;
         store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
         store.score += points;
+        awardExtraLifeByScore(store);
     });
     // Reproducir sonido de kill si hubo al menos un enemigo eliminado
     if (toRemove.size > 0) {
