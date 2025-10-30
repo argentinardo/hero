@@ -331,6 +331,14 @@ body {
     display: none; /* Oculto por defecto, se muestra en el menú */
 }
 
+/* Ocultar game-ui y credit-bar cuando está en el menú para que no se vean sobre el splash */
+body.state-menu {
+    #game-ui,
+    #credit-bar {
+        display: none !important;
+    }
+}
+
 /* Message Overlay - Pantalla de mensajes */
 #message-overlay {
     user-select: none;

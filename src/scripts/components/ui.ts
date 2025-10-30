@@ -220,6 +220,10 @@ export const showMenu = (store: GameStore) => {
     if (gameUiEl) {
         gameUiEl.style.display = 'none';
     }
+    const creditBarEl = document.getElementById('credit-bar');
+    if (creditBarEl) {
+        creditBarEl.style.display = 'none';
+    }
     if (heroLogoEl) {
         heroLogoEl.style.display = 'block';
     }
