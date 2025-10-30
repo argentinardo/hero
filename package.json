@@ -34,6 +34,7 @@
     "webpack-dev-server": "^5.2.2"
   },
   "dependencies": {
-    "nipplejs": "^0.10.2"
+    "nipplejs": "^0.10.2",
+    "@netlify/blobs": "^6.5.0"
   }
 }
