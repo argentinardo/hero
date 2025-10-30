@@ -357,6 +357,8 @@ const handleLevelEndSequence = (store: GameStore) => {
         window.setTimeout(() => {
             store.currentLevelIndex += 1;
             loadLevel(store);
+            // Reanudar música de fondo al iniciar el nuevo nivel
+            try { const { playBackgroundMusic } = require('./audio'); playBackgroundMusic().catch(() => {}); } catch {}
         }, 2000); // 2 segundos de delay
         
         // Limpiar la secuencia de fin de nivel y energía virtual

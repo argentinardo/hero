@@ -318,6 +318,11 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
                 }
             }
         }
+
+        /* En edición móvil, ocultar skins laterales */
+        .canvas-wrapper {
+            background-image: none !important;
+        }
     }
 
     /* Controles móviles */

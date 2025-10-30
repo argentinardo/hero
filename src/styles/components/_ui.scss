@@ -102,13 +102,17 @@ body {
     
     /* Logo del hero */
     #hero-logo {
-        display: none !important;
         height: 60px;
         width: auto;
         user-select: none;
         -webkit-user-select: none;
         pointer-events: none;
         cursor: default;
+    }
+
+    /* Ocultar logo en móviles */
+    @media (max-width: 1024px) {
+        #hero-logo { display: none !important; }
     }
 }
 
@@ -151,7 +155,7 @@ body {
     }
 }
 
-/* Panel del editor - posicionado a la derecha */
+/* Panel del editor - drawer derecho con transición */
 #editor-panel {
     position: fixed;
     right: 0;
@@ -159,6 +163,17 @@ body {
     height: 100vh;
     overflow-y: auto;
     z-index: 200;
+    transform: translateX(0);
+    transition: transform 200ms ease-in-out;
+}
+
+#editor-panel.collapsed {
+    transform: translateX(100%);
+}
+
+/* Tirador del editor */
+#editor-toggle {
+    display: none; /* visible solo en modo editor */
 }
 
 /* Toggle de Volumen */

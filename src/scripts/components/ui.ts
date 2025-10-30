@@ -72,6 +72,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.rightUiEl = document.getElementById('right-ui');
     ui.bottomUiEl = document.getElementById('bottom-ui');
     ui.editorPanelEl = document.getElementById('editor-panel');
+    const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement | null;
     ui.paletteEl = document.getElementById('tile-palette');
     ui.confirmationModalEl = document.getElementById('confirmation-modal');
     ui.notificationModalEl = document.getElementById('notification-modal');
@@ -123,6 +124,17 @@ export const attachDomReferences = (store: GameStore) => {
     ui.duplicateRowBtn = document.getElementById('duplicate-row-btn') as HTMLButtonElement | null;
     ui.deleteRowBtn = document.getElementById('delete-row-btn') as HTMLButtonElement | null;
     
+    // Toggle del editor (drawer)
+    if (editorToggleBtn && ui.editorPanelEl) {
+        // visible solo en modo editor, se activa en startEditor
+        editorToggleBtn.addEventListener('click', () => {
+            const panel = ui.editorPanelEl as HTMLElement;
+            const isCollapsed = panel.classList.toggle('collapsed');
+            // Drawer derecho: colapsado muestra '<' (desplegar hacia la izquierda), abierto muestra '>' (ocultar hacia la derecha)
+            editorToggleBtn.querySelector('span')!.textContent = isCollapsed ? '<' : '>';
+        });
+    }
+
     // Configurar el menú hamburguesa
     setupHamburgerMenu(store, hamburgerBtn, hamburgerBtnMobile, hamburgerMenu, pauseResumeBtn, restartGameBtn, backToMenuBtnGame, resumeEditorBtnMenu);
     
@@ -205,7 +217,7 @@ export const showMenu = (store: GameStore) => {
         gameUiEl.style.display = 'none';
     }
     if (heroLogoEl) {
-        heroLogoEl.style.display = 'none';
+        heroLogoEl.style.display = 'block';
     }
     if (rightUiEl) {
         rightUiEl.style.display = 'none';
@@ -531,6 +543,9 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     }
     if (editorPanelEl) {
         editorPanelEl.style.display = 'none';
+        // Ocultar tirador fuera del editor
+        const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
+        if (toggle) toggle.style.display = 'none';
     }
     startJoystick(store);
 
@@ -608,6 +623,29 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     store.dom.ui.resumeEditorBtn?.classList.add('hidden');
     if (editorPanelEl) {
         editorPanelEl.style.display = 'flex';
+        // Mostrar tirador y abrir por defecto
+        const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
+        if (toggle) {
+            toggle.style.display = 'block';
+            // Drawer derecho abierto: mostrar '>' para indicar que puede ocultarse a la derecha
+            toggle.querySelector('span')!.textContent = '>';
+        }
+        editorPanelEl.classList.remove('collapsed');
+
+        // Toggle secciones del panel (Edición / Niveles)
+        const bindSectionToggle = (btnId: string, arrowId: string, contentId: string) => {
+            const btn = document.getElementById(btnId) as HTMLButtonElement | null;
+            const arrow = document.getElementById(arrowId) as HTMLElement | null;
+            const content = document.getElementById(contentId) as HTMLElement | null;
+            if (!btn || !arrow || !content) return;
+            btn.addEventListener('click', () => {
+                const isHidden = content.style.display === 'none';
+                content.style.display = isHidden ? 'block' : 'none';
+                arrow.textContent = isHidden ? '▾' : '▸';
+            });
+        };
+        bindSectionToggle('edit-section-toggle', 'edit-section-arrow', 'edit-section-content');
+        bindSectionToggle('levels-section-toggle', 'levels-section-arrow', 'levels-section-content');
     }
     
     // Solo cargar desde levelDataStore si no estamos preservando el nivel actual
@@ -1085,21 +1123,30 @@ const populatePalette = (store: GameStore) => {
         }
     ];
     
-    // Crear estructura de categorías
+    // Crear estructura de categorías (colapsables)
     categories.forEach(category => {
         // Crear sección de categoría
         const categorySection = document.createElement('div');
         categorySection.className = 'tile-category';
         
-        // Crear encabezado
-        const categoryHeader = document.createElement('div');
+        // Crear encabezado con flecha
+        const categoryHeader = document.createElement('button');
+        categoryHeader.type = 'button';
         categoryHeader.className = 'tile-category-header';
-        categoryHeader.textContent = category.name;
+        categoryHeader.style.cssText = 'width:100%; display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:2px solid #fff; background:#1f2937; color:#fff; font-family:"Press Start 2P", monospace; font-size:11px; cursor:pointer;';
+        const headerText = document.createElement('span');
+        headerText.textContent = category.name;
+        const headerArrow = document.createElement('span');
+        headerArrow.textContent = '\u25BE'; // ▾ abierto por defecto
+        headerArrow.style.cssText = 'margin-left:8px;';
+        categoryHeader.appendChild(headerText);
+        categoryHeader.appendChild(headerArrow);
         categorySection.appendChild(categoryHeader);
         
         // Crear grid de tiles
         const tilesGrid = document.createElement('div');
         tilesGrid.className = 'tile-category-grid';
+        tilesGrid.style.cssText = 'display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; border:1px solid #444;';
         
         // Agregar tiles
         category.tiles.forEach(({ key, name }) => {
@@ -1161,36 +1208,21 @@ const populatePalette = (store: GameStore) => {
             
             categorySection.appendChild(configSection);
             
-            // Event listeners
-            speedInput.addEventListener('input', () => {
-                const value = parseFloat(speedInput.value);
-                if (!store.crushingWallConfig) {
-                    store.crushingWallConfig = { speed: 1.5, color: '#cc0000' };
-                }
-                store.crushingWallConfig.speed = value;
-                speedValue.textContent = value.toString();
+            // Toggle colapso encabezado (afecta grid + config)
+            categoryHeader.addEventListener('click', () => {
+                const isHidden = tilesGrid.style.display === 'none';
+                tilesGrid.style.display = isHidden ? 'grid' : 'none';
+                configSection.style.display = isHidden ? 'block' : 'none';
+                headerArrow.textContent = isHidden ? '\u25BE' : '\u25B8';
             });
-            
-            colorInput.addEventListener('input', () => {
-                if (!store.crushingWallConfig) {
-                    store.crushingWallConfig = { speed: 1.5, color: '#cc0000' };
-                }
-                store.crushingWallConfig.color = colorInput.value;
-                
-                // Actualizar preview de H y J en la paleta
-                const hPreview = paletteEl.querySelector('.tile-item[data-tile="H"] canvas') as HTMLCanvasElement;
-                const jPreview = paletteEl.querySelector('.tile-item[data-tile="J"] canvas') as HTMLCanvasElement;
-                
-                [hPreview, jPreview].forEach(canvas => {
-                    if (canvas) {
-                        const ctx = canvas.getContext('2d');
-                        if (ctx) {
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            ctx.fillStyle = colorInput.value;
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        }
-                    }
-                });
+        }
+        
+        // Para otras categorías, el header toggle solo afecta el grid
+        if (category.name !== 'Paredes Aplastantes') {
+            categoryHeader.addEventListener('click', () => {
+                const isHidden = tilesGrid.style.display === 'none';
+                tilesGrid.style.display = isHidden ? 'grid' : 'none';
+                headerArrow.textContent = isHidden ? '\u25BE' : '\u25B8';
             });
         }
         
