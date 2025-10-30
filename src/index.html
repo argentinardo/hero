@@ -19,13 +19,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
         <!-- Netlify Identity Widget -->
+        <script>
+            window.IDENTITY_URL = 'https://newhero.netlify.app/.netlify/identity';
+        </script>
         <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var ni = window.netlifyIdentity;
                 if (!ni) return;
-                // Intentar inicializar contra el mismo origen (Netlify inyecta /.netlify/identity)
-                var apiUrl = window.location.origin + '/.netlify/identity';
+                // Permitir configurar manualmente el endpoint (útil en dominio personalizado o dev)
+                var meta = document.querySelector('meta[name="netlify-identity-url"]');
+                var configured = window.IDENTITY_URL || (meta && meta.getAttribute('content'));
+                var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
+                var apiUrl = configured || (isNetlifyHost ? (window.location.origin + '/.netlify/identity') : null);
+                if (!apiUrl) {
+                    // Si no estamos en un host de Netlify y no hay configuración manual, no inicializar
+                    return;
+                }
                 try { ni.init({ APIUrl: apiUrl }); } catch (e) {}
             });
         </script>
