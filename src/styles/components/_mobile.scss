@@ -284,6 +284,24 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         }
     }
     
+    /* Asegurar que el splash sea visible en móvil cuando está en el menú */
+    body.state-menu {
+        #splash-container {
+            display: block !important;
+            z-index: 0 !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+        
+        /* Asegurar que el canvas esté detrás del splash */
+        #gameCanvas {
+            z-index: -1 !important;
+        }
+    }
+    
     /* Editor móvil */
     body.state-editing {
         #mobile-controls,

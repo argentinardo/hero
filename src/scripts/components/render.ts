@@ -1057,12 +1057,23 @@ export const animateSplash = (store: GameStore) => {
     if (!splashContainer) return;
     
     const splashSprite = store.sprites.splash;
-    if (!splashSprite || splashSprite.complete === false) return;
     
-    // Configurar background-image solo una vez
-    if (!splashContainer.style.backgroundImage) {
-        splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+    // Intentar establecer la imagen de fondo incluso si el sprite aún no está completamente cargado
+    // Esto asegura que la imagen aparezca tan pronto como sea posible
+    if (splashSprite) {
+        // Si el sprite existe, usar su src (funciona incluso si aún no está completamente cargado)
+        if (!splashContainer.style.backgroundImage || !splashContainer.dataset.imageSet) {
+            splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+            splashContainer.dataset.imageSet = 'true';
+        }
+    } else {
+        // Si el sprite no existe aún, esperar a que se cargue
+        // No establecer background-image aquí ya que el sprite se cargará pronto
+        return;
     }
+    
+    // Continuar con la animación incluso si el sprite aún se está cargando
+    // La imagen aparecerá cuando el navegador termine de cargarla
     
     const totalFrames = 20; // Tira horizontal de 20 frames
     const fps = 8;

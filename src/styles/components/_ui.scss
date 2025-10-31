@@ -511,7 +511,7 @@ body {
     background-position: 0% 0%;
     image-rendering: pixelated;
     -webkit-image-rendering: pixelated;
-    z-index: 1;
+    z-index: 0; /* Detrás del message-overlay pero por encima del canvas */
     display: none; /* Oculto por defecto, se muestra en el menú */
     
     /* NO aplicar scanline al splash del menú - removido a petición */
@@ -519,6 +519,17 @@ body {
 
 /* Ocultar game-ui y credit-bar cuando está en el menú para que no se vean sobre el splash */
 body.state-menu {
+    /* Asegurar que el splash sea visible */
+    #splash-container {
+        display: block !important;
+        z-index: 0 !important;
+    }
+    
+    /* Asegurar que el canvas esté detrás del splash */
+    #gameCanvas {
+        z-index: -1 !important;
+    }
+    
     #game-ui,
     #credit-bar {
         display: none !important;

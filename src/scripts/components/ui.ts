@@ -199,6 +199,13 @@ export const showMenu = (store: GameStore) => {
     const splashContainer = document.getElementById('splash-container');
     if (splashContainer) {
         splashContainer.style.display = 'block';
+        // Asegurar que la imagen de fondo se establezca cuando se muestra el menú
+        const splashSprite = store.sprites.splash;
+        if (splashSprite && splashSprite.src) {
+            if (!splashContainer.style.backgroundImage) {
+                splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+            }
+        }
     }
     if (messageOverlay) {
         messageOverlay.style.display = 'flex';
