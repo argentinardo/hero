@@ -5,9 +5,23 @@ import { playToyBounce, playBrickBounce } from './audio';
 // Velocidad máxima de caída para enemigos muertos (alcanzada después de 1 segundo)
 const MAX_FALL_VELOCITY = 10; // Velocidad de caída más lenta y controlada
 
+// Detectar mobile para optimizaciones
+const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+};
+
 export const updateParticles = (store: GameStore) => {
     // Si está pausado, no actualizar partículas
     if (store.isPaused) return;
+    
+    const isMobile = isMobileDevice();
+    const maxParticles = isMobile ? 50 : 200; // Limitar partículas en mobile
+    
+    // Eliminar partículas excedentes (las más viejas)
+    if (store.particles.length > maxParticles) {
+        store.particles = store.particles.slice(-maxParticles);
+    }
     
     for (let i = store.particles.length - 1; i >= 0; i--) {
         const particle = store.particles[i];

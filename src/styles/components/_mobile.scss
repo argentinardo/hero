@@ -323,6 +323,11 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         .canvas-wrapper {
             background-image: none !important;
         }
+        
+        /* Asegurar que #mobile-controls no muestre skins en el editor */
+        #mobile-controls {
+            background-image: none !important;
+        }
     }
 
     /* Controles móviles */

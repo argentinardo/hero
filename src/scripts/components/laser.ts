@@ -217,7 +217,10 @@ export const updateLasers = (store: GameStore) => {
                 enemy.vy = -8; // Velocidad hacia arriba para el salto
                 enemy.vx = 0; // Sin movimiento horizontal
                 // No eliminar inmediatamente, dejar que se muestre el frame de muerte y caiga
-                emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15, 'white');
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                                 (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+                const particleCount = isMobile ? 5 : 15;
+                emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, particleCount, 'white');
                 // Puntos por matar tentáculo
                 const points = 100;
                 const text = `+${points}`;
@@ -229,7 +232,10 @@ export const updateLasers = (store: GameStore) => {
             }
             
             // Comportamiento normal para otros enemigos
-            emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15, 'white');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                             (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+            const particleCount = isMobile ? 5 : 15;
+            emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, particleCount, 'white');
             store.fallingEntities.push({
                 x: enemy.x,
                 y: enemy.y,

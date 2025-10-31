@@ -1358,23 +1358,96 @@ export const setupUI = (store: GameStore) => {
 
 // Cargar niveles personalizados del usuario si está autenticado
 const tryLoadUserLevels = async (store: GameStore) => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (!isLoggedIn) {
+        // Intentar cargar desde localStorage como respaldo
+        const savedLevels = localStorage.getItem('userLevels');
+        if (savedLevels) {
+            try {
+                const data = JSON.parse(savedLevels);
+                if (data && data.levels && Array.isArray(data.levels)) {
+                    store.levelDataStore = data.levels.map((lvl: any) => 
+                        typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : lvl
+                    ) as string[][][];
+                    store.levelDesigns = data.levels.map((lvl: any) => 
+                        typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+                    ) as string[][];
+                    syncLevelSelector(store);
+                    console.log('Niveles cargados desde localStorage');
+                }
+            } catch (e) {
+                console.error('Error cargando niveles desde localStorage:', e);
+            }
+        }
+        return;
+    }
+
     try {
         const ni: any = (window as any).netlifyIdentity;
         const user = ni?.currentUser?.();
-        if (!user) return;
-        const token = await user.jwt();
-        const res = await fetch('/.netlify/functions/levels', {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (Array.isArray(data?.levels)) {
-            // data.levels es array de niveles (array de strings por fila)
-            store.levelDataStore = data.levels.map((lvl: string[]) => lvl.map((row: string) => row.split('')));
-            store.initialLevels = JSON.parse(JSON.stringify(store.levelDataStore));
-            syncLevelSelector(store);
+        if (!user) {
+            console.warn('Usuario no encontrado en Netlify Identity');
+            return;
         }
-    } catch {}
+        
+        let token: string | null = null;
+        try {
+            token = await user.jwt();
+        } catch (error) {
+            console.error('Error obteniendo token:', error);
+            return;
+        }
+
+        if (!token) {
+            console.warn('No se pudo obtener el token JWT');
+            return;
+        }
+
+        const res = await fetch('/.netlify/functions/levels', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+        });
+        
+        if (!res.ok) {
+            console.error('Error cargando niveles:', res.status, res.statusText);
+            return;
+        }
+        
+        const data = await res.json();
+        
+        // El payload guardado puede tener formato chunked o legacy
+        let levelsToLoad: string[][] = [];
+        
+        if (data && data.format === 'chunks20x18' && Array.isArray(data.levels)) {
+            // Formato chunked - expandir
+            const { expandChunkedLevels } = await import('../utils/levels');
+            levelsToLoad = expandChunkedLevels(data);
+        } else if (data && data.levels && Array.isArray(data.levels)) {
+            // Legacy format - niveles como array de strings
+            levelsToLoad = data.levels.map((lvl: any) => 
+                typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+            ) as string[][];
+        } else if (Array.isArray(data)) {
+            // Formato directo array
+            levelsToLoad = data.map((lvl: any) => 
+                typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+            ) as string[][];
+        }
+        
+        if (levelsToLoad.length > 0) {
+            store.levelDataStore = levelsToLoad.map((lvl: string[]) => 
+                typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : (lvl as any)
+            ) as string[][][];
+            store.levelDesigns = JSON.parse(JSON.stringify(levelsToLoad));
+            store.initialLevels = JSON.parse(JSON.stringify(levelsToLoad));
+            syncLevelSelector(store);
+            console.log('Niveles cargados desde la cuenta del usuario');
+        }
+    } catch (error) {
+        console.error('Error cargando niveles del usuario:', error);
+    }
 };
 
 const setupHamburgerMenu = (
@@ -2174,6 +2247,13 @@ const setupLevelData = (store: GameStore) => {
     backToMenuBtn?.addEventListener('click', () => showMenu(store));
 
     const saveAllLevelsToFile = async () => {
+        // Verificar si el usuario está logueado
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) {
+            showNotification(store, '❌ Error', 'Debes estar logueado para guardar los niveles.');
+            return;
+        }
+
         // Limpiar todos los niveles eliminando filas y columnas vacías
         const cleanedLevels = store.levelDataStore.map(level => purgeEmptyRowsAndColumns(level));
         const levelsAsStrings = cleanedLevels.map(level => level.map(row => row.join('')));
@@ -2181,7 +2261,24 @@ const setupLevelData = (store: GameStore) => {
 
         const ni: any = (window as any).netlifyIdentity;
         const user = ni?.currentUser?.();
-        const token = user ? await user.jwt() : null;
+        let token: string | null = null;
+        
+        // Obtener el token JWT del usuario
+        if (user) {
+            try {
+                token = await user.jwt();
+            } catch (error) {
+                console.error('Error obteniendo token:', error);
+            }
+        }
+
+        // Si no hay Netlify Identity pero hay usuario en localStorage, usar método alternativo
+        if (!token && isLoggedIn) {
+            // Intentar guardar en localStorage como respaldo
+            localStorage.setItem('userLevels', JSON.stringify(payload));
+            showNotification(store, '💾 Guardado Local', 'Niveles guardados localmente.\nNota: Inicia sesión con Netlify Identity para guardar en la nube.');
+            return;
+        }
 
         const downloadFallback = () => {
             const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
@@ -2207,13 +2304,25 @@ const setupLevelData = (store: GameStore) => {
                 body: JSON.stringify(payload),
             });
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
 
-            showNotification(store, '💾 Guardado Exitoso', '¡Tus niveles se han guardado en tu cuenta!');
+            const result = await response.json();
+            if (result.ok) {
+                showNotification(store, '💾 Guardado Exitoso', '¡Tus niveles se han guardado en tu cuenta!');
+            } else {
+                throw new Error(result.error || 'Error desconocido');
+            }
             ensureEditorVisible(store);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving levels:', error);
-            downloadFallback();
+            if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+                showNotification(store, '❌ No Autorizado', 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+            } else {
+                downloadFallback();
+            }
         }
     };
 

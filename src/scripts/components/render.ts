@@ -532,10 +532,21 @@ const drawExplosions = (store: GameStore) => {
     });
 };
 
+// Detectar mobile para optimizaciones
+const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+};
+
 const drawParticles = (store: GameStore) => {
     const ctx = store.dom.ctx;
     if (!ctx) return;
-    store.particles.forEach(p => {
+    
+    // Limitar partículas visibles en mobile
+    const maxParticles = isMobileDevice() ? 30 : store.particles.length;
+    const particlesToDraw = store.particles.slice(0, maxParticles);
+    
+    particlesToDraw.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.life / 60;
         ctx.fillRect(p.x, p.y, p.size, p.size);
@@ -563,11 +574,29 @@ const drawFloatingScores = (store: GameStore) => {
     });
 };
 
+// Cache para evitar actualizaciones innecesarias del HUD
+let hudCache = {
+    lives: -1,
+    bombs: -1,
+    score: -1,
+    level: -1,
+    energy: -1,
+};
+
 const drawHud = (store: GameStore) => {
     const { livesCountEl, scoreCountEl, levelCountEl, energyBarEl } = store.dom.ui;
     
-    // Dibujar vidas como miniaturas usando hero-success
-    if (livesCountEl) {
+    const isMobile = isMobileDevice();
+    // Actualizar HUD menos frecuentemente en mobile
+    const shouldUpdate = !isMobile || (hudCache.score !== store.score || hudCache.lives !== store.lives || 
+                                      hudCache.bombs !== store.bombsRemaining || hudCache.level !== store.currentLevelIndex);
+    
+    if (!shouldUpdate && hudCache.energy === store.energy) {
+        return; // Saltar actualización si no ha cambiado nada
+    }
+    
+    // Dibujar vidas como miniaturas usando hero-success (solo si cambió)
+    if (livesCountEl && (hudCache.lives !== store.lives || !livesCountEl.hasChildNodes())) {
         livesCountEl.innerHTML = '';
         const heroSuccessSprite = store.sprites['P_success'];
         const isMobileLandscape = window.matchMedia('(max-width: 1024px) and (orientation: landscape)').matches || window.matchMedia('(max-width: 768px) and (orientation: landscape)').matches;
@@ -623,11 +652,12 @@ const drawHud = (store: GameStore) => {
                 }
             }
         }
+        hudCache.lives = store.lives;
     }
     
-    // Dibujar bombas TNT como miniaturas
+    // Dibujar bombas TNT como miniaturas (solo si cambió)
     const bombsCountEl = document.getElementById('bombs-count');
-    if (bombsCountEl) {
+    if (bombsCountEl && (hudCache.bombs !== store.bombsRemaining || !bombsCountEl.hasChildNodes())) {
         bombsCountEl.innerHTML = '';
         const bombSprite = store.sprites.bomb;
         const maxBombs = 5; // Número máximo de TNT a mostrar
@@ -654,18 +684,31 @@ const drawHud = (store: GameStore) => {
                 bombsCountEl.appendChild(span);
             }
         }
+        hudCache.bombs = store.bombsRemaining;
     }
     
-    if (scoreCountEl) scoreCountEl.textContent = `${store.score}`;
-    if (levelCountEl) levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+    if (scoreCountEl && hudCache.score !== store.score) {
+        scoreCountEl.textContent = `${store.score}`;
+        hudCache.score = store.score;
+    }
+    if (levelCountEl && hudCache.level !== store.currentLevelIndex) {
+        levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+        hudCache.level = store.currentLevelIndex;
+    }
     if (energyBarEl) {
-        const { updateEnergyBarColor } = require('./ui');
         // Durante la secuencia de fin de nivel, usar la energía virtual para el drenaje visual
         // Si estamos en cualquier fase del fin de nivel y hay energía virtual, usarla
         const displayEnergy = (store.levelEndSequence && store.virtualEnergyDrain !== null && store.virtualEnergyDrain !== undefined)
             ? store.virtualEnergyDrain 
             : store.energy;
-        updateEnergyBarColor(energyBarEl, displayEnergy, MAX_ENERGY);
+        
+        // Solo actualizar si la energía cambió significativamente (ahorra renderizado en mobile)
+        const energyDiff = Math.abs(displayEnergy - (hudCache.energy || 0));
+        if (energyDiff >= (isMobile ? 2 : 0.5) || hudCache.energy === -1) {
+            const { updateEnergyBarColor } = require('./ui');
+            updateEnergyBarColor(energyBarEl, displayEnergy, MAX_ENERGY);
+            hudCache.energy = displayEnergy;
+        }
     }
 };
 
@@ -673,6 +716,12 @@ const drawGameWorld = (store: GameStore) => {
     const ctx = store.dom.ctx;
     const canvas = store.dom.canvas;
     if (!ctx || !canvas) return;
+    
+    // Optimizar canvas en mobile: reducir calidad de renderizado
+    const isMobileDeviceFlag = isMobileDevice();
+    if (isMobileDeviceFlag) {
+        ctx.imageSmoothingEnabled = false;
+    }
 
     // Calcular área visible para culling
     const viewLeft = store.cameraX;
@@ -724,11 +773,19 @@ const drawGameWorld = (store: GameStore) => {
         ctx.save();
         ctx.translate(-parallaxCameraX, -parallaxCameraY);
         
-        for (let y = 0; y < numTilesY; y++) {
-            for (let x = 0; x < numTilesX; x++) {
+        // Optimizar dibujo del fondo en mobile: dibujar tiles más espaciados
+        const tileStep = isMobileDeviceFlag ? 2 : 1; // Saltar tiles en mobile para mejor rendimiento
+        
+        for (let y = 0; y < numTilesY; y += tileStep) {
+            for (let x = 0; x < numTilesX; x += tileStep) {
                 const tileX = startX + x * TILE_SIZE;
                 const tileY = startY + y * TILE_SIZE;
-                ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
+                // Dibujar tile más grande en mobile para cubrir espacios
+                if (isMobileDeviceFlag) {
+                    ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE * tileStep, TILE_SIZE * tileStep);
+                } else {
+                    ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
+                }
             }
         }
         
@@ -743,7 +800,9 @@ const drawGameWorld = (store: GameStore) => {
     ctx.translate(-store.cameraX, -store.cameraY);
 
     // Dibujar luces primero (solo las visibles)
-    store.lights.forEach(light => {
+    // En mobile, limitar número de luces dibujadas para mejor rendimiento
+    const lightsToDraw = isMobileDeviceFlag ? store.lights.slice(0, 10) : store.lights;
+    lightsToDraw.forEach(light => {
         if (light.x + light.width >= viewLeft - margin && light.x <= viewRight + margin &&
             light.y + light.height >= viewTop - margin && light.y <= viewBottom + margin) {
             drawLight(store, light);
@@ -881,13 +940,22 @@ const drawGameWorld = (store: GameStore) => {
         }
         
         // Después del degradé oscuro, dibujar enemigos afectados en gris (encima de la sombra)
-        ctx.save();
-        ctx.filter = 'grayscale(100%) brightness(0.9)';
-        affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
-        affectedVipers.forEach(enemy => {
-            drawEnemy(store, enemy);
-        });
-        ctx.restore();
+        // En mobile, simplificar el filtro para mejor rendimiento
+        if (!isMobileDeviceFlag) {
+            ctx.save();
+            ctx.filter = 'grayscale(100%) brightness(0.9)';
+            affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
+            affectedVipers.forEach(enemy => {
+                drawEnemy(store, enemy);
+            });
+            ctx.restore();
+        } else {
+            // En mobile, dibujar sin filtro para mejor rendimiento
+            affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
+            affectedVipers.forEach(enemy => {
+                drawEnemy(store, enemy);
+            });
+        }
         
         // Dibujar paredes de víboras afectadas siempre en negro
         ctx.save();

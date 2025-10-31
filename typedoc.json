@@ -1,0 +1,25 @@
+{
+  "entryPointStrategy": "expand",
+  "entryPoints": ["src/scripts/**/*.ts"],
+  "out": "docs",
+  "name": "H.E.R.O. - Documentación Técnica",
+  "includeVersion": true,
+  "readme": "README.md",
+  "exclude": [
+    "**/*.test.ts",
+    "**/node_modules/**",
+    "**/dist/**"
+  ],
+  "excludePrivate": false,
+  "excludeProtected": false,
+  "excludeInternal": false,
+  "theme": "default",
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Core",
+    "Components",
+    "Utils",
+    "Solid"
+  ]
+}
+

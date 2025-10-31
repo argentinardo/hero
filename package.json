@@ -11,7 +11,9 @@
     "dev": "webpack serve",
     "cap:add:android": "npx cap add android",
     "cap:sync": "npx cap sync",
-    "cap:open:android": "npx cap open android"
+    "cap:open:android": "npx cap open android",
+    "docs:generate": "typedoc --out docs src/scripts",
+    "docs:serve": "npm run docs:generate && npx http-server docs -p 8081 -o"
   },
   "keywords": [],
   "author": "",
@@ -28,15 +30,17 @@
     "sass-loader": "^16.0.5",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.4",
+    "typedoc": "^0.28.14",
+    "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.0.0",
     "webpack": "^5.101.3",
     "webpack-cli": "^6.0.1",
     "webpack-dev-server": "^5.2.2"
   },
   "dependencies": {
-    "nipplejs": "^0.10.2",
+    "@neondatabase/serverless": "^0.9.3",
     "@netlify/blobs": "^6.5.0",
     "@netlify/neon": "0.1.0",
-    "@neondatabase/serverless": "^0.9.3"
+    "nipplejs": "^0.10.2"
   }
 }

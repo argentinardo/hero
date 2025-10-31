@@ -65,7 +65,37 @@ npm run build:android
 
 ## 📖 Documentación Completa
 
-Ver [BUILD_GUIDE.md](BUILD_GUIDE.md) para instrucciones detalladas de compilación.
+### Documentación Técnica
+- **[ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md)** - Decisiones arquitectónicas y justificaciones técnicas
+- **[SOLID_REFACTORING.md](./SOLID_REFACTORING.md)** - Principios SOLID aplicados al proyecto
+- **[BUILD_GUIDE.md](./BUILD_GUIDE.md)** - Instrucciones detalladas de compilación
+
+### Documentación SOLID
+- **[src/scripts/solid/README.md](./src/scripts/solid/README.md)** - Arquitectura SOLID implementada
+- **[src/scripts/solid/ARCHITECTURE.md](./src/scripts/solid/ARCHITECTURE.md)** - Arquitectura detallada
+- **[src/scripts/solid/DESIGN_PATTERNS.md](./src/scripts/solid/DESIGN_PATTERNS.md)** - Patrones de diseño utilizados
+
+## 🏗️ Arquitectura
+
+### Principios de Diseño Aplicados
+
+Este proyecto aplica los principios SOLID de ingeniería de software:
+
+- **S (Single Responsibility)**: Cada componente tiene una responsabilidad única
+- **O (Open/Closed)**: Sistema extensible sin modificar código existente
+- **L (Liskov Substitution)**: Interfaces consistentes para todas las entidades
+- **I (Interface Segregation)**: Interfaces específicas por funcionalidad
+- **D (Dependency Inversion)**: Dependencias de abstracciones, no implementaciones
+
+### Decisiones Técnicas Clave
+
+1. **Estado Global Centralizado**: `GameStore` como única fuente de verdad
+2. **TypeScript Estricto**: Tipado completo para mayor seguridad y documentación
+3. **Canvas API Nativo**: Sin librerías pesadas para mejor control y performance
+4. **Lazy Loading**: Carga diferida de módulos y assets no críticos
+5. **Frame Rate Adaptativo**: 30 FPS en móvil, 60 FPS en desktop
+
+Para más detalles, ver [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md).
 
 ## 🎮 Controles
 

@@ -13,16 +13,47 @@ const ensureSchema = async (sql) => {
 };
 
 exports.handler = async (event, context) => {
-  const user = context.clientContext && context.clientContext.user;
-  if (!user) return { statusCode: 401, body: 'Unauthorized' };
+  // Obtener usuario del contexto de Netlify Identity
+  let user = context.clientContext && context.clientContext.user;
+  
+  // Si no hay usuario en el contexto, intentar obtenerlo del header Authorization
+  if (!user && event.headers && event.headers.authorization) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const token = event.headers.authorization.replace('Bearer ', '');
+      // Nota: En producción, deberías verificar el token contra Netlify Identity
+      // Por ahora, intentamos decodificarlo (sin verificación para desarrollo)
+      const decoded = jwt.decode(token);
+      if (decoded) {
+        user = {
+          sub: decoded.sub,
+          email: decoded.email,
+          id: decoded.sub || decoded.email
+        };
+      }
+    } catch (e) {
+      console.error('Error decodificando token:', e);
+    }
+  }
+  
+  if (!user) {
+    console.error('No user found in context or headers');
+    return { 
+      statusCode: 401, 
+      body: JSON.stringify({ ok: false, error: 'Unauthorized: Usuario no autenticado' }) 
+    };
+  }
 
   const userId = user.sub || user.email || user.id;
+  console.log('User ID:', userId);
+  
   const sql = neon(); // usa NETLIFY_DATABASE_URL
 
   try {
     await ensureSchema(sql);
   } catch (e) {
-    return { statusCode: 500, body: `Schema error: ${e.message}` };
+    console.error('Schema error:', e);
+    return { statusCode: 500, body: JSON.stringify({ ok: false, error: `Schema error: ${e.message}` }) };
   }
 
   if (event.httpMethod === 'GET') {

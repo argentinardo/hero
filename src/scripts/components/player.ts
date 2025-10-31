@@ -1,3 +1,35 @@
+/**
+ * Lógica del jugador del juego H.E.R.O.
+ * 
+ * PRINCIPIOS SOLID APLICADOS:
+ * 
+ * **Single Responsibility Principle (SRP)**:
+ * - Este módulo es responsable ÚNICAMENTE de la lógica del jugador:
+ *   * Manejo de input del jugador (handlePlayerInput)
+ *   * Física y movimiento del jugador (updatePlayer)
+ *   * Animaciones del jugador
+ *   * Colisiones del jugador con el entorno
+ *   * Muerte y respawn del jugador
+ * 
+ * **Open/Closed Principle (OCP)**:
+ * - Funciones extensibles mediante parámetros (store: GameStore)
+ * - Fácil agregar nuevas mecánicas (ej: agua, sumersión) sin modificar funciones existentes
+ * 
+ * **Liskov Substitution Principle (LSP)**:
+ * - Player implementa GameObject interface (compatible con funciones genéricas de colisión)
+ * - Consistente con otras entidades del juego (Enemy, Wall, etc.)
+ * 
+ * MEJORA FUTURA (implementada en src/scripts/solid/):
+ * - Separar responsabilidades en clases especializadas:
+ *   * PlayerInputHandler (input)
+ *   * PlayerPhysics (física)
+ *   * PlayerCollisionResolver (colisiones)
+ *   * PlayerAnimator (animaciones)
+ * 
+ * @see ARCHITECTURE_DECISIONS.md - Para más detalles sobre decisiones técnicas
+ * @see src/scripts/solid/entities/Player/ - Versión refactorizada siguiendo SOLID completo
+ */
+
 import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER_SPEED, MAX_ENERGY, BOMB_FUSE } from '../core/constants';
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall, Platform } from '../core/types';
@@ -391,7 +423,17 @@ export const handlePlayerInput = (store: GameStore) => {
 };
 
 export const emitParticles = (store: GameStore, x: number, y: number, count: number, color: string) => {
-    for (let i = 0; i < count; i++) {
+    // Detectar mobile y reducir partículas generadas
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+    const actualCount = isMobile ? Math.floor(count * 0.5) : count; // Reducir a la mitad en mobile
+    
+    // Limitar total de partículas en mobile
+    const maxParticles = isMobile ? 50 : 200;
+    const availableSlots = Math.max(0, maxParticles - store.particles.length);
+    const finalCount = Math.min(actualCount, availableSlots);
+    
+    for (let i = 0; i < finalCount; i++) {
         store.particles.push({
             x,
             y,
@@ -656,7 +698,10 @@ const updateFlightState = (store: GameStore) => {
         const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
         const jetX = player.x + baseOffsetX;
         const jetY = player.y + player.height - 42;
-        emitParticles(store, jetX, jetY, 15, 'yellow');
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        const jetParticleCount = isMobile ? 5 : 15; // Menos partículas en mobile
+        emitParticles(store, jetX, jetY, jetParticleCount, 'yellow');
         
         // Reproducir sonido de jetpack
         playJetpackSound();
@@ -853,8 +898,11 @@ export const updatePlayer = (store: GameStore) => {
         // Actualizar hitbox (el waveOffset se aplicará solo en el renderizado)
         player.hitbox.y = player.y;
         
-        // Generar partículas de chispas del propulsor (menos intensas)
-        if (Math.random() < 0.15) { // 15% de probabilidad por frame
+        // Generar partículas de chispas del propulsor (menos intensas en mobile)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                        (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        const particleChance = isMobile ? 0.05 : 0.15; // Menos partículas en mobile
+        if (Math.random() < particleChance) {
             store.particles.push({
                 x: player.x + player.width / 2 + (Math.random() - 0.5) * 10,
                 y: player.y + player.height - 5,

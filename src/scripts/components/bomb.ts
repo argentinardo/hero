@@ -244,7 +244,10 @@ export const updateBombs = (store: GameStore) => {
         const centerY = bomb.y + bomb.height / 2;
         
         createExplosion(store, bomb.x, bomb.y);
-        emitParticles(store, centerX, centerY, 30, 'white');
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        const explosionParticleCount = isMobile ? 10 : 30; // Menos partículas en mobile
+        emitParticles(store, centerX, centerY, explosionParticleCount, 'white');
         // Vibración al explotar bomba (patrón corto)
         vibrate([30, 50, 30]);
         const explosionRadius = 100;

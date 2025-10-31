@@ -20,8 +20,8 @@ body {
     width: min(100vw, calc(100vh * 4 / 3));
     height: 100vh;
     margin: 0 auto;
-    /* Fondos laterales: skins específicos izquierda/derecha */
-    background-image: url('../assets/sprites/skin-left.png'), url('../assets/sprites/skin-right.png');
+    /* Fondos laterales: skins específicos izquierda/derecha - solo en mobile cuando está jugando */
+    background-image: none;
     background-repeat: no-repeat, no-repeat;
     background-position: left center, right center;
     background-size: contain, contain;
@@ -329,6 +329,20 @@ body {
     -webkit-image-rendering: pixelated;
     z-index: 1;
     display: none; /* Oculto por defecto, se muestra en el menú */
+    
+    /* Efecto CRT Scanlines - ocupa 100% del ancho */
+    &::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.3) 0px, rgba(0, 0, 0, 0.4) 2px, transparent 2px, transparent 4px);
+        pointer-events: none;
+        z-index: 10;
+        mix-blend-mode: overlay;
+    }
 }
 
 /* Ocultar game-ui y credit-bar cuando está en el menú para que no se vean sobre el splash */

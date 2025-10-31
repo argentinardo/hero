@@ -1,3 +1,32 @@
+/**
+ * Gestión de niveles del juego H.E.R.O.
+ * 
+ * PRINCIPIOS SOLID APLICADOS:
+ * 
+ * **Single Responsibility Principle (SRP)**:
+ * - Este módulo es responsable ÚNICAMENTE de la gestión de niveles:
+ *   * Carga de niveles (loadLevel)
+ *   * Parsing de datos de nivel (parseLevel)
+ *   * Creación de entidades del nivel (createWall, createEnemy)
+ *   * Gestión de fin de nivel (awardMinerRescue, checkLevelComplete)
+ * 
+ * **Open/Closed Principle (OCP)**:
+ * - createWall y createEnemy son extensibles mediante switch statements
+ * - Para agregar nuevos tipos de tiles o enemigos, solo se agregan nuevos cases
+ * - No requiere modificar funciones existentes
+ * 
+ * **Liskov Substitution Principle (LSP)**:
+ * - createWall retorna Wall que es compatible con GameObject
+ * - createEnemy retorna Enemy que es compatible con GameObject
+ * - Todas las entidades son sustituibles en funciones genéricas de colisión y renderizado
+ * 
+ * EJEMPLO DE EXTENSIBILIDAD (OCP):
+ * Para agregar un nuevo tipo de tile, solo se agrega un nuevo if con la condición
+ * y retorna un objeto con las propiedades específicas del nuevo tipo.
+ * 
+ * @see ARCHITECTURE_DECISIONS.md Para más detalles sobre decisiones técnicas
+ */
+
 import { ANIMATION_DATA, TILE_TYPES } from '../core/assets';
 import { TILE_SIZE, MAX_ENERGY } from '../core/constants';
 import { resetPlayer, emitParticles } from './player';
@@ -5,6 +34,19 @@ import type { Enemy, GameStore, Miner, Wall } from '../core/types';
 import { playSuccessLevelSound, stopAllSfxExceptSuccessLevel, playBackgroundMusic } from './audio';
 import { awardExtraLifeByScore } from './ui';
 
+/**
+ * Crea una pared del juego desde un tile.
+ * 
+ * APLICA OCP (Open/Closed Principle):
+ * - Abierto para extensión: Agregar nuevos tipos de tiles solo requiere nuevo if/switch
+ * - Cerrado para modificación: No requiere modificar lógica existente
+ * 
+ * @param x - Coordenada X en píxeles
+ * @param y - Coordenada Y en píxeles
+ * @param tile - Caracter del tile ('1' = ladrillo, '2' = agua, 'C' = destructible, etc.)
+ * @param store - Estado global del juego
+ * @returns Wall creado con propiedades específicas según el tipo de tile
+ */
 const createWall = (x: number, y: number, tile: string, store: GameStore): Wall => {
     const base: Wall = {
         x,
@@ -432,8 +474,11 @@ export const updateWalls = (store: GameStore) => {
                         const centerX = leftWall.x + leftWall.currentWidth;
                         const centerY = leftWall.y + leftWall.height / 2;
                         
-                        // Generar muchas partículas en el punto de choque
-                        for (let i = 0; i < 15; i++) { // 3 veces más que las 5 normales
+                        // Generar muchas partículas en el punto de choque (menos en mobile)
+                        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                                        (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+                        const particleCount = isMobile ? 5 : 15; // Menos partículas en mobile
+                        for (let i = 0; i < particleCount; i++) {
                             store.particles.push({
                                 x: centerX + (Math.random() - 0.5) * 20,
                                 y: centerY + (Math.random() - 0.5) * 20,

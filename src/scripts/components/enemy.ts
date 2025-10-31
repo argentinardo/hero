@@ -1,3 +1,42 @@
+/**
+ * Lógica de enemigos del juego H.E.R.O.
+ * 
+ * PRINCIPIOS SOLID APLICADOS:
+ * 
+ * **Single Responsibility Principle (SRP)**:
+ * - Este módulo es responsable ÚNICAMENTE de la lógica de enemigos:
+ *   * Actualización de enemigos (updateEnemies)
+ *   * Actualización del minero (updateMiner)
+ *   * Animaciones de enemigos
+ *   * IA básica de enemigos
+ * 
+ * **Open/Closed Principle (OCP)**:
+ * - Sistema extensible: Para agregar un nuevo tipo de enemigo, solo se agrega un nuevo case en el switch
+ * - No requiere modificar funciones existentes (ej: updateBat, updateSpider, etc.)
+ * - Ejemplo: Agregar 'dragon' solo requiere nuevo case, no modificar código existente
+ * 
+ * **Liskov Substitution Principle (LSP)**:
+ * - Todos los enemigos implementan Enemy interface (compatible con funciones genéricas)
+ * - Consistentes en estructura (todos tienen x, y, width, height, type, etc.)
+ * 
+ * EJEMPLO DE EXTENSIBILIDAD (OCP):
+ * ```typescript
+ * case 'dragon': {
+ *     // Nuevo tipo de enemigo sin modificar código existente
+ *     updateDragon(enemy, store);
+ *     break;
+ * }
+ * ```
+ * 
+ * MEJORA FUTURA (implementada en src/scripts/solid/):
+ * - Sistema de enemigos con interfaces segregadas (ISP)
+ * - Factory pattern para creación de enemigos
+ * - Strategy pattern para IA intercambiable
+ * 
+ * @see ARCHITECTURE_DECISIONS.md - Para más detalles sobre decisiones técnicas
+ * @see src/scripts/solid/entities/enemies/ - Versión refactorizada con SOLID completo
+ */
+
 import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
@@ -5,6 +44,15 @@ import { loadLevel } from './level';
 import { awardExtraLifeByScore } from './ui';
 import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound, playTentacleSound } from './audio';
 
+/**
+ * Actualiza todos los enemigos del juego.
+ * 
+ * APLICA OCP (Open/Closed Principle):
+ * - Abierto para extensión: Agregar nuevos tipos de enemigos solo requiere nuevo case
+ * - Cerrado para modificación: No requiere modificar lógica existente
+ * 
+ * @param store - Estado global del juego
+ */
 export const updateEnemies = (store: GameStore) => {
     // Si está pausado, no actualizar enemigos
     if (store.isPaused) return;
