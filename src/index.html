@@ -64,7 +64,6 @@
                 <!-- Barra de créditos (debajo de la barra superior) -->
 
                     <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
-                    <span id="volume-toggle" class="volume-toggle" aria-label="Volumen">SOUND: ON</span>
                     
                     <button id="hamburger-btn" class="hamburger-btn" aria-label="Menú">
                     </button>
@@ -76,6 +75,7 @@
                 <div id="hamburger-menu" class="hamburger-menu hidden">
                     <button id="pause-resume-btn" class="menu-item">Pausar</button>
                     <button id="restart-game-btn" class="menu-item">Reiniciar</button>
+                    <button id="settings-btn" class="menu-item">Configuración</button>
                     <button id="back-to-menu-btn-game" class="menu-item">Volver al Menú</button>
                     <button id="resume-editor-btn-menu" class="menu-item hidden">Volver al Editor</button>
                 </div>
@@ -191,6 +191,7 @@
                 <div class="flex flex-col gap-3">
                     <button id="pause-resume-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Continuar</button>
                     <button id="pause-restart-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white">Reiniciar</button>
+                    <button id="pause-settings-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Configuración</button>
                     <button id="pause-mainmenu-btn" class="bg-red-600 hover:bg-red-700 p-3 border-2 border-white">Volver al menú</button>
                     <button id="pause-credits-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white">Créditos</button>
                     <button id="pause-cancel-btn" class="bg-gray-700 hover:bg-gray-800 p-3 border-2 border-white">Cerrar</button>
@@ -245,6 +246,93 @@
                     — para mi hijo Paolo ❤ con amor
                 </p>
                 <button id="credits-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- Modal de Configuración -->
+        <div id="settings-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
+            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg mx-6 max-h-[90vh] overflow-y-auto">
+                <h2 class="text-2xl mb-6">Configuración</h2>
+                
+                <!-- Sección Audio -->
+                <div class="mb-6 text-left">
+                    <h3 class="text-xl mb-4 border-b-2 border-gray-600 pb-2">Sonido</h3>
+                    
+                    <!-- Volumen Música -->
+                    <div class="mb-4">
+                        <label for="music-volume-slider" class="block mb-2 text-sm">Volumen Música:</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="music-volume-slider" min="0" max="100" value="30" 
+                                   class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                            <span id="music-volume-value" class="text-sm font-bold min-w-[40px]">30%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Volumen Efectos -->
+                    <div class="mb-4">
+                        <label for="sfx-volume-slider" class="block mb-2 text-sm">Volumen Efectos:</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="sfx-volume-slider" min="0" max="100" value="50" 
+                                   class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                            <span id="sfx-volume-value" class="text-sm font-bold min-w-[40px]">50%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Toggle Mute -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="mute-toggle" class="text-sm cursor-pointer flex-1">Sonido:</label>
+                        <input type="checkbox" id="mute-toggle" 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        <span id="mute-status" class="text-sm font-bold ml-2 min-w-[60px] text-left">ON</span>
+                    </div>
+                </div>
+                
+                <!-- Sección Gráficos -->
+                <div class="mb-6 text-left">
+                    <h3 class="text-xl mb-4 border-b-2 border-gray-600 pb-2">Gráficos</h3>
+                    <p class="text-xs text-gray-400 mb-4">Desactiva efectos para mejorar el rendimiento en dispositivos móviles antiguos</p>
+                    
+                    <!-- Scanline -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="scanline-toggle" class="text-sm cursor-pointer flex-1">Scanline (efecto CRT):</label>
+                        <input type="checkbox" id="scanline-toggle" checked 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
+                    
+                    <!-- Glow -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="glow-toggle" class="text-sm cursor-pointer flex-1">Efectos de Glow (brillo):</label>
+                        <input type="checkbox" id="glow-toggle" checked 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
+                    
+                    <!-- Brightness -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="brightness-toggle" class="text-sm cursor-pointer flex-1">Brillo del Canvas:</label>
+                        <input type="checkbox" id="brightness-toggle" checked 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
+                    
+                    <!-- Contrast -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="contrast-toggle" class="text-sm cursor-pointer flex-1">Contraste del Canvas:</label>
+                        <input type="checkbox" id="contrast-toggle" checked 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
+                    
+                    <!-- Vignette -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="vignette-toggle" class="text-sm cursor-pointer flex-1">Vignette (oscurecimiento bordes):</label>
+                        <input type="checkbox" id="vignette-toggle" checked 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
+                </div>
+                
+                <!-- Botones -->
+                <div class="flex justify-center gap-4">
+                    <button id="settings-reset-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white">Restaurar Valores</button>
+                    <button id="settings-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Cerrar</button>
+                </div>
             </div>
         </div>
 

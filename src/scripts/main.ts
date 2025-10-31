@@ -22,6 +22,7 @@ import { loadLevel, updateWalls } from './components/level';
 import { renderGame, renderEditor, animateSplash } from './components/render';
 
 import { initAudio, playBackgroundMusic, loadAdditionalSFX } from './components/audio';
+import { applyGraphicsSettings } from './core/settings';
 
 // Inicializar estado global del juego
 // DECISIÓN ARQUITECTÓNICA: Estado global centralizado facilita comunicación entre componentes
@@ -268,6 +269,9 @@ const gameLoop = (currentTime: number): void => {
 const bootstrap = (): void => {
     setupUI(store);
     initAudio();
+    
+    // Aplicar configuración de gráficos al inicio
+    applyGraphicsSettings(store.settings.graphics);
     
     showMenu(store);
 

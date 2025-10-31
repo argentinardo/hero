@@ -7,7 +7,8 @@ import { buildChunkedFile20x18 } from '../utils/levels';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
-import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState } from './audio';
+import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume } from './audio';
+import { loadSettings, saveSettings, updateSettings, resetSettings, applyGraphicsSettings } from '../core/settings';
 import { 
     undo, 
     redo, 
@@ -92,7 +93,6 @@ export const attachDomReferences = (store: GameStore) => {
     ui.mobileControlsEl = document.getElementById('mobile-controls');
     ui.joystickZoneEl = document.getElementById('joystick-zone');
     ui.actionZoneEl = document.getElementById('action-zone');
-    ui.volumeToggle = document.getElementById('volume-toggle') as HTMLSpanElement | null;
 
     ui.startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     ui.levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
@@ -147,33 +147,20 @@ export const attachDomReferences = (store: GameStore) => {
     // Configurar el menú hamburguesa
     setupHamburgerMenu(store, hamburgerBtn, hamburgerBtnMobile, hamburgerMenu, pauseResumeBtn, restartGameBtn, backToMenuBtnGame, resumeEditorBtnMenu);
     
+    // Configurar modal de configuración
+    setupSettingsModal(store);
+    
     // Ajustar barras UI cuando cambia el tamaño de la ventana
     window.addEventListener('resize', adjustUIBars);
     
-    // Configurar toggle de volumen
-    const volumeToggle = document.getElementById('volume-toggle') as HTMLSpanElement | null;
-    if (volumeToggle) {
-        volumeToggle.addEventListener('click', () => {
-            toggleMute();
-            updateVolumeToggle();
-        });
-        updateVolumeToggle(); // Estado inicial
-    }
+    // Aplicar configuración inicial de gráficos
+    applyGraphicsSettings(store.settings.graphics);
+    
+    // Aplicar configuración inicial de audio
+    setMusicVolume(store.settings.audio.musicVolume);
+    setSFXVolume(store.settings.audio.sfxVolume);
 };
 
-const updateVolumeToggle = () => {
-    const volumeToggle = document.getElementById('volume-toggle') as HTMLSpanElement | null;
-    if (volumeToggle) {
-        const audioState = getAudioState();
-        if (audioState.isMuted) {
-            volumeToggle.textContent = 'SOUND: OFF';
-            volumeToggle.classList.add('muted');
-        } else {
-            volumeToggle.textContent = 'SOUND: ON';
-            volumeToggle.classList.remove('muted');
-        }
-    }
-};
 
 // Función helper para actualizar la barra de energía con colores graduales
 export const updateEnergyBarColor = (energyBarEl: HTMLElement, energy: number, maxEnergy: number = 200) => {
@@ -499,29 +486,6 @@ const startJoystick = (store: GameStore) => {
         });
     }
 
-    if (volumeToggle) {
-        const updateToggle = () => {
-            try {
-                // Lazy require para evitar ciclos
-                const { getAudioState } = require('./audio');
-                const state = getAudioState();
-                volumeToggle.textContent = state.isMuted ? 'SOUND: OFF' : 'SOUND: ON';
-                volumeToggle.classList.toggle('muted', state.isMuted);
-            } catch {}
-        };
-        updateToggle();
-        const toggle = () => {
-            try {
-                const { toggleMute, getAudioState } = require('./audio');
-                toggleMute();
-                const state = getAudioState();
-                volumeToggle.textContent = state.isMuted ? 'SOUND: OFF' : 'SOUND: ON';
-                volumeToggle.classList.toggle('muted', state.isMuted);
-            } catch {}
-        };
-        volumeToggle.addEventListener('touchstart', e => { e.preventDefault(); toggle(); });
-        volumeToggle.addEventListener('click', e => { e.preventDefault(); toggle(); });
-    }
 };
 
 export const startGame = (store: GameStore, levelOverride: string[] | null = null, startIndex?: number, preserveLevels?: boolean) => {
@@ -1450,6 +1414,207 @@ const tryLoadUserLevels = async (store: GameStore) => {
     }
 };
 
+/**
+ * Configura el modal de configuración del juego
+ * 
+ * Maneja:
+ * - Control de volumen de música y efectos
+ * - Configuración de efectos gráficos (scanline, glow, brightness, contrast, vignette)
+ * - Persistencia en localStorage
+ * 
+ * @param store - Estado global del juego
+ */
+const setupSettingsModal = (store: GameStore) => {
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsCloseBtn = document.getElementById('settings-close-btn') as HTMLButtonElement | null;
+    const settingsResetBtn = document.getElementById('settings-reset-btn') as HTMLButtonElement | null;
+    
+    // Sliders de volumen
+    const musicVolumeSlider = document.getElementById('music-volume-slider') as HTMLInputElement | null;
+    const sfxVolumeSlider = document.getElementById('sfx-volume-slider') as HTMLInputElement | null;
+    const musicVolumeValue = document.getElementById('music-volume-value') as HTMLElement | null;
+    const sfxVolumeValue = document.getElementById('sfx-volume-value') as HTMLElement | null;
+    
+    // Toggle de mute
+    const muteToggle = document.getElementById('mute-toggle') as HTMLInputElement | null;
+    const muteStatus = document.getElementById('mute-status') as HTMLElement | null;
+    
+    // Toggles de gráficos
+    const scanlineToggle = document.getElementById('scanline-toggle') as HTMLInputElement | null;
+    const glowToggle = document.getElementById('glow-toggle') as HTMLInputElement | null;
+    const brightnessToggle = document.getElementById('brightness-toggle') as HTMLInputElement | null;
+    const contrastToggle = document.getElementById('contrast-toggle') as HTMLInputElement | null;
+    const vignetteToggle = document.getElementById('vignette-toggle') as HTMLInputElement | null;
+    
+    if (!settingsModal) return;
+    
+    // Cerrar modal
+    const closeModal = () => {
+        settingsModal.classList.add('hidden');
+    };
+    
+    settingsCloseBtn?.addEventListener('click', closeModal);
+    
+    // Cerrar al hacer click fuera del modal
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            closeModal();
+        }
+    });
+    
+    // Resetear configuración
+    settingsResetBtn?.addEventListener('click', () => {
+        const defaultSettings = resetSettings();
+        store.settings = defaultSettings;
+        
+        // Actualizar UI
+        updateSettingsUI(store);
+        
+        // Aplicar cambios
+        applySettings(store);
+    });
+    
+    // Actualizar volumen de música
+    musicVolumeSlider?.addEventListener('input', (e) => {
+        const value = parseInt((e.target as HTMLInputElement).value);
+        if (musicVolumeValue) {
+            musicVolumeValue.textContent = `${value}%`;
+        }
+        
+        const volume = value / 100;
+        store.settings.audio.musicVolume = volume;
+        setMusicVolume(volume);
+        saveSettings(store.settings);
+    });
+    
+    // Actualizar volumen de efectos
+    sfxVolumeSlider?.addEventListener('input', (e) => {
+        const value = parseInt((e.target as HTMLInputElement).value);
+        if (sfxVolumeValue) {
+            sfxVolumeValue.textContent = `${value}%`;
+        }
+        
+        const volume = value / 100;
+        store.settings.audio.sfxVolume = volume;
+        setSFXVolume(volume);
+        saveSettings(store.settings);
+    });
+    
+    // Toggle de mute
+    muteToggle?.addEventListener('change', (e) => {
+        const isMuted = !(e.target as HTMLInputElement).checked; // Checked = ON, !checked = OFF (muted)
+        toggleMute();
+        
+        // Actualizar estado visual
+        if (muteStatus) {
+            const audioState = getAudioState();
+            muteStatus.textContent = audioState.isMuted ? 'OFF' : 'ON';
+        }
+    });
+    
+    // Toggles de gráficos
+    scanlineToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        store.settings.graphics.scanline = enabled;
+        applyGraphicsSettings(store.settings.graphics);
+        saveSettings(store.settings);
+    });
+    
+    glowToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        store.settings.graphics.glow = enabled;
+        applyGraphicsSettings(store.settings.graphics);
+        saveSettings(store.settings);
+    });
+    
+    brightnessToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        store.settings.graphics.brightness = enabled;
+        applyGraphicsSettings(store.settings.graphics);
+        saveSettings(store.settings);
+    });
+    
+    contrastToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        store.settings.graphics.contrast = enabled;
+        applyGraphicsSettings(store.settings.graphics);
+        saveSettings(store.settings);
+    });
+    
+    vignetteToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        store.settings.graphics.vignette = enabled;
+        applyGraphicsSettings(store.settings.graphics);
+        saveSettings(store.settings);
+    });
+};
+
+/**
+ * Actualiza la UI del modal de configuración con los valores actuales
+ */
+const updateSettingsUI = (store: GameStore) => {
+    const musicVolumeSlider = document.getElementById('music-volume-slider') as HTMLInputElement | null;
+    const sfxVolumeSlider = document.getElementById('sfx-volume-slider') as HTMLInputElement | null;
+    const musicVolumeValue = document.getElementById('music-volume-value') as HTMLElement | null;
+    const sfxVolumeValue = document.getElementById('sfx-volume-value') as HTMLElement | null;
+    
+    const muteToggle = document.getElementById('mute-toggle') as HTMLInputElement | null;
+    const muteStatus = document.getElementById('mute-status') as HTMLElement | null;
+    
+    const scanlineToggle = document.getElementById('scanline-toggle') as HTMLInputElement | null;
+    const glowToggle = document.getElementById('glow-toggle') as HTMLInputElement | null;
+    const brightnessToggle = document.getElementById('brightness-toggle') as HTMLInputElement | null;
+    const contrastToggle = document.getElementById('contrast-toggle') as HTMLInputElement | null;
+    const vignetteToggle = document.getElementById('vignette-toggle') as HTMLInputElement | null;
+    
+    // Actualizar sliders de audio
+    const musicVolumePercent = Math.round(store.settings.audio.musicVolume * 100);
+    if (musicVolumeSlider) musicVolumeSlider.value = musicVolumePercent.toString();
+    if (musicVolumeValue) musicVolumeValue.textContent = `${musicVolumePercent}%`;
+    
+    const sfxVolumePercent = Math.round(store.settings.audio.sfxVolume * 100);
+    if (sfxVolumeSlider) sfxVolumeSlider.value = sfxVolumePercent.toString();
+    if (sfxVolumeValue) sfxVolumeValue.textContent = `${sfxVolumePercent}%`;
+    
+    // Actualizar toggle de mute
+    const audioState = getAudioState();
+    if (muteToggle) muteToggle.checked = !audioState.isMuted; // Checked = ON, !checked = OFF
+    if (muteStatus) muteStatus.textContent = audioState.isMuted ? 'OFF' : 'ON';
+    
+    // Actualizar toggles de gráficos
+    if (scanlineToggle) scanlineToggle.checked = store.settings.graphics.scanline;
+    if (glowToggle) glowToggle.checked = store.settings.graphics.glow;
+    if (brightnessToggle) brightnessToggle.checked = store.settings.graphics.brightness;
+    if (contrastToggle) contrastToggle.checked = store.settings.graphics.contrast;
+    if (vignetteToggle) vignetteToggle.checked = store.settings.graphics.vignette;
+};
+
+/**
+ * Abre el modal de configuración y carga los valores actuales
+ */
+const openSettingsModal = (store: GameStore) => {
+    const settingsModal = document.getElementById('settings-modal');
+    if (!settingsModal) return;
+    
+    // Actualizar UI con valores actuales
+    updateSettingsUI(store);
+    
+    // Mostrar modal
+    settingsModal.classList.remove('hidden');
+};
+
+/**
+ * Aplica la configuración actual al juego
+ */
+const applySettings = (store: GameStore) => {
+    // Aplicar configuración de audio
+    setMusicVolume(store.settings.audio.musicVolume);
+    setSFXVolume(store.settings.audio.sfxVolume);
+    
+    // Aplicar configuración de gráficos
+    applyGraphicsSettings(store.settings.graphics);
+};
+
 const setupHamburgerMenu = (
     store: GameStore,
     hamburgerBtn: HTMLButtonElement | null,
@@ -1560,6 +1725,13 @@ const setupHamburgerMenu = (
         
         exitConfirmBtn?.addEventListener('click', confirmHandler);
         exitCancelBtn?.addEventListener('click', cancelHandler);
+    });
+    
+    // Botón de configuración
+    const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement | null;
+    settingsBtn?.addEventListener('click', () => {
+        closeMenu();
+        openSettingsModal(store);
     });
     
     // Botón de volver al menú
@@ -1841,6 +2013,14 @@ const setupMenuButtons = (store: GameStore) => {
         closePauseMenu();
         creditsModal?.classList.remove('hidden');
     });
+    
+    // Botón de configuración en el menú de pausa
+    const pauseSettingsBtn = document.getElementById('pause-settings-btn') as HTMLButtonElement | null;
+    pauseSettingsBtn?.addEventListener('click', () => {
+        closePauseMenu();
+        openSettingsModal(store);
+    });
+    
     pauseCancelBtn?.addEventListener('click', closePauseMenu);
 
     restartBtnDesktop?.addEventListener('click', () => {

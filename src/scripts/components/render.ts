@@ -102,11 +102,13 @@ const drawWall = (store: GameStore, wall: Wall) => {
     if (wall.type === 'crushing') {
         const wallColor = wall.color || '#cc0000';
         
-        // Efecto de brillo (glow) exterior
-        ctx.shadowColor = '#00ffff'; // Color eléctrico azul-cian
-        ctx.shadowBlur = 15;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        // Efecto de brillo (glow) exterior - Solo si está habilitado
+        if (store.settings.graphics.glow) {
+            ctx.shadowColor = '#00ffff'; // Color eléctrico azul-cian
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
         
         // Tint eléctrico con gradiente
         const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y + wall.height);
@@ -143,7 +145,9 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.stroke();
         
         // Resetear efectos
-        ctx.shadowBlur = 0;
+        if (store.settings.graphics.glow) {
+            ctx.shadowBlur = 0;
+        }
         ctx.globalAlpha = 1;
         
         ctx.restore();
@@ -488,11 +492,13 @@ const drawLasers = (store: GameStore) => {
     if (!ctx) return;
     store.lasers.forEach(laser => {
         ctx.save();
-        // Glow exterior
-        ctx.shadowColor = 'rgba(255, 0, 0, 0.95)';
-        ctx.shadowBlur = 18;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+        // Glow exterior - Solo si está habilitado
+        if (store.settings.graphics.glow) {
+            ctx.shadowColor = 'rgba(255, 0, 0, 0.95)';
+            ctx.shadowBlur = 18;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
         // Cuerpo del láser (núcleo brillante)
         const gradient = ctx.createLinearGradient(laser.x, laser.y, laser.x + laser.width, laser.y + laser.height);
         gradient.addColorStop(0, '#ff8080');

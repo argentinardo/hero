@@ -333,5 +333,19 @@ export interface GameStore {
     splashAnimationTick: number;
     splashAnimationDirection: number; // 1 = hacia adelante, -1 = hacia atrás
     dom: DomReferences;
+    // Configuración de audio y gráficos
+    settings: {
+        audio: {
+            musicVolume: number;
+            sfxVolume: number;
+        };
+        graphics: {
+            scanline: boolean;
+            glow: boolean;
+            brightness: boolean;
+            contrast: boolean;
+            vignette: boolean;
+        };
+    };
 }
 

@@ -1,5 +1,6 @@
 import { TILE_SIZE } from './constants';
 import type { GameStore, Player } from './types';
+import { loadSettings } from './settings';
 
 const createInitialPlayer = (): Player => ({
     x: TILE_SIZE * 1.5,
@@ -84,6 +85,7 @@ export const createInitialStore = (): GameStore => ({
     splashAnimationFrame: 0,
     splashAnimationTick: 0,
     splashAnimationDirection: 1,
+    settings: loadSettings(), // Cargar configuración desde localStorage
     dom: {
         canvas: null,
         ctx: null,

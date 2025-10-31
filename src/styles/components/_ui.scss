@@ -26,8 +26,8 @@ body {
     background-position: left center, right center;
     background-size: contain, contain;
 
-    /* Efecto CRT Scanlines */
-    &::after {
+    /* Efecto CRT Scanlines - Solo si está habilitado */
+    &.scanline-enabled::after {
         content: '';
         position: absolute;
         top: 0;
@@ -37,12 +37,12 @@ body {
         background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.3) 0px, rgba(0, 0, 0, 0.4) 2px,transparent 2px,transparent 4px
         );
         pointer-events: none;
-        z-index: 10;
+        z-index: 101; /* Por encima de game-ui (z-index: 100) y credit-bar para que el efecto sea visible */
         mix-blend-mode: overlay;
     }
     
-    /* Efecto Vignette (oscurecimiento en los bordes) */
-    &::before {
+    /* Efecto Vignette (oscurecimiento en los bordes) - Solo si está habilitado */
+    &.vignette-enabled::before {
         content: '';
         position: absolute;
         top: 0;
@@ -69,8 +69,7 @@ body {
     aspect-ratio: 4 / 3;
     margin: 0 auto;
     background-color: #000; /* Fondo negro para las bandas laterales */
-    /* Efecto de brillo sutil tipo CRT */
-    filter: brightness(1.8) contrast(1.1);
+    /* Los efectos de brightness/contrast se aplican dinámicamente via JavaScript */
 }
 
 /* Barra superior - superpuesta sobre el canvas */
@@ -98,6 +97,68 @@ body {
         user-select: none;
         -webkit-user-select: none;
         cursor: default;
+    }
+    
+    /* Efecto glow estilo terminal para textos de UI - Solo cuando glow está habilitado */
+    &.glow-enabled {
+        /* Aplicar glow a todos los spans con texto de UI */
+        span[class*="text-lg"],
+        span.font-bold,
+        .volume-toggle {
+            color: #39ff14 !important; /* Verde fosforescente estilo terminal */
+            text-shadow: 
+                0 0 3px #39ff14,
+                0 0 6px #39ff14 !important;
+            filter: brightness(1.1);
+            
+            /* Efecto scanline sobre los textos cuando está habilitado */
+            position: relative;
+            
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.15) 1px,
+                    rgba(0, 0, 0, 0.15) 2px
+                );
+                pointer-events: none;
+                mix-blend-mode: overlay;
+            }
+        }
+    }
+    
+    /* Efecto scanline para los textos cuando scanline está habilitado */
+    &.scanline-enabled {
+        span[class*="text-lg"],
+        span.font-bold,
+        .volume-toggle {
+            position: relative;
+            
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.15) 1px,
+                    rgba(0, 0, 0, 0.15) 2px
+                );
+                pointer-events: none;
+                mix-blend-mode: overlay;
+            }
+        }
     }
     
     /* Logo del hero */
@@ -177,6 +238,66 @@ body {
         -webkit-user-select: none;
         cursor: default;
     }
+    
+    /* Efecto glow estilo terminal para textos de UI - Solo cuando glow está habilitado */
+    &.glow-enabled {
+        /* Aplicar glow a todos los spans con texto de UI (LIVES, POWER, TNT) */
+        span[class*="text-lg"],
+        span.font-bold {
+            color: #39ff14 !important; /* Verde fosforescente estilo terminal */
+            text-shadow: 
+                0 0 3px #39ff14,
+                0 0 6px #39ff14 !important;
+            filter: brightness(1.1);
+            
+            /* Efecto scanline sobre los textos cuando está habilitado */
+            position: relative;
+            
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.15) 1px,
+                    rgba(0, 0, 0, 0.15) 2px
+                );
+                pointer-events: none;
+                mix-blend-mode: overlay;
+            }
+        }
+    }
+    
+    /* Efecto scanline para los textos cuando scanline está habilitado */
+    &.scanline-enabled {
+        span[class*="text-lg"],
+        span.font-bold {
+            position: relative;
+            
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.15) 1px,
+                    rgba(0, 0, 0, 0.15) 2px
+                );
+                pointer-events: none;
+                mix-blend-mode: overlay;
+            }
+        }
+    }
 }
 
 /* Panel del editor - drawer derecho con transición */
@@ -255,6 +376,69 @@ body {
         content: "Cerrar ✕";
         font-size: 18px;
     }
+    
+    /* Efecto glow estilo terminal - Solo cuando glow está habilitado */
+    body.glow-enabled &,
+    .glow-enabled & {
+        color: #39ff14; /* Verde fosforescente estilo terminal */
+        text-shadow: 
+            0 0 3px #39ff14,
+            0 0 6px #39ff14;
+        filter: brightness(1.1);
+        
+        &::before {
+            color: #39ff14;
+            text-shadow: 
+                0 0 3px #39ff14,
+                0 0 6px #39ff14;
+            position: relative;
+            
+            /* Efecto scanline sobre el texto del botón cuando está habilitado */
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.15) 1px,
+                    rgba(0, 0, 0, 0.15) 2px
+                );
+                pointer-events: none;
+                mix-blend-mode: overlay;
+            }
+        }
+    }
+    
+    /* Efecto scanline para el botón hamburguesa cuando scanline está habilitado */
+    body.scanline-enabled &,
+    .scanline-enabled & {
+        &::before {
+            position: relative;
+            
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 1px,
+                    rgba(0, 0, 0, 0.15) 1px,
+                    rgba(0, 0, 0, 0.15) 2px
+                );
+                pointer-events: none;
+                mix-blend-mode: overlay;
+            }
+        }
+    }
 }
 
 .hamburger-btn {
@@ -330,25 +514,28 @@ body {
     z-index: 1;
     display: none; /* Oculto por defecto, se muestra en el menú */
     
-    /* Efecto CRT Scanlines - ocupa 100% del ancho */
-    &::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.3) 0px, rgba(0, 0, 0, 0.4) 2px, transparent 2px, transparent 4px);
-        pointer-events: none;
-        z-index: 10;
-        mix-blend-mode: overlay;
-    }
+    /* NO aplicar scanline al splash del menú - removido a petición */
 }
 
 /* Ocultar game-ui y credit-bar cuando está en el menú para que no se vean sobre el splash */
 body.state-menu {
     #game-ui,
     #credit-bar {
+        display: none !important;
+    }
+    
+    /* Desactivar scanline en el menú inicial - nunca debe mostrarse */
+    .canvas-wrapper.scanline-enabled::after {
+        display: none !important;
+    }
+    
+    /* Desactivar viñeta en el menú inicial - nunca debe mostrarse */
+    .canvas-wrapper.vignette-enabled::before {
+        display: none !important;
+    }
+    
+    /* También desactivar scanline del splash-container */
+    #splash-container::after {
         display: none !important;
     }
 }
