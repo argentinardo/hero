@@ -593,6 +593,12 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     setupEditorState(store);
     bindEditorCanvas(store);
     
+    // Si el usuario está logueado, intentar cargar sus niveles
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+        await tryLoadUserLevels(store);
+    }
+    
     // Actualizar el selector de niveles para mostrar todos los niveles disponibles
     syncLevelSelector(store);
     
@@ -1274,9 +1280,11 @@ export const setupUI = (store: GameStore) => {
                 const username = currentUser.email.split('@')[0];
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('username', username);
+                // Cargar niveles del usuario si ya está logueado
+                tryLoadUserLevels(store);
             }
             
-            const afterAuth = (user: any) => {
+            const afterAuth = async (user: any) => {
                 if (user && user.email) {
                     const username = user.email.split('@')[0];
                     localStorage.setItem('isLoggedIn', 'true');
@@ -1286,6 +1294,8 @@ export const setupUI = (store: GameStore) => {
                     if (levelEditorBtn) {
                         levelEditorBtn.textContent = 'Editar niveles';
                     }
+                    // Cargar niveles del usuario después de iniciar sesión
+                    await tryLoadUserLevels(store);
                     if (store.appState === 'menu') {
                         startEditor(store);
                     }
@@ -1380,24 +1390,31 @@ const tryLoadUserLevels = async (store: GameStore) => {
         }
         
         const data = await res.json();
+        console.log('Datos recibidos de la base de datos:', data);
         
         // El payload guardado puede tener formato chunked o legacy
         let levelsToLoad: string[][] = [];
         
         if (data && data.format === 'chunks20x18' && Array.isArray(data.levels)) {
             // Formato chunked - expandir
+            console.log('Detectado formato chunked, expandiendo...');
             const { expandChunkedLevels } = await import('../utils/levels');
             levelsToLoad = expandChunkedLevels(data);
+            console.log('Niveles expandidos:', levelsToLoad.length);
         } else if (data && data.levels && Array.isArray(data.levels)) {
             // Legacy format - niveles como array de strings
+            console.log('Detectado formato legacy');
             levelsToLoad = data.levels.map((lvl: any) => 
                 typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
             ) as string[][];
         } else if (Array.isArray(data)) {
             // Formato directo array
+            console.log('Detectado formato directo array');
             levelsToLoad = data.map((lvl: any) => 
                 typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
             ) as string[][];
+        } else {
+            console.warn('Formato de datos desconocido:', data);
         }
         
         if (levelsToLoad.length > 0) {
@@ -1407,7 +1424,9 @@ const tryLoadUserLevels = async (store: GameStore) => {
             store.levelDesigns = JSON.parse(JSON.stringify(levelsToLoad));
             store.initialLevels = JSON.parse(JSON.stringify(levelsToLoad));
             syncLevelSelector(store);
-            console.log('Niveles cargados desde la cuenta del usuario');
+            console.log('Niveles cargados desde la cuenta del usuario:', levelsToLoad.length);
+        } else {
+            console.warn('No se encontraron niveles para cargar');
         }
     } catch (error) {
         console.error('Error cargando niveles del usuario:', error);

@@ -60,8 +60,10 @@ exports.handler = async (event, context) => {
     try {
       const rows = await sql`SELECT data FROM levels WHERE user_id = ${userId} LIMIT 1`;
       const data = rows?.[0]?.data || { levels: [] };
+      console.log('Datos recuperados para usuario:', userId, 'Formato:', data.format || 'legacy', 'Niveles:', Array.isArray(data.levels) ? data.levels.length : 'N/A');
       return { statusCode: 200, body: JSON.stringify(data) };
     } catch (e) {
+      console.error('Error en GET:', e);
       return { statusCode: 500, body: JSON.stringify({ ok: false, error: e.message }) };
     }
   }
@@ -69,10 +71,13 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'POST') {
     try {
       const body = JSON.parse(event.body || '{}');
+      console.log('Guardando niveles para usuario:', userId, 'Formato:', body.format || 'legacy', 'Niveles:', Array.isArray(body.levels) ? body.levels.length : 'N/A');
       await sql`INSERT INTO levels (user_id, data) VALUES (${userId}, ${body}::jsonb)
                 ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+      console.log('Niveles guardados exitosamente para usuario:', userId);
       return { statusCode: 200, body: JSON.stringify({ ok: true }) };
     } catch (e) {
+      console.error('Error en POST:', e);
       return { statusCode: 400, body: JSON.stringify({ ok: false, error: e.message }) };
     }
   }
