@@ -17,19 +17,26 @@ exports.handler = async (event, context) => {
   let user = context.clientContext && context.clientContext.user;
   
   // Si no hay usuario en el contexto, intentar obtenerlo del header Authorization
+  // Netlify Identity automáticamente inyecta el usuario en context.clientContext.user
+  // cuando la función se llama desde el cliente autenticado, pero si no está disponible,
+  // intentamos extraer información básica del token sin dependencias externas
   if (!user && event.headers && event.headers.authorization) {
     try {
-      const jwt = require('jsonwebtoken');
       const token = event.headers.authorization.replace('Bearer ', '');
-      // Nota: En producción, deberías verificar el token contra Netlify Identity
-      // Por ahora, intentamos decodificarlo (sin verificación para desarrollo)
-      const decoded = jwt.decode(token);
-      if (decoded) {
-        user = {
-          sub: decoded.sub,
-          email: decoded.email,
-          id: decoded.sub || decoded.email
-        };
+      // Decodificar el payload del JWT (sin verificación) usando Base64 nativo de Node.js
+      // Un JWT tiene 3 partes: header.payload.signature
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        // Decodificar el payload (segunda parte)
+        const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
+        const decoded = JSON.parse(payload);
+        if (decoded) {
+          user = {
+            sub: decoded.sub,
+            email: decoded.email,
+            id: decoded.sub || decoded.email
+          };
+        }
       }
     } catch (e) {
       console.error('Error decodificando token:', e);

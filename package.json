@@ -41,7 +41,6 @@
     "@neondatabase/serverless": "^0.9.3",
     "@netlify/blobs": "^6.5.0",
     "@netlify/neon": "0.1.0",
-    "jsonwebtoken": "^9.0.2",
     "nipplejs": "^0.10.2"
   }
 }
