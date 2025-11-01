@@ -13,6 +13,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/src/assets/icons/android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/src/assets/icons/android-chrome-512x512.png">
     <meta name="theme-color" content="#1f2937">
+    <!-- Manifest para PWA con orientación landscape -->
+    <link rel="manifest" href="/manifest.json">
     <!-- Meta tag para Netlify Identity URL (respaldo) -->
     <meta name="netlify-identity-url" content="https://newhero.netlify.app/.netlify/identity">
     
@@ -72,6 +74,13 @@
                     }
                 }
             })();
+        </script>
+        <!-- Bloquear orientación a landscape -->
+        <script>
+            // Bloquear orientación vía JavaScript (si el navegador lo permite)
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock("landscape").catch(err => console.log(err));
+            }
         </script>
 </head>
 <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
