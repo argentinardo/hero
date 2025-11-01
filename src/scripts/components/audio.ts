@@ -7,7 +7,8 @@ import jetpackSound from '../../assets/audio/jetpack.mp3';
 import laserSound from '../../assets/audio/laser.mp3';
 import lifedownSound from '../../assets/audio/lifedown.mp3';
 import stepsSound from '../../assets/audio/steps.mp3';
-import bombSound from '../../assets/audio/bomb.mp3';
+import bombFireSound from '../../assets/audio/bomb_fire.mp3';
+import bombBoomSound from '../../assets/audio/bomb_boom.mp3';
 import enemyKillSound from '../../assets/audio/enemy_kill.mp3';
 import successLevelSound from '../../assets/audio/success_level.mp3';
 import toyBounceSound from '../../assets/audio/toy.mp3';
@@ -24,7 +25,9 @@ interface AudioSystem {
         laser: HTMLAudioElement | null;
         lifedown: HTMLAudioElement | null;
         steps: HTMLAudioElement | null;
-        bomb: HTMLAudioElement | null;
+        bomb: HTMLAudioElement | null; // Mantener para compatibilidad, ya no se usa
+        bombFire: HTMLAudioElement | null;
+        bombBoom: HTMLAudioElement | null;
         successLevel: HTMLAudioElement | null;
         enemyKill: HTMLAudioElement | null;
         toy: HTMLAudioElement | null;
@@ -46,7 +49,9 @@ let audioSystem: AudioSystem = {
         laser: null,
         lifedown: null,
         steps: null,
-        bomb: null,
+        bomb: null, // Mantener para compatibilidad, ya no se usa
+        bombFire: null,
+        bombBoom: null,
         successLevel: null,
         enemyKill: null,
         toy: null,
@@ -70,7 +75,8 @@ export const initAudio = () => {
         audioSystem.sounds.lifedown = new Audio(lifedownSound);
         audioSystem.sounds.lifedown.volume = audioSystem.sfxVolume;
 
-        audioSystem.sounds.bomb = new Audio(bombSound);
+        // Mantener bomb para compatibilidad pero ya no se usa
+        audioSystem.sounds.bomb = new Audio(bombBoomSound);
         audioSystem.sounds.bomb.volume = audioSystem.sfxVolume;
 
         audioSystem.sounds.enemyKill = new Audio(enemyKillSound);
@@ -130,7 +136,9 @@ export const loadAdditionalSFX = async (): Promise<void> => {
             { key: 'steps', src: stepsSound, loop: true },
             { key: 'successLevel', src: successLevelSound, loop: false },
             { key: 'energyDrain', src: energyDrainSound, loop: true },
-            { key: 'tentacle', src: tentacleSound, loop: false }
+            { key: 'tentacle', src: tentacleSound, loop: false },
+            { key: 'bombFire', src: bombFireSound, loop: true },
+            { key: 'bombBoom', src: bombBoomSound, loop: false }
         ];
 
         let loaded = 0;
@@ -284,6 +292,8 @@ export const stopAllSfxExceptLifedown = () => {
             snd.currentTime = 0;
         }
     });
+    // Detener todos los sonidos de bombFire activos
+    stopAllBombFireSounds();
     // Para el láser, no es loop; pausar clones no es trivial, así que solo pausamos la instancia base
     if (laser) {
         try { laser.pause(); /* noop if not playing */ } catch {}
@@ -304,6 +314,8 @@ export const stopAllSfxExceptSuccessLevel = () => {
             snd.currentTime = 0;
         }
     });
+    // Detener todos los sonidos de bombFire activos
+    stopAllBombFireSounds();
     // El láser usa clones para múltiples disparos; pausamos la instancia base si existe
     if (laser) {
         try { laser.pause(); } catch {}
@@ -335,21 +347,69 @@ export const stopStepsSound = () => {
     }
 };
 
-// Reproducir sonido de explosión de bomba
+// Mapa para rastrear instancias de bombFire por bomba activa
+// Clave: string con coordenadas "x,y" de la bomba, Valor: HTMLAudioElement
+const activeBombFireSounds = new Map<string, HTMLAudioElement>();
+
+// Reproducir sonido de explosión de bomba (DEPRECADO: usar playBombBoomSound)
 export const playBombSound = () => {
-    if (audioSystem.sounds.bomb && !audioSystem.isMuted) {
-        audioSystem.sounds.bomb.currentTime = 0;
-        audioSystem.sounds.bomb.play().catch(error => {
-            console.log('Error al reproducir bomba:', error);
-        });
+    playBombBoomSound();
+};
+
+// Detener sonido de explosión de bomba (DEPRECADO: usar stopBombFireSound con coordenadas)
+export const stopBombSound = () => {
+    // Ya no se usa, mantenido para compatibilidad
+};
+
+// Reproducir sonido de mecha de bomba en loop (una instancia por bomba)
+// Usa coordenadas (x, y) como clave para evitar problemas con índices cambiantes
+export const playBombFireSound = (x: number, y: number) => {
+    if (audioSystem.isMuted) return;
+    
+    const key = `${x},${y}`;
+    
+    // Si ya hay un sonido para esta bomba, no hacer nada
+    if (activeBombFireSounds.has(key)) return;
+    
+    // Crear nueva instancia de audio para esta bomba específica
+    const fireSound = new Audio(bombFireSound);
+    fireSound.loop = true;
+    fireSound.volume = audioSystem.sfxVolume;
+    activeBombFireSounds.set(key, fireSound);
+    
+    fireSound.play().catch(error => {
+        console.log('Error al reproducir bomb_fire:', error);
+        activeBombFireSounds.delete(key);
+    });
+};
+
+// Detener sonido de mecha de bomba específica usando coordenadas
+export const stopBombFireSound = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    const fireSound = activeBombFireSounds.get(key);
+    if (fireSound) {
+        fireSound.pause();
+        fireSound.currentTime = 0;
+        activeBombFireSounds.delete(key);
     }
 };
 
-// Detener sonido de explosión de bomba
-export const stopBombSound = () => {
-    if (audioSystem.sounds.bomb) {
-        audioSystem.sounds.bomb.pause();
-        audioSystem.sounds.bomb.currentTime = 0;
+// Detener todos los sonidos de mecha activos
+export const stopAllBombFireSounds = () => {
+    activeBombFireSounds.forEach((sound, key) => {
+        sound.pause();
+        sound.currentTime = 0;
+        activeBombFireSounds.delete(key);
+    });
+};
+
+// Reproducir sonido de explosión de bomba (una sola vez, no loop)
+export const playBombBoomSound = () => {
+    if (audioSystem.sounds.bombBoom && !audioSystem.isMuted) {
+        // Crear clon para permitir múltiples explosiones simultáneas
+        const boomClone = audioSystem.sounds.bombBoom.cloneNode(true) as HTMLAudioElement;
+        boomClone.volume = audioSystem.sfxVolume;
+        boomClone.play().catch(() => {});
     }
 };
 
@@ -432,6 +492,7 @@ export const toggleMute = () => {
         stopJetpackSound();
         stopStepsSound();
         stopEnergyDrainSound();
+        stopAllBombFireSounds();
     } else {
         playBackgroundMusic().catch(() => {});
     }
@@ -454,6 +515,10 @@ export const setSFXVolume = (volume: number) => {
         if (sound) {
             sound.volume = audioSystem.sfxVolume;
         }
+    });
+    // Actualizar volumen de todos los bombFire activos
+    activeBombFireSounds.forEach(sound => {
+        sound.volume = audioSystem.sfxVolume;
     });
 };
 

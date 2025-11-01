@@ -34,7 +34,7 @@ import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall, Platform } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
-import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
+import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombFireSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
 import { vibrate } from '../utils/device';
 
 const handleWaterCollision = (store: GameStore, wall: Wall) => {
@@ -417,8 +417,8 @@ export const handlePlayerInput = (store: GameStore) => {
         // Decrementar bombas disponibles
         store.bombsRemaining--;
         
-        // Reproducir sonido de bomba al plantarla
-        playBombSound();
+        // Reproducir sonido de mecha en loop usando coordenadas de la bomba
+        playBombFireSound(bombX, bombY);
     }
 };
 

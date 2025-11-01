@@ -3,7 +3,7 @@ import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE, BOMB_FUSE } from '../core/constants';
 import type { Enemy, GameStore, Wall } from '../core/types';
 import { emitParticles, playerDie } from './player';
-import { playBombSound, playEnemyKillSound } from './audio';
+import { stopBombFireSound, playBombBoomSound, playEnemyKillSound } from './audio';
 import { vibrate } from '../utils/device';
 
 const createExplosion = (store: GameStore, x: number, y: number) => {
@@ -239,11 +239,17 @@ export const updateBombs = (store: GameStore) => {
             continue;
         }
 
+        // Detener sonido de mecha antes de eliminar la bomba (usar coordenadas)
+        stopBombFireSound(bomb.x, bomb.y);
+        
         store.bombs.splice(i, 1);
         const centerX = bomb.x + bomb.width / 2;
         const centerY = bomb.y + bomb.height / 2;
         
         createExplosion(store, bomb.x, bomb.y);
+        
+        // Reproducir sonido de explosión
+        playBombBoomSound();
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                          (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
         const explosionParticleCount = isMobile ? 10 : 30; // Menos partículas en mobile

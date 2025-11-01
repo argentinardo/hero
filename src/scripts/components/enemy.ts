@@ -42,7 +42,7 @@ import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
 import { loadLevel } from './level';
 import { awardExtraLifeByScore } from './ui';
-import { playEnergyDrainSound, stopEnergyDrainSound, playBombSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound, playTentacleSound } from './audio';
+import { playEnergyDrainSound, stopEnergyDrainSound, playBombBoomSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound, playTentacleSound } from './audio';
 
 /**
  * Actualiza todos los enemigos del juego.
@@ -373,7 +373,7 @@ const handleLevelEndSequence = (store: GameStore) => {
             awardExtraLifeByScore(store);
             
             // Reproducir sonido de explosión
-            playBombSound();
+            playBombBoomSound();
             
             // Activar flash de explosión para efecto visual
             store.explosionFlash = 0.5;
