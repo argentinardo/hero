@@ -1,6 +1,6 @@
 /* Contenedor principal con posicionamiento para las barras */
 body {
-    background-color: #000;
+    background-color: #4a2d23; /* Fondo más apagado/oscuro para el menú */
 }
 
 
@@ -169,11 +169,6 @@ body {
         -webkit-user-select: none;
         pointer-events: none;
         cursor: default;
-    }
-
-    /* Ocultar logo en móviles */
-    @media (max-width: 1024px) {
-        #hero-logo { display: none !important; }
     }
 }
 
@@ -352,33 +347,69 @@ body {
 /* Botón Hamburguesa */
 .hamburger-btn,
 .hamburger-btn-mobile {
-    background: transparent;
-    border: none;
     cursor: pointer;
     padding: 8px 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 60px;
+    width: 140px;
     height: 40px;
     z-index: 101;
     font-size: 14px;
     color: white;
     font-family: 'Press Start 2P', monospace;
+    box-shadow: inset 2px 2px 2px 2px #f29c93;
+    background: linear-gradient(to bottom, #7b3a24 5%, #d34718 100%);
+    background-color: #c33f12;
+    border: 1px solid #d83526;
+    display: inline-block;
+    font-weight: bold;
+    text-decoration: none;
+    text-shadow: 0px 0px 0px #b23e35;
+    border-radius: 10px;
+    position: relative;
+
     
-    &::before {
-        content: "Menu";
-        position: relative;
+    &::after {
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 140px;
+        height: 40px;
+        content: "Cerrar";
+        background-color: rgba(0, 0, 0, 0);
+        box-shadow: -1px -1px 2px 5px rgba(0, 0, 0, 0.6705882353);
+        content: "";
+        position: absolute;
         top: 0;
         left: 0;
-        transform: none;
-        font-size: 18px;
+        border-radius: 10px;
+
+    }
+
+    &::before {
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 140px;
+        height: 40px;
+        content: "Menu";
+        display: block;
+        background-color: rgba(0, 0, 0, 0);
+        position: absolute;
+        top: 0;
+        left: 0;
+        border-radius: 10px;
+        box-shadow: 0px 1px 2px 5px rgb(255 255 255 / 54%);
+
+
 
     }
     
     &.active::before {
-        content: "Cerrar ✕";
-        font-size: 18px;
+        content: "Cerrar";
     }
     
     /* Efecto glow estilo terminal - Solo cuando glow está habilitado */
@@ -448,6 +479,27 @@ body {
 .hamburger-btn {
     // Se posiciona naturalmente al lado del score en el flexbox
     margin-left: 2rem;
+    font-size: 20px;
+}
+
+/* En desktop, eliminar background y sombras del botón hamburger */
+@media (min-width: 1025px) {
+    .hamburger-btn {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        
+        &::after {
+            box-shadow: none !important;
+            background-color: transparent !important;
+        }
+        
+        &::before {
+            box-shadow: none !important;
+            background-color: transparent !important;
+        }
+    }
 }
 
 
@@ -517,6 +569,19 @@ body {
     -webkit-image-rendering: pixelated;
     z-index: 0; /* Detrás del message-overlay pero por encima del canvas */
     display: none; /* Oculto por defecto, se muestra en el menú */
+    
+    /* Overlay oscuro para apagar el fondo del menú */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Overlay oscuro del 50% */
+        z-index: 1;
+        pointer-events: none;
+    }
     
     /* NO aplicar scanline al splash del menú - removido a petición */
 }

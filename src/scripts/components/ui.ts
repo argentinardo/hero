@@ -325,7 +325,7 @@ export const showMenu = (store: GameStore) => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'Editar niveles' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? 'Editor' : 'Ingresar';
         }
     };
     updateEditorButton();
@@ -1371,7 +1371,7 @@ export const setupUI = (store: GameStore) => {
                     // Actualizar botones y área de usuario
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                     if (levelEditorBtn) {
-                        levelEditorBtn.textContent = 'Editar niveles';
+                        levelEditorBtn.textContent = 'Editor';
                     }
                     // Cargar niveles del usuario después de iniciar sesión
                     await tryLoadUserLevels(store);
@@ -1947,7 +1947,7 @@ const setupMenuButtons = (store: GameStore) => {
     const updateEditorButton = () => {
         const { isLoggedIn } = checkLoginStatus();
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'Editar niveles' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? 'Editor' : 'Ingresar';
         }
     };
 
