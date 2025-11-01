@@ -154,7 +154,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         padding: var(--mobile-ui-padding);
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 3px;
         pointer-events: none;
         z-index: 20; /* Asegurar que estén por encima del joystick flotante */
         background: rgba(0, 0, 0, 0);
@@ -171,6 +171,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             flex-direction: column;
             gap: var(--mobile-ui-gap);
             align-items: center;
+            transform: scale(0.8);
             
             span {
                 display: none !important;

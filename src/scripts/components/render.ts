@@ -89,7 +89,7 @@ const beginRoundedRectPathCorners = (
 };
 
 const drawWall = (store: GameStore, wall: Wall) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
 
     ctx.save();
@@ -100,52 +100,60 @@ const drawWall = (store: GameStore, wall: Wall) => {
     
     // Paredes aplastantes: renderizado con efectos eléctricos
     if (wall.type === 'crushing') {
+        const isMobile = isMobileDevice();
         const wallColor = wall.color || '#cc0000';
         
-        // Efecto de brillo (glow) exterior - Solo si está habilitado
-        if (store.settings.graphics.glow) {
+        // Efecto de brillo (glow) exterior - Solo si está habilitado y NO en mobile (muy costoso)
+        if (store.settings.graphics.glow && !isMobile) {
             ctx.shadowColor = '#00ffff'; // Color eléctrico azul-cian
             ctx.shadowBlur = 15;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
         }
         
-        // Tint eléctrico con gradiente
-        const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y + wall.height);
-        gradient.addColorStop(0, wallColor);
-        gradient.addColorStop(0.5, '#ff4444'); // Rojo más brillante en el centro
-        gradient.addColorStop(1, wallColor);
+        // En mobile, usar color sólido simple (sin gradiente costoso)
+        if (isMobile) {
+            ctx.fillStyle = wallColor;
+            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        } else {
+            // Tint eléctrico con gradiente (solo en desktop)
+            const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y + wall.height);
+            gradient.addColorStop(0, wallColor);
+            gradient.addColorStop(0.5, '#ff4444'); // Rojo más brillante en el centro
+            gradient.addColorStop(1, wallColor);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        }
         
-        ctx.fillStyle = gradient;
-        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-        
-        // Efecto de parpadeo eléctrico
+        // Efecto de parpadeo eléctrico (simplificado en mobile)
         const time = Date.now() * 0.01;
         const flickerIntensity = Math.sin(time) * 0.3 + 0.7; // Oscila entre 0.4 y 1.0
         
-        ctx.globalAlpha = flickerIntensity;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(wall.x + 2, wall.y + 2, wall.width - 4, wall.height - 4);
-        
-        // Efecto de arco eléctrico en los bordes
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = flickerIntensity * 0.8;
-        
-        // Dibujar líneas eléctricas en los bordes
-        ctx.beginPath();
-        ctx.moveTo(wall.x, wall.y);
-        ctx.lineTo(wall.x + wall.width, wall.y);
-        ctx.moveTo(wall.x, wall.y + wall.height);
-        ctx.lineTo(wall.x + wall.width, wall.y + wall.height);
-        ctx.moveTo(wall.x, wall.y);
-        ctx.lineTo(wall.x, wall.y + wall.height);
-        ctx.moveTo(wall.x + wall.width, wall.y);
-        ctx.lineTo(wall.x + wall.width, wall.y + wall.height);
-        ctx.stroke();
+        if (!isMobile) {
+            ctx.globalAlpha = flickerIntensity;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(wall.x + 2, wall.y + 2, wall.width - 4, wall.height - 4);
+            
+            // Efecto de arco eléctrico en los bordes (solo desktop)
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = flickerIntensity * 0.8;
+            
+            // Dibujar líneas eléctricas en los bordes
+            ctx.beginPath();
+            ctx.moveTo(wall.x, wall.y);
+            ctx.lineTo(wall.x + wall.width, wall.y);
+            ctx.moveTo(wall.x, wall.y + wall.height);
+            ctx.lineTo(wall.x + wall.width, wall.y + wall.height);
+            ctx.moveTo(wall.x, wall.y);
+            ctx.lineTo(wall.x, wall.y + wall.height);
+            ctx.moveTo(wall.x + wall.width, wall.y);
+            ctx.lineTo(wall.x + wall.width, wall.y + wall.height);
+            ctx.stroke();
+        }
         
         // Resetear efectos
-        if (store.settings.graphics.glow) {
+        if (store.settings.graphics.glow && !isMobile) {
             ctx.shadowBlur = 0;
         }
         ctx.globalAlpha = 1;
@@ -254,7 +262,7 @@ const drawWall = (store: GameStore, wall: Wall) => {
 };
 
 const drawEnemy = (store: GameStore, enemy: Enemy) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx || enemy.isHidden) return;
 
     const sprite = store.sprites[enemy.tile];
@@ -326,7 +334,7 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
 };
 
 const drawPlatform = (store: GameStore, platform: Platform) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
     ctx.save();
     
@@ -344,7 +352,7 @@ const drawPlatform = (store: GameStore, platform: Platform) => {
 };
 
 const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
     
     // Mapear tiles a sus sprites correspondientes
@@ -410,7 +418,7 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
 };
 
 const drawMiner = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     const miner = store.miner;
     if (!ctx || !miner) return;
 
@@ -444,7 +452,7 @@ const drawMiner = (store: GameStore) => {
 };
 
 const drawPlayer = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     const player = store.player;
     if (!ctx) return;
 
@@ -488,54 +496,80 @@ const drawPlayer = (store: GameStore) => {
 };
 
 const drawLasers = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
-    store.lasers.forEach(laser => {
+    const isMobile = isMobileDevice();
+    const lasers = store.lasers;
+    const lasersLength = lasers.length;
+    
+    // Usar loop for en lugar de forEach para mejor rendimiento
+    for (let i = 0; i < lasersLength; i++) {
+        const laser = lasers[i];
         ctx.save();
-        // Glow exterior - Solo si está habilitado
-        if (store.settings.graphics.glow) {
+        
+        // Glow exterior - Solo si está habilitado y NO en mobile (muy costoso)
+        if (store.settings.graphics.glow && !isMobile) {
             ctx.shadowColor = 'rgba(255, 0, 0, 0.95)';
             ctx.shadowBlur = 18;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
         }
-        // Cuerpo del láser (núcleo brillante)
-        const gradient = ctx.createLinearGradient(laser.x, laser.y, laser.x + laser.width, laser.y + laser.height);
-        gradient.addColorStop(0, '#ff8080');
-        gradient.addColorStop(0.5, '#ffffff');
-        gradient.addColorStop(1, '#ff8080');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
-        // Borde interno para intensificar el haz
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)';
-        ctx.strokeRect(laser.x + 0.5, laser.y + 0.5, Math.max(0, laser.width - 1), Math.max(0, laser.height - 1));
+        
+        // En mobile, usar color sólido simple (sin gradiente costoso)
+        if (isMobile) {
+            ctx.fillStyle = '#ff8080';
+            ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+        } else {
+            // Cuerpo del láser (núcleo brillante) con gradiente (solo desktop)
+            const gradient = ctx.createLinearGradient(laser.x, laser.y, laser.x + laser.width, laser.y + laser.height);
+            gradient.addColorStop(0, '#ff8080');
+            gradient.addColorStop(0.5, '#ffffff');
+            gradient.addColorStop(1, '#ff8080');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+            
+            // Borde interno para intensificar el haz (solo desktop)
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)';
+            ctx.strokeRect(laser.x + 0.5, laser.y + 0.5, Math.max(0, laser.width - 1), Math.max(0, laser.height - 1));
+        }
+        
         ctx.restore();
-    });
+    }
 };
 
 const drawBombs = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
     const sprite = store.sprites.bomb;
+    if (!sprite) return;
     const anim = ANIMATION_DATA.bomb;
-    store.bombs.forEach(bomb => {
-        if (!sprite) return;
-        const frameWidth = sprite.width / anim.frames;
+    const frameWidth = sprite.width / anim.frames;
+    const bombs = store.bombs;
+    const bombsLength = bombs.length;
+    
+    // Loop for es más rápido que forEach
+    for (let i = 0; i < bombsLength; i++) {
+        const bomb = bombs[i];
         ctx.drawImage(sprite, bomb.currentFrame * frameWidth, 0, frameWidth, sprite.height, bomb.x, bomb.y, bomb.width, bomb.height);
-    });
+    }
 };
 
 const drawExplosions = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
     const sprite = store.sprites.explosion;
+    if (!sprite) return;
     const anim = ANIMATION_DATA.explosion;
-    store.explosions.forEach(exp => {
-        if (!sprite) return;
-        const frameWidth = sprite.width / anim.frames;
+    const frameWidth = sprite.width / anim.frames;
+    const explosions = store.explosions;
+    const explosionsLength = explosions.length;
+    
+    // Loop for es más rápido que forEach
+    for (let i = 0; i < explosionsLength; i++) {
+        const exp = explosions[i];
         ctx.drawImage(sprite, exp.currentFrame * frameWidth, 0, frameWidth, sprite.height, exp.x, exp.y, exp.width, exp.height);
-    });
+    }
 };
 
 // Detectar mobile para optimizaciones
@@ -544,32 +578,52 @@ const isMobileDevice = () => {
            (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
 };
 
+// Helper para obtener el contexto de renderizado correcto (offscreen en mobile, normal en desktop)
+const getRenderContext = (store: GameStore): { ctx: CanvasRenderingContext2D | null; scale: number } => {
+    const useOffscreen = store.dom.offscreenCtx && store.dom.renderScale !== undefined && store.dom.renderScale < 1.0;
+    return {
+        ctx: useOffscreen ? store.dom.offscreenCtx! : store.dom.ctx,
+        scale: store.dom.renderScale ?? 1.0
+    };
+};
+
 const drawParticles = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
     
+    const isMobile = isMobileDevice();
     // Limitar partículas visibles en mobile
-    const maxParticles = isMobileDevice() ? 30 : store.particles.length;
-    const particlesToDraw = store.particles.slice(0, maxParticles);
+    const maxParticles = isMobile ? 30 : store.particles.length;
+    const particles = store.particles;
+    const particlesLength = Math.min(maxParticles, particles.length);
     
-    particlesToDraw.forEach(p => {
+    // Loop for es más rápido que forEach/slice
+    for (let i = 0; i < particlesLength; i++) {
+        const p = particles[i];
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.life / 60;
         ctx.fillRect(p.x, p.y, p.size, p.size);
-        ctx.globalAlpha = 1;
-    });
+    }
+    ctx.globalAlpha = 1; // Resetear una sola vez al final
 };
 
 const drawFloatingScores = (store: GameStore) => {
-    const ctx = store.dom.ctx;
+    const { ctx, scale } = getRenderContext(store);
     if (!ctx) return;
     
-    store.floatingScores.forEach(score => {
+    const scores = store.floatingScores;
+    const scoresLength = scores.length;
+    
+    // Configurar font una sola vez (es costoso cambiarlo repetidamente)
+    ctx.font = "bold 20px 'Press Start 2P'";
+    
+    // Loop for es más rápido que forEach
+    for (let i = 0; i < scoresLength; i++) {
+        const score = scores[i];
         ctx.save();
         ctx.globalAlpha = score.opacity;
         
         // Texto con sombra para mejor visibilidad
-        ctx.font = "bold 20px 'Press Start 2P'";
         ctx.fillStyle = '#000000';
         ctx.fillText(score.text, score.x + 2, score.y + 2); // Sombra
         
@@ -577,7 +631,7 @@ const drawFloatingScores = (store: GameStore) => {
         ctx.fillText(score.text, score.x, score.y);
         
         ctx.restore();
-    });
+    }
 };
 
 // Cache para evitar actualizaciones innecesarias del HUD
@@ -719,21 +773,28 @@ const drawHud = (store: GameStore) => {
 };
 
 const drawGameWorld = (store: GameStore) => {
-    const ctx = store.dom.ctx;
-    const canvas = store.dom.canvas;
-    if (!ctx || !canvas) return;
+    // OPTIMIZACIÓN: Usar canvas offscreen en mobile para renderizado a menor resolución
+    const useOffscreen = store.dom.offscreenCanvas && store.dom.offscreenCtx && store.dom.renderScale !== undefined && store.dom.renderScale < 1.0;
+    const renderCtx = useOffscreen ? store.dom.offscreenCtx! : store.dom.ctx;
+    const renderCanvas = useOffscreen ? store.dom.offscreenCanvas! : store.dom.canvas;
+    const displayCtx = store.dom.ctx;
+    const displayCanvas = store.dom.canvas;
+    
+    if (!renderCtx || !renderCanvas || !displayCtx || !displayCanvas) return;
+    
+    const renderScale = store.dom.renderScale ?? 1.0;
     
     // Optimizar canvas en mobile: reducir calidad de renderizado
     const isMobileDeviceFlag = isMobileDevice();
     if (isMobileDeviceFlag) {
-        ctx.imageSmoothingEnabled = false;
+        renderCtx.imageSmoothingEnabled = false;
     }
 
-    // Calcular área visible para culling
+    // Calcular área visible para culling (usar coordenadas del mundo, no escaladas)
     const viewLeft = store.cameraX;
-    const viewRight = store.cameraX + canvas.width;
+    const viewRight = store.cameraX + displayCanvas.width / renderScale;
     const viewTop = store.cameraY;
-    const viewBottom = store.cameraY + canvas.height;
+    const viewBottom = store.cameraY + displayCanvas.height / renderScale;
     const margin = TILE_SIZE * 2; // Margen para objetos que están parcialmente fuera
 
     // Dibujar fondo con tiles, modo oscuro, o destello de explosión
@@ -742,12 +803,12 @@ const drawGameWorld = (store: GameStore) => {
     if (store.explosionFlash > 0) {
         // Efecto de destello de explosión
         const flashIntensity = Math.floor(store.explosionFlash * 255);
-        ctx.fillStyle = `rgb(${flashIntensity}, ${flashIntensity}, ${flashIntensity})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        renderCtx.fillStyle = `rgb(${flashIntensity}, ${flashIntensity}, ${flashIntensity})`;
+        renderCtx.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
     } else if (store.isDark) {
         // Modo oscuro: fondo negro que cubre todo el nivel
-        ctx.save();
-        ctx.translate(-store.cameraX, -store.cameraY);
+        // Nota: esto se dibuja antes de aplicar la transformación de escala
+        renderCtx.save();
         
         // Calcular las dimensiones completas del nivel
         const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
@@ -755,161 +816,247 @@ const drawGameWorld = (store: GameStore) => {
         const levelWidth = levelCols * TILE_SIZE;
         const levelHeight = levelRows * TILE_SIZE;
         
-        // Dibujar oscuridad que cubra todo el nivel
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, Math.max(levelWidth, canvas.width + store.cameraX), Math.max(levelHeight, canvas.height + store.cameraY));
+        // Escalar y aplicar cámara
+        renderCtx.scale(renderScale, renderScale);
+        renderCtx.translate(-store.cameraX, -store.cameraY);
         
-        ctx.restore();
+        // Dibujar oscuridad que cubra todo el nivel
+        renderCtx.fillStyle = 'black';
+        renderCtx.fillRect(0, 0, Math.max(levelWidth, displayCanvas.width / renderScale + store.cameraX), Math.max(levelHeight, displayCanvas.height / renderScale + store.cameraY));
+        
+        renderCtx.restore();
     } else if (backgroundSprite) {
         // Dibujar fondo con tiles repetidos y efecto parallax (modo normal)
-        const TILE_SIZE = 64; // Tamaño del tile del background
+        // Nota: esto se dibuja antes de aplicar la transformación de escala principal
+        const BG_TILE_SIZE = 64; // Tamaño del tile del background
         
         // Efecto parallax: el fondo se mueve más lento que la cámara
         const parallaxFactor = 0.5; // 0.5 = mitad de velocidad (más profundidad)
         const parallaxCameraX = store.cameraX * parallaxFactor;
         const parallaxCameraY = store.cameraY * parallaxFactor;
         
-        const startY = Math.floor(parallaxCameraY / TILE_SIZE) * TILE_SIZE;
-        const endY = parallaxCameraY + canvas.height;
-        const startX = Math.floor(parallaxCameraX / TILE_SIZE) * TILE_SIZE;
-        const endX = parallaxCameraX + canvas.width;
-        const numTilesX = Math.ceil((endX - startX) / TILE_SIZE) + 1;
-        const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
+        renderCtx.save();
+        renderCtx.scale(renderScale, renderScale);
+        renderCtx.translate(-parallaxCameraX, -parallaxCameraY);
         
-        ctx.save();
-        ctx.translate(-parallaxCameraX, -parallaxCameraY);
+        const startY = Math.floor(parallaxCameraY / BG_TILE_SIZE) * BG_TILE_SIZE;
+        const endY = parallaxCameraY + displayCanvas.height / renderScale;
+        const startX = Math.floor(parallaxCameraX / BG_TILE_SIZE) * BG_TILE_SIZE;
+        const endX = parallaxCameraX + displayCanvas.width / renderScale;
+        const numTilesX = Math.ceil((endX - startX) / BG_TILE_SIZE) + 1;
+        const numTilesY = Math.ceil((endY - startY) / BG_TILE_SIZE) + 1;
         
         // Optimizar dibujo del fondo en mobile: dibujar tiles más espaciados
         const tileStep = isMobileDeviceFlag ? 2 : 1; // Saltar tiles en mobile para mejor rendimiento
         
         for (let y = 0; y < numTilesY; y += tileStep) {
             for (let x = 0; x < numTilesX; x += tileStep) {
-                const tileX = startX + x * TILE_SIZE;
-                const tileY = startY + y * TILE_SIZE;
+                const tileX = startX + x * BG_TILE_SIZE;
+                const tileY = startY + y * BG_TILE_SIZE;
                 // Dibujar tile más grande en mobile para cubrir espacios
                 if (isMobileDeviceFlag) {
-                    ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE * tileStep, TILE_SIZE * tileStep);
+                    renderCtx.drawImage(backgroundSprite, tileX, tileY, BG_TILE_SIZE * tileStep, BG_TILE_SIZE * tileStep);
                 } else {
-                    ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
+                    renderCtx.drawImage(backgroundSprite, tileX, tileY, BG_TILE_SIZE, BG_TILE_SIZE);
                 }
             }
         }
         
-        ctx.restore();
+        renderCtx.restore();
     } else {
         // Fallback: fondo negro
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        renderCtx.fillStyle = 'black';
+        renderCtx.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
     }
     
-    ctx.save();
-    ctx.translate(-store.cameraX, -store.cameraY);
+    // Aplicar escala y transformación según el canvas de renderizado
+    // Usar scale() para escalar automáticamente todas las coordenadas
+    renderCtx.save();
+    renderCtx.scale(renderScale, renderScale);
+    renderCtx.translate(-store.cameraX, -store.cameraY);
 
     // Dibujar luces primero (solo las visibles)
     // En mobile, limitar número de luces dibujadas para mejor rendimiento
-    const lightsToDraw = isMobileDeviceFlag ? store.lights.slice(0, 10) : store.lights;
-    lightsToDraw.forEach(light => {
+    const lights = store.lights;
+    const lightsLength = isMobileDeviceFlag ? Math.min(10, lights.length) : lights.length;
+    
+    // Loop for es más rápido que forEach/slice
+    for (let i = 0; i < lightsLength; i++) {
+        const light = lights[i];
         if (light.x + light.width >= viewLeft - margin && light.x <= viewRight + margin &&
             light.y + light.height >= viewTop - margin && light.y <= viewBottom + margin) {
             drawLight(store, light);
         }
-    });
+    }
     
     // Las plataformas se dibujan después del jugador para que vayan por delante
 
     if (store.isDark) {
         // Modo oscuro: paredes y personajes afectados en gris, no afectados en color normal
+        // OPTIMIZACIÓN: Usar loops for en lugar de múltiples filter() para mejor rendimiento
         
-        // Separar paredes afectadas y no afectadas (con culling)
-        const affectedWalls = store.walls.filter(wall => 
-            wall.tile !== '3' && wall.tile !== 'K' && wall.tile !== '2' && wall.affectedByDark &&
-            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
-            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
-        );
-        const unaffectedWalls = store.walls.filter(wall => 
-            wall.tile !== '3' && wall.tile !== 'K' && wall.tile !== '2' && !wall.affectedByDark &&
-            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
-            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
-        );
-        const lavaWalls = store.walls.filter(wall => 
-            (wall.tile === '3' || wall.tile === 'K') &&
-            wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
-            wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin
-        );
-
-        // Dibujar paredes no afectadas en color normal
-        unaffectedWalls.forEach(wall => drawWall(store, wall));
-
-        // Dibujar paredes afectadas siempre en negro (invisibles en fondo negro, visibles en flash blanco)
-        ctx.save();
-        ctx.fillStyle = 'black';
-        affectedWalls.forEach(wall => {
-            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-        });
-        ctx.restore();
-
-        // Lava siempre visible
-        lavaWalls.forEach(wall => drawWall(store, wall));
-
-        // Separar enemigos afectados y no afectados (con culling)
-        const vipers = store.enemies.filter(enemy => 
-            enemy.type === 'viper' &&
-            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
-            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
-        );
-        const otherEnemies = store.enemies.filter(enemy => 
-            enemy.type !== 'viper' &&
-            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
-            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
-        );
+        const walls = store.walls;
+        const wallsLength = walls.length;
+        const affectedWalls: typeof walls = [];
+        const unaffectedWalls: typeof walls = [];
+        const lavaWalls: typeof walls = [];
         
-        const affectedVipers = vipers.filter(enemy => enemy.affectedByDark);
-        const unaffectedVipers = vipers.filter(enemy => !enemy.affectedByDark);
-        const affectedOtherEnemies = otherEnemies.filter(enemy => enemy.affectedByDark);
-        const unaffectedOtherEnemies = otherEnemies.filter(enemy => !enemy.affectedByDark);
-
-        // Aplicar gradiente suave en los bordes para transición entre zona oscura e iluminada
-        // El gradiente debe estar fijo en las coordenadas del mundo, no moverse con la cámara
-        // Encontrar los límites de la zona afectada por la oscuridad
-        const affectedObjects = [
-            ...affectedWalls,
-            ...affectedOtherEnemies,
-            ...affectedVipers
-        ];
-        
-        // Verificar si hay objetos afectados (incluyendo el minero)
-        const hasAffectedObjects = affectedObjects.length > 0 || store.miner?.affectedByDark;
-        
-        if (hasAffectedObjects) {
-            // Se calculará y dibujará el degradé después de dibujar enemigos y minero para afectarlos también
+        // Un solo loop para clasificar todas las paredes (mucho más rápido que múltiples filters)
+        for (let i = 0; i < wallsLength; i++) {
+            const wall = walls[i];
+            // Culling primero (más rápido)
+            if (wall.x + wall.width < viewLeft - margin || wall.x > viewRight + margin ||
+                wall.y + wall.height < viewTop - margin || wall.y > viewBottom + margin) {
+                continue;
+            }
+            
+            // Lava siempre visible
+            if (wall.tile === '3' || wall.tile === 'K') {
+                lavaWalls.push(wall);
+                continue;
+            }
+            
+            // Excluir agua para clasificación
+            if (wall.tile === '2') continue;
+            
+            // Clasificar por afectación
+            if (wall.affectedByDark) {
+                affectedWalls.push(wall);
+            } else {
+                unaffectedWalls.push(wall);
+            }
         }
 
-        // Dibujar minero afectado en gris
-        if (store.miner?.affectedByDark) {
-            ctx.save();
-            ctx.filter = 'grayscale(100%) brightness(0.9)';
-            drawMiner(store);
-            ctx.restore();
+        // Dibujar paredes no afectadas en color normal
+        const unaffectedLength = unaffectedWalls.length;
+        for (let i = 0; i < unaffectedLength; i++) {
+            drawWall(store, unaffectedWalls[i]);
+        }
+
+        // Dibujar paredes afectadas siempre en negro (invisibles en fondo negro, visibles en flash blanco)
+        // Ya están dentro del contexto escalado, usar coordenadas normales
+        const { ctx: darkCtx } = getRenderContext(store);
+        if (darkCtx) {
+            darkCtx.save();
+            darkCtx.fillStyle = 'black';
+            const affectedLength = affectedWalls.length;
+            for (let i = 0; i < affectedLength; i++) {
+                const wall = affectedWalls[i];
+                darkCtx.fillRect(wall.x, wall.y, wall.width, wall.height);
+            }
+            darkCtx.restore();
+        }
+
+        // Lava siempre visible
+        const lavaLength = lavaWalls.length;
+        for (let i = 0; i < lavaLength; i++) {
+            drawWall(store, lavaWalls[i]);
+        }
+
+        // Separar enemigos afectados y no afectados (con culling optimizado)
+        const enemies = store.enemies;
+        const enemiesLength = enemies.length;
+        const affectedVipers: typeof enemies = [];
+        const unaffectedVipers: typeof enemies = [];
+        const affectedOtherEnemies: typeof enemies = [];
+        const unaffectedOtherEnemies: typeof enemies = [];
+        
+        // Un solo loop para clasificar todos los enemigos
+        for (let i = 0; i < enemiesLength; i++) {
+            const enemy = enemies[i];
+            // Culling primero
+            if (enemy.x + enemy.width < viewLeft - margin || enemy.x > viewRight + margin ||
+                enemy.y + enemy.height < viewTop - margin || enemy.y > viewBottom + margin) {
+                continue;
+            }
+            
+            if (enemy.type === 'viper') {
+                if (enemy.affectedByDark) {
+                    affectedVipers.push(enemy);
+                } else {
+                    unaffectedVipers.push(enemy);
+                }
+            } else {
+                if (enemy.affectedByDark) {
+                    affectedOtherEnemies.push(enemy);
+                } else {
+                    unaffectedOtherEnemies.push(enemy);
+                }
+            }
+        }
+
+        // Verificar si hay objetos afectados (incluyendo el minero)
+        const hasAffectedObjects = affectedWalls.length > 0 || affectedOtherEnemies.length > 0 || 
+                                  affectedVipers.length > 0 || store.miner?.affectedByDark;
+
+        // Dibujar minero afectado en gris (sin filtro en mobile - muy costoso)
+        const isMobile = isMobileDeviceFlag;
+        const { ctx: minerCtx } = getRenderContext(store);
+        if (store.miner?.affectedByDark && minerCtx) {
+            if (!isMobile) {
+                minerCtx.save();
+                minerCtx.filter = 'grayscale(100%) brightness(0.9)';
+                drawMiner(store);
+                minerCtx.restore();
+            } else {
+                // En mobile, dibujar sin filtro (mejor rendimiento)
+                drawMiner(store);
+            }
         } else {
             drawMiner(store);
         }
 
         // Dibujar enemigos no afectados en color normal
-        unaffectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
-        unaffectedVipers.forEach(enemy => {
+        const unaffectedOtherLength = unaffectedOtherEnemies.length;
+        for (let i = 0; i < unaffectedOtherLength; i++) {
+            drawEnemy(store, unaffectedOtherEnemies[i]);
+        }
+        
+        const unaffectedVipersLength = unaffectedVipers.length;
+        for (let i = 0; i < unaffectedVipersLength; i++) {
+            const enemy = unaffectedVipers[i];
             drawEnemy(store, enemy);
-            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
-            if (wall) drawWall(store, wall);
-        });
+            // Buscar wall una sola vez
+            const enemyX = enemy.initialX ?? enemy.x;
+            const enemyY = enemy.initialY ?? enemy.y;
+            const walls = store.walls;
+            const wallsLen = walls.length;
+            for (let j = 0; j < wallsLen; j++) {
+                const wall = walls[j];
+                if (wall.x === enemyX && wall.y === enemyY) {
+                    drawWall(store, wall);
+                    break; // Encontrado, salir del loop
+                }
+            }
+        }
 
         // Primero, aplicar el degradé oscuro de fondo
         if (hasAffectedObjects) {
             let minY = Infinity;
             let maxY = -Infinity;
-            affectedObjects.forEach(obj => {
+            
+            // Loop optimizado para encontrar límites
+            const affectedLength = affectedWalls.length;
+            for (let i = 0; i < affectedLength; i++) {
+                const obj = affectedWalls[i];
                 if (obj.y < minY) minY = obj.y;
                 if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
-            });
+            }
+            
+            const affectedOtherLength = affectedOtherEnemies.length;
+            for (let i = 0; i < affectedOtherLength; i++) {
+                const obj = affectedOtherEnemies[i];
+                if (obj.y < minY) minY = obj.y;
+                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
+            }
+            
+            const affectedVipersLength = affectedVipers.length;
+            for (let i = 0; i < affectedVipersLength; i++) {
+                const obj = affectedVipers[i];
+                if (obj.y < minY) minY = obj.y;
+                if (obj.y + obj.height > maxY) maxY = obj.y + obj.height;
+            }
+            
             if (store.miner?.affectedByDark) {
                 if (store.miner.y < minY) minY = store.miner.y;
                 if (store.miner.y + store.miner.height > maxY) maxY = store.miner.y + store.miner.height;
@@ -928,61 +1075,90 @@ const drawGameWorld = (store: GameStore) => {
             const bottomEnd = maxY + gradientHeight - gradientOffset;
             
             // Crear un gradiente vertical unificado que cubre toda el área
-            const unifiedGradient = ctx.createLinearGradient(0, topStart, 0, bottomEnd);
-            const totalHeight = bottomEnd - topStart;
-            const topGradientRatio = gradientHeight / totalHeight;
-            const centerStart = (topEnd - topStart) / totalHeight;
-            const centerEnd = (bottomStart - topStart) / totalHeight;
-            
-            // Agregar color stops para el gradiente unificado
-            unifiedGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Negro completo arriba
-            unifiedGradient.addColorStop(centerStart, 'rgba(0, 0, 0, 0)'); // Transparente al final del gradiente superior
-            unifiedGradient.addColorStop(centerEnd, 'rgba(0, 0, 0, 1)'); // Negro completo al inicio del gradiente inferior
-            unifiedGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparente abajo
-            
-            // Aplicar el gradiente unificado en una sola operación
-            ctx.fillStyle = unifiedGradient;
-            ctx.fillRect(0, topStart, levelWidthForGradient, totalHeight);
+            // Ya estamos dentro del contexto escalado, usar coordenadas normales
+            const { ctx: gradientCtx } = getRenderContext(store);
+            if (gradientCtx) {
+                const unifiedGradient = gradientCtx.createLinearGradient(0, topStart, 0, bottomEnd);
+                const totalHeight = bottomEnd - topStart;
+                const centerStart = ((topEnd - topStart) / totalHeight);
+                const centerEnd = ((bottomStart - topStart) / totalHeight);
+                
+                // Agregar color stops para el gradiente unificado
+                unifiedGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Negro completo arriba
+                unifiedGradient.addColorStop(centerStart, 'rgba(0, 0, 0, 0)'); // Transparente al final del gradiente superior
+                unifiedGradient.addColorStop(centerEnd, 'rgba(0, 0, 0, 1)'); // Negro completo al inicio del gradiente inferior
+                unifiedGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparente abajo
+                
+                // Aplicar el gradiente unificado en una sola operación
+                gradientCtx.fillStyle = unifiedGradient;
+                gradientCtx.fillRect(0, topStart, levelWidthForGradient, totalHeight);
+            }
         }
         
         // Después del degradé oscuro, dibujar enemigos afectados en gris (encima de la sombra)
         // En mobile, simplificar el filtro para mejor rendimiento
-        if (!isMobileDeviceFlag) {
-            ctx.save();
-            ctx.filter = 'grayscale(100%) brightness(0.9)';
-            affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
-            affectedVipers.forEach(enemy => {
-                drawEnemy(store, enemy);
-            });
-            ctx.restore();
+        const { ctx: enemyFilterCtx } = getRenderContext(store);
+        if (!isMobile && enemyFilterCtx) {
+            enemyFilterCtx.save();
+            enemyFilterCtx.filter = 'grayscale(100%) brightness(0.9)';
+            const affectedOtherLen = affectedOtherEnemies.length;
+            for (let i = 0; i < affectedOtherLen; i++) {
+                drawEnemy(store, affectedOtherEnemies[i]);
+            }
+            const affectedVipersLen = affectedVipers.length;
+            for (let i = 0; i < affectedVipersLen; i++) {
+                drawEnemy(store, affectedVipers[i]);
+            }
+            enemyFilterCtx.restore();
         } else {
             // En mobile, dibujar sin filtro para mejor rendimiento
-            affectedOtherEnemies.forEach(enemy => drawEnemy(store, enemy));
-            affectedVipers.forEach(enemy => {
-                drawEnemy(store, enemy);
-            });
+            const affectedOtherLen = affectedOtherEnemies.length;
+            for (let i = 0; i < affectedOtherLen; i++) {
+                drawEnemy(store, affectedOtherEnemies[i]);
+            }
+            const affectedVipersLen = affectedVipers.length;
+            for (let i = 0; i < affectedVipersLen; i++) {
+                drawEnemy(store, affectedVipers[i]);
+            }
         }
         
-        // Dibujar paredes de víboras afectadas siempre en negro
-        ctx.save();
-        ctx.fillStyle = 'black';
-        affectedVipers.forEach(enemy => {
-            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
-            if (wall) {
-                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+        // Dibujar paredes de víboras siempre en negro
+        // Ya estamos dentro del contexto escalado, usar coordenadas normales
+        const { ctx: viperWallsCtx } = getRenderContext(store);
+        if (viperWallsCtx) {
+            viperWallsCtx.save();
+            viperWallsCtx.fillStyle = 'black';
+            const affectedVipersLen = affectedVipers.length;
+            const wallsForVipersAffected = store.walls;
+            const wallsLen = wallsForVipersAffected.length;
+            for (let i = 0; i < affectedVipersLen; i++) {
+                const enemy = affectedVipers[i];
+                const enemyX = enemy.initialX ?? enemy.x;
+                const enemyY = enemy.initialY ?? enemy.y;
+                // Buscar wall con loop (más rápido que find)
+                for (let j = 0; j < wallsLen; j++) {
+                    const wall = wallsForVipersAffected[j];
+                    if (wall.x === enemyX && wall.y === enemyY) {
+                        viperWallsCtx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                        break;
+                    }
+                }
             }
-        });
-        ctx.restore();
+            viperWallsCtx.restore();
+        }
     } else {
         // Modo normal - con culling optimizado
-        // Solo dibujar paredes visibles (excepto agua)
-        store.walls.forEach(wall => {
+        // Solo dibujar paredes visibles (excepto agua) - loop for es más rápido
+        const walls = store.walls;
+        const wallsLength = walls.length;
+        for (let i = 0; i < wallsLength; i++) {
+            const wall = walls[i];
             if (wall.type !== 'water' && 
                 wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
                 wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin) {
                 drawWall(store, wall);
             }
-        });
+        }
         
         // Dibujar minero solo si está visible
         if (store.miner) {
@@ -993,62 +1169,102 @@ const drawGameWorld = (store: GameStore) => {
             }
         }
 
-        // Filtrar enemigos visibles
-        const vipers = store.enemies.filter(enemy => 
-            enemy.type === 'viper' &&
-            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
-            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
-        );
+        // Filtrar enemigos visibles - loop for es mucho más rápido que filter
+        const enemies = store.enemies;
+        const enemiesLength = enemies.length;
+        const vipers: typeof enemies = [];
+        const otherEnemies: typeof enemies = [];
         
-        const otherEnemies = store.enemies.filter(enemy => 
-            enemy.type !== 'viper' &&
-            enemy.x + enemy.width >= viewLeft - margin && enemy.x <= viewRight + margin &&
-            enemy.y + enemy.height >= viewTop - margin && enemy.y <= viewBottom + margin
-        );
+        for (let i = 0; i < enemiesLength; i++) {
+            const enemy = enemies[i];
+            // Culling primero (más rápido)
+            if (enemy.x + enemy.width < viewLeft - margin || enemy.x > viewRight + margin ||
+                enemy.y + enemy.height < viewTop - margin || enemy.y > viewBottom + margin) {
+                continue;
+            }
+            
+            if (enemy.type === 'viper') {
+                vipers.push(enemy);
+            } else {
+                otherEnemies.push(enemy);
+            }
+        }
 
-        otherEnemies.forEach(enemy => drawEnemy(store, enemy));
+        const otherEnemiesLength = otherEnemies.length;
+        for (let i = 0; i < otherEnemiesLength; i++) {
+            drawEnemy(store, otherEnemies[i]);
+        }
 
-        vipers.forEach(enemy => {
+        const vipersLength = vipers.length;
+        const wallsForVipers = store.walls;
+        const wallsForVipersLen = wallsForVipers.length;
+        for (let i = 0; i < vipersLength; i++) {
+            const enemy = vipers[i];
             drawEnemy(store, enemy);
-            const wall = store.walls.find(w => w.x === (enemy.initialX ?? enemy.x) && w.y === (enemy.initialY ?? enemy.y));
-            if (wall) drawWall(store, wall);
-        });
+            // Buscar wall con loop (más rápido que find)
+            const enemyX = enemy.initialX ?? enemy.x;
+            const enemyY = enemy.initialY ?? enemy.y;
+            for (let j = 0; j < wallsForVipersLen; j++) {
+                const wall = wallsForVipers[j];
+                if (wall.x === enemyX && wall.y === enemyY) {
+                    drawWall(store, wall);
+                    break;
+                }
+            }
+        }
     }
 
-    // Dibujar entidades cayendo (solo las visibles)
-    store.fallingEntities.forEach(entity => {
+    // Dibujar entidades cayendo (solo las visibles) - loop for es más rápido
+    const fallingEntities = store.fallingEntities;
+    const fallingLength = fallingEntities.length;
+    for (let i = 0; i < fallingLength; i++) {
+        const entity = fallingEntities[i];
         if (entity.x + entity.width >= viewLeft - margin && entity.x <= viewRight + margin &&
             entity.y + entity.height >= viewTop - margin && entity.y <= viewBottom + margin) {
             drawFallingEntity(store, entity);
         }
-    });
+    }
     
     drawExplosions(store); // Las explosiones ya están optimizadas
     drawPlayer(store); // El jugador siempre está visible
     
-    // Dibujar agua después del jugador para que se vea por detrás
-    store.walls.forEach(wall => {
+    // Dibujar agua después del jugador para que se vea por detrás - loop for es más rápido
+    const wallsForWater = store.walls;
+    const wallsForWaterLength = wallsForWater.length;
+    for (let i = 0; i < wallsForWaterLength; i++) {
+        const wall = wallsForWater[i];
         if (wall.type === 'water' && 
             wall.x + wall.width >= viewLeft - margin && wall.x <= viewRight + margin &&
             wall.y + wall.height >= viewTop - margin && wall.y <= viewBottom + margin) {
             drawWall(store, wall);
         }
-    });
+    }
     
-    // Dibujar plataformas después del jugador para que vayan por delante
-    store.platforms.forEach(p => {
+    // Dibujar plataformas después del jugador para que vayan por delante - loop for es más rápido
+    const platforms = store.platforms;
+    const platformsLength = platforms.length;
+    for (let i = 0; i < platformsLength; i++) {
+        const p = platforms[i];
         if (p.x + p.width >= viewLeft - margin && p.x <= viewRight + margin &&
             p.y + p.height >= viewTop - margin && p.y <= viewBottom + margin) {
             drawPlatform(store, p);
         }
-    });
+    }
     
     drawLasers(store); // Los láseres son pocos, siempre dibujar
     drawBombs(store); // Las bombas son pocas, siempre dibujar
     drawParticles(store); // Las partículas son ligeras
     drawFloatingScores(store); // Los scores son pocos
     
-    ctx.restore();
+    renderCtx.restore();
+    
+    // Si estamos usando offscreen canvas, copiar el resultado al canvas visible
+    // OPTIMIZACIÓN: Deshabilitar suavizado al escalar para mejor rendimiento y estilo pixel art
+    if (useOffscreen && store.dom.offscreenCanvas) {
+        displayCtx.imageSmoothingEnabled = false; // Pixel art - no suavizar al escalar (más rápido)
+        displayCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+        displayCtx.drawImage(store.dom.offscreenCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
+    }
 };
 
 // Animar splash en div con background (tira horizontal de 20 frames, animación ping-pong a 8 fps)

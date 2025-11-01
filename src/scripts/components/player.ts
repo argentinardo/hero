@@ -316,7 +316,7 @@ const startFloatingEntry = (store: GameStore, targetX: number, targetY: number) 
     // Configurar estado de floating
     player.isFloating = true;
     player.isGrounded = false;
-    player.vy = 6; // Velocidad de descenso más rápida
+    player.vy = 8; // Aumentado de 6 para descenso más rápido
     player.vx = 0;
     player.animationState = 'fly';
     player.animationTick = 0;
@@ -375,7 +375,7 @@ export const handlePlayerInput = (store: GameStore) => {
             vx: LASER_SPEED * player.direction,
             startX: laserX - 20,
         });
-        player.shootCooldown = 6;
+        player.shootCooldown = 4; // Reducido de 6 a 4 para disparos más rápidos
         
         // Reproducir sonido de láser
         playLaserSound();
@@ -531,8 +531,8 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     player.animationState = 'die';
     player.currentFrame = 0;
     player.animationTick = 0;
-    // Aumentar pausa de muerte para prolongar el efecto de campana
-    player.deathTimer = 90;
+    // Reducir pausa de muerte para respawn más rápido
+    player.deathTimer = 60; // Reducido de 90 para respawn más rápido
     store.lives -= 1;
     store.gameState = 'respawning';
 

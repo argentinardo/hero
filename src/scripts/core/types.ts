@@ -251,8 +251,6 @@ export interface UiElements {
     levelEditorBtn: HTMLButtonElement | null;
     playTestBtn: HTMLButtonElement | null;
     resumeEditorBtn: HTMLButtonElement | null;
-    loadLevelBtn: HTMLButtonElement | null;
-    saveLevelBtn: HTMLButtonElement | null;
     addLevelBtn: HTMLButtonElement | null;
     generateLevelBtn: HTMLButtonElement | null;
     saveAllBtn: HTMLButtonElement | null;
@@ -267,11 +265,19 @@ export interface UiElements {
     gameoverScoreValue: HTMLElement | null;
     gameoverRetryBtn: HTMLButtonElement | null;
     gameoverMenuBtn: HTMLButtonElement | null;
+    fpsCounterEl?: HTMLElement | null;
+    fpsValueEl?: HTMLElement | null;
+    fpsTargetEl?: HTMLElement | null;
+    fpsResolutionEl?: HTMLElement | null;
 }
 
 export interface DomReferences {
     canvas: HTMLCanvasElement | null;
     ctx: CanvasRenderingContext2D | null;
+    // Canvas offscreen para mobile (renderizado a menor resolución)
+    offscreenCanvas?: HTMLCanvasElement | null;
+    offscreenCtx?: CanvasRenderingContext2D | null;
+    renderScale?: number; // Escala de renderizado (0.5 = mitad de resolución)
     ui: UiElements;
 }
 
@@ -349,6 +355,7 @@ export interface GameStore {
             brightness: boolean;
             contrast: boolean;
             vignette: boolean;
+            showFps: boolean;
         };
     };
 }

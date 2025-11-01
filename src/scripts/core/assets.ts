@@ -52,22 +52,22 @@ export const SPRITE_SOURCES: Record<string, string> = {
 };
 
 export const ANIMATION_DATA: AnimationMap = {
-    P_walk: { frames: 5, speed: 5, sprite: 'P_walk', reverse: true },
-    P_stand: { frames: 4, speed: 20, sprite: 'P_stand' },
-    P_jump: { frames: 4, speed: 10, sprite: 'P_jump', loop: false },
-    P_fly: { frames: 5, speed: 10, sprite: 'P_fly' },
+    P_walk: { frames: 5, speed: 4, sprite: 'P_walk', reverse: true }, // Acelerado de 5 a 4
+    P_stand: { frames: 4, speed: 15, sprite: 'P_stand' }, // Acelerado de 20 a 15
+    P_jump: { frames: 4, speed: 8, sprite: 'P_jump', loop: false }, // Acelerado de 10 a 8
+    P_fly: { frames: 5, speed: 8, sprite: 'P_fly' }, // Acelerado de 10 a 8
     P_die: { frames: 1, speed: 1, sprite: 'P_die', loop: false },
     P_success: { frames: 1, speed: 1, sprite: 'P_success', loop: false },
     '8': { frames: 6, speed: 2, sprite: '8' },
-    S: { frames: 15, speed: 7, sprite: 'S' },
-    V: { frames: 4, speed: 8, sprite: 'V' },
-    T: { frames: 26, speed: 8, sprite: 'T' },
-    '2': { frames: 4, speed: 8, sprite: '2' }, // Agua con 2x2 frames
+    S: { frames: 15, speed: 6, sprite: 'S' }, // Acelerado de 7 a 6
+    V: { frames: 4, speed: 6, sprite: 'V' }, // Acelerado de 8 a 6
+    T: { frames: 26, speed: 6, sprite: 'T' }, // Acelerado de 8 a 6
+    '2': { frames: 4, speed: 6, sprite: '2' }, // Acelerado de 8 a 6 - Agua con 2x2 frames
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
-    '9_rescued': { frames: 6, speed: 10, sprite: '9', loop: false },
-    '3': { frames: 16, speed: 19, sprite: '3' },
-    K: { frames: 16, speed: 19, sprite: '3' },
-    bomb: { frames: 6, speed: 15, sprite: 'bomb', loop: false },
+    '9_rescued': { frames: 6, speed: 8, sprite: '9', loop: false }, // Acelerado de 10 a 8
+    '3': { frames: 16, speed: 15, sprite: '3' }, // Acelerado de 19 a 15
+    K: { frames: 16, speed: 15, sprite: '3' }, // Acelerado de 19 a 15
+    bomb: { frames: 6, speed: 12, sprite: 'bomb', loop: false }, // Acelerado de 15 a 12
     explosion: { frames: 6, speed: 2, sprite: 'explosion', loop: false },
 };
 

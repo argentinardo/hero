@@ -89,6 +89,9 @@ export const createInitialStore = (): GameStore => ({
     dom: {
         canvas: null,
         ctx: null,
+        offscreenCanvas: null,
+        offscreenCtx: null,
+        renderScale: 1.0,
         ui: {
             livesCountEl: null,
             scoreCountEl: null,
@@ -126,8 +129,6 @@ export const createInitialStore = (): GameStore => ({
             levelEditorBtn: null,
             playTestBtn: null,
             resumeEditorBtn: null,
-            loadLevelBtn: null,
-            saveLevelBtn: null,
             addLevelBtn: null,
             generateLevelBtn: null,
             saveAllBtn: null,

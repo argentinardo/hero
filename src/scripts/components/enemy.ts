@@ -108,7 +108,7 @@ export const updateEnemies = (store: GameStore) => {
                 break;
             }
             case 'viper': {
-                const speed = 2;
+                const speed = 3; // Aumentado de 2 para enemigos más rápidos
                 switch (enemy.state) {
                     case 'idle':
                         enemy.idleTimer = (enemy.idleTimer ?? 0) - 1;
@@ -122,7 +122,7 @@ export const updateEnemies = (store: GameStore) => {
                         if (Math.abs(enemy.x - (enemy.initialX ?? enemy.x)) >= TILE_SIZE) {
                             enemy.x = (enemy.initialX ?? enemy.x) + (enemy.direction ?? 1) * TILE_SIZE;
                             enemy.state = 'waiting_extended';
-                            enemy.waitTimer = 60;
+                            enemy.waitTimer = 40; // Reducido de 60 a 40 para acción más rápida
                         }
                         break;
                     case 'waiting_extended':
@@ -137,7 +137,7 @@ export const updateEnemies = (store: GameStore) => {
                             (enemy.direction === -1 && enemy.x >= (enemy.initialX ?? enemy.x))) {
                             enemy.x = enemy.initialX ?? enemy.x;
                             enemy.state = 'idle';
-                            enemy.idleTimer = 60 + Math.random() * 60;
+                            enemy.idleTimer = 40 + Math.random() * 40; // Reducido para acción más rápida
                             enemy.isHidden = true;
                         }
                         break;

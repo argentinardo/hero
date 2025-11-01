@@ -316,9 +316,13 @@ body {
     transform: translateX(100%);
 }
 
-/* Tirador del editor */
+/* Botón toggle del editor - siempre visible cuando el editor está activo */
 #editor-toggle {
-    display: none; /* visible solo en modo editor */
+    transition: opacity 0.2s ease-in-out;
+    
+    &.hidden {
+        display: none !important;
+    }
 }
 
 /* Toggle de Volumen */

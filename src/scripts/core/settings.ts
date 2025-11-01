@@ -18,9 +18,19 @@ export interface GameSettings {
         brightness: boolean;       // Efecto de brillo del canvas
         contrast: boolean;         // Efecto de contraste del canvas
         vignette: boolean;        // Efecto de vignette (opcional)
+        showFps: boolean;          // Mostrar contador de FPS
     };
 }
 
+/**
+ * Detecta si el dispositivo es móvil
+ */
+const isMobileDevice = (): boolean => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+};
+
+// Configuración por defecto para desktop (todos los efectos activados)
 const DEFAULT_SETTINGS: GameSettings = {
     audio: {
         musicVolume: 0.3,
@@ -32,6 +42,23 @@ const DEFAULT_SETTINGS: GameSettings = {
         brightness: true,
         contrast: true,
         vignette: true,
+        showFps: false, // Por defecto oculto
+    },
+};
+
+// Configuración por defecto para móvil (todos los efectos desactivados para mejor rendimiento)
+const DEFAULT_MOBILE_SETTINGS: GameSettings = {
+    audio: {
+        musicVolume: 0.3,
+        sfxVolume: 0.5,
+    },
+    graphics: {
+        scanline: false,
+        glow: false,
+        brightness: false,
+        contrast: false,
+        vignette: false,
+        showFps: false, // Por defecto oculto en mobile también
     },
 };
 
@@ -39,20 +66,26 @@ const SETTINGS_KEY = 'hero_game_settings';
 
 /**
  * Carga la configuración desde localStorage o retorna valores por defecto
+ * 
+ * En móvil, por defecto todos los efectos gráficos están desactivados
+ * para mejorar el rendimiento. Si el usuario ya tiene configuración guardada,
+ * se respeta esa configuración.
  */
 export const loadSettings = (): GameSettings => {
     try {
         const saved = localStorage.getItem(SETTINGS_KEY);
         if (saved) {
             const parsed = JSON.parse(saved);
+            // Si hay configuración guardada, usarla (respetar preferencias del usuario)
+            const defaults = isMobileDevice() ? DEFAULT_MOBILE_SETTINGS : DEFAULT_SETTINGS;
             // Merge con defaults para asegurar que todas las propiedades existen
             return {
                 audio: {
-                    ...DEFAULT_SETTINGS.audio,
+                    ...defaults.audio,
                     ...parsed.audio,
                 },
                 graphics: {
-                    ...DEFAULT_SETTINGS.graphics,
+                    ...defaults.graphics,
                     ...parsed.graphics,
                 },
             };
@@ -60,7 +93,8 @@ export const loadSettings = (): GameSettings => {
     } catch (error) {
         console.warn('Error cargando configuración:', error);
     }
-    return { ...DEFAULT_SETTINGS };
+    // Si no hay configuración guardada, usar defaults según el dispositivo
+    return isMobileDevice() ? { ...DEFAULT_MOBILE_SETTINGS } : { ...DEFAULT_SETTINGS };
 };
 
 /**
@@ -88,11 +122,12 @@ export const updateSettings = (updates: Partial<GameSettings>): GameSettings => 
 };
 
 /**
- * Resetea la configuración a los valores por defecto
+ * Resetea la configuración a los valores por defecto según el dispositivo
  */
 export const resetSettings = (): GameSettings => {
-    saveSettings({ ...DEFAULT_SETTINGS });
-    return { ...DEFAULT_SETTINGS };
+    const defaults = isMobileDevice() ? DEFAULT_MOBILE_SETTINGS : DEFAULT_SETTINGS;
+    saveSettings({ ...defaults });
+    return { ...defaults };
 };
 
 /**
@@ -118,7 +153,7 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
     if (settings.brightness && settings.contrast) {
         canvas.style.filter = 'brightness(1.8) contrast(1.1)';
     } else if (settings.brightness) {
-        canvas.style.filter = 'brightness(1.8)';
+        canvas.style.filter = 'brightness(1.4)';
     } else if (settings.contrast) {
         canvas.style.filter = 'contrast(1.1)';
     } else {
@@ -155,6 +190,12 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
         body.classList.remove('glow-enabled');
         if (gameUi) gameUi.classList.remove('glow-enabled');
         if (bottomUi) bottomUi.classList.remove('glow-enabled');
+    }
+    
+    // Mostrar/ocultar contador de FPS
+    const fpsCounter = document.getElementById('fps-counter');
+    if (fpsCounter) {
+        fpsCounter.style.display = settings.showFps ? 'block' : 'none';
     }
 };
 

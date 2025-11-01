@@ -9,7 +9,7 @@ import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
 import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume } from './audio';
-import { loadSettings, saveSettings, updateSettings, resetSettings, applyGraphicsSettings } from '../core/settings';
+import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings } from '../core/settings';
 import { 
     undo, 
     redo, 
@@ -55,15 +55,65 @@ export const adjustUIBars = () => {
 
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
-    // Optimizar contexto 2D para rendimiento
-    store.dom.ctx = store.dom.canvas?.getContext('2d', { 
-        alpha: false, // No necesitamos transparencia en el canvas principal
-        desynchronized: true // Permite rendering más rápido
-    }) ?? null;
     
-    // Configurar propiedades de renderizado para mejor performance
-    if (store.dom.ctx) {
-        store.dom.ctx.imageSmoothingEnabled = false; // Pixel art sin suavizado
+    // Detectar mobile para optimizaciones específicas
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+    
+    if (!store.dom.canvas) return;
+    
+    // OPTIMIZACIÓN CRÍTICA PARA MOBILE: Renderizar a menor resolución interna
+    // Reducir más agresivamente si las imágenes son más grandes (ya reducidas 50% manualmente)
+    // El canvas visual se mantiene igual, pero internamente renderizamos menos píxeles
+    if (isMobile) {
+        // Si las imágenes ya están reducidas 50%, podemos renderizar aún más bajo (0.4 = 40% de resolución)
+        // Esto da: 1440*0.4 = 576px de ancho, 900*0.4 = 360px de alto
+        // Reduce de ~1.3M píxeles a ~207K píxeles (84% menos!)
+        const renderScaleValue = 0.4; // Más agresivo: 40% de resolución
+        store.dom.renderScale = renderScaleValue;
+        store.dom.offscreenCanvas = document.createElement('canvas');
+        store.dom.offscreenCanvas.width = Math.floor(1440 * renderScaleValue); // 576px
+        store.dom.offscreenCanvas.height = Math.floor(900 * renderScaleValue); // 360px
+        
+        // Contexto del canvas offscreen (donde realmente renderizamos)
+        const offscreenContext = store.dom.offscreenCanvas.getContext('2d', {
+            alpha: false,
+            desynchronized: true,
+            willReadFrequently: false,
+            powerPreference: 'low-power'
+        });
+        store.dom.offscreenCtx = offscreenContext as CanvasRenderingContext2D | null;
+        
+        if (store.dom.offscreenCtx) {
+            store.dom.offscreenCtx.imageSmoothingEnabled = false;
+        }
+        
+        // Contexto del canvas visible (solo para escalar el resultado)
+        const context = store.dom.canvas.getContext('2d', {
+            alpha: false,
+            desynchronized: true,
+            willReadFrequently: false,
+            powerPreference: 'low-power'
+        });
+        store.dom.ctx = (context as CanvasRenderingContext2D | null) ?? null;
+        
+        if (store.dom.ctx) {
+            store.dom.ctx.imageSmoothingEnabled = false;
+        }
+    } else {
+        // Desktop: renderizado normal a resolución completa
+        store.dom.renderScale = 1.0;
+        const context = store.dom.canvas.getContext('2d', { 
+            alpha: false,
+            desynchronized: true,
+            willReadFrequently: false,
+            powerPreference: isMobile ? 'low-power' : 'high-performance'
+        });
+        store.dom.ctx = (context as CanvasRenderingContext2D | null) ?? null;
+        
+        if (store.dom.ctx) {
+            store.dom.ctx.imageSmoothingEnabled = false;
+        }
     }
 
     const ui = store.dom.ui;
@@ -102,10 +152,14 @@ export const attachDomReferences = (store: GameStore) => {
     ui.gameoverScoreValue = document.getElementById('gameover-score-value');
     ui.gameoverRetryBtn = document.getElementById('gameover-retry-btn') as HTMLButtonElement | null;
     ui.gameoverMenuBtn = document.getElementById('gameover-menu-btn') as HTMLButtonElement | null;
+    
+    // Elementos del contador de FPS
+    ui.fpsCounterEl = document.getElementById('fps-counter');
+    ui.fpsValueEl = document.getElementById('fps-value');
+    ui.fpsTargetEl = document.getElementById('fps-target');
+    ui.fpsResolutionEl = document.getElementById('fps-resolution');
     ui.playTestBtn = document.getElementById('play-test-btn') as HTMLButtonElement | null;
     ui.resumeEditorBtn = document.getElementById('resume-editor-btn') as HTMLButtonElement | null;
-    ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
-    ui.saveLevelBtn = document.getElementById('save-level-btn') as HTMLButtonElement | null;
     ui.addLevelBtn = document.getElementById('add-level-btn') as HTMLButtonElement | null;
     ui.generateLevelBtn = document.getElementById('generate-level-btn') as HTMLButtonElement | null;
     ui.saveAllBtn = document.getElementById('save-all-btn') as HTMLButtonElement | null;
@@ -144,7 +198,9 @@ export const attachDomReferences = (store: GameStore) => {
         editorToggleBtn.addEventListener('click', () => {
             const panel = ui.editorPanelEl as HTMLElement;
             const isCollapsed = panel.classList.toggle('collapsed');
-            // Drawer derecho: colapsado muestra '<' (desplegar hacia la izquierda), abierto muestra '>' (ocultar hacia la derecha)
+            // Drawer derecho: 
+            // - Abierto: muestra '<' para cerrar (desplazar a la derecha)
+            // - Colapsado: muestra '>' para abrir (desplegar desde la derecha)
             editorToggleBtn.querySelector('span')!.textContent = isCollapsed ? '<' : '>';
         });
     }
@@ -160,7 +216,10 @@ export const attachDomReferences = (store: GameStore) => {
     window.addEventListener('resize', adjustUIBars);
     
     // Aplicar configuración inicial de gráficos
-    applyGraphicsSettings(store.settings.graphics);
+    applyGraphicsSettings({ 
+        ...store.settings.graphics,
+        showFps: store.settings.graphics.showFps ?? false
+    });
     
     // Aplicar configuración inicial de audio
     setMusicVolume(store.settings.audio.musicVolume);
@@ -554,9 +613,9 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     }
     if (editorPanelEl) {
         editorPanelEl.style.display = 'none';
-        // Ocultar tirador fuera del editor
+        // Ocultar toggle del editor cuando salimos del editor
         const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
-        if (toggle) toggle.style.display = 'none';
+        if (toggle) toggle.classList.add('hidden');
     }
     startJoystick(store);
 
@@ -661,11 +720,10 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
                 userArea.style.display = 'none';
             }
         }
-        // Mostrar tirador y abrir por defecto
+        // Mostrar toggle y abrir panel por defecto
         const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
         if (toggle) {
-            toggle.style.display = 'block';
-            // Drawer derecho abierto: mostrar '>' para indicar que puede ocultarse a la derecha
+            toggle.classList.remove('hidden');
             toggle.querySelector('span')!.textContent = '>';
         }
         editorPanelEl.classList.remove('collapsed');
@@ -1469,7 +1527,6 @@ const tryLoadUserLevels = async (store: GameStore) => {
 const setupSettingsModal = (store: GameStore) => {
     const settingsModal = document.getElementById('settings-modal');
     const settingsCloseBtn = document.getElementById('settings-close-btn') as HTMLButtonElement | null;
-    const settingsResetBtn = document.getElementById('settings-reset-btn') as HTMLButtonElement | null;
     
     // Sliders de volumen
     const musicVolumeSlider = document.getElementById('music-volume-slider') as HTMLInputElement | null;
@@ -1487,6 +1544,7 @@ const setupSettingsModal = (store: GameStore) => {
     const brightnessToggle = document.getElementById('brightness-toggle') as HTMLInputElement | null;
     const contrastToggle = document.getElementById('contrast-toggle') as HTMLInputElement | null;
     const vignetteToggle = document.getElementById('vignette-toggle') as HTMLInputElement | null;
+    const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     
     if (!settingsModal) return;
     
@@ -1502,18 +1560,6 @@ const setupSettingsModal = (store: GameStore) => {
         if (e.target === settingsModal) {
             closeModal();
         }
-    });
-    
-    // Resetear configuración
-    settingsResetBtn?.addEventListener('click', () => {
-        const defaultSettings = resetSettings();
-        store.settings = defaultSettings;
-        
-        // Actualizar UI
-        updateSettingsUI(store);
-        
-        // Aplicar cambios
-        applySettings(store);
     });
     
     // Actualizar volumen de música
@@ -1558,35 +1604,60 @@ const setupSettingsModal = (store: GameStore) => {
     scanlineToggle?.addEventListener('change', (e) => {
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.scanline = enabled;
-        applyGraphicsSettings(store.settings.graphics);
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
         saveSettings(store.settings);
     });
     
     glowToggle?.addEventListener('change', (e) => {
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.glow = enabled;
-        applyGraphicsSettings(store.settings.graphics);
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
         saveSettings(store.settings);
     });
     
     brightnessToggle?.addEventListener('change', (e) => {
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.brightness = enabled;
-        applyGraphicsSettings(store.settings.graphics);
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
         saveSettings(store.settings);
     });
     
     contrastToggle?.addEventListener('change', (e) => {
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.contrast = enabled;
-        applyGraphicsSettings(store.settings.graphics);
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
         saveSettings(store.settings);
     });
     
     vignetteToggle?.addEventListener('change', (e) => {
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.vignette = enabled;
-        applyGraphicsSettings(store.settings.graphics);
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
+        saveSettings(store.settings);
+    });
+    
+    fpsToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        store.settings.graphics.showFps = enabled;
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
         saveSettings(store.settings);
     });
 };
@@ -1608,6 +1679,7 @@ const updateSettingsUI = (store: GameStore) => {
     const brightnessToggle = document.getElementById('brightness-toggle') as HTMLInputElement | null;
     const contrastToggle = document.getElementById('contrast-toggle') as HTMLInputElement | null;
     const vignetteToggle = document.getElementById('vignette-toggle') as HTMLInputElement | null;
+    const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     
     // Actualizar sliders de audio
     const musicVolumePercent = Math.round(store.settings.audio.musicVolume * 100);
@@ -1629,6 +1701,7 @@ const updateSettingsUI = (store: GameStore) => {
     if (brightnessToggle) brightnessToggle.checked = store.settings.graphics.brightness;
     if (contrastToggle) contrastToggle.checked = store.settings.graphics.contrast;
     if (vignetteToggle) vignetteToggle.checked = store.settings.graphics.vignette;
+    if (fpsToggle) fpsToggle.checked = store.settings.graphics.showFps;
 };
 
 /**
@@ -1654,7 +1727,10 @@ const applySettings = (store: GameStore) => {
     setSFXVolume(store.settings.audio.sfxVolume);
     
     // Aplicar configuración de gráficos
-    applyGraphicsSettings(store.settings.graphics);
+    applyGraphicsSettings({ 
+        ...store.settings.graphics,
+        showFps: store.settings.graphics.showFps ?? false
+    });
 };
 
 const setupHamburgerMenu = (
@@ -2213,8 +2289,6 @@ const purgeEmptyRowsAndColumns = (level: string[][]): string[][] => {
 
 const setupLevelData = (store: GameStore) => {
     const {
-        loadLevelBtn,
-        saveLevelBtn,
         generateLevelBtn,
         saveAllBtn,
         playTestBtn,
@@ -2269,63 +2343,6 @@ const setupLevelData = (store: GameStore) => {
     // Cargar nivel automáticamente cuando cambia el selector
     store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
         loadLevelFromStore();
-    });
-
-    // Botón restaurar: recarga el nivel guardado (descartando cambios actuales)
-    loadLevelBtn?.addEventListener('click', () => {
-        // Restaurar desde el archivo JSON original, no desde la sesión
-        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        const originalLevel = store.initialLevels[index] ?? store.initialLevels[0];
-        
-        if (originalLevel) {
-            // Cargar el nivel original desde el JSON
-            store.editorLevel = originalLevel.map(row => row.split(''));
-            // También actualizar el store de la sesión para mantener consistencia
-            store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
-            
-            // Centrar la cámara en el jugador
-            const canvas = store.dom.canvas;
-            if (canvas && store.editorLevel.length > 0) {
-                let playerCol = 0;
-                let playerRow = 0;
-                outerCenterRestore: for (let r = 0; r < store.editorLevel.length; r++) {
-                    const c = store.editorLevel[r]?.indexOf('P') ?? -1;
-                    if (c !== -1) {
-                        playerRow = r;
-                        playerCol = c;
-                        break outerCenterRestore;
-                    }
-                }
-                const levelCols = store.editorLevel[0]?.length ?? 0;
-                const levelRows = store.editorLevel.length;
-                const levelWidth = levelCols * TILE_SIZE;
-                const levelHeight = levelRows * TILE_SIZE;
-                const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
-                const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
-                const maxCamX = Math.max(0, levelWidth - canvas.width);
-                const maxCamY = Math.max(0, levelHeight - canvas.height);
-                store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
-                store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
-            } else {
-                store.cameraX = 0;
-                store.cameraY = 0;
-            }
-            
-            // Reinicializar el editor avanzado
-            initializeAdvancedEditor(store);
-            
-            showNotification(store, '🔄 Restaurado', `Nivel ${index + 1} restaurado desde el archivo JSON.\nTodos los cambios descartados.`);
-        }
-    });
-
-    saveLevelBtn?.addEventListener('click', () => {
-        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        // Limpiar filas y columnas vacías antes de guardar
-        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
-        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
-        // Actualizar también el nivel del editor con la versión limpia
-        store.editorLevel = cleanedLevel;
-        showNotification(store, '✅ Guardado', `Nivel ${index + 1} guardado en la sesión.\nFilas y columnas vacías eliminadas.`);
     });
 
     store.dom.ui.addLevelBtn?.addEventListener('click', () => {

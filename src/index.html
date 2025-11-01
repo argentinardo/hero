@@ -118,6 +118,13 @@
                 <!-- Canvas del Juego / Editor -->
                 <canvas id="gameCanvas" width="1440" height="900"></canvas>
                 
+                <!-- Contador de FPS (para debugging de rendimiento) -->
+                <div id="fps-counter" style="position: fixed; top: 70px; right: 10px; background: rgba(0, 0, 0, 0.7); color: #00ff00; padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; z-index: 1000; pointer-events: none; display: none;">
+                    <div>FPS: <span id="fps-value">--</span></div>
+                    <div style="font-size: 11px; color: #ffff00;">Target: <span id="fps-target">--</span></div>
+                    <div style="font-size: 11px; color: #00ffff;">Res: <span id="fps-resolution">--</span></div>
+                </div>
+                
                 <!-- Barra Inferior (superpuesta) -->
                 <div id="bottom-ui" class="text-base" style="display: none;">
                     <div class="flex items-center gap-3">
@@ -135,14 +142,14 @@
                 </div>
             </div>
 
-        <!-- Tirador del Editor (izquierda) -->
-        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden" style="position: fixed; right: 0; top: 40%; z-index: 210; background: rgba(0,0,0,0.8); color: white; border: 2px solid white; padding: 6px 8px; cursor: pointer;">
-            <span>&lt;</span>
+        <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
+        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 top-0  text-white cursor-pointer flex items-center justify-center" style="width: 36px; height: 60px; font-size: 1.2rem; border-left: none; border-radius: 0 8px 8px 0; z-index: 210;">
+            <span></span>
         </button>
 
-        <!-- Panel del Editor (drawer izquierdo) -->
+        <!-- Panel del Editor (drawer derecho) -->
         <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden bg-gray-800">
-                <h2 class="text-center text-lg mb-2">EDITOR</h2>
+                <h2 class="text-center text-lg mb-2" style="font-family: 'Press Start 2P', monospace;">EDITOR</h2>
                 <!-- Área de usuario (izquierda) -->
                 <div id="user-area" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
                     <p id="user-greeting" class="text-sm mb-2">Hola <span id="username-display">Usuario</span></p>
@@ -179,13 +186,8 @@
                         <span id="levels-section-arrow">▾</span>
                     </button>
                     <div id="levels-section-content" class="mt-2">
-                        <div class="flex items-center gap-2">
-                            <label for="level-selector" class="text-sm">Cargar:</label>
-                            <select id="level-selector" class="flex-grow bg-gray-700 border-2 border-white p-1 text-sm"></select>
-                        </div>
-                        <button id="load-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Restaurar</button>
-                        <button id="save-level-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 p-2 border-2 border-white text-xs">Guardar en sesión</button>
-                        <button id="add-level-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white mt-2 text-xs">➕ Nuevo Nivel</button>
+                        <select id="level-selector" class="w-full bg-gray-700 border-2 border-white p-1 text-sm mb-2"></select>
+                        <button id="add-level-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white text-xs">➕ Nuevo Nivel</button>
                         <button id="generate-level-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white text-xs">Generar Nivel</button>
                         <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar en Archivo</button>
                     </div>
@@ -383,11 +385,17 @@
                         <input type="checkbox" id="vignette-toggle" checked 
                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                     </div>
+                    
+                    <!-- Show FPS -->
+                    <div class="mb-3 flex items-center justify-between">
+                        <label for="fps-toggle" class="text-sm cursor-pointer flex-1">Mostrar Contador FPS:</label>
+                        <input type="checkbox" id="fps-toggle" 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
                 </div>
                 
                 <!-- Botones -->
                 <div class="flex justify-center gap-4">
-                    <button id="settings-reset-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white">Restaurar Valores</button>
                     <button id="settings-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Cerrar</button>
                 </div>
             </div>
