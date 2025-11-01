@@ -9,7 +9,8 @@ body {
 }
 
 /* CSS básico para evitar que se vea mal si el usuario gira el móvil */
-@media screen and (orientation: portrait) {
+@media screen and (orientation: portrait) and (min-width: 1025px) {
+    /* Solo rotar en desktop portrait, en mobile se muestra mensaje animado */
     body {
         transform: rotate(90deg);
         transform-origin: left top;
