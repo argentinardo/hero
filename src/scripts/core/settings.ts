@@ -46,19 +46,19 @@ const DEFAULT_SETTINGS: GameSettings = {
     },
 };
 
-// Configuración por defecto para móvil (todos los efectos desactivados para mejor rendimiento)
+// Configuración por defecto para móvil (todos los efectos activados excepto showFps para mejor rendimiento)
 const DEFAULT_MOBILE_SETTINGS: GameSettings = {
     audio: {
         musicVolume: 0.3,
         sfxVolume: 0.5,
     },
     graphics: {
-        scanline: false,
-        glow: false,
-        brightness: false,
-        contrast: false,
-        vignette: false,
-        showFps: false, // Por defecto oculto en mobile también
+        scanline: true,   // Activado en móvil
+        glow: true,       // Activado en móvil
+        brightness: true, // Activado en móvil
+        contrast: true,   // Activado en móvil
+        vignette: true,   // Activado en móvil
+        showFps: false,   // Por defecto oculto en mobile
     },
 };
 
@@ -67,8 +67,8 @@ const SETTINGS_KEY = 'hero_game_settings';
 /**
  * Carga la configuración desde localStorage o retorna valores por defecto
  * 
- * En móvil, por defecto todos los efectos gráficos están desactivados
- * para mejorar el rendimiento. Si el usuario ya tiene configuración guardada,
+ * En móvil, por defecto todos los efectos gráficos están activados
+ * excepto showFps para no distraer. Si el usuario ya tiene configuración guardada,
  * se respeta esa configuración.
  */
 export const loadSettings = (): GameSettings => {
@@ -136,6 +136,7 @@ export const resetSettings = (): GameSettings => {
  * OPTIMIZACIÓN DE RENDIMIENTO:
  * - Desactivar efectos reduce el costo de renderizado significativamente
  * - En móviles antiguos, desactivar todos los efectos puede mejorar FPS de 15-20 a 30
+ * - Por defecto en móvil todos los efectos están activados para mejor experiencia visual
  * 
  * @param settings - Configuración de gráficos a aplicar
  */
