@@ -138,6 +138,10 @@ export const createInitialStore = (): GameStore => ({
             redoBtn: null,
             duplicateRowBtn: null,
             deleteRowBtn: null,
+            gameoverModal: null,
+            gameoverScoreValue: null,
+            gameoverRetryBtn: null,
+            gameoverMenuBtn: null,
         },
     },
 });

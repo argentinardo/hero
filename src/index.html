@@ -13,6 +13,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/src/assets/icons/android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/src/assets/icons/android-chrome-512x512.png">
     <meta name="theme-color" content="#1f2937">
+    <!-- Meta tag para Netlify Identity URL (respaldo) -->
+    <meta name="netlify-identity-url" content="https://newhero.netlify.app/.netlify/identity">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,24 +22,56 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
         <!-- Netlify Identity Widget -->
         <script>
+            // Configurar URL fija ANTES de cargar el widget para evitar que pida URL al usuario
             window.IDENTITY_URL = 'https://newhero.netlify.app/.netlify/identity';
         </script>
         <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            // Inicializar inmediatamente después de cargar el script, no esperar DOMContentLoaded
+            (function() {
                 var ni = window.netlifyIdentity;
-                if (!ni) return;
-                // Permitir configurar manualmente el endpoint (útil en dominio personalizado o dev)
-                var meta = document.querySelector('meta[name="netlify-identity-url"]');
-                var configured = window.IDENTITY_URL || (meta && meta.getAttribute('content'));
-                var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
-                var apiUrl = configured || (isNetlifyHost ? (window.location.origin + '/.netlify/identity') : null);
-                if (!apiUrl) {
-                    // Si no estamos en un host de Netlify y no hay configuración manual, no inicializar
+                if (!ni) {
+                    // Si no está disponible aún, intentar de nuevo cuando el DOM esté listo
+                    document.addEventListener('DOMContentLoaded', initializeNetlifyIdentity);
                     return;
                 }
-                try { ni.init({ APIUrl: apiUrl }); } catch (e) {}
-            });
+                initializeNetlifyIdentity();
+                
+                function initializeNetlifyIdentity() {
+                    var ni = window.netlifyIdentity;
+                    if (!ni) return;
+                    
+                    // Prioridad: 1) Variable global, 2) Meta tag, 3) Detección automática
+                    var configured = window.IDENTITY_URL || 
+                                     (document.querySelector('meta[name="netlify-identity-url"]')?.getAttribute('content')) ||
+                                     null;
+                    
+                    var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
+                    var apiUrl = configured || 
+                                (isNetlifyHost ? (window.location.origin + '/.netlify/identity') : null);
+                    
+                    // SIEMPRE usar la URL fija si está configurada, incluso en Android/Capacitor
+                    if (configured) {
+                        apiUrl = configured;
+                    }
+                    
+                    if (!apiUrl) {
+                        console.warn('Netlify Identity: No se pudo determinar la URL de Identity');
+                        return;
+                    }
+                    
+                    try { 
+                        // Inicializar con la URL fija y configurar para que no pida URL al usuario
+                        ni.init({ 
+                            APIUrl: apiUrl,
+                            locale: 'es' // Configurar idioma español si está disponible
+                        }); 
+                        console.log('Netlify Identity inicializado con URL:', apiUrl);
+                    } catch (e) {
+                        console.error('Error inicializando Netlify Identity:', e);
+                    }
+                }
+            })();
         </script>
 </head>
 <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
@@ -76,6 +110,7 @@
                     <button id="pause-resume-btn" class="menu-item">Pausar</button>
                     <button id="restart-game-btn" class="menu-item">Reiniciar</button>
                     <button id="settings-btn" class="menu-item">Configuración</button>
+                    <button id="credits-btn-hamburger" class="menu-item">Créditos</button>
                     <button id="back-to-menu-btn-game" class="menu-item">Volver al Menú</button>
                     <button id="resume-editor-btn-menu" class="menu-item hidden">Volver al Editor</button>
                 </div>
@@ -226,7 +261,7 @@
         <!-- Splash animado -->
         <div id="splash-container"></div>
 
-        <!-- Pantalla de Mensajes (Inicio / Game Over) -->
+        <!-- Pantalla de Mensajes (Inicio) -->
         <div id="message-overlay" class="absolute inset-0 flex flex-col justify-center items-center text-center" style="padding-top: 56vh; background: transparent; z-index: 2;">
             <p id="message-text" class="text-sm opacity-90"></p>
             <div class="flex gap-4 mt-6">
@@ -236,16 +271,38 @@
             </div>
         </div>
 
+        <!-- Modal Game Over -->
+        <div id="gameover-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center z-50">
+            <div class="bg-gray-900 p-12 border-4 border-red-600 max-w-lg mx-6" style="box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);">
+                <h1 id="gameover-title" class="text-6xl md:text-7xl font-bold mb-6 text-red-600" style="text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4); font-family: 'Press Start 2P', monospace;">
+                    GAME OVER
+                </h1>
+                <p id="gameover-score" class="text-xl mb-8 text-white font-bold" style="font-family: 'Press Start 2P', monospace;">
+                    Puntuación final: <span id="gameover-score-value" class="text-yellow-400">0</span>
+                </p>
+                <div class="flex flex-col gap-4">
+                    <button id="gameover-retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-4 border-4 border-white text-lg font-bold" style="font-family: 'Press Start 2P', monospace; min-width: 200px;">
+                        Volver a Intentar
+                    </button>
+                    <button id="gameover-menu-btn" class="bg-blue-600 hover:bg-blue-700 p-4 border-4 border-white text-lg font-bold" style="font-family: 'Press Start 2P', monospace; min-width: 200px;">
+                        Menú Principal
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal Créditos -->
         <div id="credits-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
             <div class="bg-gray-800 p-8 border-4 border-white max-w-lg mx-6">
-                <h2 class="text-2xl mb-4">Créditos</h2>
-                <p class="mb-6 text-sm leading-relaxed">
-                    desarrollado por <strong>Damián Nardini</strong>, sitio web
-                    <a href="https://www.damiannardini.com" target="_blank" rel="noopener" class="underline">www.damiannardini.com</a>
-                    — para mi hijo Paolo ❤ con amor
+                <h2 class="text-2xl mb-4" style="font-family: 'Press Start 2P', monospace;">Créditos</h2>
+                <p class="mb-6 text-sm leading-relaxed" style="font-family: 'Press Start 2P', monospace;">
+                    developed by: <strong>argentinardo</strong>
+                    <br>
+                    <a href="https://www.damiannardini.com" target="_blank" rel="noopener" class="underline text-yellow-400 hover:text-yellow-300">damiannardini.com</a>
+                    <br><br>
+                    con la ayuda de mi ❤️ hijo Paolo
                 </p>
-                <button id="credits-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Cerrar</button>
+                <button id="credits-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white" style="font-family: 'Press Start 2P', monospace;">Cerrar</button>
             </div>
         </div>
 

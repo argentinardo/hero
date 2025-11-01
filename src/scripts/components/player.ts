@@ -34,7 +34,7 @@ import { TILE_SIZE, GRAVITY, PLAYER_SPEED, THRUST_POWER, MAX_UPWARD_SPEED, LASER
 import { ANIMATION_DATA } from '../core/assets';
 import type { Enemy, GameStore, Miner, Wall, Platform } from '../core/types';
 import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
-import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombFireSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic } from './audio';
+import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombFireSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic, pauseBackgroundMusic } from './audio';
 import { vibrate } from '../utils/device';
 
 const handleWaterCollision = (store: GameStore, wall: Wall) => {
@@ -539,15 +539,14 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     if (store.lives <= 0) {
         window.setTimeout(() => {
             store.gameState = 'gameover';
-            const { messageOverlay, messageText, messageTitle, retryBtn } = store.dom.ui;
-            if (messageOverlay && messageText && messageTitle) {
-                messageTitle.textContent = 'GAME OVER';
-                messageText.textContent = `Puntuación final: ${store.score}.`;
-                messageOverlay.style.display = 'flex';
-            }
-            // Mostrar botón de reintentar y ocultar editor
-            if (retryBtn) {
-                retryBtn.classList.remove('hidden');
+            const { gameoverModal, gameoverScoreValue } = store.dom.ui;
+            
+            // Mostrar modal de Game Over con puntuación
+            if (gameoverModal) {
+                if (gameoverScoreValue) {
+                    gameoverScoreValue.textContent = store.score.toString();
+                }
+                gameoverModal.classList.remove('hidden');
             }
 
             // Desactivar controles móviles y destruir joystick para no bloquear clicks en overlay
@@ -565,6 +564,9 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
             store.keys.ArrowLeft = false;
             store.keys.ArrowRight = false;
             store.keys.Space = false;
+            
+            // Pausar música de fondo
+            pauseBackgroundMusic();
         }, 1500);
         return;
     }

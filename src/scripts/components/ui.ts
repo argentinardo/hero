@@ -4,6 +4,7 @@ import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nippl
 import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA, SPRITE_SOURCES } from '../core/assets';
 import { buildChunkedFile20x18 } from '../utils/levels';
+import { getNetlifyBaseUrl } from '../utils/device';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
@@ -97,6 +98,10 @@ export const attachDomReferences = (store: GameStore) => {
     ui.startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     ui.levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
     ui.retryBtn = document.getElementById('retry-btn') as HTMLButtonElement | null;
+    ui.gameoverModal = document.getElementById('gameover-modal');
+    ui.gameoverScoreValue = document.getElementById('gameover-score-value');
+    ui.gameoverRetryBtn = document.getElementById('gameover-retry-btn') as HTMLButtonElement | null;
+    ui.gameoverMenuBtn = document.getElementById('gameover-menu-btn') as HTMLButtonElement | null;
     ui.playTestBtn = document.getElementById('play-test-btn') as HTMLButtonElement | null;
     ui.resumeEditorBtn = document.getElementById('resume-editor-btn') as HTMLButtonElement | null;
     ui.loadLevelBtn = document.getElementById('load-level-btn') as HTMLButtonElement | null;
@@ -145,7 +150,8 @@ export const attachDomReferences = (store: GameStore) => {
     }
 
     // Configurar el menú hamburguesa
-    setupHamburgerMenu(store, hamburgerBtn, hamburgerBtnMobile, hamburgerMenu, pauseResumeBtn, restartGameBtn, backToMenuBtnGame, resumeEditorBtnMenu);
+    const creditsBtnHamburger = document.getElementById('credits-btn-hamburger') as HTMLButtonElement | null;
+    setupHamburgerMenu(store, hamburgerBtn, hamburgerBtnMobile, hamburgerMenu, pauseResumeBtn, restartGameBtn, backToMenuBtnGame, resumeEditorBtnMenu, creditsBtnHamburger);
     
     // Configurar modal de configuración
     setupSettingsModal(store);
@@ -188,6 +194,10 @@ const setBodyClass = (state: string) => {
 };
 
 export const showMenu = (store: GameStore) => {
+    // Ocultar modal de game over si está visible
+    if (store.dom.ui.gameoverModal) {
+        store.dom.ui.gameoverModal.classList.add('hidden');
+    }
     store.appState = 'menu';
     store.gameState = 'start';
     setBodyClass('menu');
@@ -496,6 +506,10 @@ const startJoystick = (store: GameStore) => {
 };
 
 export const startGame = (store: GameStore, levelOverride: string[] | null = null, startIndex?: number, preserveLevels?: boolean) => {
+    // Ocultar modal de game over si está visible
+    if (store.dom.ui.gameoverModal) {
+        store.dom.ui.gameoverModal.classList.add('hidden');
+    }
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
@@ -1384,7 +1398,9 @@ const tryLoadUserLevels = async (store: GameStore) => {
             return;
         }
 
-        const res = await fetch('/.netlify/functions/levels', {
+        // Usar URL completa en Android/Capacitor, relativa en web
+        const baseUrl = getNetlifyBaseUrl();
+        const res = await fetch(`${baseUrl}/.netlify/functions/levels`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1649,7 +1665,8 @@ const setupHamburgerMenu = (
     pauseResumeBtn: HTMLButtonElement | null,
     restartGameBtn: HTMLButtonElement | null,
     backToMenuBtnGame: HTMLButtonElement | null,
-    resumeEditorBtnMenu: HTMLButtonElement | null
+    resumeEditorBtnMenu: HTMLButtonElement | null,
+    creditsBtnHamburger: HTMLButtonElement | null
 ) => {
     let isMenuOpen = false;
     
@@ -1815,6 +1832,15 @@ const setupHamburgerMenu = (
         startEditor(store, true);
     });
     
+    // Botón de créditos en menú hamburguesa
+    creditsBtnHamburger?.addEventListener('click', () => {
+        closeMenu();
+        const creditsModal = document.getElementById('credits-modal');
+        if (creditsModal) {
+            creditsModal.classList.remove('hidden');
+        }
+    });
+    
     // Actualizar visibilidad del botón "Volver al Editor" cuando sea necesario
     const updateResumeEditorVisibility = () => {
         // Este se actualizará desde startGame cuando sea necesario
@@ -1977,6 +2003,22 @@ const setupMenuButtons = (store: GameStore) => {
         showMenu(store);
     });
     retryBtn?.addEventListener('click', () => startGame(store));
+    
+    // Botones del modal Game Over
+    const { gameoverRetryBtn, gameoverMenuBtn, gameoverModal } = store.dom.ui;
+    gameoverRetryBtn?.addEventListener('click', () => {
+        if (gameoverModal) {
+            gameoverModal.classList.add('hidden');
+        }
+        startGame(store);
+    });
+    gameoverMenuBtn?.addEventListener('click', () => {
+        if (gameoverModal) {
+            gameoverModal.classList.add('hidden');
+        }
+        showMenu(store);
+    });
+    
     window.addEventListener('keydown', event => {
         store.keys[event.code] = true;
         if (event.code === 'Enter' && store.appState === 'menu') {
@@ -2501,7 +2543,9 @@ const setupLevelData = (store: GameStore) => {
         };
 
         try {
-            const response = await fetch('/.netlify/functions/levels', {
+            // Usar URL completa en Android/Capacitor, relativa en web
+            const baseUrl = getNetlifyBaseUrl();
+            const response = await fetch(`${baseUrl}/.netlify/functions/levels`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

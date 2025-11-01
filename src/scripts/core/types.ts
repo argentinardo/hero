@@ -263,6 +263,10 @@ export interface UiElements {
     redoBtn: HTMLButtonElement | null;
     duplicateRowBtn: HTMLButtonElement | null;
     deleteRowBtn: HTMLButtonElement | null;
+    gameoverModal: HTMLElement | null;
+    gameoverScoreValue: HTMLElement | null;
+    gameoverRetryBtn: HTMLButtonElement | null;
+    gameoverMenuBtn: HTMLButtonElement | null;
 }
 
 export interface DomReferences {
