@@ -44,16 +44,14 @@ export const adjustUIBars = () => {
         bottomUi.style.width = `${canvasWidth}px`;
         bottomUi.style.left = `${leftOffset}px`;
         if (creditBar) {
-            creditBar.style.width = `${canvasWidth}px`;
-            creditBar.style.left = `${leftOffset}px`;
-            creditBar.style.display = 'flex'; // Visible en desktop
+            creditBar.style.display = 'none'; // Oculto en desktop
         }
     } else {
         // En mobile: ancho completo y visible pegado abajo
         if (creditBar) {
             creditBar.style.width = '100%';
             creditBar.style.left = '0px';
-            creditBar.style.display = 'flex';
+            creditBar.style.display = 'flex'; // Visible solo en mobile
         }
     }
 };
@@ -2084,6 +2082,48 @@ const setupMenuButtons = (store: GameStore) => {
         updateUserArea();
         showMenu(store);
     });
+    
+    // Handler del botón Mi Área
+    const profileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
+    const profileModal = document.getElementById('profile-modal');
+    const profileCloseBtn = document.getElementById('profile-close-btn');
+    const profileSaveBtn = document.getElementById('profile-save-btn');
+    const profileCancelBtn = document.getElementById('profile-cancel-btn');
+    const profileNicknameInput = document.getElementById('profile-nickname-input') as HTMLInputElement | null;
+    const profileEmailDisplay = document.getElementById('profile-email-display') as HTMLInputElement | null;
+    
+    profileBtn?.addEventListener('click', () => {
+        profileModal?.classList.remove('hidden');
+        // Cargar datos del usuario
+        const ni: any = (window as any).netlifyIdentity;
+        const user = ni?.currentUser?.();
+        if (user && profileEmailDisplay) {
+            profileEmailDisplay.value = user.email || '';
+        }
+        const currentNickname = localStorage.getItem('nickname');
+        if (profileNicknameInput) {
+            profileNicknameInput.value = currentNickname || '';
+        }
+    });
+    
+    profileCloseBtn?.addEventListener('click', () => {
+        profileModal?.classList.add('hidden');
+    });
+    
+    profileCancelBtn?.addEventListener('click', () => {
+        profileModal?.classList.add('hidden');
+    });
+    
+    profileSaveBtn?.addEventListener('click', async () => {
+        if (!profileNicknameInput) return;
+        const newNickname = profileNicknameInput.value.trim();
+        if (newNickname) {
+            localStorage.setItem('nickname', newNickname);
+            // Aquí podrías guardar en la BD también
+            alert('Nickname guardado exitosamente');
+        }
+        profileModal?.classList.add('hidden');
+    });
     retryBtn?.addEventListener('click', () => startGame(store));
     
     // Botones del modal Game Over
@@ -2293,6 +2333,155 @@ const purgeEmptyRowsAndColumns = (level: string[][]): string[][] => {
     return cleanedLevel;
 };
 
+/**
+ * Comparte un nivel a la galería central
+ * Permite que otros usuarios vean y voten el nivel del editor actual
+ */
+const shareLevelToGallery = async (store: GameStore) => {
+    // Verificar si el usuario está logueado
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (!isLoggedIn) {
+        showNotification(store, '❌ Error', 'Debes estar logueado para compartir niveles.');
+        return;
+    }
+
+    const ni: any = (window as any).netlifyIdentity;
+    const user = ni?.currentUser?.();
+    
+    if (!user) {
+        showNotification(store, '❌ Error', 'No se pudo verificar tu sesión. Por favor, vuelve a iniciar sesión.');
+        return;
+    }
+
+    try {
+        const token = await user.jwt();
+        const baseUrl = getNetlifyBaseUrl();
+        
+        // Obtener el nivel actual del editor
+        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
+        
+        // Convertir a formato chunks20x18
+        const levelsAsStrings = [cleanedLevel.map(row => row.join(''))];
+        const levelData = buildChunkedFile20x18(levelsAsStrings);
+        
+        // Generar captura de pantalla del nivel
+        const screenshot = generateLevelScreenshotForShare(cleanedLevel);
+        
+        // Preguntar por nombre y descripción
+        const name = prompt('Nombre del nivel (aparecerá en la galería):', `Mi Nivel ${index + 1}`);
+        if (!name) return;
+        
+        const description = prompt('Descripción opcional del nivel:', '');
+        
+        const res = await fetch(`${baseUrl}/.netlify/functions/gallery`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                name: name,
+                description: description || null,
+                data: levelData,
+                screenshot: screenshot
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const result = await res.json();
+        
+        if (result.ok) {
+            showNotification(store, '✅ Nivel Compartido', '¡Tu nivel ahora está disponible en la Galería!');
+        } else {
+            throw new Error(result.error || 'Error desconocido');
+        }
+        
+    } catch (error: any) {
+        console.error('Error compartiendo nivel:', error);
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+            showNotification(store, '❌ No Autorizado', 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+        } else {
+            showNotification(store, '❌ Error', 'Error al compartir nivel. Por favor intenta de nuevo.');
+        }
+    }
+};
+
+/**
+ * Genera una captura de pantalla de un nivel para compartir en la galería
+ */
+const generateLevelScreenshotForShare = (levelData: string[][]): string => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return '';
+    
+    // Fondo negro
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Calcular escala
+    const levelWidth = levelData[0]?.length || 20;
+    const levelHeight = levelData.length;
+    const scaleX = canvas.width / levelWidth;
+    const scaleY = canvas.height / levelHeight;
+    const scale = Math.min(scaleX, scaleY);
+    
+    // Renderizar tiles
+    for (let row = 0; row < levelHeight; row++) {
+        for (let col = 0; col < levelWidth; col++) {
+            const tile = levelData[row]?.[col] || '0';
+            const x = col * scale;
+            const y = row * scale;
+            
+            let color = '#000';
+            switch (tile) {
+                case '1':
+                    color = '#8B4513'; // Ladrillo
+                    break;
+                case '2':
+                    color = '#0080FF'; // Agua
+                    break;
+                case '3':
+                    color = '#FF4500'; // Lava
+                    break;
+                case 'P':
+                    color = '#FF0000'; // Jugador
+                    break;
+                case '9':
+                    color = '#00FFFF'; // Minero
+                    break;
+                case '8':
+                    color = '#808080'; // Murciélago
+                    break;
+                case 'S':
+                    color = '#800080'; // Araña
+                    break;
+                case 'C':
+                    color = '#804040'; // Destructible
+                    break;
+                default:
+                    if (tile !== '0') {
+                        color = '#404040'; // Otros tiles
+                    }
+                    break;
+            }
+            
+            if (color !== '#000') {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, scale, scale);
+            }
+        }
+    }
+    
+    return canvas.toDataURL('image/png');
+};
+
 const setupLevelData = (store: GameStore) => {
     const {
         generateLevelBtn,
@@ -2305,6 +2494,8 @@ const setupLevelData = (store: GameStore) => {
         confirmationModalEl,
         notificationOkBtn,
     } = store.dom.ui;
+    
+    const shareLevelBtn = document.getElementById('share-level-btn') as HTMLButtonElement | null;
 
     // Configurar el botón OK del modal de notificación
     notificationOkBtn?.addEventListener('click', () => {
@@ -2637,6 +2828,11 @@ const setupLevelData = (store: GameStore) => {
     
     store.dom.ui.deleteRowBtn?.addEventListener('click', () => {
         activateDeleteRowMode(store);
+    });
+    
+    // Handler para compartir nivel a la galería
+    shareLevelBtn?.addEventListener('click', async () => {
+        await shareLevelToGallery(store);
     });
 
 

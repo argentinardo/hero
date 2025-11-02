@@ -199,7 +199,8 @@
                 <h2 class="text-center text-lg mb-2" style="font-family: 'Press Start 2P', monospace;">EDITOR</h2>
                 <!-- Área de usuario (izquierda) -->
                 <div id="user-area" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
-                    <p id="user-greeting" class="text-sm mb-2">Hola <span id="username-display">Usuario</span></p>
+                    <button id="user-profile-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs mb-2">👤 Mi Área</button>
+                    <p id="user-greeting" class="text-xs mb-2">Hola <span id="username-display">Usuario</span></p>
                     <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs">Cerrar sesión</button>
                 </div>
                 <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
@@ -237,6 +238,7 @@
                         <button id="add-level-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white text-xs">➕ Nuevo Nivel</button>
                         <button id="generate-level-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white text-xs">Generar Nivel</button>
                         <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar en Archivo</button>
+                        <button id="share-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white mt-2 text-xs">📤 Compartir Nivel</button>
                     </div>
                 </div>
                 
@@ -512,6 +514,47 @@
                     <!-- Los niveles se cargarán aquí dinámicamente -->
                     <div class="col-span-full text-center text-gray-500 p-8">
                         <p>Cargando niveles...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Mi Área de Usuario -->
+        <div id="profile-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50">
+            <div class="bg-gray-900 p-8 border-4 border-blue-600 max-w-2xl mx-6" style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI ÁREA</h2>
+                    <button id="profile-close-btn" class="bg-gray-700 hover:bg-gray-600 p-2 border-2 border-white">✕</button>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Avatar -->
+                    <div class="mb-4">
+                        <label class="block text-sm mb-2">Avatar:</label>
+                        <div class="flex items-center gap-4">
+                            <div id="profile-avatar-preview" class="w-20 h-20 bg-gray-700 border-2 border-white rounded flex items-center justify-center text-4xl">
+                                👤
+                            </div>
+                            <button id="profile-avatar-btn" class="bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Cambiar Avatar</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Nickname -->
+                    <div class="mb-4">
+                        <label class="block text-sm mb-2">Nickname:</label>
+                        <input type="text" id="profile-nickname-input" class="w-full bg-gray-800 border-2 border-white p-2 text-white" placeholder="Tu nickname">
+                    </div>
+                    
+                    <!-- Email (solo lectura) -->
+                    <div class="mb-4">
+                        <label class="block text-sm mb-2">Email:</label>
+                        <input type="text" id="profile-email-display" class="w-full bg-gray-700 border-2 border-gray-600 p-2 text-gray-400" readonly>
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="flex gap-4 justify-end">
+                        <button id="profile-cancel-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white">Cancelar</button>
+                        <button id="profile-save-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Guardar</button>
                     </div>
                 </div>
             </div>

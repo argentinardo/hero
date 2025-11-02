@@ -49,10 +49,16 @@ npm run build:android
 - ✅ Juego completo tipo H.E.R.O.
 - ✅ Editor de niveles visual
 - ✅ Generador automático de niveles
+- ✅ **Galería de niveles comunitarios** con likes y votos
+- ✅ **Sistema de compartir niveles** a la comunidad
+- ✅ **Implementación de niveles** para personalizarlos
 - ✅ Controles móviles (joystick virtual)
+- ✅ **Soporte para joystick Bluetooth**
 - ✅ Sistema de vidas, energía y puntuación
 - ✅ Múltiples enemigos y obstáculos
-- ✅ Soporte web y Android
+- ✅ **Sistema de usuarios** con autenticación (Netlify Identity)
+- ✅ **Perfil de usuario** editable con nickname y avatar
+- ✅ Soporte web y Android (PWA)
 
 ## 🛠️ Tecnologías
 

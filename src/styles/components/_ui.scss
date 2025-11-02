@@ -180,7 +180,7 @@ body {
     width: 56% !important;
     z-index: 101 !important; /* Por encima de bottom-ui para que sea clickeable */
     padding: 6px 12px !important;
-    display: flex !important; /* visible también en desktop */
+    display: none !important; /* Oculto por defecto, solo visible en mobile */
     flex-direction: row !important;
     gap: var(--mobile-ui-gap) !important;
     pointer-events: auto !important; /* Permitir clicks en el link */

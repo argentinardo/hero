@@ -1,25 +1,56 @@
 import { GameStore } from '../core/types';
 import { getNetlifyBaseUrl } from '../utils/device';
+import { expandChunkedLevels, chunkifyLevel20x18 } from '../utils/levels';
 
+/**
+ * Representa un nivel público en la galería
+ * @interface GalleryLevel
+ */
 export interface GalleryLevel {
+    /** ID único del nivel en la base de datos */
     level_id: string;
+    /** ID del usuario que creó el nivel */
     user_id: string;
+    /** Nombre del nivel mostrado en la galería */
     name: string;
+    /** Descripción opcional del nivel */
     description?: string;
+    /** Datos del nivel en formato chunks20x18 o array */
     data: any;
+    /** Base64 de la captura de pantalla del nivel (miniatura 200x200px) */
     screenshot?: string;
+    /** Número de likes/votos recibidos */
     likes_count: number;
+    /** Número de veces que se ha implementado/descargado */
     downloads_count: number;
+    /** Fecha de creación en formato ISO */
     created_at: string;
+    /** Fecha de última actualización en formato ISO */
     updated_at: string;
+    /** Nickname del creador del nivel */
     nickname?: string;
+    /** URL del avatar del creador (futuro) */
     avatar_url?: string;
+    /** Si el usuario actual ha dado like al nivel */
     user_liked?: boolean;
 }
 
+/** Almacén temporal de los niveles actuales de la galería */
 let currentGalleryLevels: GalleryLevel[] = [];
+/** Tipo de ordenamiento actual aplicado a la galería */
 let currentSort: 'likes' | 'newest' | 'downloads' = 'likes';
 
+/**
+ * Configura los event listeners y la inicialización de la galería de niveles
+ * Se conecta a los botones de la interfaz y maneja la carga/ordenamiento de niveles
+ * 
+ * @param {GameStore} store - Store del juego que contiene el estado global
+ * 
+ * @example
+ * ```typescript
+ * setupGallery(store);
+ * ```
+ */
 export const setupGallery = (store: GameStore) => {
     const galleryBtn = document.getElementById('gallery-btn');
     const galleryModal = document.getElementById('gallery-modal');
@@ -58,6 +89,11 @@ export const setupGallery = (store: GameStore) => {
     });
 };
 
+/**
+ * Actualiza la UI para marcar el botón de ordenamiento activo
+ * 
+ * @param {string} sortType - Tipo de ordenamiento: 'likes', 'newest' o 'downloads'
+ */
 const setActiveSortButton = (sortType: 'likes' | 'newest' | 'downloads') => {
     currentSort = sortType;
     
@@ -75,6 +111,15 @@ const setActiveSortButton = (sortType: 'likes' | 'newest' | 'downloads') => {
     }
 };
 
+/**
+ * Carga los niveles de la galería desde el servidor
+ * Si falla la conexión, muestra los 5 primeros niveles oficiales como respaldo
+ * 
+ * @param {GameStore} store - Store del juego
+ * @param {string} sortType - Tipo de ordenamiento ('likes' | 'newest' | 'downloads')
+ * 
+ * @returns {Promise<void>}
+ */
 const loadGalleryLevels = async (store: GameStore, sortType: 'likes' | 'newest' | 'downloads' = 'likes') => {
     const galleryGrid = document.getElementById('gallery-levels-grid');
     if (!galleryGrid) return;
@@ -85,14 +130,19 @@ const loadGalleryLevels = async (store: GameStore, sortType: 'likes' | 'newest' 
         const baseUrl = getNetlifyBaseUrl();
         const res = await fetch(`${baseUrl}/.netlify/functions/gallery?sort=${sortType}&limit=50`);
         
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        // Si hay error o no hay niveles, mostrar niveles por defecto
+        if (!res.ok || res.status !== 200) {
+            console.log('No hay conexión o no hay niveles en la BD, mostrando niveles por defecto');
+            showDefaultLevels(store);
+            return;
         }
 
         const result = await res.json();
         
-        if (!result.ok || !Array.isArray(result.data)) {
-            galleryGrid.innerHTML = '<div class="col-span-full text-center text-red-500 p-8"><p>Error cargando la galería</p></div>';
+        // Si no hay datos o el resultado está vacío, mostrar niveles por defecto
+        if (!result.ok || !Array.isArray(result.data) || result.data.length === 0) {
+            console.log('No hay niveles en la galería, mostrando niveles por defecto');
+            showDefaultLevels(store);
             return;
         }
 
@@ -101,10 +151,136 @@ const loadGalleryLevels = async (store: GameStore, sortType: 'likes' | 'newest' 
         
     } catch (error) {
         console.error('Error cargando galería:', error);
-        galleryGrid.innerHTML = '<div class="col-span-full text-center text-red-500 p-8"><p>Error: No se pudo conectar al servidor</p></div>';
+        // En caso de error, mostrar niveles por defecto
+        showDefaultLevels(store);
     }
 };
 
+/**
+ * Muestra los primeros 5 niveles oficiales del juego cuando no hay conexión
+ * o cuando la galería está vacía. Genera miniaturas automáticamente.
+ * 
+ * @param {GameStore} store - Store del juego que contiene los niveles oficiales
+ */
+const showDefaultLevels = (store: GameStore) => {
+    // Mostrar los 5 primeros niveles del juego
+    const defaultLevels: GalleryLevel[] = [];
+    
+    for (let i = 0; i < Math.min(5, store.levelDataStore.length); i++) {
+        const levelData = store.levelDataStore[i];
+        if (!levelData) continue;
+        
+        // Generar captura de pantalla del nivel
+        const screenshot = generateLevelScreenshot(levelData);
+        
+        defaultLevels.push({
+            level_id: `default-${i}`,
+            user_id: 'system',
+            name: `Nivel ${i + 1}`,
+            description: `Nivel oficial ${i + 1}`,
+            data: {
+                format: 'array',
+                level: levelData
+            },
+            screenshot: screenshot,
+            likes_count: 0,
+            downloads_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            nickname: 'Sistema',
+            user_liked: false
+        });
+    }
+    
+    currentGalleryLevels = defaultLevels;
+    renderGalleryLevels(store, defaultLevels);
+};
+
+/**
+ * Genera una imagen Base64 de miniatura (200x200px) de un nivel
+ * Renderiza cada tile con un color representativo para crear una vista previa
+ * 
+ * @param {string[][]} levelData - Matriz de tiles del nivel
+ * @returns {string} Base64 de la imagen PNG generada
+ */
+const generateLevelScreenshot = (levelData: string[][]): string => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; // Ancho de miniatura
+    canvas.height = 200; // Alto de miniatura
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return '';
+    
+    // Fondo negro
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Calcular escala para que el nivel quepa en la miniatura
+    const levelWidth = levelData[0]?.length || 20;
+    const levelHeight = levelData.length;
+    const scaleX = canvas.width / levelWidth;
+    const scaleY = canvas.height / levelHeight;
+    const scale = Math.min(scaleX, scaleY);
+    
+    // Renderizar tiles básicos
+    for (let row = 0; row < levelHeight; row++) {
+        for (let col = 0; col < levelWidth; col++) {
+            const tile = levelData[row]?.[col] || '0';
+            const x = col * scale;
+            const y = row * scale;
+            
+            // Seleccionar color según tipo de tile
+            let color = '#000';
+            switch (tile) {
+                case '1':
+                    color = '#8B4513'; // Ladrillo
+                    break;
+                case '2':
+                    color = '#0080FF'; // Agua
+                    break;
+                case '3':
+                    color = '#FF4500'; // Lava
+                    break;
+                case 'P':
+                    color = '#FF0000'; // Jugador
+                    break;
+                case '9':
+                    color = '#00FFFF'; // Minero
+                    break;
+                case '8':
+                    color = '#808080'; // Murciélago
+                    break;
+                case 'S':
+                    color = '#800080'; // Araña
+                    break;
+                case 'C':
+                    color = '#804040'; // Destructible
+                    break;
+                default:
+                    if (tile !== '0') {
+                        color = '#404040'; // Otros tiles
+                    }
+                    break;
+            }
+            
+            if (color !== '#000') {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, scale, scale);
+            }
+        }
+    }
+    
+    // Convertir canvas a base64
+    return canvas.toDataURL('image/png');
+};
+
+/**
+ * Renderiza los niveles de la galería en la UI como cards
+ * Crea elementos DOM dinámicamente con screenshot, likes, acciones, etc.
+ * 
+ * @param {GameStore} store - Store del juego
+ * @param {GalleryLevel[]} levels - Array de niveles a mostrar
+ */
 const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
     const galleryGrid = document.getElementById('gallery-levels-grid');
     if (!galleryGrid) return;
@@ -193,6 +369,13 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
     });
 };
 
+/**
+ * Alterna el estado de "Me gusta" de un nivel
+ * Incrementa o decrementa los likes según si el usuario ya votó antes
+ * 
+ * @param {string} levelId - ID del nivel a votar
+ * @returns {Promise<void>}
+ */
 const toggleLike = async (levelId: string): Promise<void> => {
     try {
         const ni: any = (window as any).netlifyIdentity;
@@ -238,34 +421,59 @@ const toggleLike = async (levelId: string): Promise<void> => {
     }
 };
 
+/**
+ * Carga y reproduce un nivel de la galería
+ * Convierte automáticamente entre formatos chunks20x18 y array según sea necesario
+ * 
+ * @param {GameStore} store - Store del juego
+ * @param {string} levelId - ID del nivel a jugar
+ * @returns {Promise<void>}
+ */
 const playLevel = async (store: GameStore, levelId: string): Promise<void> => {
     const level = currentGalleryLevels.find(l => l.level_id === levelId);
     if (!level) return;
 
     // Convertir los datos del nivel al formato esperado por el juego
     let levelData;
-    if (level.data.format === 'chunks20x18' && Array.isArray(level.data.chunks)) {
+    if (level.data.format === 'chunks20x18' && level.data.width && level.data.height && Array.isArray(level.data.chunks)) {
         // Convertir de chunks a formato de nivel
-        levelData = convertChunksToLevel(level.data.chunks);
+        const expanded = expandChunkedLevels({
+            format: 'chunks20x18',
+            chunkWidth: 20,
+            chunkHeight: 18,
+            levels: [level.data]
+        });
+        levelData = expanded[0]?.map(row => row.split('')) || [];
     } else if (Array.isArray(level.data)) {
         levelData = level.data;
+    } else if (level.data.level && Array.isArray(level.data.level)) {
+        levelData = level.data.level;
     } else {
         alert('Formato de nivel no compatible');
         return;
     }
 
-    // Cargar el nivel en el store y empezar a jugar
-    store.levelDataStore.push(levelData);
-    store.currentLevelIndex = store.levelDataStore.length - 1;
-    
-    // Cerrar el modal de la galería y empezar el juego
+    // Cerrar el modal de la galería
     document.getElementById('gallery-modal')?.classList.add('hidden');
+    
+    // Convertir a formato string para startGame
+    const levelDataString = levelData.map((row: string[]) => row.join(''));
     
     // Importar y llamar a startGame para evitar dependencia circular
     const { startGame } = await import('./ui');
-    startGame(store);
+    // Usar levelOverride para jugar solo este nivel
+    startGame(store, levelDataString, 0, false);
 };
 
+/**
+ * Implementa un nivel de la galería en la cuenta del usuario
+ * Permite copiar un nivel público a los niveles privados del usuario para editarlo
+ * Pide un nombre personalizado antes de guardar
+ * 
+ * @param {GameStore} store - Store del juego
+ * @param {string} levelId - ID del nivel a implementar
+ * @returns {Promise<void>}
+ */
 const implementLevel = async (store: GameStore, levelId: string): Promise<void> => {
     const level = currentGalleryLevels.find(l => l.level_id === levelId);
     if (!level) return;
@@ -283,19 +491,32 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
         const baseUrl = getNetlifyBaseUrl();
         
         // Convertir los datos al formato adecuado
-        let levelData;
-        if (level.data.format === 'chunks20x18' && Array.isArray(level.data.chunks)) {
-            levelData = level.data;
-        } else if (Array.isArray(level.data)) {
-            // Convertir a formato chunks20x18
-            levelData = {
+        let levelDataArray: string[][];
+        if (level.data.format === 'chunks20x18' && level.data.width && level.data.height && Array.isArray(level.data.chunks)) {
+            // Convertir de chunks a array primero
+            const expanded = expandChunkedLevels({
                 format: 'chunks20x18',
-                chunks: convertLevelToChunks(level.data)
-            };
+                chunkWidth: 20,
+                chunkHeight: 18,
+                levels: [level.data]
+            });
+            levelDataArray = expanded[0]?.map(row => row.split('')) || [];
+        } else if (Array.isArray(level.data)) {
+            levelDataArray = level.data;
+        } else if (level.data.level && Array.isArray(level.data.level)) {
+            levelDataArray = level.data.level;
         } else {
             alert('Formato de nivel no compatible');
             return;
         }
+        
+        // Convertir a formato chunks20x18 para guardar
+        const levelData = {
+            format: 'chunks20x18' as const,
+            chunkWidth: 20,
+            chunkHeight: 18,
+            levels: [chunkifyLevel20x18(levelDataArray.map(row => row.join('')))]
+        };
 
         // Preguntar por un nombre personalizado
         const customName = prompt(`¿Cómo quieres llamar a tu versión de "${level.name}"?`, `${level.name} (mi versión)`);
@@ -308,7 +529,12 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                modified_data: levelData,
+                modified_data: {
+                    format: 'chunks20x18',
+                    chunkWidth: 20,
+                    chunkHeight: 18,
+                    levels: levelData.levels
+                },
                 name: customName
             })
         });
@@ -334,14 +560,5 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
     }
 };
 
-// Funciones auxiliares para convertir entre formatos
-const convertChunksToLevel = (chunks: any[]): any => {
-    // TODO: Implementar conversión de chunks20x18 a formato de nivel
-    return chunks;
-};
-
-const convertLevelToChunks = (level: any[]): any[] => {
-    // TODO: Implementar conversión de nivel a chunks20x18
-    return [];
-};
+// Las funciones de conversión ahora usan las importadas de levels.ts
 
