@@ -178,22 +178,26 @@ body {
     bottom: 0 !important;
     left: auto !important;
     width: 56% !important;
-    z-index: var(--mobile-ui-z-index) !important;
+    z-index: 101 !important; /* Por encima de bottom-ui para que sea clickeable */
     padding: 6px 12px !important;
-    display: none !important; /* visible solo en mobile */
+    display: flex !important; /* visible también en desktop */
     flex-direction: row !important;
     gap: var(--mobile-ui-gap) !important;
-    pointer-events: none !important;
+    pointer-events: auto !important; /* Permitir clicks en el link */
     background: rgba(0, 0, 0, 0.8) !important;
     justify-content: end !important;
     align-items: center !important;
     height: 8vh !important;
     text-align: right;
-}
-
-@media (max-width: 1024px) {
-    #credit-bar {
-        display: flex !important; /* visible solo en mobile */
+    
+    a {
+        pointer-events: auto !important; /* Asegurar que el link sea clickeable */
+        cursor: pointer;
+        color: inherit;
+        
+        &:hover {
+            opacity: 0.7;
+        }
     }
 }
 /* Barra de botones móvil */

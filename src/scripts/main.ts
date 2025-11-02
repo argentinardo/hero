@@ -24,6 +24,7 @@ import { renderGame, renderEditor, animateSplash } from './components/render';
 
 import { initAudio, playBackgroundMusic, loadAdditionalSFX } from './components/audio';
 import { applyGraphicsSettings } from './core/settings';
+import { initGamepadSupport, updateGamepadState } from './utils/gamepad';
 
 // Inicializar estado global del juego
 // DECISIÓN ARQUITECTÓNICA: Estado global centralizado facilita comunicación entre componentes
@@ -202,6 +203,9 @@ const loadGameModules = async () => {
 const updateGameState = () => {
     if (store.gameState !== 'playing' && store.gameState !== 'floating') return;
 
+    // Actualizar estado del gamepad (antes de procesar input del jugador)
+    updateGamepadState(store);
+    
     handlePlayerInput(store);
     updatePlayer(store);
     updateWalls(store);
@@ -365,6 +369,9 @@ const gameLoop = (currentTime: number): void => {
 const bootstrap = (): void => {
     setupUI(store);
     initAudio();
+    
+    // Inicializar soporte de gamepad
+    initGamepadSupport();
     
     // Aplicar configuración de gráficos al inicio
     applyGraphicsSettings(store.settings.graphics);

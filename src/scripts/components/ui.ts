@@ -42,7 +42,11 @@ export const adjustUIBars = () => {
         gameUi.style.left = `${leftOffset}px`;
         bottomUi.style.width = `${canvasWidth}px`;
         bottomUi.style.left = `${leftOffset}px`;
-        if (creditBar) creditBar.style.display = 'none';
+        if (creditBar) {
+            creditBar.style.width = `${canvasWidth}px`;
+            creditBar.style.left = `${leftOffset}px`;
+            creditBar.style.display = 'flex'; // Visible en desktop
+        }
     } else {
         // En mobile: ancho completo y visible pegado abajo
         if (creditBar) {

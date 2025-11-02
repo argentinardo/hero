@@ -723,6 +723,11 @@ position: absolute;
    MÓVIL - PORTRAIT (Forzar landscape)
    ======================================== */
 @media (max-width: 1024px) and (orientation: portrait) {
+    /* Fondo negro sólido en portrait */
+    body {
+        background-color: #000 !important;
+    }
+    
     html {
         /* Remover la rotación automática del CSS base */
         transform: none;
@@ -748,44 +753,79 @@ position: absolute;
     
     @keyframes rotate-phone {
         0%, 100% {
-            transform: rotate(0deg);
+            transform: translate(-50%, -50%) rotate(0deg);
         }
         25% {
-            transform: rotate(10deg);
+            transform: translate(-50%, -50%) rotate(10deg);
         }
         50% {
-            transform: rotate(90deg);
+            transform: translate(-50%, -50%) rotate(90deg);
         }
         75% {
-            transform: rotate(80deg);
+            transform: translate(-50%, -50%) rotate(80deg);
         }
     }
     
-    /* Icono de teléfono animado */
+    /* Ocultar todos los elementos del menú en portrait */
+    #main-container {
+        display: none !important;
+    }
+    
+    /* Ocultar mensajes del menú */
+    #message-overlay {
+        display: none !important;
+    }
+    
+    /* Ocultar el splash en portrait */
+    #splash-container {
+        background-image: none !important;
+    }
+    
+    /* Ocultar el canvas en portrait */
+    #gameCanvas {
+        display: none !important;
+    }
+    
+    /* Mostrar el logo del hero arriba del teléfono */
+    #hero-logo {
+        position: fixed !important;
+        top: 5% !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 10001 !important;
+        display: block !important;
+        image-rendering: pixelated !important;
+        -webkit-image-rendering: pixelated !important;
+        width: 70vw !important;
+        height: auto !important;
+        pointer-events: none !important;
+    }
+    
+    /* Icono de teléfono animado - centrado verticalmente */
     body::before {
         content: "📱";
         position: fixed;
-        top: 35%;
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
-        font-size: 4rem;
+        font-size: 8rem;
         z-index: 10000;
         animation: rotate-phone 3s ease-in-out infinite;
         pointer-events: none;
     }
     
-    /* Texto del mensaje */
+    /* Texto del mensaje - debajo del teléfono */
     body::after {
-        content: "Gira tu dispositivo";
+        content: "Por favor gire su dispositivo para jugar al juego";
         position: fixed;
-        top: 60%;
+        top: 65%;
         left: 50%;
         transform: translateX(-50%);
         color: white;
         font-family: 'Press Start 2P', monospace;
         font-size: 0.9rem;
         z-index: 10000;
-        white-space: nowrap;
+        max-width: 80vw;
+        text-align: center;
         animation: pulse-portrait 2s ease-in-out infinite;
         background: rgba(0, 0, 0, 0.95);
         padding: 30px 40px;
@@ -793,10 +833,6 @@ position: absolute;
         border-radius: 12px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
         pointer-events: none;
-    }
-    
-    #main-container {
-        display: none !important;
     }
 }
 
