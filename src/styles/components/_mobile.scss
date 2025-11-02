@@ -425,11 +425,35 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
 
         #main-container {
             justify-content: start;
-        }        
+        }
         
+        /* Panel de Usuario (izquierda) - Solo visible en mobile */
+        #user-panel {
+            display: flex !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 23%;
+            height: 100vh;
+            flex-direction: column;
+            background-color: rgba(0, 0, 0, 0.95);
+            padding: 10px;
+            z-index: 99;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-right: 2px solid rgba(255, 255, 255, 0.3);
+            transform: translateX(0);
+            transition: transform 200ms ease-in-out;
+        }
+        
+        #user-panel.collapsed {
+            transform: translateX(-100%);
+        }
+        
+        /* Panel del Editor (derecha) - Solo paleta y herramientas en mobile */
         #editor-panel {
             display: flex !important;
-            position: fixed;
+            position: absolute;
             top: 0;
             right: 0;
             width: 27%;
@@ -440,19 +464,53 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             z-index: 100;
             overflow-y: auto;
             overflow-x: hidden;
+            transform: translateX(0);
+            transition: transform 200ms ease-in-out;
+            
+            /* Ocultar elementos duplicados que están en user-panel */
+            .user-area-desktop,
+            .play-test-desktop,
+            .levels-section-desktop,
+            .back-to-menu-desktop {
+                display: none !important;
+            }
             
             #tile-palette {
-                
                 canvas {
                     cursor: pointer;
                     image-rendering: pixelated;
                 }
             }
         }
+        
+        #editor-panel.collapsed {
+            transform: translateX(100%);
+        }
 
-        /* En edición móvil, ocultar skins laterales */
+        /* Canvas ocupa 100% del viewport, barras superpuestas */
         .canvas-wrapper {
             background-image: none !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+        }
+        
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        
+        /* Botón toggle del panel de usuario */
+        #user-panel-toggle {
+            &.hidden {
+                display: none !important;
+            }
         }
         
         /* Asegurar que #mobile-controls no muestre skins en el editor */
@@ -460,6 +518,8 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             background-image: none !important;
         }
     }
+    
+    /* Panel de Usuario - Visible también en desktop */
 
     /* Controles móviles */
     #mobile-controls {
@@ -768,9 +828,7 @@ position: absolute;
             font-size: 1rem !important;
         }
         
-        p, span, label {
-            font-size: 0.75rem !important;
-        }
+
         
         button {
             font-size: 0.75rem !important;

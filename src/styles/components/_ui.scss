@@ -299,20 +299,93 @@ body {
     }
 }
 
+/* Panel de Usuario (izquierda) - Desktop y Mobile */
+#user-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 23%;
+    height: 100vh;
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.95);
+    padding: 10px;
+    z-index: 99;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 2px solid rgba(255, 255, 255, 0.3);
+    display: none; /* Se mostrará cuando esté en modo editor */
+    transform: translateX(0);
+    transition: transform 200ms ease-in-out;
+}
+
+#user-panel.collapsed {
+    transform: translateX(-100%);
+}
+
 /* Panel del editor - drawer derecho con transición */
 #editor-panel {
-    position: fixed;
+    position: absolute;
     right: 0;
     top: 0;
+    width: 27%;
     height: 100vh;
     overflow-y: auto;
     z-index: 200;
     transform: translateX(0);
     transition: transform 200ms ease-in-out;
+    
+    /* Ocultar elementos duplicados que están en user-panel */
+    .user-area-desktop,
+    .play-test-desktop,
+    .levels-section-desktop,
+    .back-to-menu-desktop {
+        display: none !important;
+    }
 }
 
 #editor-panel.collapsed {
     transform: translateX(100%);
+}
+
+/* Botón toggle del panel de usuario */
+#user-panel-toggle {
+    transition: opacity 0.2s ease-in-out;
+    
+    &.hidden {
+        display: none !important;
+    }
+}
+
+/* Ajustar canvas y wrapper en modo editor (desktop) */
+body.state-editing {
+    .canvas-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        background-image: none !important;
+        transition: none; /* No necesita transición, el canvas siempre ocupa 100% */
+    }
+    
+    #gameCanvas {
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        max-width: 100%;
+        object-fit: contain;
+    }
+    
+    /* Mostrar panel de usuario */
+    #user-panel {
+        display: flex !important;
+    }
+    
+    /* Ocultar credit-bar en modo editor */
+    #credit-bar {
+        display: none !important;
+    }
 }
 
 /* Botón toggle del editor - siempre visible cuando el editor está activo */

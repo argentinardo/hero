@@ -193,17 +193,58 @@
         <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 top-0  text-white cursor-pointer flex items-center justify-center" style="width: 36px; height: 60px; font-size: 1.2rem; border-left: none; border-radius: 0 8px 8px 0; z-index: 210;">
             <span></span>
         </button>
+        
+        <!-- Botón Toggle del Panel de Usuario (siempre visible cuando el editor está activo) -->
+        <button id="user-panel-toggle" aria-label="Toggle User Panel" class="hidden fixed left-0 top-0  text-white cursor-pointer flex items-center justify-center" style="width: 36px; height: 60px; font-size: 1.2rem; border-right: none; border-radius: 8px 0 0 8px; z-index: 210;">
+            <span>&gt;</span>
+        </button>
+
+        <!-- Panel de Usuario para Mobile (izquierda del canvas) -->
+        <div id="user-panel" class="user-panel flex-col gap-2 w-64 hidden bg-gray-800">
+            <h2 id="user-panel-title" class="text-center text-lg mb-2 flex items-center justify-center gap-2" style="font-family: 'Press Start 2P', monospace;">
+                <canvas id="user-panel-avatar" width="40" height="40" class="avatar-canvas"></canvas>
+                <span id="user-panel-nickname">USUARIO</span>
+            </h2>
+            
+            <!-- Área de usuario (duplicada del editor para mobile) -->
+            <div id="user-area-mobile" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
+                <button id="user-profile-btn-mobile" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs mb-2">👤 Mi Área</button>
+                <p id="user-greeting-mobile" class="text-xs mb-2"><span id="username-display-mobile">Usuario</span></p>
+                <button id="logout-btn-mobile" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs">Cerrar sesión</button>
+            </div>
+            
+            <!-- Botón Jugar Nivel -->
+            <button id="play-test-btn-mobile" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
+            
+            <!-- Sección Niveles (completa) -->
+            <div class="mt-4 border-t-2 border-gray-500 pt-4">
+                <h3 class="text-center text-sm mb-3" style="font-family: 'Press Start 2P', monospace;">NIVELES</h3>
+                <div id="levels-section-mobile-content" class="mt-2">
+                    <select id="level-selector-mobile" class="w-full bg-gray-700 border-2 border-white p-1 text-sm mb-2"></select>
+                    <button id="add-level-btn-mobile" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white text-xs">➕ Nuevo Nivel</button>
+                    <button id="generate-level-btn-mobile" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white text-xs">Generar Nivel</button>
+                    <button id="save-all-btn-mobile" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar en Archivo</button>
+                    <button id="share-level-btn-mobile" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white mt-2 text-xs">📤 Compartir Nivel</button>
+                </div>
+            </div>
+            
+            <!-- Botón Volver al Menú -->
+            <button id="back-to-menu-btn-mobile" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>
+        </div>
 
         <!-- Panel del Editor (drawer derecho) -->
         <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden bg-gray-800">
                 <h2 class="text-center text-lg mb-2" style="font-family: 'Press Start 2P', monospace;">EDITOR</h2>
-                <!-- Área de usuario (izquierda) -->
-                <div id="user-area" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
+                
+                <!-- Área de usuario (oculta en mobile, visible en desktop) -->
+                <div id="user-area" class="user-area-desktop mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
                     <button id="user-profile-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs mb-2">👤 Mi Área</button>
-                    <p id="user-greeting" class="text-xs mb-2">Hola <span id="username-display">Usuario</span></p>
+                    <p id="user-greeting" class="text-xs mb-2"><span id="username-display">Usuario</span></p>
                     <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs">Cerrar sesión</button>
                 </div>
-                <button id="play-test-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
+                
+                <!-- Botón Jugar Nivel (oculto en mobile) -->
+                <button id="play-test-btn" class="play-test-desktop w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
                 
                 <div id="tile-palette" class="flex flex-col gap-4">
                     <!-- Tiles se agregarán dinámicamente aquí -->
@@ -227,8 +268,8 @@
                     </div>
                 </div>
 
-                <!-- Sección Niveles (colapsable) -->
-                <div class="mt-4 border-t-2 border-gray-500 pt-4">
+                <!-- Sección Niveles (colapsable) - Oculto en mobile -->
+                <div id="levels-section-desktop" class="levels-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
                     <button id="levels-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-white bg-gray-700">
                         <span>Niveles</span>
                         <span id="levels-section-arrow">▾</span>
@@ -242,7 +283,8 @@
                     </div>
                 </div>
                 
-                 <button id="back-to-menu-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>
+                <!-- Botón Volver al Menú (oculto en mobile) -->
+                <button id="back-to-menu-btn" class="back-to-menu-desktop w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>
             </div>
         </div>
 
@@ -313,14 +355,31 @@
         <div id="splash-container"></div>
 
         <!-- Pantalla de Mensajes (Inicio) -->
-        <div id="message-overlay" class="absolute inset-0 flex flex-col justify-center items-center text-center" style="padding-top: 56vh; background: transparent; z-index: 2;">
+        <div id="message-overlay" class="absolute inset-0 flex flex-col justify-center items-center text-center" style="padding-top: 52vh; background: transparent; z-index: 2;">
             <p id="message-text" class="text-sm opacity-90"></p>
-            <div class="flex gap-4 mt-6">
-                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Jugar</button>
-                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white">Ingresar</button>
-                <button id="gallery-btn" class="bg-purple-600 hover:bg-purple-700 p-3 border-2 border-white">Galería</button>
-                <button id="retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white hidden">Volver a jugar</button>
+            
+            <!-- Botón Principal: JUGAR -->
+            <div class="mt-6 mb-4">
+                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-5 border-4 border-white text-2xl font-bold shadow-lg hover:shadow-green-500/50 transition-all" style="font-family: 'Press Start 2P', monospace; min-width: 300px;">
+                JUGAR
+                </button>
             </div>
+            
+            <!-- Botones Secundarios -->
+            <div class="flex gap-3 flex-wrap justify-center">
+                <button id="gallery-btn" class="bg-purple-600 hover:bg-purple-700 p-3 border-2 border-white shadow-lg hover:shadow-purple-500/50 transition-all" style="font-family: 'Press Start 2P', monospace;">
+                GALERÍA
+                </button>
+                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white shadow-lg hover:shadow-indigo-500/50 transition-all" style="font-family: 'Press Start 2P', monospace;">
+                EDITOR
+                </button>
+                <button id="credits-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white shadow-lg hover:shadow-gray-500/50 transition-all" style="font-family: 'Press Start 2P', monospace;">
+                CRÉDITOS
+                </button>
+            </div>
+            
+            <!-- Botón Retry (hidden por defecto) -->
+            <button id="retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white mt-4 hidden">Volver a jugar</button>
         </div>
 
         <!-- Modal Game Over -->
@@ -532,9 +591,7 @@
                     <div class="mb-4">
                         <label class="block text-sm mb-2">Avatar:</label>
                         <div class="flex items-center gap-4">
-                            <div id="profile-avatar-preview" class="w-20 h-20 bg-gray-700 border-2 border-white rounded flex items-center justify-center text-4xl">
-                                👤
-                            </div>
+                            <canvas id="profile-avatar-preview" width="80" height="80" class="w-20 h-20 bg-gray-700 border-2 border-white rounded avatar-canvas"></canvas>
                             <button id="profile-avatar-btn" class="bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Cambiar Avatar</button>
                         </div>
                     </div>

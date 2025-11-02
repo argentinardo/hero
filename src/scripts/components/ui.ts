@@ -204,7 +204,21 @@ export const attachDomReferences = (store: GameStore) => {
             // Drawer derecho: 
             // - Abierto: muestra '<' para cerrar (desplazar a la derecha)
             // - Colapsado: muestra '>' para abrir (desplegar desde la derecha)
-            editorToggleBtn.querySelector('span')!.textContent = isCollapsed ? '<' : '>';
+            editorToggleBtn.querySelector('span')!.textContent = isCollapsed ? '>' : '<';
+        });
+    }
+    
+    // Toggle del panel de usuario (drawer izquierdo)
+    const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+    const userPanel = document.getElementById('user-panel');
+    if (userPanelToggleBtn && userPanel) {
+        // visible solo en modo editor, se activa en startEditor
+        userPanelToggleBtn.addEventListener('click', () => {
+            const isCollapsed = userPanel.classList.toggle('collapsed');
+            // Drawer izquierdo:
+            // - Abierto: muestra '<' para cerrar (desplazar a la izquierda)
+            // - Colapsado: muestra '>' para abrir (desplegar desde la izquierda)
+            userPanelToggleBtn.querySelector('span')!.textContent = isCollapsed ? '<' : '>';
         });
     }
 
@@ -266,6 +280,12 @@ export const showMenu = (store: GameStore) => {
     
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
+    
+    // Ocultar panel de usuario en mobile
+    const userPanel = document.getElementById('user-panel');
+    if (userPanel) {
+        userPanel.style.display = 'none';
+    }
     
     const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn, heroLogoEl } = store.dom.ui;
     const splashContainer = document.getElementById('splash-container');
@@ -332,6 +352,80 @@ export const showMenu = (store: GameStore) => {
         }
     };
     updateEditorButton();
+};
+
+/**
+ * Calcula la distancia entre dos puntos táctiles
+ */
+const getTouchDistance = (touch1: Touch, touch2: Touch): number => {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+};
+
+/**
+ * Configura el gesto de pinch para hacer zoom en el canvas en mobile
+ */
+const setupPinchZoom = (store: GameStore) => {
+    const canvas = store.dom.canvas;
+    const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+    if (!canvas || !canvasWrapper || !('ontouchstart' in window)) {
+        return;
+    }
+    
+    // Solo activar en mobile
+    const isMobile = window.innerWidth <= 1024;
+    if (!isMobile) {
+        return;
+    }
+    
+    let initialDistance = 0;
+    let initialScale = 1;
+    let currentScale = 1;
+    let lastTouchTime = 0;
+    
+    const handleTouchStart = (e: TouchEvent) => {
+        // Solo procesar si hay exactamente 2 dedos
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            initialDistance = getTouchDistance(touch1, touch2);
+            initialScale = currentScale;
+            lastTouchTime = Date.now();
+        }
+    };
+    
+    const handleTouchMove = (e: TouchEvent) => {
+        // Solo procesar si hay exactamente 2 dedos
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentDistance = getTouchDistance(touch1, touch2);
+            
+            // Calcular el factor de zoom basado en el cambio de distancia
+            const scaleChange = currentDistance / initialDistance;
+            currentScale = Math.max(0.5, Math.min(3.0, initialScale * scaleChange)); // Limitar entre 0.5x y 3x
+            
+            // Aplicar transform al canvas wrapper
+            canvasWrapper.style.transform = `scale(${currentScale})`;
+            canvasWrapper.style.transformOrigin = 'center center';
+        }
+    };
+    
+    const handleTouchEnd = (e: TouchEvent) => {
+        // Si quedan menos de 2 dedos, detener el zoom
+        if (e.touches.length < 2) {
+            initialDistance = 0;
+        }
+    };
+    
+    // Agregar event listeners al canvas
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 };
 
 const startJoystick = (store: GameStore) => {
@@ -619,6 +713,8 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         // Ocultar toggle del editor cuando salimos del editor
         const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
         if (toggle) toggle.classList.add('hidden');
+        const userToggle = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+        if (userToggle) userToggle.classList.add('hidden');
     }
     startJoystick(store);
 
@@ -692,6 +788,13 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         splashContainer.style.display = 'none';
     }
     const { messageOverlay, gameUiEl, bottomUiEl, editorPanelEl, levelSelectorEl } = store.dom.ui;
+    
+    // Sincronizar selector mobile después de syncLevelSelector y obtener levelSelectorEl
+    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+    if (levelSelectorMobile && levelSelectorEl) {
+        levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
+        levelSelectorMobile.value = levelSelectorEl.value;
+    }
     if (messageOverlay) {
         messageOverlay.style.display = 'none';
         // Limpiar el fondo del splash
@@ -708,28 +811,107 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         bottomUiEl.style.display = 'none';
     }
     store.dom.ui.resumeEditorBtn?.classList.add('hidden');
+    
+    // Ocultar credit-bar en el editor
+    const creditBarEl = document.getElementById('credit-bar');
+    if (creditBarEl) {
+        creditBarEl.style.display = 'none';
+    }
+    
+    // Panel de Usuario - Mostrar en mobile y desktop
+    const userPanel = document.getElementById('user-panel');
+    if (userPanel) {
+        userPanel.style.display = 'flex';
+        
+        // Actualizar título con nickname del usuario (priorizar nickname sobre username)
+        const nickname = localStorage.getItem('nickname') || localStorage.getItem('username') || 'Usuario';
+        const userPanelNickname = document.getElementById('user-panel-nickname');
+        const userPanelAvatar = document.getElementById('user-panel-avatar');
+        
+        // Actualizar nickname
+        if (userPanelNickname) {
+            userPanelNickname.textContent = nickname.toUpperCase();
+        }
+        
+        // Actualizar avatar si está guardado (default: Player)
+        const savedAvatar = localStorage.getItem('avatar') || 'P';
+        const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
+        if (userPanelAvatarCanvas) {
+            drawAvatar(store, savedAvatar, userPanelAvatarCanvas, performance.now());
+            // Registrar para animación continua
+            const existingIndex = avatarCanvases.findIndex(a => a.canvas === userPanelAvatarCanvas);
+            if (existingIndex >= 0) {
+                avatarCanvases[existingIndex].code = savedAvatar;
+            } else {
+                avatarCanvases.push({ code: savedAvatar, canvas: userPanelAvatarCanvas });
+            }
+        }
+        
+        // Hacer clicable el título del panel de usuario para abrir el modal de perfil
+        const userPanelTitle = document.getElementById('user-panel-title');
+        if (userPanelTitle) {
+            userPanelTitle.style.cursor = 'pointer';
+            userPanelTitle.addEventListener('click', () => {
+                const profileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
+                profileBtn?.click();
+            });
+        }
+        
+        // Actualizar área de usuario mobile
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const userAreaMobile = document.getElementById('user-area-mobile');
+        const usernameDisplayMobile = document.getElementById('username-display-mobile');
+        if (userAreaMobile && usernameDisplayMobile) {
+            if (isLoggedIn && nickname) {
+                usernameDisplayMobile.textContent = nickname;
+                userAreaMobile.style.display = 'block';
+            } else {
+                userAreaMobile.style.display = 'none';
+            }
+        }
+        
+        // Sincronizar selector de niveles mobile con el desktop
+        const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+        if (levelSelectorMobile && levelSelectorEl) {
+            // Copiar opciones del selector desktop
+            levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
+            levelSelectorMobile.value = levelSelectorEl.value;
+        }
+    }
+    
     if (editorPanelEl) {
         editorPanelEl.style.display = 'flex';
-        // Actualizar área de usuario
+        // Actualizar área de usuario (desktop) - usar nickname si está disponible
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        const username = localStorage.getItem('username');
+        const nickname = localStorage.getItem('nickname') || localStorage.getItem('username');
         const userArea = document.getElementById('user-area');
         const usernameDisplay = document.getElementById('username-display');
         if (userArea && usernameDisplay) {
-            if (isLoggedIn && username) {
-                usernameDisplay.textContent = username;
+            if (isLoggedIn && nickname) {
+                usernameDisplay.textContent = nickname;
                 userArea.style.display = 'block';
             } else {
                 userArea.style.display = 'none';
             }
         }
-        // Mostrar toggle y abrir panel por defecto
+        // Mostrar toggle del editor y abrir panel por defecto
         const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
         if (toggle) {
             toggle.classList.remove('hidden');
-            toggle.querySelector('span')!.textContent = '>';
+            // Iniciar con el panel abierto (no colapsado)
+            const panel = editorPanelEl as HTMLElement;
+            panel.classList.remove('collapsed');
+            toggle.querySelector('span')!.textContent = '<'; // '<' indica que está abierto, '>' que está cerrado
         }
         editorPanelEl.classList.remove('collapsed');
+        
+        // Mostrar toggle del panel de usuario y abrir panel por defecto
+        const userToggle = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+        if (userToggle && userPanel) {
+            userToggle.classList.remove('hidden');
+            userPanel.classList.remove('collapsed');
+            userToggle.querySelector('span')!.textContent = '<'; // '<' indica que está abierto, '>' que está cerrado
+        }
 
         // Toggle secciones del panel (Edición / Niveles)
         const bindSectionToggle = (btnId: string, arrowId: string, contentId: string) => {
@@ -1068,9 +1250,45 @@ const stopPaletteAnimation = () => {
     }
 };
 
+/**
+ * Mapeo de códigos de avatar a tiles del juego
+ */
+const AVATAR_TO_TILE: Record<string, string> = {
+    'P': 'P',      // Player
+    '8': '8',      // Bat (Murciélago)
+    'S': 'S',      // Spider (Araña)
+    'V': 'V',      // Viper (Víbora)
+    'T': 'T',      // Tentacle (Tentáculo)
+    '9': '9'       // Miner (Minero)
+};
+
+/**
+ * Dibuja un avatar usando el sprite del personaje correspondiente
+ * @param store - Store del juego
+ * @param avatarCode - Código del avatar ('P', '8', 'S', 'V', 'T', '9')
+ * @param canvas - Canvas donde dibujar el avatar
+ * @param timestamp - Timestamp para animaciones
+ */
+const drawAvatar = (store: GameStore, avatarCode: string, canvas: HTMLCanvasElement, timestamp: number) => {
+    const tile = AVATAR_TO_TILE[avatarCode] || 'P';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Usar drawPaletteEntry para dibujar el sprite
+    drawPaletteEntry(store, tile, canvas, timestamp);
+};
+
+// Canvas de avatares para animación
+const avatarCanvases: Array<{ code: string; canvas: HTMLCanvasElement }> = [];
+
 const startPaletteAnimation = (store: GameStore) => {
     const animate = (timestamp: number) => {
         paletteEntries.forEach(entry => drawPaletteEntry(store, entry.tile, entry.canvas, timestamp));
+        // Animar avatares también
+        avatarCanvases.forEach(entry => drawAvatar(store, entry.code, entry.canvas, timestamp));
         paletteAnimationId = requestAnimationFrame(animate);
     };
     paletteAnimationId = requestAnimationFrame(animate);
@@ -1344,6 +1562,13 @@ const syncLevelSelector = (store: GameStore) => {
         option.textContent = `Nivel ${i + 1}`;
         levelSelectorEl.appendChild(option);
     }
+    
+    // Sincronizar selector mobile
+    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+    if (levelSelectorMobile) {
+        levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
+        levelSelectorMobile.value = levelSelectorEl.value;
+    }
 };
 
 
@@ -1353,6 +1578,10 @@ export const setupUI = (store: GameStore) => {
     setupLevelData(store);
     setupMenuButtons(store);
     setupGallery(store);
+    setupKeyboardShortcuts(store);
+    
+    // Configurar zoom con pinch en mobile
+    setupPinchZoom(store);
     // Netlify Identity: cerrar modal y continuar a editor tras login
     try {
         const ni: any = (window as any).netlifyIdentity;
@@ -1943,7 +2172,8 @@ const setupMenuButtons = (store: GameStore) => {
     // Función para verificar si el usuario está logueado
     const checkLoginStatus = (): { isLoggedIn: boolean; username: string | null } => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        const username = localStorage.getItem('username');
+        // Priorizar nickname sobre username
+        const username = localStorage.getItem('nickname') || localStorage.getItem('username');
         return { isLoggedIn, username: username || null };
     };
 
@@ -1955,17 +2185,67 @@ const setupMenuButtons = (store: GameStore) => {
         }
     };
 
-    // Función para actualizar el área de usuario en el editor
+    // Función para actualizar el área de usuario en el editor (desktop y mobile)
     const updateUserArea = () => {
         const { isLoggedIn, username } = checkLoginStatus();
+        // Asegurar que usamos nickname si está disponible
+        const displayName = localStorage.getItem('nickname') || username;
+        
+        // Actualizar panel desktop
         const userArea = document.getElementById('user-area');
         const usernameDisplay = document.getElementById('username-display');
         if (userArea && usernameDisplay) {
-            if (isLoggedIn && username) {
-                usernameDisplay.textContent = username;
+            if (isLoggedIn && displayName) {
+                usernameDisplay.textContent = displayName;
                 userArea.style.display = 'block';
             } else {
                 userArea.style.display = 'none';
+            }
+        }
+        
+        // Actualizar panel mobile
+        const userAreaMobile = document.getElementById('user-area-mobile');
+        const usernameDisplayMobile = document.getElementById('username-display-mobile');
+        const userPanelNickname = document.getElementById('user-panel-nickname');
+        const userPanelAvatar = document.getElementById('user-panel-avatar');
+        
+        if (userAreaMobile && usernameDisplayMobile) {
+            if (isLoggedIn && displayName) {
+                usernameDisplayMobile.textContent = displayName;
+                userAreaMobile.style.display = 'block';
+                // Actualizar nickname del panel
+                if (userPanelNickname) {
+                    userPanelNickname.textContent = displayName.toUpperCase();
+                }
+                // Actualizar avatar si está guardado (default: Player)
+                const savedAvatar = localStorage.getItem('avatar') || 'P';
+                const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
+                if (userPanelAvatarCanvas) {
+                    drawAvatar(store, savedAvatar, userPanelAvatarCanvas, performance.now());
+                    // Registrar para animación continua
+                    const existingIndex = avatarCanvases.findIndex(a => a.canvas === userPanelAvatarCanvas);
+                    if (existingIndex >= 0) {
+                        avatarCanvases[existingIndex].code = savedAvatar;
+                    } else {
+                        avatarCanvases.push({ code: savedAvatar, canvas: userPanelAvatarCanvas });
+                    }
+                }
+            } else {
+                userAreaMobile.style.display = 'none';
+                if (userPanelNickname) {
+                    userPanelNickname.textContent = 'USUARIO';
+                }
+                const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
+                if (userPanelAvatarCanvas) {
+                    drawAvatar(store, 'P', userPanelAvatarCanvas, performance.now());
+                    // Registrar para animación continua
+                    const existingIndex = avatarCanvases.findIndex(a => a.canvas === userPanelAvatarCanvas);
+                    if (existingIndex >= 0) {
+                        avatarCanvases[existingIndex].code = 'P';
+                    } else {
+                        avatarCanvases.push({ code: 'P', canvas: userPanelAvatarCanvas });
+                    }
+                }
             }
         }
     };
@@ -2104,6 +2384,60 @@ const setupMenuButtons = (store: GameStore) => {
         if (profileNicknameInput) {
             profileNicknameInput.value = currentNickname || '';
         }
+        // Cargar avatar actual (default: Player)
+        const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
+        const savedAvatar = localStorage.getItem('avatar') || 'P';
+        if (profileAvatarPreview) {
+            drawAvatar(store, savedAvatar, profileAvatarPreview, performance.now());
+            // Registrar para animación continua
+            const existingIndex = avatarCanvases.findIndex(a => a.canvas === profileAvatarPreview);
+            if (existingIndex >= 0) {
+                avatarCanvases[existingIndex].code = savedAvatar;
+            } else {
+                avatarCanvases.push({ code: savedAvatar, canvas: profileAvatarPreview });
+            }
+        }
+    });
+    
+    // Handler del botón Cambiar Avatar
+    const profileAvatarBtn = document.getElementById('profile-avatar-btn') as HTMLButtonElement | null;
+    profileAvatarBtn?.addEventListener('click', () => {
+        // Lista de avatares disponibles (códigos de personajes del juego)
+        // Player, Murciélago, Araña, Víbora, Tentáculo, Minero
+        const avatares = ['P', '8', 'S', 'V', 'T', '9'];
+        const currentAvatar = localStorage.getItem('avatar') || 'P';
+        const currentIndex = avatares.indexOf(currentAvatar);
+        const nextIndex = (currentIndex + 1) % avatares.length;
+        const newAvatar = avatares[nextIndex];
+        
+        // Guardar nuevo avatar
+        localStorage.setItem('avatar', newAvatar);
+        
+        // Actualizar preview en el modal (canvas)
+        const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
+        if (profileAvatarPreview) {
+            drawAvatar(store, newAvatar, profileAvatarPreview, performance.now());
+            // Registrar para animación continua
+            const existingIndex = avatarCanvases.findIndex(a => a.canvas === profileAvatarPreview);
+            if (existingIndex >= 0) {
+                avatarCanvases[existingIndex].code = newAvatar;
+            } else {
+                avatarCanvases.push({ code: newAvatar, canvas: profileAvatarPreview });
+            }
+        }
+        
+        // Actualizar avatar en el panel mobile (canvas)
+        const userPanelAvatar = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
+        if (userPanelAvatar) {
+            drawAvatar(store, newAvatar, userPanelAvatar, performance.now());
+            // Registrar para animación continua
+            const existingIndex = avatarCanvases.findIndex(a => a.canvas === userPanelAvatar);
+            if (existingIndex >= 0) {
+                avatarCanvases[existingIndex].code = newAvatar;
+            } else {
+                avatarCanvases.push({ code: newAvatar, canvas: userPanelAvatar });
+            }
+        }
     });
     
     profileCloseBtn?.addEventListener('click', () => {
@@ -2119,6 +2453,18 @@ const setupMenuButtons = (store: GameStore) => {
         const newNickname = profileNicknameInput.value.trim();
         if (newNickname) {
             localStorage.setItem('nickname', newNickname);
+            // Actualizar nickname del panel mobile
+            const userPanelNickname = document.getElementById('user-panel-nickname');
+            if (userPanelNickname) {
+                userPanelNickname.textContent = newNickname.toUpperCase();
+            }
+            // Actualizar también el nombre de usuario en el panel mobile
+            const usernameDisplayMobile = document.getElementById('username-display-mobile');
+            if (usernameDisplayMobile) {
+                usernameDisplayMobile.textContent = newNickname;
+            }
+            // Actualizar área de usuario
+            updateUserArea();
             // Aquí podrías guardar en la BD también
             alert('Nickname guardado exitosamente');
         }
@@ -2834,7 +3180,185 @@ const setupLevelData = (store: GameStore) => {
     shareLevelBtn?.addEventListener('click', async () => {
         await shareLevelToGallery(store);
     });
+    
+    // ===== EVENT LISTENERS PARA PANEL MOBILE =====
+    // Sincronizar selector mobile con desktop y viceversa
+    const syncLevelSelectors = (fromMobile: boolean = false) => {
+        const levelSelectorDesktop = document.getElementById('level-selector') as HTMLSelectElement | null;
+        const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+        if (levelSelectorDesktop && levelSelectorMobile) {
+            if (fromMobile) {
+                levelSelectorDesktop.value = levelSelectorMobile.value;
+                // Disparar evento change para cargar el nivel
+                levelSelectorDesktop.dispatchEvent(new Event('change'));
+            } else {
+                levelSelectorMobile.innerHTML = levelSelectorDesktop.innerHTML;
+                levelSelectorMobile.value = levelSelectorDesktop.value;
+            }
+        }
+    };
+    
+    // Botones mobile - Conectar con funciones existentes
+    const playTestBtnMobile = document.getElementById('play-test-btn-mobile') as HTMLButtonElement | null;
+    const addLevelBtnMobile = document.getElementById('add-level-btn-mobile') as HTMLButtonElement | null;
+    const generateLevelBtnMobile = document.getElementById('generate-level-btn-mobile') as HTMLButtonElement | null;
+    const saveAllBtnMobile = document.getElementById('save-all-btn-mobile') as HTMLButtonElement | null;
+    const shareLevelBtnMobile = document.getElementById('share-level-btn-mobile') as HTMLButtonElement | null;
+    const backToMenuBtnMobile = document.getElementById('back-to-menu-btn-mobile') as HTMLButtonElement | null;
+    const userProfileBtnMobile = document.getElementById('user-profile-btn-mobile') as HTMLButtonElement | null;
+    const logoutBtnMobile = document.getElementById('logout-btn-mobile') as HTMLButtonElement | null;
+    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+    
+    // Sincronizar selectores cuando cambien
+    store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
+        syncLevelSelectors(false);
+    });
+    
+    levelSelectorMobile?.addEventListener('change', () => {
+        syncLevelSelectors(true);
+    });
+    
+    // Jugar Nivel (mobile) - usar selector mobile
+    playTestBtnMobile?.addEventListener('click', () => {
+        const index = parseInt(levelSelectorMobile?.value ?? store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        const currentBuffer = JSON.parse(JSON.stringify(store.editorLevel));
+        const cleanedLevel = purgeEmptyRowsAndColumns(currentBuffer);
+        store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
+        store.editorLevel = cleanedLevel;
+        const payload = cleanedLevel.map(row => row.join(''));
+        store.levelDesigns = JSON.parse(JSON.stringify(store.initialLevels));
+        store.levelDesigns[index] = payload;
+        startGame(store, null, index, true);
+    });
+    
+    // Nuevo Nivel (mobile) - duplicar lógica
+    addLevelBtnMobile?.addEventListener('click', () => {
+        store.dom.ui.addLevelBtn?.click();
+        // Sincronizar selector después de agregar
+        setTimeout(() => syncLevelSelectors(false), 100);
+    });
+    
+    // Generar Nivel (mobile) - duplicar lógica
+    generateLevelBtnMobile?.addEventListener('click', () => {
+        store.dom.ui.generateLevelBtn?.click();
+        // Sincronizar selector después de generar
+        setTimeout(() => syncLevelSelectors(false), 100);
+    });
+    
+    // Guardar (mobile) - duplicar lógica
+    saveAllBtnMobile?.addEventListener('click', () => {
+        store.dom.ui.saveAllBtn?.click();
+    });
+    
+    // Compartir Nivel (mobile) - duplicar lógica
+    shareLevelBtnMobile?.addEventListener('click', async () => {
+        await shareLevelToGallery(store);
+    });
+    
+    // Volver al Menú (mobile)
+    backToMenuBtnMobile?.addEventListener('click', () => {
+        showMenu(store);
+    });
+    
+    // Mi Área (mobile) - abrir modal de perfil
+    userProfileBtnMobile?.addEventListener('click', () => {
+        const profileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
+        profileBtn?.click();
+    });
+    
+    // Cerrar sesión (mobile) - duplicar lógica
+    logoutBtnMobile?.addEventListener('click', () => {
+        const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
+        logoutBtn?.click();
+    });
 
 
+};
+
+/**
+ * Configura los atajos de teclado para mejorar la navegación
+ * ESC: Cerrar modales, P: Pausar, R: Reiniciar, E: Editor, M: Menú, S: Settings
+ */
+const setupKeyboardShortcuts = (store: GameStore) => {
+    document.addEventListener('keydown', (e) => {
+        // Ignorar si estamos en un input o textarea
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+            return;
+        }
+        
+        // ESC: Cerrar modales abiertos
+        if (e.key === 'Escape') {
+            const galleryModal = document.getElementById('gallery-modal');
+            const profileModal = document.getElementById('profile-modal');
+            const settingsModal = document.getElementById('settings-modal');
+            const creditsModal = document.getElementById('credits-modal');
+            const authModal = document.getElementById('auth-choice-modal');
+            const pauseMenu = document.getElementById('pause-menu-modal');
+            const gameoverModal = document.getElementById('gameover-modal');
+            
+            if (gameoverModal && !gameoverModal.classList.contains('hidden')) {
+                return; // No cerrar Game Over con ESC
+            }
+            if (galleryModal && !galleryModal.classList.contains('hidden')) {
+                galleryModal.classList.add('hidden');
+                return;
+            }
+            if (profileModal && !profileModal.classList.contains('hidden')) {
+                profileModal.classList.add('hidden');
+                return;
+            }
+            if (authModal && !authModal.classList.contains('hidden')) {
+                authModal.classList.add('hidden');
+                return;
+            }
+            if (settingsModal && !settingsModal.classList.contains('hidden')) {
+                settingsModal.classList.add('hidden');
+                return;
+            }
+            if (creditsModal && !creditsModal.classList.contains('hidden')) {
+                creditsModal.classList.add('hidden');
+                return;
+            }
+            if (pauseMenu && !pauseMenu.classList.contains('hidden')) {
+                pauseMenu.classList.add('hidden');
+                return;
+            }
+        }
+        
+        // Solo procesar otros atajos si no estamos en modo playing (donde hay input de teclado)
+        if (store.appState === 'playing') {
+            // P: Pausar/Reanudar
+            if (e.key.toLowerCase() === 'p') {
+                const hamburgerBtn = document.getElementById('hamburger-btn');
+                hamburgerBtn?.click();
+            }
+            // R: Reiniciar nivel
+            if (e.key.toLowerCase() === 'r') {
+                const restartBtn = document.getElementById('restart-game-btn');
+                restartBtn?.click();
+            }
+        }
+        
+        // E: Abrir Editor (solo desde menú o juego)
+        if (e.key.toLowerCase() === 'e' && (store.appState === 'menu' || store.appState === 'playing')) {
+            const levelEditorBtn = document.getElementById('level-editor-btn');
+            if (levelEditorBtn && store.appState === 'menu') {
+                levelEditorBtn.click();
+            }
+        }
+        
+        // M: Volver al Menú Principal
+        if (e.key.toLowerCase() === 'm' && store.appState !== 'menu') {
+            const backToMenuBtn = document.getElementById('back-to-menu-btn-game');
+            backToMenuBtn?.click();
+        }
+        
+        // S: Abrir Configuración
+        if (e.key.toLowerCase() === 's' && store.appState !== 'editing') {
+            const settingsBtn = document.getElementById('settings-btn');
+            settingsBtn?.click();
+        }
+    });
 };
 
