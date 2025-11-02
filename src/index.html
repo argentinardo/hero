@@ -26,54 +26,92 @@
         <script>
             // Configurar URL fija ANTES de cargar el widget para evitar que pida URL al usuario
             window.IDENTITY_URL = 'https://newhero.netlify.app/.netlify/identity';
+            // También guardar en localStorage como respaldo
+            localStorage.setItem('netlify-identity-url', 'https://newhero.netlify.app/.netlify/identity');
         </script>
-        <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+        <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" onload="initializeNetlifyIdentity()"></script>
         <script>
-            // Inicializar inmediatamente después de cargar el script, no esperar DOMContentLoaded
-            (function() {
+            function initializeNetlifyIdentity() {
                 var ni = window.netlifyIdentity;
                 if (!ni) {
-                    // Si no está disponible aún, intentar de nuevo cuando el DOM esté listo
-                    document.addEventListener('DOMContentLoaded', initializeNetlifyIdentity);
+                    // Si no está disponible aún, intentar de nuevo después de un timeout
+                    setTimeout(initializeNetlifyIdentity, 100);
                     return;
                 }
-                initializeNetlifyIdentity();
                 
-                function initializeNetlifyIdentity() {
-                    var ni = window.netlifyIdentity;
-                    if (!ni) return;
-                    
-                    // Prioridad: 1) Variable global, 2) Meta tag, 3) Detección automática
-                    var configured = window.IDENTITY_URL || 
-                                     (document.querySelector('meta[name="netlify-identity-url"]')?.getAttribute('content')) ||
-                                     null;
-                    
-                    var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
-                    var apiUrl = configured || 
-                                (isNetlifyHost ? (window.location.origin + '/.netlify/identity') : null);
-                    
-                    // SIEMPRE usar la URL fija si está configurada, incluso en Android/Capacitor
-                    if (configured) {
-                        apiUrl = configured;
-                    }
-                    
-                    if (!apiUrl) {
-                        console.warn('Netlify Identity: No se pudo determinar la URL de Identity');
-                        return;
-                    }
-                    
-                    try { 
-                        // Inicializar con la URL fija y configurar para que no pida URL al usuario
-                        ni.init({ 
-                            APIUrl: apiUrl,
-                            locale: 'es' // Configurar idioma español si está disponible
-                        }); 
-                        console.log('Netlify Identity inicializado con URL:', apiUrl);
-                    } catch (e) {
-                        console.error('Error inicializando Netlify Identity:', e);
-                    }
+                // Prioridad: 1) Variable global, 2) Meta tag, 3) localStorage, 4) Detección automática
+                var configured = window.IDENTITY_URL || 
+                                 document.querySelector('meta[name="netlify-identity-url"]')?.getAttribute('content') ||
+                                 localStorage.getItem('netlify-identity-url') ||
+                                 null;
+                
+                var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
+                var apiUrl = configured || 
+                            (isNetlifyHost ? (window.location.origin + '/.netlify/identity') : null);
+                
+                // SIEMPRE usar la URL fija si está configurada, incluso en Android/Capacitor
+                if (configured) {
+                    apiUrl = configured;
                 }
-            })();
+                
+                if (!apiUrl) {
+                    console.warn('Netlify Identity: No se pudo determinar la URL de Identity');
+                    return;
+                }
+                
+                try { 
+                    // Inicializar con la URL fija y configurar para que no pida URL al usuario
+                    ni.init({ 
+                        APIUrl: apiUrl,
+                        locale: 'es' // Configurar idioma español si está disponible
+                    }); 
+                    console.log('Netlify Identity inicializado con URL:', apiUrl);
+                    
+                    // Observador para cerrar cualquier modal de configuración que aparezca
+                    var observer = new MutationObserver(function(mutations) {
+                        mutations.forEach(function(mutation) {
+                            if (mutation.addedNodes) {
+                                mutation.addedNodes.forEach(function(node) {
+                                    if (node.nodeType === 1) { // Element node
+                                        var modal = node.classList && node.classList.contains('netlify-identity-modal') ? node : node.querySelector('.netlify-identity-modal');
+                                        if (modal) {
+                                            // Verificar si contiene un prompt de URL
+                                            var text = modal.textContent || '';
+                                            if (text.includes('URL') || text.includes('url') || text.includes('endpoint')) {
+                                                modal.style.display = 'none';
+                                                console.log('Modal de URL de Netlify Identity cerrado automáticamente');
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    });
+                    
+                    // Observar el body para detectar modales que se agreguen
+                    observer.observe(document.body, {
+                        childList: true,
+                        subtree: true
+                    });
+                    
+                    // También intentar cerrar inmediatamente si ya existe
+                    setTimeout(function() {
+                        try {
+                            var modals = document.querySelectorAll('[class*="modal"], [class*="prompt"], [id*="modal"]');
+                            modals.forEach(function(modal) {
+                                var text = modal.textContent || '';
+                                if (text.includes('URL') || text.includes('url') || text.includes('endpoint') || text.includes('Netlify')) {
+                                    modal.style.display = 'none';
+                                }
+                            });
+                        } catch(e) {
+                            console.log('Verificación de modal completada');
+                        }
+                    }, 500);
+                } catch (e) {
+                    console.error('Error inicializando Netlify Identity:', e);
+                }
+            }
         </script>
         <!-- Bloquear orientación a landscape -->
         <script>
@@ -278,6 +316,7 @@
             <div class="flex gap-4 mt-6">
                 <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Jugar</button>
                 <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white">Ingresar</button>
+                <button id="gallery-btn" class="bg-purple-600 hover:bg-purple-700 p-3 border-2 border-white">Galería</button>
                 <button id="retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white hidden">Volver a jugar</button>
             </div>
         </div>
@@ -449,6 +488,32 @@
             <div id="action-zone">
                 <button id="shoot-btn" class="action-button">FIRE</button>
                 <button id="bomb-btn" class="action-button">TNT</button>
+            </div>
+        </div>
+
+        <!-- Modal Galería de Niveles -->
+        <div id="gallery-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50 overflow-y-auto">
+            <div class="bg-gray-900 p-8 border-4 border-purple-600 max-w-6xl mx-6 my-8" style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto;">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">GALERÍA DE NIVELES</h2>
+                    <button id="gallery-close-btn" class="bg-gray-700 hover:bg-gray-600 p-2 border-2 border-white">✕</button>
+                </div>
+                
+                <!-- Filtros y ordenamiento -->
+                <div class="mb-6 flex gap-4 items-center flex-wrap">
+                    <label class="text-sm">Ordenar por:</label>
+                    <button id="gallery-sort-likes" class="gallery-sort-btn active bg-purple-700 hover:bg-purple-600 px-4 py-2 border border-white">Más Votados</button>
+                    <button id="gallery-sort-newest" class="gallery-sort-btn bg-gray-700 hover:bg-gray-600 px-4 py-2 border border-white">Más Nuevos</button>
+                    <button id="gallery-sort-downloads" class="gallery-sort-btn bg-gray-700 hover:bg-gray-600 px-4 py-2 border border-white">Más Descargados</button>
+                </div>
+                
+                <!-- Grid de niveles -->
+                <div id="gallery-levels-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Los niveles se cargarán aquí dinámicamente -->
+                    <div class="col-span-full text-center text-gray-500 p-8">
+                        <p>Cargando niveles...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

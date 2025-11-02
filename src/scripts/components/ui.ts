@@ -17,6 +17,7 @@ import {
     initializeAdvancedEditor
 } from './advancedEditor';
 import { activateDuplicateRowMode, activateDeleteRowMode } from './editor';
+import { setupGallery } from './gallery';
 
 // Función para ajustar el ancho de las barras UI al tamaño real del canvas
 export const adjustUIBars = () => {
@@ -1353,6 +1354,7 @@ export const setupUI = (store: GameStore) => {
     syncLevelSelector(store);
     setupLevelData(store);
     setupMenuButtons(store);
+    setupGallery(store);
     // Netlify Identity: cerrar modal y continuar a editor tras login
     try {
         const ni: any = (window as any).netlifyIdentity;
