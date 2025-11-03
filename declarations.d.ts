@@ -43,6 +43,15 @@ declare module '*.mid' {
     export default value;
 }
 
+// Declaración opcional para @capacitor/status-bar (puede no estar instalado)
+declare module '@capacitor/status-bar' {
+    export const StatusBar: {
+        setOverlaysWebView(options: { overlay: boolean }): Promise<void>;
+        setStyle(options: { style: 'dark' | 'light' }): Promise<void>;
+        setBackgroundColor(options: { color: string }): Promise<void>;
+    };
+}
+
 // Declaraciones para MIDI.js (vía CDN)
 declare global {
     interface Window {

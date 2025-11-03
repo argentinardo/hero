@@ -377,8 +377,21 @@ const initStatusBar = async (): Promise<void> => {
             return; // No hacer nada en web
         }
 
-        // Importar dinámicamente el plugin de StatusBar
-        const { StatusBar } = await import('@capacitor/status-bar');
+        // Intentar importar dinámicamente el plugin de StatusBar
+        // Si no está instalado, simplemente ignorar el error
+        let StatusBar: any;
+        try {
+            const statusBarModule = await import('@capacitor/status-bar');
+            StatusBar = statusBarModule.StatusBar;
+        } catch (importError) {
+            console.warn('Plugin @capacitor/status-bar no está instalado. Instálalo con: npm install @capacitor/status-bar');
+            return; // Salir silenciosamente si el módulo no existe
+        }
+
+        if (!StatusBar) {
+            console.warn('StatusBar no está disponible');
+            return;
+        }
         
         // Configurar StatusBar para que ocupe todo el espacio
         await StatusBar.setOverlaysWebView({ overlay: true });
@@ -387,7 +400,7 @@ const initStatusBar = async (): Promise<void> => {
         
         console.log('StatusBar configurado para fullscreen');
     } catch (error) {
-        console.warn('No se pudo inicializar StatusBar (probablemente en web):', error);
+        console.warn('No se pudo inicializar StatusBar:', error);
     }
 };
 
