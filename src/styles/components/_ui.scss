@@ -958,44 +958,50 @@ body.state-menu {
     background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.9) 100%);
 }
 
-/* Animaciones para el título de créditos */
+/* Animaciones para el título de créditos - SIN animación de tamaño */
 .credits-title {
-    animation: creditsTitlePulse 2s ease-in-out infinite;
     text-shadow: 
         0 0 10px rgba(212, 165, 116, 0.8),
         0 0 20px rgba(212, 165, 116, 0.6),
         0 0 30px rgba(212, 165, 116, 0.4);
+    /* Solo animar colores cuando se activa Paolo */
+    #credits-modal.paolo-activated & {
+        animation: creditsTitleColor 2s ease-in-out infinite;
+    }
 }
 
-@keyframes creditsTitlePulse {
+@keyframes creditsTitleColor {
     0%, 100% {
-        transform: scale(1);
         filter: brightness(1);
     }
     50% {
-        transform: scale(1.05);
         filter: brightness(1.3);
     }
 }
 
-/* Animación de arcoíris para el nombre */
+/* Animación de arcoíris para el nombre - solo cuando Paolo está activado */
 .credits-name {
-    background: linear-gradient(
-        90deg,
-        #ff6b6b 0%,
-        #ffd93d 16.66%,
-        #6bcf7f 33.33%,
-        #4ecdc4 50%,
-        #45b7d1 66.66%,
-        #96ceb4 83.33%,
-        #ffeaa7 100%
-    );
-    background-size: 200% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: rainbowShift 3s linear infinite;
+    color: #d4a574; /* Color estático por defecto */
     display: inline-block;
+    
+    /* Solo animar colores cuando se activa Paolo */
+    #credits-modal.paolo-activated & {
+        background: linear-gradient(
+            90deg,
+            #ff6b6b 0%,
+            #ffd93d 16.66%,
+            #6bcf7f 33.33%,
+            #4ecdc4 50%,
+            #45b7d1 66.66%,
+            #96ceb4 83.33%,
+            #ffeaa7 100%
+        );
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: rainbowShift 3s linear infinite;
+    }
 }
 
 @keyframes rainbowShift {
@@ -1007,11 +1013,18 @@ body.state-menu {
     }
 }
 
-/* Efecto de brillo para el link */
+/* Efecto de brillo para el link - solo cuando Paolo está activado */
 .credits-link {
     position: relative;
-    transition: all 0.3s ease;
-    animation: linkGlow 2.5s ease-in-out infinite;
+    transition: color 0.3s ease;
+    text-shadow: 
+        0 0 5px rgba(234, 179, 8, 0.3),
+        0 0 10px rgba(234, 179, 8, 0.2);
+    
+    /* Solo animar colores cuando se activa Paolo */
+    #credits-modal.paolo-activated & {
+        animation: linkGlow 2.5s ease-in-out infinite;
+    }
 }
 
 @keyframes linkGlow {
@@ -1029,32 +1042,37 @@ body.state-menu {
 }
 
 .credits-link:hover {
-    transform: scale(1.1);
+    /* Sin transformación de tamaño */
     filter: brightness(1.5);
 }
 
-/* Efecto especial para el mensaje de Paolo */
+/* Efecto especial para el mensaje de Paolo - solo colores cuando se activa */
 .credits-special {
     display: inline-block;
-    animation: heartBeat 1.5s ease-in-out infinite;
     color: #ff6b9d;
     text-shadow: 
         0 0 10px rgba(255, 107, 157, 0.8),
         0 0 20px rgba(255, 107, 157, 0.6);
+    
+    /* Solo animar colores cuando se activa Paolo */
+    #credits-modal.paolo-activated & {
+        animation: specialColor 1.5s ease-in-out infinite;
+    }
 }
 
-@keyframes heartBeat {
+@keyframes specialColor {
     0%, 100% {
-        transform: scale(1);
-    }
-    25% {
-        transform: scale(1.1);
+        filter: brightness(1);
+        text-shadow: 
+            0 0 10px rgba(255, 107, 157, 0.8),
+            0 0 20px rgba(255, 107, 157, 0.6);
     }
     50% {
-        transform: scale(1);
-    }
-    75% {
-        transform: scale(1.08);
+        filter: brightness(1.3);
+        text-shadow: 
+            0 0 15px rgba(255, 107, 157, 1),
+            0 0 30px rgba(255, 107, 157, 0.8),
+            0 0 45px rgba(255, 107, 157, 0.6);
     }
 }
 
@@ -1084,7 +1102,7 @@ body.state-menu {
 }
 
 .credits-btn:hover {
-    transform: scale(1.1);
+    /* Sin transformación de tamaño */
     box-shadow: 
         0 0 20px rgba(212, 165, 116, 0.6),
         0 0 40px rgba(212, 165, 116, 0.4);
@@ -1108,9 +1126,14 @@ body.state-menu {
     }
 }
 
-/* Efecto de texto brillante pulsante */
+/* Efecto de texto brillante pulsante - solo cuando Paolo está activado */
 .credits-text {
-    animation: textShimmer 3s ease-in-out infinite;
+    opacity: 0.9;
+    
+    /* Solo animar colores cuando se activa Paolo */
+    #credits-modal.paolo-activated & {
+        animation: textShimmer 3s ease-in-out infinite;
+    }
 }
 
 @keyframes textShimmer {

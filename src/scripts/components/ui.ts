@@ -2538,6 +2538,8 @@ const setupHamburgerMenu = (
         const creditsModal = document.getElementById('credits-modal');
         if (creditsModal) {
             creditsModal.classList.remove('hidden');
+            // Remover clase de activación al abrir para resetear animaciones
+            creditsModal.classList.remove('paolo-activated');
             // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
         }
     });
@@ -2925,10 +2927,14 @@ const setupMenuButtons = (store: GameStore) => {
     // Créditos - NO iniciar partículas automáticamente
     creditsBtn?.addEventListener('click', () => {
         creditsModal?.classList.remove('hidden');
+        // Remover clase de activación al abrir para resetear animaciones
+        creditsModal?.classList.remove('paolo-activated');
     });
     
     creditsCloseBtn?.addEventListener('click', () => {
         creditsModal?.classList.add('hidden');
+        // Remover clase de activación de Paolo para detener animaciones de colores
+        creditsModal?.classList.remove('paolo-activated');
         // Detener partículas si están activas
         if (creditsParticlesAnimation !== null) {
             cancelAnimationFrame(creditsParticlesAnimation);
@@ -2951,6 +2957,12 @@ const setupMenuButtons = (store: GameStore) => {
         const target = e.target as HTMLElement;
         // Solo activar si se clickea en el texto que contiene "Paolo"
         if (target.textContent?.includes('Paolo') || target.closest('.credits-special')) {
+            // Activar animaciones de colores agregando clase al modal
+            const creditsModal = document.getElementById('credits-modal');
+            if (creditsModal) {
+                creditsModal.classList.add('paolo-activated');
+            }
+            
             // Pausar música de fondo actual si está sonando
             const audioState = getAudioState();
             
@@ -3251,6 +3263,8 @@ const setupMenuButtons = (store: GameStore) => {
         pauseCreditsBtn?.addEventListener('click', () => {
             closePauseMenu();
             creditsModal?.classList.remove('hidden');
+            // Remover clase de activación al abrir para resetear animaciones
+            creditsModal?.classList.remove('paolo-activated');
             // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
         });
     
@@ -4098,6 +4112,7 @@ const setupKeyboardShortcuts = (store: GameStore) => {
             }
             if (creditsModal && !creditsModal.classList.contains('hidden')) {
                 creditsModal.classList.add('hidden');
+                creditsModal.classList.remove('paolo-activated');
                 return;
             }
             if (pauseMenu && !pauseMenu.classList.contains('hidden')) {
