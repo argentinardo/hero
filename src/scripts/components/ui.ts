@@ -3927,27 +3927,6 @@ const setupLevelData = (store: GameStore) => {
         const levelsAsStrings = cleanedLevels.map(level => level.map(row => row.join('')));
         const payload = buildChunkedFile20x18(levelsAsStrings);
 
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        let token: string | null = null;
-        
-        // Obtener el token JWT del usuario
-        if (user) {
-            try {
-                token = await user.jwt();
-            } catch (error) {
-                console.error('Error obteniendo token:', error);
-            }
-        }
-
-        // Si no hay Netlify Identity pero hay usuario en localStorage, usar método alternativo
-        if (!token && isLoggedIn) {
-            // Intentar guardar en localStorage como respaldo
-            localStorage.setItem('userLevels', JSON.stringify(payload));
-            showNotification(store, '💾 Guardado Local', 'Niveles guardados localmente.\nNota: Inicia sesión con Netlify Identity para guardar en la nube.');
-            return;
-        }
-
         const downloadFallback = () => {
             const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -3962,20 +3941,119 @@ const setupLevelData = (store: GameStore) => {
             ensureEditorVisible(store);
         };
 
+        // Intentar obtener el token JWT del usuario de Netlify Identity
+        const ni: any = (window as any).netlifyIdentity;
+        let user = ni?.currentUser?.();
+        let token: string | null = null;
+        
+        // Si no hay usuario, esperar un momento e intentar de nuevo (por si Netlify Identity aún se está cargando)
+        if (!user && ni) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            user = ni?.currentUser?.();
+        }
+        
+        // Obtener el token JWT del usuario
+        if (user) {
+            try {
+                token = await user.jwt();
+                console.log('Token JWT obtenido exitosamente');
+            } catch (error) {
+                console.error('Error obteniendo token:', error);
+                // Intentar refrescar el usuario y obtener el token de nuevo
+                try {
+                    // Forzar refresco del usuario si es posible
+                    if (ni?.refresh && typeof ni.refresh === 'function') {
+                        await ni.refresh();
+                        user = ni?.currentUser?.();
+                        if (user) {
+                            token = await user.jwt();
+                            console.log('Token JWT obtenido después del refresh');
+                        }
+                    }
+                } catch (refreshError) {
+                    console.error('Error refrescando usuario:', refreshError);
+                }
+            }
+        }
+
+        // Si aún no hay token, mostrar mensaje y fallback
+        if (!token) {
+            console.warn('No se pudo obtener token JWT. El usuario puede no estar autenticado correctamente.');
+            if (!user) {
+                showNotification(store, '❌ No Autenticado', 'Por favor, inicia sesión nuevamente para guardar en la nube.');
+                // Guardar en localStorage como respaldo
+                localStorage.setItem('userLevels', JSON.stringify(payload));
+            } else {
+                showNotification(store, '⚠️ Token Expirado', 'Tu sesión puede haber expirado. Intentando guardar de todos modos...');
+                // Continuar con el intento de guardado incluso sin token válido
+            }
+        }
+
+        // Intentar guardar en Netlify SIEMPRE, incluso si no hay token (el servidor puede tener el usuario en el contexto)
         try {
-            // Usar URL completa en Android/Capacitor, relativa en web
             const baseUrl = getNetlifyBaseUrl();
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            };
+            
+            // Solo agregar el header Authorization si tenemos token
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            console.log('Intentando guardar niveles en Netlify:', {
+                baseUrl,
+                hasToken: !!token,
+                hasUser: !!user,
+                endpoint: `${baseUrl}/.netlify/functions/levels`
+            });
+
             const response = await fetch(`${baseUrl}/.netlify/functions/levels`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
+                headers,
                 body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('Error en respuesta de Netlify:', response.status, errorText);
+                
+                // Si es 401 y tenemos usuario, puede ser que el token haya expirado
+                if (response.status === 401 && user) {
+                    // Intentar refrescar y volver a intentar
+                    try {
+                        if (ni?.refresh && typeof ni.refresh === 'function') {
+                            await ni.refresh();
+                            user = ni?.currentUser?.();
+                            if (user) {
+                                token = await user.jwt();
+                                if (token) {
+                                    // Reintentar con el nuevo token
+                                    const retryResponse = await fetch(`${baseUrl}/.netlify/functions/levels`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${token}`,
+                                        },
+                                        body: JSON.stringify(payload),
+                                    });
+                                    
+                                    if (retryResponse.ok) {
+                                        const retryResult = await retryResponse.json();
+                                        if (retryResult.ok) {
+                                            showNotification(store, '💾 Guardado Exitoso', '¡Tus niveles se han guardado en tu cuenta!');
+                                            ensureEditorVisible(store);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (retryError) {
+                        console.error('Error en reintento:', retryError);
+                    }
+                }
+                
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
@@ -3987,10 +4065,22 @@ const setupLevelData = (store: GameStore) => {
             }
             ensureEditorVisible(store);
         } catch (error: any) {
-            console.error('Error saving levels:', error);
-            if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-                showNotification(store, '❌ No Autorizado', 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+            console.error('Error guardando niveles en Netlify:', error);
+            const errorMessage = error.message || String(error);
+            
+            // Guardar en localStorage como respaldo
+            try {
+                localStorage.setItem('userLevels', JSON.stringify(payload));
+            } catch (localError) {
+                console.error('Error guardando en localStorage:', localError);
+            }
+            
+            if (errorMessage?.includes('401') || errorMessage?.includes('Unauthorized')) {
+                showNotification(store, '❌ No Autorizado', 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.\nSe guardó una copia local como respaldo.');
+            } else if (errorMessage?.includes('NetworkError') || errorMessage?.includes('Failed to fetch') || errorMessage?.includes('Network request failed')) {
+                showNotification(store, '🌐 Sin Conexión', 'No hay conexión a Internet.\nSe guardó una copia local.\nReintenta cuando tengas conexión.');
             } else {
+                console.error('Error completo:', error);
                 downloadFallback();
             }
         }
