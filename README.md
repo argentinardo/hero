@@ -8,7 +8,11 @@ Un clon moderno del clásico H.E.R.O. con editor de niveles incluido.
 
 La documentación técnica completa del juego generada con JSDoc está disponible en:
 
-**📖 [Documentación JSDoc Interactiva](./docs/index.html)**
+**📖 [Documentación JSDoc Interactiva](./docs/index.html)** (local)
+
+**📖 [Documentación en Producción](https://newhero.netlify.app/docs/index.html)** (después del deploy)
+
+> **Nota**: La documentación se genera automáticamente durante el build y está disponible en `/docs/index.html` tanto localmente como en producción.
 
 Esta documentación incluye:
 - 📝 Explicación completa del funcionamiento del juego

@@ -4,8 +4,9 @@
   "description": "Un proyecto TypeScript básico",
   "main": "dist/bundle.js",
   "scripts": {
-    "build": "webpack --mode=production",
-    "build:web": "webpack --mode=production",
+    "build": "npm run docs:generate && webpack --mode=production && npm run docs:copy-to-dist",
+    "build:web": "npm run docs:generate && webpack --mode=production && npm run docs:copy-to-dist",
+    "docs:copy-to-dist": "node scripts/copy-docs.js",
     "build:android": "npm run build:web && npx cap sync android && npx cap open android",
     "build:all": "npm run build:web && npx cap sync",
     "dev": "webpack serve",
