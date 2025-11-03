@@ -2,9 +2,9 @@
   "entryPointStrategy": "expand",
   "entryPoints": ["src/scripts/**/*.ts"],
   "out": "docs",
-  "name": "H.E.R.O. - Documentación Técnica",
+  "name": "NEW H.E.R.O. - Documentación Técnica",
   "includeVersion": true,
-  "readme": "README.md",
+  "readme": "GAME_OVERVIEW.md",
   "exclude": [
     "**/*.test.ts",
     "**/node_modules/**",
@@ -20,6 +20,16 @@
     "Components",
     "Utils",
     "Solid"
-  ]
+  ],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "validation": {
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "githubPages": false,
+  "gitRevision": "main"
 }
 

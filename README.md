@@ -2,6 +2,39 @@
 
 Un clon moderno del clásico H.E.R.O. con editor de niveles incluido.
 
+## 📚 Documentación Completa
+
+### Documentación Técnica Generada
+
+La documentación técnica completa del juego generada con JSDoc está disponible en:
+
+**📖 [Documentación JSDoc Interactiva](./docs/index.html)**
+
+Esta documentación incluye:
+- 📝 Explicación completa del funcionamiento del juego
+- 🏗️ Arquitectura y flujo del código
+- 🔧 Referencias de todas las funciones y clases
+- 💡 Ejemplos de uso y comentarios detallados
+- 🔗 Enlaces cruzados entre módulos
+
+### Para Generar/Ver la Documentación Localmente:
+
+```bash
+# Generar documentación
+npm run docs:generate
+
+# Servir documentación localmente
+npm run docs:serve
+```
+
+Luego abre **http://localhost:8081** en tu navegador para ver la documentación.
+
+### Documentación Adicional:
+
+- **🏗️ [Guía de Arquitectura](./ARCHITECTURE_DECISIONS.md)** - Decisiones arquitectónicas y justificaciones técnicas
+- **🎮 [Visión General del Juego](./GAME_OVERVIEW.md)** - Explicación completa de mecánicas y funcionamiento
+- **🔧 [Guía de Compilación](./BUILD_GUIDE.md)** - Instrucciones detalladas de compilación
+
 ## 🚀 Inicio Rápido
 
 ### Desarrollo Web

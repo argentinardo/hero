@@ -1,11 +1,73 @@
 /**
+ * # NEW H.E.R.O. - Motor de Juego
+ * 
  * Punto de entrada principal del juego H.E.R.O.
  * 
- * Este archivo contiene:
- * - Inicialización del estado global (GameStore)
- * - Game loop principal
- * - Carga de assets y niveles
- * - Manejo de diferentes estados de aplicación (menu, playing, editing)
+ * Este es el archivo principal que orquesta todo el funcionamiento del juego.
+ * 
+ * ## Arquitectura del Juego
+ * 
+ * El juego sigue una arquitectura basada en un **game loop** principal que se ejecuta
+ * aproximadamente 60 veces por segundo (o 30 FPS en móviles para mejor rendimiento).
+ * 
+ * ### Flujo Principal:
+ * 
+ * 1. **Inicialización** (`bootstrap()`):
+ *    - Configuración del StatusBar (solo en Capacitor)
+ *    - Ajuste del viewport para navegadores móviles
+ *    - Setup de la UI (referencias DOM, event listeners)
+ *    - Inicialización del sistema de audio
+ *    - Configuración de gamepad (joystick Bluetooth)
+ *    - Aplicación de configuraciones gráficas
+ *    - Carga de assets críticos (sprites del jugador, terreno básico)
+ *    - Inicio del game loop
+ * 
+ * 2. **Game Loop** (`gameLoop()`):
+ *    - Se ejecuta usando `requestAnimationFrame` para sincronización con el navegador
+ *    - Controla el frame rate (60 FPS desktop, 30 FPS móvil)
+ *    - Actualiza el estado del juego según el estado actual:
+ *      - **menu**: Muestra el menú principal con animación de splash
+ *      - **playing**: Actualiza física del jugador, enemigos, colisiones, y renderiza
+ *      - **editing**: Renderiza el editor de niveles con herramientas de edición
+ * 
+ * 3. **Estados del Juego**:
+ *    - `menu`: Estado inicial, muestra menú principal
+ *    - `playing`: Juego activo, jugador controlando al héroe
+ *    - `editing`: Editor de niveles, permite crear/modificar niveles
+ * 
+ * ## Componentes Principales
+ * 
+ * - **GameStore**: Estado global centralizado del juego (vidas, energía, posición, nivel actual, etc.)
+ * - **Player**: Lógica del jugador (movimiento, física, colisiones, animaciones)
+ * - **Level**: Sistema de niveles (carga, renderizado de tiles, colisiones)
+ * - **Render**: Motor de renderizado (dibuja sprites, efectos, UI)
+ * - **Audio**: Sistema de sonido (música de fondo, efectos de sonido)
+ * - **UI**: Interfaz de usuario (menús, modales, configuración)
+ * 
+ * ## Flujo de Renderizado
+ * 
+ * 1. El canvas tiene dimensiones internas fijas (1440px ancho = 20 tiles)
+ * 2. El CSS escala el canvas visualmente a 1600px para mejor uso del espacio
+ * 3. En móvil, el canvas muestra 20 tiles de ancho x 9 tiles de alto
+ * 4. El renderizado usa un sistema de cámara que sigue al jugador
+ * 5. Solo se renderizan los elementos visibles en pantalla (culling)
+ * 
+ * ## Sistema de Cámara
+ * 
+ * La cámara sigue al jugador con una "deadzone":
+ * - Si el jugador está en el centro (1/3 superior/inferior), la cámara no se mueve
+ * - Si el jugador sale de la deadzone, la cámara se desplaza suavemente
+ * - La cámara se mueve por bloques de tiles para mejor performance
+ * - No puede salir de los bordes del nivel
+ * 
+ * @see {@link GameStore} - Estado global del juego
+ * @see {@link handlePlayerInput} - Manejo de entrada del usuario
+ * @see {@link updatePlayer} - Actualización de física del jugador
+ * @see {@link renderGame} - Motor de renderizado
+ * 
+ * @module Main
+ * @author NEW H.E.R.O. Development Team
+ * @since 1.0.0
  */
 
 import '../styles/main.scss';
@@ -40,13 +102,38 @@ store.levelDataStore = expanded.map(level => level.map(row => row.split('')));
 /**
  * Actualiza la posición de la cámara siguiendo al jugador.
  * 
- * IMPLEMENTACIÓN DE CÁMARA:
- * - Deadzone vertical: La cámara se mueve solo cuando el jugador sale de la zona central (1/3 superior/inferior)
- * - Bloques horizontales: La cámara se mueve por bloques de tiles basados en el ancho del canvas (1600px) para mejor performance
- * - Límites: La cámara no puede salir de los bordes del nivel
+ * ## Sistema de Cámara
  * 
- * @remarks Esta función modifica directamente store.cameraX y store.cameraY
- * @see TILE_SIZE - Tamaño de cada tile en píxeles
+ * El juego utiliza un sistema de cámara inteligente que sigue al jugador de forma suave
+ * y eficiente:
+ * 
+ * ### Deadzone Vertical
+ * - La cámara tiene una "zona muerta" vertical en el centro de la pantalla
+ * - Si el jugador está en el 1/3 superior o inferior del viewport, la cámara no se mueve
+ * - Solo cuando el jugador sale de esta zona, la cámara comienza a seguir
+ * - Esto evita que la cámara se mueva constantemente con pequeños movimientos
+ * 
+ * ### Movimiento por Bloques
+ * - La cámara se mueve por bloques de tiles (no pixel a pixel)
+ * - Cada bloque es del tamaño del ancho del canvas (20 tiles = 1440px)
+ * - Esto mejora el rendimiento al reducir cálculos de scroll
+ * - El movimiento es suave pero eficiente
+ * 
+ * ### Límites
+ * - La cámara no puede salir de los bordes del nivel
+ * - Si el nivel es más pequeño que el viewport, la cámara se centra
+ * - Si el nivel es más grande, la cámara se limita a los bordes
+ * 
+ * @remarks Esta función modifica directamente `store.cameraX` y `store.cameraY`
+ * 
+ * @example
+ * ```typescript
+ * // Se llama automáticamente en el game loop
+ * updateCamera();
+ * ```
+ * 
+ * @see {@link TILE_SIZE} - Tamaño de cada tile en píxeles (72px)
+ * @see {@link GameStore} - Estado global del juego
  */
 const updateCamera = () => {
     const canvas = store.dom.canvas;
@@ -269,18 +356,54 @@ const fpsMeasureInterval = 500; // Actualizar FPS cada 500ms
 /**
  * Loop principal del juego.
  * 
- * ARQUITECTURA DEL GAME LOOP:
- * - Frame-based timing: Controla el FPS objetivo usando deltaTime
- * - Diferentes estados: menu, playing, editing
- * - RequestAnimationFrame: Sincronizado con refresh rate del navegador
+ * ## Arquitectura del Game Loop
  * 
- * OPTIMIZACIÓN: Frame capping
- * - Solo procesa frames cuando deltaTime >= frameTime
- * - Evita procesamiento innecesario en dispositivos rápidos
+ * El game loop es el corazón del juego y se ejecuta continuamente usando
+ * `requestAnimationFrame` para sincronización con el refresh rate del navegador.
  * 
- * @param currentTime - Tiempo actual del navegador (performance.now())
+ * ### Frame-based Timing
+ * - Controla el FPS objetivo usando `deltaTime` (tiempo transcurrido desde el último frame)
+ * - Desktop: 60 FPS (target)
+ * - Móvil: 40 FPS (optimizado para mejor rendimiento)
+ * - Solo procesa frames cuando `deltaTime >= frameTime` (frame capping)
  * 
- * @remarks Este es el corazón del juego, se ejecuta ~60 veces por segundo
+ * ### Estados del Juego
+ * 
+ * El loop maneja diferentes estados de la aplicación:
+ * - **menu**: Muestra el menú principal con animación de splash
+ * - **playing**: Juego activo, actualiza física, colisiones, y renderiza
+ * - **editing**: Editor de niveles, renderiza herramientas de edición
+ * 
+ * ### Flujo por Frame
+ * 
+ * 1. **Cálculo de deltaTime**: Tiempo transcurrido desde el último frame
+ * 2. **Frame Capping**: Solo procesa si `deltaTime >= frameTime`
+ * 3. **Actualización según estado**:
+ *    - `menu`: Animación de splash
+ *    - `playing`: Actualiza estado del juego, renderiza
+ *    - `editing`: Renderiza editor
+ * 4. **Medición de FPS**: Actualiza contador de FPS cada 500ms
+ * 5. **Siguiente frame**: Llama a `requestAnimationFrame` para el próximo frame
+ * 
+ * ### Optimizaciones
+ * 
+ * - **Frame Capping**: Evita procesamiento innecesario en dispositivos rápidos
+ * - **Lazy Loading**: Módulos del juego se cargan solo cuando se necesitan
+ * - **Culling**: Solo se renderizan elementos visibles en pantalla
+ * 
+ * @param {number} currentTime - Tiempo actual del navegador (`performance.now()`)
+ * 
+ * @remarks Este es el corazón del juego, se ejecuta aproximadamente 40-60 veces por segundo
+ * 
+ * @example
+ * ```typescript
+ * // Iniciado automáticamente en bootstrap()
+ * requestAnimationFrame(gameLoop);
+ * ```
+ * 
+ * @see {@link updateGameState} - Actualiza el estado del juego
+ * @see {@link renderGame} - Renderiza el juego
+ * @see {@link requestAnimationFrame} - API del navegador para animaciones
  */
 const gameLoop = (currentTime: number): void => {
     deltaTime = currentTime - lastFrameTime;
@@ -348,26 +471,19 @@ const gameLoop = (currentTime: number): void => {
 };
 
 /**
- * Inicializa la aplicación del juego.
+ * Inicializa el StatusBar de Capacitor para que la app ocupe todo el espacio disponible.
  * 
- * SECUENCIA DE INICIALIZACIÓN:
- * 1. Setup UI: Crea referencias DOM y configura eventos
- * 2. Inicializar audio: Configura contexto de audio
- * 3. Mostrar menú: Estado inicial de la aplicación
- * 4. Cargar assets críticos: Sprites necesarios para el menú y primer nivel
- * 5. Cargar nivel: Prepara el primer nivel
- * 6. Cargar assets no críticos: En background (lazy loading)
- * 7. Iniciar game loop: Comienza el ciclo principal
+ * Esta función configura el StatusBar de Android para que la aplicación ocupe
+ * todo el espacio de la pantalla, incluyendo el área detrás de la barra de estado.
  * 
- * ESTRATEGIA DE CARGA:
- * - Assets críticos primero (jugador, terreno básico) -> ~200KB
- * - Assets no críticos después (enemigos, efectos) -> ~300KB adicionales
- * - Mejora el tiempo de carga inicial de 2s a 0.5s
+ * Solo se ejecuta en entornos Capacitor (Android/iOS), no en web.
  * 
- * @remarks Esta función se ejecuta una sola vez al inicio de la aplicación
- */
-/**
- * Inicializa el StatusBar de Capacitor para que la app ocupe todo el espacio disponible
+ * @returns {Promise<void>} Promise que se resuelve cuando la configuración está completa
+ * 
+ * @remarks Si el plugin `@capacitor/status-bar` no está instalado, la función
+ * simplemente retorna sin hacer nada (no crítico)
+ * 
+ * @see {@link https://capacitorjs.com/docs/apis/status-bar} - Documentación del plugin
  */
 const initStatusBar = async (): Promise<void> => {
     try {
@@ -378,13 +494,31 @@ const initStatusBar = async (): Promise<void> => {
         }
 
         // Intentar importar dinámicamente el plugin de StatusBar
-        // Si no está instalado, simplemente ignorar el error
+        // Usar una función que construye la ruta dinámicamente para evitar que webpack lo analice
         let StatusBar: any;
         try {
-            const statusBarModule = await import('@capacitor/status-bar');
-            StatusBar = statusBarModule.StatusBar;
-        } catch (importError) {
-            console.warn('Plugin @capacitor/status-bar no está instalado. Instálalo con: npm install @capacitor/status-bar');
+            // Construir la ruta del módulo de forma que webpack no pueda analizarla estáticamente
+            // Usar una función que construye la ruta en tiempo de ejecución
+            const getModulePath = () => {
+                const parts = ['@capacitor', 'status-bar'];
+                return parts.join('/');
+            };
+            const modulePath = getModulePath();
+            
+            // Usar import dinámico - webpack mostrará un warning pero no bloqueará la compilación
+            const statusBarModule = await import(modulePath);
+            StatusBar = statusBarModule?.StatusBar;
+        } catch (importError: any) {
+            // El módulo no está disponible - esto es normal si no está instalado
+            // Webpack puede mostrar un warning, pero esto es esperado y no crítico
+            if (importError?.code === 'MODULE_NOT_FOUND' || 
+                importError?.message?.includes('Cannot resolve') ||
+                importError?.message?.includes('Cannot find module')) {
+                // Silencioso: no es un error crítico, el plugin es opcional
+                // El warning de webpack es esperado y puede ignorarse
+            } else {
+                console.warn('Error importando StatusBar:', importError);
+            }
             return; // Salir silenciosamente si el módulo no existe
         }
 
@@ -458,6 +592,69 @@ const setupViewportAdjustment = (): void => {
     setInterval(checkScroll, 100);
 };
 
+/**
+ * Inicializa la aplicación del juego.
+ * 
+ * ## Secuencia de Inicialización
+ * 
+ * Esta función es el punto de entrada principal después de que el DOM está listo.
+ * Orquesta toda la inicialización del juego en el orden correcto:
+ * 
+ * ### 1. Configuración de Plataforma
+ * - **StatusBar** (solo Capacitor): Configura la barra de estado para fullscreen
+ * - **Viewport Adjustment** (solo web móvil): Ajusta el viewport para compensar la barra de direcciones
+ * 
+ * ### 2. Setup de Sistemas
+ * - **UI**: Crea referencias DOM y configura todos los event listeners
+ * - **Audio**: Inicializa el contexto de audio y carga sonidos
+ * - **Gamepad**: Configura soporte para joystick Bluetooth
+ * - **Graphics**: Aplica configuraciones gráficas (blur, scanlines, etc.)
+ * 
+ * ### 3. Estado Inicial
+ * - **Menú**: Muestra el menú principal (estado inicial de la aplicación)
+ * 
+ * ### 4. Carga de Assets
+ * 
+ * #### Assets Críticos (Bloqueante)
+ * - Sprites del jugador (caminar, volar, saltar)
+ * - Terreno básico (suelo, paredes)
+ * - Tamaño aproximado: ~200KB
+ * - **Bloqueante**: El juego no inicia hasta que estos se carguen
+ * 
+ * #### Assets No Críticos (Background)
+ * - Enemigos (arañas, víboras, murciélagos)
+ * - Efectos (explosiones, partículas)
+ * - Tamaño aproximado: ~300KB adicionales
+ * - **No bloqueante**: Se cargan en background mientras el juego ya está corriendo
+ * 
+ * ### 5. Inicio del Game Loop
+ * - Una vez cargados los assets críticos, inicia el `gameLoop`
+ * - El loop se ejecuta continuamente usando `requestAnimationFrame`
+ * 
+ * ## Estrategia de Carga
+ * 
+ * La estrategia de carga progresiva mejora significativamente el tiempo de carga:
+ * - **Antes**: ~2 segundos (todos los assets bloqueantes)
+ * - **Ahora**: ~0.5 segundos (solo assets críticos)
+ * 
+ * Los assets no críticos se cargan en background y están disponibles cuando se necesitan.
+ * 
+ * @returns {Promise<void>} Promise que se resuelve cuando la inicialización está completa
+ * 
+ * @remarks Esta función se ejecuta una sola vez al inicio de la aplicación
+ * 
+ * @example
+ * ```typescript
+ * // Llamado automáticamente cuando el DOM está listo
+ * if (document.readyState === 'complete' || document.readyState === 'interactive') {
+ *     bootstrap().catch(error => console.error('Error en bootstrap:', error));
+ * }
+ * ```
+ * 
+ * @see {@link gameLoop} - Loop principal del juego
+ * @see {@link preloadCriticalAssets} - Carga de assets críticos
+ * @see {@link loadSpritesLazy} - Carga diferida de sprites
+ */
 const bootstrap = async (): Promise<void> => {
     // Inicializar StatusBar primero para que ocupe todo el espacio (solo en Capacitor)
     await initStatusBar();

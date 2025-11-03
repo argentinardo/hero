@@ -104,9 +104,9 @@ export const attachDomReferences = (store: GameStore) => {
     const TILES_WIDTH = 20;
     const CANVAS_TARGET_WIDTH = TILES_WIDTH * TILE_SIZE; // 1440px = 20 tiles de 72px
     
-    // En mobile: mostrar 12 tiles de alto (12 * 72 = 864px)
-    const TILES_HEIGHT_MOBILE = 12;
-    const CANVAS_TARGET_HEIGHT_MOBILE = TILES_HEIGHT_MOBILE * TILE_SIZE; // 864px = 12 tiles de 72px
+    // En mobile: mostrar 9 tiles de alto (9 * 72 = 648px)
+    const TILES_HEIGHT_MOBILE = 9;
+    const CANVAS_TARGET_HEIGHT_MOBILE = TILES_HEIGHT_MOBILE * TILE_SIZE; // 648px = 9 tiles de 72px
     
     const adjustCanvasDimensions = () => {
         const canvas = store.dom.canvas!;
@@ -115,10 +115,10 @@ export const attachDomReferences = (store: GameStore) => {
             // El canvas siempre debe tener exactamente 20 tiles de ancho (1440px)
             canvas.width = CANVAS_TARGET_WIDTH; // 1440px = 20 tiles
             
-            // En mobile: usar alto fijo de 12 tiles (864px)
+            // En mobile: usar alto fijo de 9 tiles (648px)
             // En desktop: usar el alto del viewport dinámico
             if (isMobile) {
-                canvas.height = CANVAS_TARGET_HEIGHT_MOBILE; // 864px = 12 tiles
+                canvas.height = CANVAS_TARGET_HEIGHT_MOBILE; // 648px = 9 tiles
             } else {
                 // Desktop: obtener el alto visual real del viewport dinámico
                 // Usar visualViewport si está disponible (más preciso cuando se ocultan barras del navegador)

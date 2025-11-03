@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 const fs = require('fs');
 const express = require('express');
 
@@ -45,6 +46,11 @@ module.exports = {
       title: 'Clon de H.E.R.O. + Editor',
       template: './src/index.html'
     }),
+    // Ignorar el módulo opcional @capacitor/status-bar si no está instalado
+    // Esto evita warnings cuando el plugin no está presente
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^@capacitor\/status-bar$/,
+    }),
   ],
   module: {
     rules: [
@@ -81,6 +87,10 @@ module.exports = {
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
+    // Ignorar módulos opcionales que pueden no estar instalados
+    fallback: {
+      '@capacitor/status-bar': false, // Opcional, no fallar si no está instalado
+    },
   },
   output: {
     filename: '[name].[contenthash].js',
