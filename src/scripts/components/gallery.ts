@@ -435,23 +435,85 @@ const playLevel = async (store: GameStore, levelId: string): Promise<void> => {
     const level = currentGalleryLevels.find(l => l.level_id === levelId);
     if (!level) return;
 
+    console.log('Intentando cargar nivel:', levelId, 'Formato detectado:', level.data);
+
     // Convertir los datos del nivel al formato esperado por el juego
-    let levelData;
-    if (level.data.format === 'chunks20x18' && level.data.width && level.data.height && Array.isArray(level.data.chunks)) {
-        // Convertir de chunks a formato de nivel
-        const expanded = expandChunkedLevels({
-            format: 'chunks20x18',
-            chunkWidth: 20,
-            chunkHeight: 18,
-            levels: [level.data]
-        });
-        levelData = expanded[0]?.map(row => row.split('')) || [];
-    } else if (Array.isArray(level.data)) {
-        levelData = level.data;
-    } else if (level.data.level && Array.isArray(level.data.level)) {
-        levelData = level.data.level;
-    } else {
-        showNotification(store, 'Error', 'Formato de nivel no compatible');
+    let levelData: string[][] = [];
+    
+    try {
+        // Caso 1: Formato chunks20x18 completo (nivel individual con chunks)
+        if (level.data.format === 'chunks20x18' && level.data.width && level.data.height && Array.isArray(level.data.chunks)) {
+            console.log('Formato detectado: chunks20x18 (nivel individual)');
+            const expanded = expandChunkedLevels({
+                format: 'chunks20x18',
+                chunkWidth: 20,
+                chunkHeight: 18,
+                levels: [level.data]
+            });
+            levelData = expanded[0]?.map(row => row.split('')) || [];
+        }
+        // Caso 2: Formato chunks20x18 con levels (archivo completo)
+        else if (level.data.format === 'chunks20x18' && Array.isArray(level.data.levels) && level.data.levels.length > 0) {
+            console.log('Formato detectado: chunks20x18 (archivo completo)');
+            const expanded = expandChunkedLevels(level.data);
+            levelData = expanded[0]?.map(row => row.split('')) || [];
+        }
+        // Caso 3: Array directo de filas (string[])
+        else if (Array.isArray(level.data) && level.data.length > 0) {
+            console.log('Formato detectado: array directo');
+            // Verificar si son strings (legacy) o arrays de strings
+            if (typeof level.data[0] === 'string') {
+                levelData = level.data.map(row => row.split(''));
+            } else if (Array.isArray(level.data[0])) {
+                levelData = level.data as string[][];
+            }
+        }
+        // Caso 4: Objeto con propiedad level
+        else if (level.data.level && Array.isArray(level.data.level)) {
+            console.log('Formato detectado: objeto con propiedad level');
+            if (typeof level.data.level[0] === 'string') {
+                levelData = level.data.level.map((row: string) => row.split(''));
+            } else {
+                levelData = level.data.level as string[][];
+            }
+        }
+        // Caso 5: Objeto con propiedad data que contiene el nivel
+        else if (level.data.data) {
+            console.log('Formato detectado: objeto anidado con data');
+            const nestedData = level.data.data;
+            if (nestedData.format === 'chunks20x18' && Array.isArray(nestedData.levels)) {
+                const expanded = expandChunkedLevels(nestedData);
+                levelData = expanded[0]?.map(row => row.split('')) || [];
+            } else if (Array.isArray(nestedData)) {
+                if (typeof nestedData[0] === 'string') {
+                    levelData = nestedData.map((row: string) => row.split(''));
+                } else {
+                    levelData = nestedData as string[][];
+                }
+            }
+        }
+        // Caso 6: Nivel individual con chunks pero sin formato explícito
+        else if (level.data.chunks && Array.isArray(level.data.chunks) && level.data.width && level.data.height) {
+            console.log('Formato detectado: chunks sin formato explícito');
+            const expanded = expandChunkedLevels({
+                format: 'chunks20x18',
+                chunkWidth: 20,
+                chunkHeight: 18,
+                levels: [level.data]
+            });
+            levelData = expanded[0]?.map(row => row.split('')) || [];
+        }
+        
+        if (!levelData || levelData.length === 0) {
+            console.error('No se pudo convertir el nivel. Estructura completa:', JSON.stringify(level.data, null, 2));
+            showNotification(store, 'Error', 'Formato de nivel no compatible. Ver consola para más detalles.');
+            return;
+        }
+        
+        console.log('Nivel convertido exitosamente. Filas:', levelData.length);
+    } catch (error) {
+        console.error('Error convirtiendo nivel:', error, 'Datos:', level.data);
+        showNotification(store, 'Error', 'Error al procesar el nivel. Ver consola para más detalles.');
         return;
     }
 
@@ -493,22 +555,84 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
         const baseUrl = getNetlifyBaseUrl();
         
         // Convertir los datos al formato adecuado
-        let levelDataArray: string[][];
-        if (level.data.format === 'chunks20x18' && level.data.width && level.data.height && Array.isArray(level.data.chunks)) {
-            // Convertir de chunks a array primero
-            const expanded = expandChunkedLevels({
-                format: 'chunks20x18',
-                chunkWidth: 20,
-                chunkHeight: 18,
-                levels: [level.data]
-            });
-            levelDataArray = expanded[0]?.map(row => row.split('')) || [];
-        } else if (Array.isArray(level.data)) {
-            levelDataArray = level.data;
-        } else if (level.data.level && Array.isArray(level.data.level)) {
-            levelDataArray = level.data.level;
-        } else {
-            showNotification(store, 'Error', 'Formato de nivel no compatible');
+        let levelDataArray: string[][] = [];
+        
+        console.log('Intentando implementar nivel:', levelId, 'Formato detectado:', level.data);
+        
+        try {
+            // Caso 1: Formato chunks20x18 completo (nivel individual con chunks)
+            if (level.data.format === 'chunks20x18' && level.data.width && level.data.height && Array.isArray(level.data.chunks)) {
+                console.log('Formato detectado: chunks20x18 (nivel individual)');
+                const expanded = expandChunkedLevels({
+                    format: 'chunks20x18',
+                    chunkWidth: 20,
+                    chunkHeight: 18,
+                    levels: [level.data]
+                });
+                levelDataArray = expanded[0]?.map(row => row.split('')) || [];
+            }
+            // Caso 2: Formato chunks20x18 con levels (archivo completo)
+            else if (level.data.format === 'chunks20x18' && Array.isArray(level.data.levels) && level.data.levels.length > 0) {
+                console.log('Formato detectado: chunks20x18 (archivo completo)');
+                const expanded = expandChunkedLevels(level.data);
+                levelDataArray = expanded[0]?.map(row => row.split('')) || [];
+            }
+            // Caso 3: Array directo de filas (string[])
+            else if (Array.isArray(level.data) && level.data.length > 0) {
+                console.log('Formato detectado: array directo');
+                // Verificar si son strings (legacy) o arrays de strings
+                if (typeof level.data[0] === 'string') {
+                    levelDataArray = level.data.map(row => row.split(''));
+                } else if (Array.isArray(level.data[0])) {
+                    levelDataArray = level.data as string[][];
+                }
+            }
+            // Caso 4: Objeto con propiedad level
+            else if (level.data.level && Array.isArray(level.data.level)) {
+                console.log('Formato detectado: objeto con propiedad level');
+                if (typeof level.data.level[0] === 'string') {
+                    levelDataArray = level.data.level.map((row: string) => row.split(''));
+                } else {
+                    levelDataArray = level.data.level as string[][];
+                }
+            }
+            // Caso 5: Objeto con propiedad data que contiene el nivel
+            else if (level.data.data) {
+                console.log('Formato detectado: objeto anidado con data');
+                const nestedData = level.data.data;
+                if (nestedData.format === 'chunks20x18' && Array.isArray(nestedData.levels)) {
+                    const expanded = expandChunkedLevels(nestedData);
+                    levelDataArray = expanded[0]?.map(row => row.split('')) || [];
+                } else if (Array.isArray(nestedData)) {
+                    if (typeof nestedData[0] === 'string') {
+                        levelDataArray = nestedData.map((row: string) => row.split(''));
+                    } else {
+                        levelDataArray = nestedData as string[][];
+                    }
+                }
+            }
+            // Caso 6: Nivel individual con chunks pero sin formato explícito
+            else if (level.data.chunks && Array.isArray(level.data.chunks) && level.data.width && level.data.height) {
+                console.log('Formato detectado: chunks sin formato explícito');
+                const expanded = expandChunkedLevels({
+                    format: 'chunks20x18',
+                    chunkWidth: 20,
+                    chunkHeight: 18,
+                    levels: [level.data]
+                });
+                levelDataArray = expanded[0]?.map(row => row.split('')) || [];
+            }
+            
+            if (!levelDataArray || levelDataArray.length === 0) {
+                console.error('No se pudo convertir el nivel. Estructura completa:', JSON.stringify(level.data, null, 2));
+                showNotification(store, 'Error', 'Formato de nivel no compatible. Ver consola para más detalles.');
+                return;
+            }
+            
+            console.log('Nivel convertido exitosamente para implementar. Filas:', levelDataArray.length);
+        } catch (error) {
+            console.error('Error convirtiendo nivel para implementar:', error, 'Datos:', level.data);
+            showNotification(store, 'Error', 'Error al procesar el nivel. Ver consola para más detalles.');
             return;
         }
         
