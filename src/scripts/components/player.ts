@@ -672,24 +672,60 @@ const updateFlightState = (store: GameStore) => {
     if (canStartCharging) {
         player.isChargingFly = true;
         player.vy = -1;
+        
+        // Emitir partículas inmediatamente
+        const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
+        const jetX = player.x + baseOffsetX;
+        const jetY = player.y + player.height - 42;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        const jetParticleCount = isMobile ? 8 : 20; // Más partículas al inicio
+        emitParticles(store, jetX, jetY, jetParticleCount, 'yellow');
+        
+        // El sonido se activará cuando la animación cambie a 'jump' (primer cuadro)
     }
 
     if (!player.wantsToFly) {
         player.isChargingFly = false;
         player.flyChargeTimer = 0;
         player.isApplyingThrust = false;
+        
+        // Detener sonido de jetpack
+        stopJetpackSound();
     }
 
     if (player.isChargingFly) {
         player.flyChargeTimer++;
         player.vy = 0;
+        
+        // Continuar emitiendo partículas durante la carga
+        const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
+        const jetX = player.x + baseOffsetX;
+        const jetY = player.y + player.height - 42;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        const jetParticleCount = isMobile ? 5 : 15;
+        emitParticles(store, jetX, jetY, jetParticleCount, 'yellow');
+        
         if (player.flyChargeTimer >= 30) {
             player.isChargingFly = false;
             player.flyChargeTimer = 0;
             player.isApplyingThrust = true;
         }
-    } else if (player.wantsToFly && !player.isGrounded) {
+    } else if (player.wantsToFly && !player.isGrounded && !player.isApplyingThrust) {
+        // Si el héroe está en el aire y presiona la tecla, activar inmediatamente
         player.isApplyingThrust = true;
+        
+        // Emitir partículas inmediatamente
+        const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
+        const jetX = player.x + baseOffsetX;
+        const jetY = player.y + player.height - 42;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        const jetParticleCount = isMobile ? 8 : 20; // Más partículas al inicio
+        emitParticles(store, jetX, jetY, jetParticleCount, 'yellow');
+        
+        // El sonido se activará cuando la animación cambie a 'jump' (primer cuadro)
     }
 
     if (player.isApplyingThrust) {
@@ -702,15 +738,16 @@ const updateFlightState = (store: GameStore) => {
         const jetY = player.y + player.height - 42;
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                          (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
-        const jetParticleCount = isMobile ? 5 : 15; // Menos partículas en mobile
+        const jetParticleCount = isMobile ? 5 : 15;
         emitParticles(store, jetX, jetY, jetParticleCount, 'yellow');
         
-        // Reproducir sonido de jetpack
+        // El sonido ya está reproduciéndose desde el inicio, no necesitamos reproducirlo de nuevo
+        // pero aseguramos que esté sonando
         playJetpackSound();
-    } else {
+    } else if (!player.wantsToFly) {
         player.isApplyingThrust = false;
         
-        // Detener sonido de jetpack
+        // Detener sonido de jetpack solo si no se está usando
         stopJetpackSound();
     }
 
@@ -842,6 +879,12 @@ const updatePlayerAnimation = (store: GameStore) => {
         playStepsSound();
     } else {
         stopStepsSound();
+    }
+
+    // CRÍTICO: Activar sonido de jetpack en el primer cuadro de la animación 'jump'
+    // Cuando el estado cambia a 'jump' mientras quiere volar o está cargando
+    if (player.animationState !== newState && newState === 'jump' && (player.isChargingFly || player.wantsToFly)) {
+        playJetpackSound();
     }
 
     if (player.animationState !== newState) {

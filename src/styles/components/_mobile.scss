@@ -142,7 +142,9 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     /* Canvas simplificado - 20 tiles ancho x 12 tiles alto en mobile */
     #gameCanvas {
         width: 1600px !important; /* 20 tiles visualmente escalados (1440px internos * 1.111) */
-        max-width: 100vw !important;
+        /* Limitar relación de aspecto máxima a 16:9 (1.777) para evitar que se estire demasiado en pantallas muy anchas */
+        /* Usar min() para tomar el menor entre 100vw y el ancho basado en 16:9 */
+        max-width: min(100vw, calc(100vh * 16 / 9)) !important;
         /* Alto para mostrar 12 tiles: 12 * 72 = 864px interno, escalado visualmente */
         /* Escalado: 1600/1440 = 1.111..., entonces 864 * 1.111 = 960px */
         height: 960px !important; /* 12 tiles visualmente escalados */
@@ -365,7 +367,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             position: absolute;
             top: 0;
             right: 0;
-            width: 27%;
+            width: 15%;
             height: 100vh;
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);

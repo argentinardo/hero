@@ -54,7 +54,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
 export const ANIMATION_DATA: AnimationMap = {
     P_walk: { frames: 5, speed: 4, sprite: 'P_walk', reverse: true }, // Acelerado de 5 a 4
     P_stand: { frames: 4, speed: 15, sprite: 'P_stand' }, // Acelerado de 20 a 15
-    P_jump: { frames: 4, speed: 8, sprite: 'P_jump', loop: false }, // Acelerado de 10 a 8
+    P_jump: { frames: 4, speed: 3, sprite: 'P_jump', loop: false }, // Mucho más rápido para activación inmediata del jetpack
     P_fly: { frames: 5, speed: 8, sprite: 'P_fly' }, // Acelerado de 10 a 8
     P_die: { frames: 1, speed: 1, sprite: 'P_die', loop: false },
     P_success: { frames: 1, speed: 1, sprite: 'P_success', loop: false },

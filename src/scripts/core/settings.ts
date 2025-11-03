@@ -18,6 +18,7 @@ export interface GameSettings {
         brightness: boolean;       // Efecto de brillo del canvas
         contrast: boolean;         // Efecto de contraste del canvas
         vignette: boolean;        // Efecto de vignette (opcional)
+        blur: number;             // Efecto de blur en píxeles (0 = desactivado)
         showFps: boolean;          // Mostrar contador de FPS
     };
 }
@@ -42,6 +43,7 @@ const DEFAULT_SETTINGS: GameSettings = {
         brightness: true,
         contrast: true,
         vignette: true,
+        blur: 1.5,                 // Blur por defecto de 1.5px
         showFps: false, // Por defecto oculto
     },
 };
@@ -58,6 +60,7 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
         brightness: true, // Activado en móvil
         contrast: true,   // Activado en móvil
         vignette: true,   // Activado en móvil
+        blur: 0.7,       // Blur por defecto de 0.7px en móvil (menor que desktop para mejor rendimiento)
         showFps: false,   // Por defecto oculto en mobile
     },
 };
@@ -149,14 +152,22 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
     
     if (!canvas || !canvasWrapper) return;
     
-    // Aplicar brightness y contrast al canvas
-    // OPTIMIZACIÓN: Combinar ambos efectos en una sola operación CSS cuando ambos están activos
-    if (settings.brightness && settings.contrast) {
-        canvas.style.filter = 'brightness(1.8) contrast(1.1)';
-    } else if (settings.brightness) {
-        canvas.style.filter = 'brightness(1.4)';
-    } else if (settings.contrast) {
-        canvas.style.filter = 'contrast(1.1)';
+    // Aplicar brightness, contrast y blur al canvas
+    // OPTIMIZACIÓN: Combinar todos los efectos en una sola operación CSS cuando están activos
+    const filterParts: string[] = [];
+    
+    if (settings.brightness) {
+        filterParts.push('brightness(1.4)');
+    }
+    if (settings.contrast) {
+        filterParts.push('contrast(1.1)');
+    }
+    if (settings.blur && settings.blur > 0) {
+        filterParts.push(`blur(${settings.blur}px)`);
+    }
+    
+    if (filterParts.length > 0) {
+        canvas.style.filter = filterParts.join(' ');
     } else {
         canvas.style.filter = 'none';
     }

@@ -51,7 +51,6 @@ export const adjustUIBars = () => {
         bottomUi.style.width = `${canvasVisualWidth}px`; // Ancho visual del canvas (1600px)
         bottomUi.style.left = '50%'; // Centrar horizontalmente
         bottomUi.style.transform = `translateX(-50%) scale(${scale})`; // Centrar y escalar
-        bottomUi.style.transformOrigin = 'bottom center';
         
         // Asegurar que game-ui también esté centrado
         gameUi.style.left = '50%';
@@ -76,13 +75,11 @@ export const adjustUIBars = () => {
             bottomUi.style.width = '100%'; // Mantener 100% para calcular la escala correctamente
             bottomUi.style.left = `${canvasLeft}px`; // Alinear con el canvas
             bottomUi.style.transform = `scale(${scale})`;
-            bottomUi.style.transformOrigin = 'bottom left';
         } else {
             // El canvas ocupa todo el ancho o más, no necesitamos escalar
             bottomUi.style.width = '100%';
             bottomUi.style.left = '0px';
             bottomUi.style.transform = '';
-            bottomUi.style.transformOrigin = '';
         }
         
         if (creditBar) {
@@ -2160,6 +2157,7 @@ const setupSettingsModal = (store: GameStore) => {
     const brightnessToggle = document.getElementById('brightness-toggle') as HTMLInputElement | null;
     const contrastToggle = document.getElementById('contrast-toggle') as HTMLInputElement | null;
     const vignetteToggle = document.getElementById('vignette-toggle') as HTMLInputElement | null;
+    const blurToggle = document.getElementById('blur-toggle') as HTMLInputElement | null;
     const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     
     if (!settingsModal) return;
@@ -2267,6 +2265,20 @@ const setupSettingsModal = (store: GameStore) => {
         saveSettings(store.settings);
     });
     
+    blurToggle?.addEventListener('change', (e) => {
+        const enabled = (e.target as HTMLInputElement).checked;
+        // Detectar si es mobile para usar el valor apropiado
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+        // Si se activa, poner blur a 0.7 en mobile o 1.5 en desktop, si se desactiva, poner a 0
+        store.settings.graphics.blur = enabled ? (isMobile ? 0.7 : 1.5) : 0;
+        applyGraphicsSettings({ 
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false
+        });
+        saveSettings(store.settings);
+    });
+    
     fpsToggle?.addEventListener('change', (e) => {
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.showFps = enabled;
@@ -2295,6 +2307,7 @@ const updateSettingsUI = (store: GameStore) => {
     const brightnessToggle = document.getElementById('brightness-toggle') as HTMLInputElement | null;
     const contrastToggle = document.getElementById('contrast-toggle') as HTMLInputElement | null;
     const vignetteToggle = document.getElementById('vignette-toggle') as HTMLInputElement | null;
+    const blurToggle = document.getElementById('blur-toggle') as HTMLInputElement | null;
     const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     
     // Actualizar sliders de audio
@@ -2317,6 +2330,7 @@ const updateSettingsUI = (store: GameStore) => {
     if (brightnessToggle) brightnessToggle.checked = store.settings.graphics.brightness;
     if (contrastToggle) contrastToggle.checked = store.settings.graphics.contrast;
     if (vignetteToggle) vignetteToggle.checked = store.settings.graphics.vignette;
+    if (blurToggle) blurToggle.checked = store.settings.graphics.blur > 0;
     if (fpsToggle) fpsToggle.checked = store.settings.graphics.showFps;
 };
 
@@ -3761,7 +3775,8 @@ const setupLevelData = (store: GameStore) => {
         // Calcular dimensiones del nivel basado en el canvas
         // Usar exactamente el ancho del canvas para evitar columnas vacías
         const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1600 / 72 = ~22 tiles
-        const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
+        // Los niveles son largos: 90-180 tiles de altura (generar aleatoriamente en ese rango)
+        const levelHeight = 90 + Math.floor(Math.random() * 91); // 90-180 tiles
         
         // Generar nivel con dificultad basada en el índice
         const difficulty = Math.min(index + 1, 10);

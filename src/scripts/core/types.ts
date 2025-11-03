@@ -356,6 +356,7 @@ export interface GameStore {
             brightness: boolean;
             contrast: boolean;
             vignette: boolean;
+            blur: number;
             showFps: boolean;
         };
     };

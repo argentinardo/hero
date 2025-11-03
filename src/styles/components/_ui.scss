@@ -333,7 +333,7 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 23%;
+    width: 15%;
     height: 100vh;
     flex-direction: column;
     background-color: rgba(0, 0, 0, 0.95);
@@ -356,8 +356,9 @@ body {
     position: absolute;
     right: 0;
     top: 0;
-    width: 27%;
+    width: 15%;
     height: 100vh;
+    padding:10px;
     overflow-y: auto;
     z-index: 300;
     transform: translateX(0);
