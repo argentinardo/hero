@@ -575,7 +575,7 @@ export const showMenu = (store: GameStore) => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'TOOLS' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? 'EDITOR' : 'INGRESAR';
         }
     };
     updateEditorButton();
@@ -2006,7 +2006,7 @@ export const setupUI = (store: GameStore) => {
                     // Actualizar botones y área de usuario
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                     if (levelEditorBtn) {
-                        levelEditorBtn.textContent = 'TOOLS';
+                        levelEditorBtn.textContent = 'EDITOR';
                     }
                     // Cargar niveles del usuario después de iniciar sesión
                     await tryLoadUserLevels(store);
@@ -2025,7 +2025,7 @@ export const setupUI = (store: GameStore) => {
                 localStorage.removeItem('username');
                 const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                 if (levelEditorBtn) {
-                    levelEditorBtn.textContent = 'Ingresar';
+                    levelEditorBtn.textContent = 'INGRESAR';
                 }
             });
         }
@@ -2807,7 +2807,7 @@ const setupMenuButtons = (store: GameStore) => {
     const updateEditorButton = () => {
         const { isLoggedIn } = checkLoginStatus();
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'TOOLS' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? 'Editor' : 'Ingresar';
         }
     };
 

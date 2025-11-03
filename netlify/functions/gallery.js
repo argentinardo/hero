@@ -62,7 +62,62 @@ const ensureSchema = async (sql) => {
   await sql`CREATE INDEX IF NOT EXISTS idx_implemented_user ON user_implemented_levels(user_id)`;
 };
 
+/**
+ * Configura las cabeceras CORS para permitir peticiones desde la app Android/Capacitor
+ */
+const getCorsHeaders = (origin) => {
+  // Lista de orígenes permitidos
+  const allowedOrigins = [
+    'https://newhero.netlify.app',  // URL de producción
+    'http://localhost',              // Origen de app Android/Capacitor
+    'http://localhost:8080',          // Capacitor común
+    'http://localhost:5173',         // Dev server común
+    'capacitor://localhost',         // Capacitor protocol
+    'ionic://localhost',             // Ionic protocol
+  ];
+
+  // Normalizar el origen para comparación (sin trailing slash, en minúsculas)
+  const normalizedOrigin = origin ? origin.toLowerCase().replace(/\/$/, '') : null;
+  
+  // Verificar si el origen está permitido (comparación flexible)
+  const isAllowed = normalizedOrigin && allowedOrigins.some(allowed => 
+    normalizedOrigin.includes(allowed.replace(/^https?:\/\//, '')) || 
+    normalizedOrigin === allowed
+  );
+
+  const corsHeaders = {
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400', // 24 horas
+  };
+
+  // Solo permitir origen específico si está en la lista, de lo contrario usar wildcard para desarrollo
+  if (isAllowed && normalizedOrigin) {
+    corsHeaders['Access-Control-Allow-Origin'] = origin;
+  } else {
+    // En desarrollo, permitir cualquier origen (solo si no es producción)
+    if (normalizedOrigin && !normalizedOrigin.includes('netlify.app')) {
+      corsHeaders['Access-Control-Allow-Origin'] = origin;
+    }
+  }
+
+  return corsHeaders;
+};
+
 exports.handler = async (event, context) => {
+  // Obtener el origen de la petición
+  const origin = event.headers.origin || event.headers.Origin || event.headers.ORIGIN;
+  const corsHeaders = getCorsHeaders(origin);
+
+  // Manejar petición OPTIONS (preflight CORS)
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204, // No Content
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   let user = context.clientContext && context.clientContext.user;
   
   if (!user && event.headers && event.headers.authorization) {
@@ -91,7 +146,11 @@ exports.handler = async (event, context) => {
     await ensureSchema(sql);
   } catch (e) {
     console.error('Schema error:', e);
-    return { statusCode: 500, body: JSON.stringify({ ok: false, error: `Schema error: ${e.message}` }) };
+    return { 
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ ok: false, error: `Schema error: ${e.message}` }) 
+    };
   }
 
   // GET - Obtener niveles de la galería
@@ -150,12 +209,17 @@ exports.handler = async (event, context) => {
       }
 
       return { 
-        statusCode: 200, 
+        statusCode: 200,
+        headers: corsHeaders,
         body: JSON.stringify({ ok: true, data: rows }) 
       };
     } catch (e) {
       console.error('Error en GET gallery:', e);
-      return { statusCode: 500, body: JSON.stringify({ ok: false, error: e.message }) };
+      return { 
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ ok: false, error: e.message }) 
+      };
     }
   }
 
@@ -163,7 +227,8 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'POST') {
     if (!user) {
       return { 
-        statusCode: 401, 
+        statusCode: 401,
+        headers: corsHeaders,
         body: JSON.stringify({ ok: false, error: 'Unauthorized: Usuario no autenticado' }) 
       };
     }
@@ -174,7 +239,8 @@ exports.handler = async (event, context) => {
       
       if (!name || !data) {
         return { 
-          statusCode: 400, 
+          statusCode: 400,
+          headers: corsHeaders,
           body: JSON.stringify({ ok: false, error: 'Nombre y datos del nivel son requeridos' }) 
         };
       }
@@ -196,12 +262,17 @@ exports.handler = async (event, context) => {
       `;
 
       return { 
-        statusCode: 201, 
+        statusCode: 201,
+        headers: corsHeaders,
         body: JSON.stringify({ ok: true, data: newLevel }) 
       };
     } catch (e) {
       console.error('Error en POST gallery:', e);
-      return { statusCode: 500, body: JSON.stringify({ ok: false, error: e.message }) };
+      return { 
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ ok: false, error: e.message }) 
+      };
     }
   }
 
@@ -209,7 +280,8 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'PATCH') {
     if (!user) {
       return { 
-        statusCode: 401, 
+        statusCode: 401,
+        headers: corsHeaders,
         body: JSON.stringify({ ok: false, error: 'Unauthorized' }) 
       };
     }
@@ -218,7 +290,8 @@ exports.handler = async (event, context) => {
       const pathMatch = event.path.match(/\/gallery\/([^\/]+)\/(like|implement)/);
       if (!pathMatch) {
         return { 
-          statusCode: 400, 
+          statusCode: 400,
+          headers: corsHeaders,
           body: JSON.stringify({ ok: false, error: 'Ruta inválida' }) 
         };
       }
@@ -244,7 +317,8 @@ exports.handler = async (event, context) => {
             WHERE level_id = ${levelId}
           `;
           return { 
-            statusCode: 200, 
+            statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify({ ok: true, liked: false }) 
           };
         } else {
@@ -259,7 +333,8 @@ exports.handler = async (event, context) => {
             WHERE level_id = ${levelId}
           `;
           return { 
-            statusCode: 200, 
+            statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify({ ok: true, liked: true }) 
           };
         }
@@ -270,7 +345,8 @@ exports.handler = async (event, context) => {
         
         if (!modified_data || !name) {
           return { 
-            statusCode: 400, 
+            statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({ ok: false, error: 'modified_data y name son requeridos' }) 
           };
         }
@@ -282,7 +358,8 @@ exports.handler = async (event, context) => {
 
         if (originalLevel.length === 0) {
           return { 
-            statusCode: 404, 
+            statusCode: 404,
+            headers: corsHeaders,
             body: JSON.stringify({ ok: false, error: 'Nivel no encontrado' }) 
           };
         }
@@ -303,16 +380,25 @@ exports.handler = async (event, context) => {
         `;
 
         return { 
-          statusCode: 200, 
+          statusCode: 200,
+          headers: corsHeaders,
           body: JSON.stringify({ ok: true, message: 'Nivel implementado en tu cuenta' }) 
         };
       }
     } catch (e) {
       console.error('Error en PATCH gallery:', e);
-      return { statusCode: 500, body: JSON.stringify({ ok: false, error: e.message }) };
+      return { 
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ ok: false, error: e.message }) 
+      };
     }
   }
 
-  return { statusCode: 405, body: JSON.stringify({ ok: false, error: 'Method Not Allowed' }) };
+  return { 
+    statusCode: 405,
+    headers: corsHeaders,
+    body: JSON.stringify({ ok: false, error: 'Method Not Allowed' }) 
+  };
 };
 
