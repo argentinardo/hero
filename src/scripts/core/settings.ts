@@ -20,6 +20,7 @@ export interface GameSettings {
         vignette: boolean;        // Efecto de vignette (opcional)
         blur: number;             // Efecto de blur en píxeles (0 = desactivado)
         showFps: boolean;          // Mostrar contador de FPS
+        mobileFullWidth: boolean;  // En mobile: ocupar todo el ancho ignorando max-width de relación de aspecto
     };
 }
 
@@ -45,6 +46,7 @@ const DEFAULT_SETTINGS: GameSettings = {
         vignette: true,
         blur: 1.5,                 // Blur por defecto de 1.5px
         showFps: false, // Por defecto oculto
+        mobileFullWidth: false,    // No aplica en desktop
     },
 };
 
@@ -62,6 +64,7 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
         vignette: true,   // Activado en móvil
         blur: 0.7,       // Blur por defecto de 0.7px en móvil (menor que desktop para mejor rendimiento)
         showFps: false,   // Por defecto oculto en mobile
+        mobileFullWidth: false,   // Por defecto respeta relación de aspecto en mobile
     },
 };
 

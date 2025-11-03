@@ -358,6 +358,7 @@ export interface GameStore {
             vignette: boolean;
             blur: number;
             showFps: boolean;
+            mobileFullWidth: boolean;
         };
     };
 }

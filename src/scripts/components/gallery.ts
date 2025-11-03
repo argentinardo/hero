@@ -547,7 +547,7 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
 
         const result = await res.json();
         
-        showNotification(store, 'Éxito', '✅ Nivel implementado en tu cuenta. Ahora puedes editarlo en Herramientas.');
+        showNotification(store, 'Éxito', '✅ Nivel implementado en tu cuenta. Ahora puedes editarlo en TOOLS.');
         
         // Cerrar la galería y abrir el editor
         document.getElementById('gallery-modal')?.classList.add('hidden');

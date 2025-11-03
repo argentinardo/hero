@@ -164,15 +164,15 @@
                     <button id="hamburger-credits-btn" class="nes-btn menu-item w-full">Créditos</button>
                 </div>
                         <!-- Botón Toggle del Panel de Usuario (siempre visible cuando el editor está activo) -->
-        <button id="user-panel-toggle" aria-label="Toggle User Panel" class="hidden fixed left-0 text-white cursor-pointer flex items-center justify-start gap-2" style="top: 50%; transform: translateY(-50%); padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-right: none; border-radius: 0 8px 8px 0; z-index: 310; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
+        <button id="user-panel-toggle" aria-label="Toggle User Panel" class="hidden fixed left-0 text-white cursor-pointer flex items-center justify-start gap-2" style="top:12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-right: none; border-radius: 0 8px 8px 0; z-index: 310; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
             <span class="toggle-icon" style="font-size: 1.2rem;">&gt;</span>
             <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">USUARIO</span>
         </button>
                 <!-- Canvas del Juego / Editor -->
                 <canvas id="gameCanvas" width="1440" height="1000"></canvas>
                         <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
-        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2" style="top: 50%; transform: translateY(-50%); padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 310; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
-            <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">HERRAMIENTAS</span>
+        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2" style="top: 12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 310; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
+            <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">TOOLS</span>
             <span class="toggle-icon" style="font-size: 1.2rem;">&lt;</span>
         </button>
         
@@ -531,6 +531,13 @@
                     <div class="mb-3 flex items-center justify-between">
                         <label for="fps-toggle" class="text-sm cursor-pointer flex-1">Mostrar Contador FPS:</label>
                         <input type="checkbox" id="fps-toggle" 
+                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    </div>
+                    
+                    <!-- Mobile Full Width (solo visible en mobile) -->
+                    <div id="mobile-fullwidth-option" class="mb-3 flex items-center justify-between hidden">
+                        <label for="mobile-fullwidth-toggle" class="text-sm cursor-pointer flex-1">Ancho Completo (Mobile):</label>
+                        <input type="checkbox" id="mobile-fullwidth-toggle" 
                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                     </div>
                 </div>

@@ -282,8 +282,8 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
                 }
                 gaps.push(mainGapX);
                 
-                // HUECOS ADICIONALES OPCIONALES (para dificultad/variación)
-                // Solo agregar si no comprometen la ruta principal
+                // HUECOS ADICIONALES OPCIONALES (caminos secundarios que pueden ser callejones sin salida)
+                // Estos caminos pueden estar bloqueados más adelante o llevar a lugares peligrosos
                 for (let g = 1; g < numGaps; g++) {
         let gapX: number;
                     let gapWidth: number;
@@ -298,7 +298,7 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
                         gapX = Math.max(mainGapX - minDistanceFromMain - Math.floor(Math.random() * 4), 3);
                     }
                     
-                    gapWidth = 1 + Math.floor(Math.random() * 4); // 1-4 tiles
+                    gapWidth = 1 + Math.floor(Math.random() * 3); // 1-3 tiles (más estrechos que el principal)
                     
                     // Asegurar que no se solape con otros huecos
                     let tooClose = false;
@@ -310,8 +310,8 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
                     }
                     if (tooClose) continue;
                     
-                    // CRÍTICO: Crear el hueco adicional que también se extiende verticalmente
-                    // Esto garantiza que todas las filas tengan espacios para el descenso
+                    // Crear el hueco adicional que también se extiende verticalmente
+                    // Marcar estos como caminos secundarios (pueden ser bloqueados después)
                     for (let platformRowOffset = 0; platformRowOffset < platformHeight; platformRowOffset++) {
                         const platformRowToModify = currentY + platformRowOffset;
                         if (platformRowToModify >= lastValidY) break;
@@ -409,27 +409,43 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
             const row = level[spaceRowY].split('');
             
             // Agregar columnas bloqueadoras en espacios de 3 tiles
-            // Columnas destructibles (C) o de lava (K) que bloquean el paso - siempre de 3 tiles de altura
-            // IMPORTANTE: No bloquear la ruta principal
-            if (spaceHeight === 3 && sy === 0 && Math.random() > 0.4) {
-                // Usar el hueco principal de la plataforma actual para no bloquearlo
+            // Columnas destructibles (C) o de lava (K) que bloquean el paso - SIEMPRE de 3 tiles de altura
+            // Estas columnas pueden bloquear caminos secundarios (creando callejones sin salida)
+            // pero NUNCA bloquean la ruta principal garantizada
+            if (spaceHeight === 3 && sy === 0) {
+                // Determinar si esta columna bloqueará un camino secundario o solo será decorativa
+                const shouldBlockPath = Math.random() > 0.5; // 50% de chance de bloquear un camino secundario
                 
-                // Colocar columna en el espacio (siempre de 3 tiles de altura)
-                // Asegurar que no bloquee el hueco principal de la ruta
                 let columnX: number;
                 let attempts = 0;
                 
-                // Intentar encontrar una posición que no bloquee la ruta principal
-                do {
-                    columnX = Math.floor(width / 2) + (Math.random() > 0.5 ? -3 : 3);
-                    attempts++;
-                    // Asegurar que esté al menos a 3 tiles del hueco principal para no bloquear
-                } while (attempts < 10 && Math.abs(columnX - currentPlatformMainGap) < 4);
-                
-                if (columnX >= 1 && columnX < width - 1 && Math.abs(columnX - currentPlatformMainGap) >= 3) {
-                    const columnType = difficulty > 5 && Math.random() > 0.5 ? 'K' : 'C';
+                if (shouldBlockPath && gaps.length > 1) {
+                    // Bloquear un camino secundario (no el principal que está en gaps[0])
+                    // Elegir aleatoriamente uno de los caminos secundarios
+                    const secondaryGapIndex = 1 + Math.floor(Math.random() * (gaps.length - 1));
+                    const targetGapX = gaps[secondaryGapIndex];
                     
-                    // Crear columna de exactamente 3 tiles de altura
+                    // Colocar columna directamente sobre el camino secundario para bloquearlo
+                    columnX = targetGapX + Math.floor(Math.random() * 3) - 1; // Pequeña variación
+                    columnX = Math.max(1, Math.min(width - 2, columnX));
+        } else {
+                    // Columna decorativa/bloqueadora aleatoria (no bloquea la ruta principal)
+                    do {
+                        columnX = Math.floor(width / 2) + (Math.random() > 0.5 ? -4 : 4);
+                        attempts++;
+                        // Asegurar que esté al menos a 4 tiles del hueco principal para no bloquear
+                    } while (attempts < 10 && Math.abs(columnX - currentPlatformMainGap) < 4);
+                }
+                
+                if (columnX >= 1 && columnX < width - 1) {
+                    // Si está bloqueando un camino secundario, usar K (lava) más frecuentemente
+                    // Si es decorativa, usar C o K según dificultad
+                    const isBlockingSecondary = shouldBlockPath && gaps.length > 1 && 
+                                                Math.abs(columnX - (gaps.length > 1 ? gaps[1] : currentPlatformMainGap)) < 3;
+                    const columnType = (isBlockingSecondary && Math.random() > 0.3) || 
+                                      (difficulty > 5 && Math.random() > 0.5) ? 'K' : 'C';
+                    
+                    // CRÍTICO: Crear columna de exactamente 3 tiles de altura (nunca más, nunca menos)
                     for (let cy = 0; cy < 3 && (spaceStartY + cy) < lastValidY; cy++) {
                         const colRowY = spaceStartY + cy;
                         const colRow = level[colRowY].split('');
@@ -440,41 +456,49 @@ const generatePlatformsWithGaps = (level: string[], width: number, height: numbe
             }
             
             // Agregar agua/lava (tile '2') aleatoriamente en el suelo del espacio
-            // IMPORTANTE: No bloquear completamente la ruta principal
-            if (sy === spaceHeight - 1 && Math.random() > 0.7) {
-                // Usar el hueco principal de la plataforma actual (ya guardado arriba)
+            // Puede colocarse en caminos secundarios para crear trampas, pero NUNCA en la ruta principal
+            if (sy === spaceHeight - 1) {
+                const waterChance = 0.5; // 50% de chance de agregar agua/lava
+                const shouldTrapSecondary = gaps.length > 1 && Math.random() > 0.4; // 60% de chance si hay caminos secundarios
                 
-                // Agregar pequeñas áreas de agua/lava (2-4 tiles)
-                // Evitar colocar agua directamente en la ruta principal o muy cerca
-                let waterStart: number;
-                let waterWidth: number;
-                let attempts = 0;
-                
-                do {
-                    waterStart = Math.floor(Math.random() * (width - 6)) + 2;
-                    waterWidth = 2 + Math.floor(Math.random() * 3); // 2-4 tiles
-                    attempts++;
-                    // Evitar que el agua bloquee la ruta principal (dejar al menos 2 tiles de espacio)
-                } while (attempts < 10 && 
-                         waterStart <= currentPlatformMainGap + 3 && 
-                         waterStart + waterWidth >= currentPlatformMainGap - 2);
-                
-                // Si después de 10 intentos no encontramos una posición segura, usar una posición lejos de la ruta
-                if (attempts >= 10) {
-                    if (currentPlatformMainGap < width / 2) {
-                        // Si la ruta está a la izquierda, poner agua a la derecha
-                        waterStart = width - 6;
+                if (Math.random() < waterChance) {
+                    let waterStart: number;
+                    let waterWidth: number;
+                    let attempts = 0;
+                    
+                    if (shouldTrapSecondary && gaps.length > 1) {
+                        // Colocar agua/lava en un camino secundario para crear una trampa
+                        const trapGapIndex = 1 + Math.floor(Math.random() * (gaps.length - 1));
+                        const trapGapX = gaps[trapGapIndex];
+                        waterStart = Math.max(1, trapGapX - 1);
+                        waterWidth = 2 + Math.floor(Math.random() * 2); // 2-3 tiles
                     } else {
-                        // Si la ruta está a la derecha, poner agua a la izquierda
-                        waterStart = 2;
+                        // Agua/lava aleatoria pero evitando la ruta principal
+                        do {
+                            waterStart = Math.floor(Math.random() * (width - 6)) + 2;
+                            waterWidth = 2 + Math.floor(Math.random() * 3); // 2-4 tiles
+                            attempts++;
+                            // Evitar que el agua bloquee la ruta principal (dejar al menos 3 tiles de espacio)
+                        } while (attempts < 10 && 
+                                 waterStart <= currentPlatformMainGap + 3 && 
+                                 waterStart + waterWidth >= currentPlatformMainGap - 2);
+                        
+                        // Si después de 10 intentos no encontramos una posición segura, usar una posición lejos de la ruta
+                        if (attempts >= 10) {
+                            if (currentPlatformMainGap < width / 2) {
+                                waterStart = width - 6;
+            } else {
+                                waterStart = 2;
+                            }
+                            waterWidth = 2;
+                        }
                     }
-                    waterWidth = 2;
-                }
-                
-                // Crear el área de agua/lava
-                for (let wx = 0; wx < waterWidth; wx++) {
-                    if (waterStart + wx < width - 1 && waterStart + wx >= 1) {
-                        row[waterStart + wx] = '2';
+                    
+                    // Crear el área de agua/lava
+                    for (let wx = 0; wx < waterWidth; wx++) {
+                        if (waterStart + wx < width - 1 && waterStart + wx >= 1) {
+                            row[waterStart + wx] = '2';
+                        }
                     }
                 }
             }
@@ -627,17 +651,24 @@ const placeSpider = (level: string[], width: number, height: number, platforms: 
 const placeViper = (level: string[], width: number, height: number) => {
     let attempts = 0;
     
-    while (attempts < 50) {
+    // Las víboras deben estar entre dos tiles de terreno a lo alto:
+    // 111  (tile '1' arriba)
+    // 11V  (víbora 'V' en espacio '0')
+    // 111  (tile '1' abajo)
+    while (attempts < 100) {
         const x = Math.floor(Math.random() * (width - 4)) + 2;
-        const y = Math.floor(Math.random() * (height - 6)) + 3;
+        const y = Math.floor(Math.random() * (height - 8)) + 4; // Dejar espacio arriba y abajo
         
-        // Verificar que haya una pared a la izquierda o derecha
-        const hasLeftWall = x > 1 && level[y][x - 1] === '1';
-        const hasRightWall = x < width - 2 && level[y][x + 1] === '1';
+        // Verificar el patrón: arriba y abajo deben ser '1', el medio debe ser '0'
+        const hasTopTerrain = y > 0 && level[y - 1][x] === '1';
+        const hasBottomTerrain = y < height - 1 && level[y + 1][x] === '1';
+        const isEmptySpace = level[y][x] === '0';
         
-        if ((hasLeftWall || hasRightWall) && 
-            y > 0 && y < height - 1 &&
-            level[y][x] === '0') {
+        // Verificar también que los lados no bloqueen (opcional pero mejor gameplay)
+        const hasSideSpace = (x > 0 && level[y][x - 1] === '0') || 
+                            (x < width - 1 && level[y][x + 1] === '0');
+        
+        if (hasTopTerrain && hasBottomTerrain && isEmptySpace && hasSideSpace) {
             const row = level[y].split('');
             row[x] = 'V';
             level[y] = row.join('');

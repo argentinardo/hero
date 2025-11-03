@@ -417,7 +417,7 @@ export class DependencyContainer {
    - Puedes relacionarlo con tu estrategia de migración progresiva
    - Muestra experiencia real con refactoring
 
-3. **"¿Qué herramientas usan para medir performance?"**
+3. **"¿Qué TOOLS usan para medir performance?"**
    - Puedes mencionar que usas Chrome DevTools
    - Muestra conocimiento de profiling
 

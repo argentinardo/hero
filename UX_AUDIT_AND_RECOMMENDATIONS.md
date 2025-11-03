@@ -97,7 +97,7 @@ EDITOR ────────────────────────�
 **Cambios**:
 - Agrupar por flujo de trabajo
 - Eliminar colapsables
-- Ubicación clara de herramientas
+- Ubicación clara de TOOLS
 - Niveles como lista lateral
 
 ### 4. **Breadcrumbs y Contexto**

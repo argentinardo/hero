@@ -152,6 +152,11 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         margin: 0 auto;
         display: block;
         object-fit: unset;
+        
+        /* Cuando fullwidth está activado, ignorar completamente el max-width (poner none) */
+        &.mobile-fullwidth {
+            max-width: none !important;
+        }
     }
     
     /* UI Elements - Game UI - escalar para que quepan todos los elementos */
@@ -188,6 +193,8 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             gap: 0.25rem !important;
             padding: 0 5px !important;
         }
+
+        background: none;
         
         /* Asegurar que el botón hamburguesa sea visible sin fondo ni sombras (estilo desktop) */
         .hamburger-btn {
@@ -281,6 +288,8 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             padding: 0 10px !important;
             gap: 1rem !important;
         }
+
+        background: none;
     }
     
     /* UI Elements - Right Panel - oculto en mobile */
@@ -361,13 +370,13 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             transform: translateX(-100%);
         }
         
-        /* Panel del Editor (derecha) - Solo paleta y herramientas en mobile */
+        /* Panel del Editor (derecha) - Solo paleta y TOOLS en mobile */
         #editor-panel {
             display: flex !important;
             position: absolute;
             top: 0;
             right: 0;
-            width: 15%;
+            width: 30%; /* Doble del ancho anterior (15% -> 30%) */
             height: 100vh;
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);
