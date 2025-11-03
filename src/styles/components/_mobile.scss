@@ -311,6 +311,11 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
+            background-size: 2000% 100% !important; /* 20 frames horizontales */
+            background-repeat: no-repeat !important;
+            background-position: 0% 0% !important;
+            image-rendering: pixelated !important;
+            -webkit-image-rendering: pixelated !important;
         }
         
         /* Asegurar que el canvas esté detrás del splash */
@@ -625,7 +630,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         right: 0;
         top: 60%;
         transform: translateY(-50%);
-        width: 33vw !important; /* 33% del ancho de la pantalla */
+        width: 240px !important;
         height: auto;
         pointer-events: auto;
         display: flex;

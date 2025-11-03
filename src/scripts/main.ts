@@ -339,10 +339,8 @@ const gameLoop = (currentTime: number): void => {
                 renderEditor(store, drawEditor);
             });
         } else if (store.appState === 'menu') {
-            // Reducir frecuencia de animación del splash en mobile
-            if (!isMobile() || (deltaTime % (frameTime * 2)) === 0) {
-                animateSplash(store);
-            }
+            // Animar splash también en mobile
+            animateSplash(store);
         }
     }
 
