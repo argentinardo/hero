@@ -212,6 +212,16 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
     if (fpsCounter) {
         fpsCounter.style.display = settings.showFps ? 'block' : 'none';
     }
+    
+    // Aplicar clase mobile-fullwidth al canvas para remover el max-width en mobile
+    // El CSS media query ya se encarga de que solo se aplique en mobile landscape
+    if (settings.mobileFullWidth) {
+        canvas.classList.add('mobile-fullwidth');
+        console.log('Clase mobile-fullwidth agregada al canvas, mobileFullWidth:', settings.mobileFullWidth);
+    } else {
+        canvas.classList.remove('mobile-fullwidth');
+        console.log('Clase mobile-fullwidth removida del canvas, mobileFullWidth:', settings.mobileFullWidth);
+    }
 };
 
 /**

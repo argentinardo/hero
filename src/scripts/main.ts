@@ -366,7 +366,92 @@ const gameLoop = (currentTime: number): void => {
  * 
  * @remarks Esta función se ejecuta una sola vez al inicio de la aplicación
  */
-const bootstrap = (): void => {
+/**
+ * Inicializa el StatusBar de Capacitor para que la app ocupe todo el espacio disponible
+ */
+const initStatusBar = async (): Promise<void> => {
+    try {
+        // Verificar si estamos en Capacitor
+        const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
+        if (!isCapacitor) {
+            return; // No hacer nada en web
+        }
+
+        // Importar dinámicamente el plugin de StatusBar
+        const { StatusBar } = await import('@capacitor/status-bar');
+        
+        // Configurar StatusBar para que ocupe todo el espacio
+        await StatusBar.setOverlaysWebView({ overlay: true });
+        await StatusBar.setStyle({ style: 'dark' });
+        await StatusBar.setBackgroundColor({ color: '#000000' });
+        
+        console.log('StatusBar configurado para fullscreen');
+    } catch (error) {
+        console.warn('No se pudo inicializar StatusBar (probablemente en web):', error);
+    }
+};
+
+/**
+ * Ajusta dinámicamente el viewport cuando el navegador oculta/muestra la barra de direcciones
+ */
+const setupViewportAdjustment = (): void => {
+    // Solo en navegadores móviles web (no en Capacitor)
+    const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isCapacitor || !isMobile) {
+        return; // No hacer nada en Capacitor o desktop
+    }
+
+    // Función para ajustar el viewport
+    const adjustViewport = () => {
+        // Calcular el viewport real usando visualViewport si está disponible
+        const vh = window.visualViewport?.height || window.innerHeight;
+        const realVh = Math.max(vh, window.innerHeight);
+        
+        // Aplicar como CSS custom property para que el CSS pueda usarlo
+        document.documentElement.style.setProperty('--vh', `${realVh * 0.01}px`);
+        document.documentElement.style.setProperty('--dvh', `${realVh}px`);
+        
+        console.log('Viewport ajustado:', {
+            visualViewport: window.visualViewport?.height,
+            innerHeight: window.innerHeight,
+            clientHeight: document.documentElement.clientHeight,
+            realVh
+        });
+    };
+
+    // Ajustar al inicio
+    adjustViewport();
+
+    // Ajustar cuando cambia el viewport (barra de direcciones se oculta/muestra)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', adjustViewport);
+        window.visualViewport.addEventListener('scroll', adjustViewport);
+    } else {
+        // Fallback para navegadores sin visualViewport
+        window.addEventListener('resize', adjustViewport);
+        window.addEventListener('orientationchange', adjustViewport);
+    }
+
+    // Ajustar cuando el scroll cambia (suele ocurrir cuando se oculta la barra)
+    let lastScrollY = window.scrollY;
+    const checkScroll = () => {
+        if (window.scrollY !== lastScrollY) {
+            adjustViewport();
+            lastScrollY = window.scrollY;
+        }
+    };
+    setInterval(checkScroll, 100);
+};
+
+const bootstrap = async (): Promise<void> => {
+    // Inicializar StatusBar primero para que ocupe todo el espacio (solo en Capacitor)
+    await initStatusBar();
+    
+    // Ajustar viewport para navegadores móviles web (compensar barra de direcciones)
+    setupViewportAdjustment();
+    
     setupUI(store);
     initAudio();
     
@@ -409,8 +494,14 @@ const bootstrap = (): void => {
 };
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    bootstrap();
+    bootstrap().catch(error => {
+        console.error('Error en bootstrap:', error);
+    });
 } else {
-    window.addEventListener('DOMContentLoaded', bootstrap);
+    window.addEventListener('DOMContentLoaded', () => {
+        bootstrap().catch(error => {
+            console.error('Error en bootstrap:', error);
+        });
+    });
 }
 

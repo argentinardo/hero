@@ -115,17 +115,21 @@ export const attachDomReferences = (store: GameStore) => {
             // El canvas siempre debe tener exactamente 20 tiles de ancho (1440px)
             canvas.width = CANVAS_TARGET_WIDTH; // 1440px = 20 tiles
             
-            // En mobile: usar alto fijo de 18 tiles (1296px)
-            // En desktop: usar el alto del viewport
+            // En mobile: usar alto fijo de 12 tiles (864px)
+            // En desktop: usar el alto del viewport dinámico
             if (isMobile) {
-                canvas.height = CANVAS_TARGET_HEIGHT_MOBILE; // 1296px = 18 tiles
+                canvas.height = CANVAS_TARGET_HEIGHT_MOBILE; // 864px = 12 tiles
             } else {
-                // Desktop: obtener el alto visual real del viewport (100vh)
-                // El CSS establece height: 100vh, así que el canvas visual tiene exactamente window.innerHeight
+                // Desktop: obtener el alto visual real del viewport dinámico
+                // Usar visualViewport si está disponible (más preciso cuando se ocultan barras del navegador)
                 let visualHeight = window.innerHeight;
                 
-                // En algunos dispositivos móviles, innerHeight puede estar afectado por barras del navegador
-                // Usar el mayor entre innerHeight y documentElement.clientHeight
+                // Si visualViewport está disponible, usarlo (más preciso en navegadores móviles web)
+                if (window.visualViewport) {
+                    visualHeight = window.visualViewport.height;
+                }
+                
+                // También considerar documentElement.clientHeight como fallback
                 const docHeight = document.documentElement.clientHeight;
                 if (docHeight > visualHeight) {
                     visualHeight = docHeight;
@@ -158,6 +162,12 @@ export const attachDomReferences = (store: GameStore) => {
     // Ajustar dimensiones inmediatamente y cuando cambie el tamaño de la ventana
     // Usar setTimeout para asegurar que el DOM y CSS estén listos
     setTimeout(adjustCanvasDimensions, 100);
+    
+    // Ajustar cuando cambia el viewport (barra de direcciones se oculta/muestra en navegadores móviles web)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', adjustCanvasDimensions);
+    }
+    
     window.addEventListener('resize', () => {
         // Debounce para evitar múltiples llamadas
         clearTimeout((window as any).canvasResizeTimeout);

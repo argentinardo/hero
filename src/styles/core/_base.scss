@@ -1,3 +1,9 @@
+html {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
 body {
     font-family: 'Press Start 2P', cursive;
     background-color: #581600;
@@ -6,6 +12,18 @@ body {
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    position: fixed;
+    /* Usar viewport dinámico (100dvh) si está disponible, sino usar 100vh con fallback */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height - ignora barras del navegador */
+    min-height: -webkit-fill-available; /* Para iOS Safari */
+    /* Asegurar que ocupe todo el ancho disponible */
+    width: 100vw;
+    width: 100dvw; /* Dynamic viewport width */
 }
 
 /* CSS básico para evitar que se vea mal si el usuario gira el móvil */

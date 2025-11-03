@@ -88,6 +88,10 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         height: 100%;
         margin: 0;
         padding: 0;
+        /* Usar viewport dinámico para ignorar barras del navegador */
+        height: 100dvh; /* Dynamic viewport height */
+        height: 100vh; /* Fallback para navegadores antiguos */
+        height: -webkit-fill-available; /* iOS Safari */
     }
     
     /* Ajuste global de tamaño de fuente para mobile */
@@ -113,7 +117,10 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
 
     #main-container {
         width: 100vw;
+        width: 100dvw; /* Dynamic viewport width */
         height: 100vh;
+        height: 100dvh; /* Dynamic viewport height - ignora barras del navegador */
+        height: -webkit-fill-available; /* iOS Safari fallback */
         padding: 0;
         margin: 0;
         max-width: none;
@@ -135,8 +142,12 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         align-items: center;
         justify-content: center;
         width: 100%;
+        width: 100dvw; /* Dynamic viewport width */
         height: 100vh;
+        height: 100dvh; /* Dynamic viewport height - ignora barras del navegador */
+        height: -webkit-fill-available; /* iOS Safari fallback */
         max-width: 100vw;
+        max-width: 100dvw;
     }
 
     /* Canvas simplificado - 20 tiles ancho x 12 tiles alto en mobile */
@@ -148,7 +159,9 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         /* Alto para mostrar 12 tiles: 12 * 72 = 864px interno, escalado visualmente */
         /* Escalado: 1600/1440 = 1.111..., entonces 864 * 1.111 = 960px */
         height: 960px !important; /* 12 tiles visualmente escalados */
-        max-height: 100vh !important; /* No exceder el viewport */
+        max-height: 100vh !important; /* Fallback */
+        max-height: 100dvh !important; /* Dynamic viewport height - ignora barras del navegador */
+        max-height: var(--dvh, 100vh) !important; /* Usar variable JS si está disponible */
         margin: 0 auto;
         display: block;
         object-fit: unset;
@@ -647,7 +660,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         display: flex;
         flex-direction: column; /* Cambiar a fila horizontal */
         gap: 2vw;
-        justify-content: space-between; /* TNT al inicio, FIRE al final */
+        justify-content: space-between; /* FIRE al inicio, TNT al final */
         align-items: center;
         padding: 10px;
         z-index: 21;
@@ -701,16 +714,16 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         }
     }
     
-    /* Ordenar botones: TNT a la izquierda, FIRE a la derecha */
-    #bomb-btn {
-        order: 1; /* TNT al principio (izquierda) */
+    /* Ordenar botones: FIRE a la izquierda, TNT a la derecha */
+    #shoot-btn {
+        order: 1; /* FIRE al principio (izquierda) */
         align-self: flex-end;
         position: relative;
         top: 11vh;
     }
     
-    #shoot-btn {
-        order: 2; /* FIRE al final (derecha) */
+    #bomb-btn {
+        order: 2; /* TNT al final (derecha) */
         align-self: flex-start;
     }
     
