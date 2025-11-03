@@ -110,8 +110,8 @@ export const bindEditorCanvas = (store: GameStore) => {
 
         // Obtener las coordenadas reales del canvas en el viewport
         const canvasRect = canvas.getBoundingClientRect();
-        const canvasWidth = canvas.width;  // Resolución interna del canvas (1440)
-        const canvasHeight = canvas.height;  // Resolución interna del canvas (900)
+        const canvasWidth = canvas.width;  // Resolución interna del canvas (1600)
+        const canvasHeight = canvas.height;  // Resolución interna del canvas (1000)
 
         // Verificar si el mouse está dentro del área del canvas
         if (event.clientX >= canvasRect.left && event.clientX <= canvasRect.right &&
@@ -441,8 +441,8 @@ export const bindEditorCanvas = (store: GameStore) => {
         const canvasRect = canvas.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const canvasWidth = canvas.width;  // Resolución interna del canvas (1440)
-        const canvasHeight = canvas.height;  // Resolución interna del canvas (900)
+        const canvasWidth = canvas.width;  // Resolución interna del canvas (1600)
+        const canvasHeight = canvas.height;  // Resolución interna del canvas (1000)
 
         // Verificar si el touch está dentro del área del canvas
         if (touches[0].clientX >= canvasRect.left && touches[0].clientX <= canvasRect.right &&

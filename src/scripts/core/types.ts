@@ -278,6 +278,7 @@ export interface DomReferences {
     offscreenCanvas?: HTMLCanvasElement | null;
     offscreenCtx?: CanvasRenderingContext2D | null;
     renderScale?: number; // Escala de renderizado (0.5 = mitad de resolución)
+    zoomScale?: number; // Escala de zoom por pinch (1.0 = sin zoom)
     ui: UiElements;
 }
 

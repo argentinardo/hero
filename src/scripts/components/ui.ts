@@ -8,7 +8,7 @@ import { getNetlifyBaseUrl } from '../utils/device';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
-import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume } from './audio';
+import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume, isBackgroundMusicPlaying } from './audio';
 import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings } from '../core/settings';
 import { 
     undo, 
@@ -33,21 +33,58 @@ export const adjustUIBars = () => {
     const canvasWidth = rect.width;
     const canvasLeft = rect.left;
     
-    // Calcular el offset desde el borde izquierdo del viewport
-    const leftOffset = canvasLeft;
-    
     // Aplicar el ancho y posición a las barras UI
     // solo en desktop (no en mobile)
     if (window.innerWidth >= 1025) {
-        gameUi.style.width = `${canvasWidth}px`;
-        gameUi.style.left = `${leftOffset}px`;
-        bottomUi.style.width = `${canvasWidth}px`;
-        bottomUi.style.left = `${leftOffset}px`;
+        // Centrar game-ui con ancho igual al canvas visual (1600px)
+        const gameUiWidth = 1600; // Ancho visual del canvas
+        gameUi.style.width = `${gameUiWidth}px`;
+        gameUi.style.left = '50%'; // Centrar horizontalmente
+        gameUi.style.transform = 'translateX(-50%)'; // Centrar usando transform
+        
+        // Calcular la escala para el bottom-ui basada en el ancho visual del canvas
+        // El canvas se muestra a 1600px visualmente, pero internamente tiene 1440px (20 tiles)
+        const canvasVisualWidth = 1600;
+        const scale = canvasWidth / canvasVisualWidth;
+        
+        // Aplicar escala al bottom-ui para que se ajuste al tamaño visual del canvas
+        bottomUi.style.width = `${canvasVisualWidth}px`; // Ancho visual del canvas (1600px)
+        bottomUi.style.left = '50%'; // Centrar horizontalmente
+        bottomUi.style.transform = `translateX(-50%) scale(${scale})`; // Centrar y escalar
+        bottomUi.style.transformOrigin = 'bottom center';
+        
+        // Asegurar que game-ui también esté centrado
+        gameUi.style.left = '50%';
+        gameUi.style.transform = 'translateX(-50%)';
+        
         if (creditBar) {
             creditBar.style.display = 'none'; // Oculto en desktop
         }
     } else {
-        // En mobile: ancho completo y visible pegado abajo
+        // En mobile: el bottom-ui tiene width: 100% (viewportWidth)
+        // Si el canvas es más pequeño, necesitamos escalar el bottom-ui
+        const viewportWidth = window.innerWidth;
+        
+        if (canvasWidth < viewportWidth) {
+            // Calcular la escala necesaria para que el bottom-ui no sobrepase el canvas
+            // El bottom-ui tiene width: 100% = viewportWidth
+            // Necesitamos que el ancho escalado = canvasWidth
+            // Entonces: viewportWidth * scale = canvasWidth
+            // scale = canvasWidth / viewportWidth
+            const scale = canvasWidth / viewportWidth;
+            
+            bottomUi.style.width = '100%'; // Mantener 100% para calcular la escala correctamente
+            bottomUi.style.left = `${canvasLeft}px`; // Alinear con el canvas
+            bottomUi.style.transform = `scale(${scale})`;
+            bottomUi.style.transformOrigin = 'bottom left';
+        } else {
+            // El canvas ocupa todo el ancho o más, no necesitamos escalar
+            bottomUi.style.width = '100%';
+            bottomUi.style.left = '0px';
+            bottomUi.style.transform = '';
+            bottomUi.style.transformOrigin = '';
+        }
+        
         if (creditBar) {
             creditBar.style.width = '100%';
             creditBar.style.left = '0px';
@@ -65,18 +102,81 @@ export const attachDomReferences = (store: GameStore) => {
     
     if (!store.dom.canvas) return;
     
+    // Ajustar dimensiones internas del canvas para mostrar exactamente 20 tiles de ancho
+    // TILE_SIZE = 72px, por lo que 20 tiles = 1440px
+    const TILES_WIDTH = 20;
+    const CANVAS_TARGET_WIDTH = TILES_WIDTH * TILE_SIZE; // 1440px = 20 tiles de 72px
+    
+    // En mobile: mostrar 12 tiles de alto (12 * 72 = 864px)
+    const TILES_HEIGHT_MOBILE = 12;
+    const CANVAS_TARGET_HEIGHT_MOBILE = TILES_HEIGHT_MOBILE * TILE_SIZE; // 864px = 12 tiles de 72px
+    
+    const adjustCanvasDimensions = () => {
+        const canvas = store.dom.canvas!;
+        // Esperar un frame para que el CSS se haya aplicado completamente
+        requestAnimationFrame(() => {
+            // El canvas siempre debe tener exactamente 20 tiles de ancho (1440px)
+            canvas.width = CANVAS_TARGET_WIDTH; // 1440px = 20 tiles
+            
+            // En mobile: usar alto fijo de 18 tiles (1296px)
+            // En desktop: usar el alto del viewport
+            if (isMobile) {
+                canvas.height = CANVAS_TARGET_HEIGHT_MOBILE; // 1296px = 18 tiles
+            } else {
+                // Desktop: obtener el alto visual real del viewport (100vh)
+                // El CSS establece height: 100vh, así que el canvas visual tiene exactamente window.innerHeight
+                let visualHeight = window.innerHeight;
+                
+                // En algunos dispositivos móviles, innerHeight puede estar afectado por barras del navegador
+                // Usar el mayor entre innerHeight y documentElement.clientHeight
+                const docHeight = document.documentElement.clientHeight;
+                if (docHeight > visualHeight) {
+                    visualHeight = docHeight;
+                }
+                
+                // Asegurar que el alto sea al menos window.innerHeight (nunca menos)
+                visualHeight = Math.max(visualHeight, window.innerHeight);
+                
+                canvas.height = Math.floor(visualHeight);
+            }
+            
+            // Debug: verificar que las dimensiones sean correctas
+            console.log('Canvas dimensions adjusted:', {
+                internalWidth: canvas.width,
+                internalHeight: canvas.height,
+                innerHeight: window.innerHeight,
+                clientHeight: document.documentElement.clientHeight,
+                visualViewportHeight: window.visualViewport?.height,
+                boundingClientRect: canvas.getBoundingClientRect()
+            });
+            
+            // Actualizar offscreen canvas si existe (mobile)
+            if (store.dom.offscreenCanvas && store.dom.renderScale) {
+                store.dom.offscreenCanvas.width = Math.floor(canvas.width * store.dom.renderScale);
+                store.dom.offscreenCanvas.height = Math.floor(canvas.height * store.dom.renderScale);
+            }
+        });
+    };
+    
+    // Ajustar dimensiones inmediatamente y cuando cambie el tamaño de la ventana
+    // Usar setTimeout para asegurar que el DOM y CSS estén listos
+    setTimeout(adjustCanvasDimensions, 100);
+    window.addEventListener('resize', () => {
+        // Debounce para evitar múltiples llamadas
+        clearTimeout((window as any).canvasResizeTimeout);
+        (window as any).canvasResizeTimeout = setTimeout(adjustCanvasDimensions, 100);
+    });
+    
     // OPTIMIZACIÓN CRÍTICA PARA MOBILE: Renderizar a menor resolución interna
     // Reducir más agresivamente si las imágenes son más grandes (ya reducidas 50% manualmente)
     // El canvas visual se mantiene igual, pero internamente renderizamos menos píxeles
     if (isMobile) {
         // Si las imágenes ya están reducidas 50%, podemos renderizar aún más bajo (0.4 = 40% de resolución)
-        // Esto da: 1440*0.4 = 576px de ancho, 900*0.4 = 360px de alto
-        // Reduce de ~1.3M píxeles a ~207K píxeles (84% menos!)
+        // Usa las dimensiones objetivo del canvas (1440px = 20 tiles)
         const renderScaleValue = 0.4; // Más agresivo: 40% de resolución
         store.dom.renderScale = renderScaleValue;
         store.dom.offscreenCanvas = document.createElement('canvas');
-        store.dom.offscreenCanvas.width = Math.floor(1440 * renderScaleValue); // 576px
-        store.dom.offscreenCanvas.height = Math.floor(900 * renderScaleValue); // 360px
+        // Las dimensiones se ajustarán después en adjustCanvasDimensions cuando el CSS esté aplicado
         
         // Contexto del canvas offscreen (donde realmente renderizamos)
         const offscreenContext = store.dom.offscreenCanvas.getContext('2d', {
@@ -195,31 +295,143 @@ export const attachDomReferences = (store: GameStore) => {
     ui.duplicateRowBtn = document.getElementById('duplicate-row-btn') as HTMLButtonElement | null;
     ui.deleteRowBtn = document.getElementById('delete-row-btn') as HTMLButtonElement | null;
     
+    // Función para ajustar la posición del canvas según el estado de los paneles
+    // Los paneles ahora tienen position: absolute, por lo que no restan ancho al canvas
+    const adjustCanvasPosition = () => {
+        const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+        if (!canvasWrapper) return;
+        
+        // El canvas siempre ocupa 100vw ya que los paneles se superponen con position: absolute
+        canvasWrapper.style.left = '0';
+        canvasWrapper.style.width = '100vw';
+    };
+    
+    // Función para actualizar el estado visual de los paneles
+    const updatePanelStates = () => {
+        const editorPanel = ui.editorPanelEl as HTMLElement;
+        const userPanel = document.getElementById('user-panel');
+        const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement | null;
+        const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+        const editorPanelTitle = document.getElementById('editor-panel-title');
+        const userPanelTitle = document.getElementById('user-panel-title');
+        
+        if (editorPanel && editorToggleBtn && editorPanelTitle) {
+            const isEditorCollapsed = editorPanel.classList.contains('collapsed');
+            const editorIconSpan = editorPanelTitle.querySelector('.toggle-icon-title');
+            const toggleTitle = editorToggleBtn.querySelector('.toggle-title');
+            const toggleIcon = editorToggleBtn.querySelector('.toggle-icon');
+            
+            // Si el panel está abierto, ocultar el botón toggle y mostrar icono en el título
+            if (!isEditorCollapsed) {
+                editorToggleBtn.style.display = 'none';
+                if (editorIconSpan) {
+                    (editorIconSpan as HTMLElement).style.display = 'inline';
+                    editorIconSpan.textContent = '<'; // Para cerrar el panel derecho
+                }
+            } else {
+                // Si está cerrado, mostrar el botón toggle con icono '<' y texto 'HERRAMIENTAS'
+                editorToggleBtn.style.display = 'flex';
+                if (toggleIcon) {
+                    toggleIcon.textContent = '<';
+                }
+                if (toggleTitle) {
+                    (toggleTitle as HTMLElement).style.display = 'inline';
+                }
+                if (editorIconSpan) {
+                    (editorIconSpan as HTMLElement).style.display = 'none';
+                }
+            }
+        }
+        
+        if (userPanel && userPanelToggleBtn && userPanelTitle) {
+            const isUserCollapsed = userPanel.classList.contains('collapsed');
+            const userIconSpan = userPanelTitle.querySelector('.toggle-icon-title');
+            const toggleTitle = userPanelToggleBtn.querySelector('.toggle-title');
+            const toggleIcon = userPanelToggleBtn.querySelector('.toggle-icon');
+            
+            // Si el panel está abierto, ocultar el botón toggle y mostrar icono en el título
+            if (!isUserCollapsed) {
+                userPanelToggleBtn.style.display = 'none';
+                if (userIconSpan) {
+                    (userIconSpan as HTMLElement).style.display = 'inline';
+                    userIconSpan.textContent = '>'; // Para cerrar el panel izquierdo
+                }
+            } else {
+                // Si está cerrado, mostrar el botón toggle con icono '>' y texto 'USUARIO'
+                userPanelToggleBtn.style.display = 'flex';
+                if (toggleIcon) {
+                    toggleIcon.textContent = '>';
+                }
+                if (toggleTitle) {
+                    (toggleTitle as HTMLElement).style.display = 'inline';
+                }
+                if (userIconSpan) {
+                    (userIconSpan as HTMLElement).style.display = 'none';
+                }
+            }
+        }
+        
+        // Ajustar posición del canvas
+        adjustCanvasPosition();
+    };
+    
     // Toggle del editor (drawer)
     if (editorToggleBtn && ui.editorPanelEl) {
-        // visible solo en modo editor, se activa en startEditor
+        // Click en el botón toggle (solo visible cuando está cerrado)
         editorToggleBtn.addEventListener('click', () => {
             const panel = ui.editorPanelEl as HTMLElement;
-            const isCollapsed = panel.classList.toggle('collapsed');
-            // Drawer derecho: 
-            // - Abierto: muestra '<' para cerrar (desplazar a la derecha)
-            // - Colapsado: muestra '>' para abrir (desplegar desde la derecha)
-            editorToggleBtn.querySelector('span')!.textContent = isCollapsed ? '>' : '<';
+            panel.classList.remove('collapsed');
+            updatePanelStates();
         });
+        
+        // Click en el título del panel para cerrar
+        const editorPanelTitle = document.getElementById('editor-panel-title');
+        if (editorPanelTitle) {
+            editorPanelTitle.addEventListener('click', () => {
+                const panel = ui.editorPanelEl as HTMLElement;
+                if (!panel.classList.contains('collapsed')) {
+                    panel.classList.add('collapsed');
+                    updatePanelStates();
+                }
+            });
+        }
     }
     
     // Toggle del panel de usuario (drawer izquierdo)
     const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
     const userPanel = document.getElementById('user-panel');
     if (userPanelToggleBtn && userPanel) {
-        // visible solo en modo editor, se activa en startEditor
+        // Click en el botón toggle (solo visible cuando está cerrado)
         userPanelToggleBtn.addEventListener('click', () => {
-            const isCollapsed = userPanel.classList.toggle('collapsed');
-            // Drawer izquierdo:
-            // - Abierto: muestra '<' para cerrar (desplazar a la izquierda)
-            // - Colapsado: muestra '>' para abrir (desplegar desde la izquierda)
-            userPanelToggleBtn.querySelector('span')!.textContent = isCollapsed ? '<' : '>';
+            userPanel.classList.remove('collapsed');
+            updatePanelStates();
         });
+        
+        // Click en el título del panel (avatar/nickname) para cerrar
+        const userPanelTitle = document.getElementById('user-panel-title');
+        const userPanelAvatar = document.getElementById('user-panel-avatar');
+        const userPanelNickname = document.getElementById('user-panel-nickname');
+        
+        // Función para cerrar el panel
+        const closeUserPanel = (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!userPanel.classList.contains('collapsed')) {
+                userPanel.classList.add('collapsed');
+                updatePanelStates();
+            }
+        };
+        
+        // Agregar listeners al título, avatar y nickname para cerrar el panel
+        if (userPanelTitle) {
+            userPanelTitle.addEventListener('click', closeUserPanel);
+        }
+        if (userPanelAvatar) {
+            userPanelAvatar.addEventListener('click', closeUserPanel);
+        }
+        if (userPanelNickname) {
+            userPanelNickname.addEventListener('click', closeUserPanel);
+        }
     }
 
     // Configurar el menú hamburguesa
@@ -228,6 +440,14 @@ export const attachDomReferences = (store: GameStore) => {
     
     // Configurar modal de configuración
     setupSettingsModal(store);
+    
+    // Configurar botón OK del modal de notificación
+    const notificationOkBtn = document.getElementById('notification-ok-btn') as HTMLButtonElement | null;
+    if (notificationOkBtn) {
+        notificationOkBtn.addEventListener('click', () => {
+            hideNotification(store);
+        });
+    }
     
     // Ajustar barras UI cuando cambia el tamaño de la ventana
     window.addEventListener('resize', adjustUIBars);
@@ -285,6 +505,16 @@ export const showMenu = (store: GameStore) => {
     const userPanel = document.getElementById('user-panel');
     if (userPanel) {
         userPanel.style.display = 'none';
+    }
+    
+    // Ocultar paneles y toggles del editor
+    const editorToggle = document.getElementById('editor-toggle');
+    if (editorToggle) {
+        editorToggle.classList.add('hidden');
+    }
+    const userPanelToggle = document.getElementById('user-panel-toggle');
+    if (userPanelToggle) {
+        userPanelToggle.classList.add('hidden');
     }
     
     const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn, heroLogoEl } = store.dom.ui;
@@ -348,7 +578,7 @@ export const showMenu = (store: GameStore) => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'Editor' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? 'HERRAMIENTAS' : 'Ingresar';
         }
     };
     updateEditorButton();
@@ -364,7 +594,18 @@ const getTouchDistance = (touch1: Touch, touch2: Touch): number => {
 };
 
 /**
- * Configura el gesto de pinch para hacer zoom en el canvas en mobile
+ * Calcula el punto medio entre dos puntos táctiles
+ */
+const getTouchCenter = (touch1: Touch, touch2: Touch): { x: number; y: number } => {
+    return {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2
+    };
+};
+
+/**
+ * Configura el gesto de pinch para hacer zoom y pan en el canvas en mobile
+ * El pan mueve la cámara (cameraX, cameraY) dentro del canvas, no el canvas mismo
  */
 const setupPinchZoom = (store: GameStore) => {
     const canvas = store.dom.canvas;
@@ -382,7 +623,14 @@ const setupPinchZoom = (store: GameStore) => {
     let initialDistance = 0;
     let initialScale = 1;
     let currentScale = 1;
-    let lastTouchTime = 0;
+    let initialCenter = { x: 0, y: 0 };
+    let initialCamera = { x: 0, y: 0 };
+    let isPinching = false;
+    
+    // Guardar zoom y pan en el store para acceso global
+    if (!store.dom.zoomScale) {
+        store.dom.zoomScale = 1;
+    }
     
     const handleTouchStart = (e: TouchEvent) => {
         // Solo procesar si hay exactamente 2 dedos
@@ -392,32 +640,79 @@ const setupPinchZoom = (store: GameStore) => {
             const touch2 = e.touches[1];
             initialDistance = getTouchDistance(touch1, touch2);
             initialScale = currentScale;
-            lastTouchTime = Date.now();
+            initialCenter = getTouchCenter(touch1, touch2);
+            initialCamera = { x: store.cameraX, y: store.cameraY };
+            isPinching = true;
+        } else if (e.touches.length === 1) {
+            // Si solo hay un dedo, resetear el estado
+            isPinching = false;
         }
     };
     
     const handleTouchMove = (e: TouchEvent) => {
         // Solo procesar si hay exactamente 2 dedos
-        if (e.touches.length === 2) {
+        if (e.touches.length === 2 && isPinching) {
             e.preventDefault();
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
             const currentDistance = getTouchDistance(touch1, touch2);
+            const currentCenter = getTouchCenter(touch1, touch2);
             
             // Calcular el factor de zoom basado en el cambio de distancia
             const scaleChange = currentDistance / initialDistance;
             currentScale = Math.max(0.5, Math.min(3.0, initialScale * scaleChange)); // Limitar entre 0.5x y 3x
+            store.dom.zoomScale = currentScale;
             
-            // Aplicar transform al canvas wrapper
+            // Calcular el desplazamiento del centro (pan)
+            const deltaX = currentCenter.x - initialCenter.x;
+            const deltaY = currentCenter.y - initialCenter.y;
+            
+            // Convertir el desplazamiento en píxeles de pantalla a coordenadas de mundo
+            // El movimiento debe ser inverso (mover dedos a la derecha mueve cámara a la derecha = menos cameraX)
+            // Y ajustado por el zoom (con más zoom, el mismo movimiento de dedos mueve menos en el mundo)
+            const canvas = store.dom.canvas;
+            if (canvas) {
+                const canvasRect = canvas.getBoundingClientRect();
+                const actualCanvasWidth = canvasRect.width;
+                const actualCanvasHeight = canvasRect.height;
+                
+                // Convertir píxeles de pantalla a coordenadas del mundo
+                // Con zoom, el mismo movimiento físico mueve menos en el mundo
+                const worldDeltaX = -deltaX / currentScale;
+                const worldDeltaY = -deltaY / currentScale;
+                
+                // Obtener dimensiones del nivel
+                const levelCols = store.appState === 'editing' 
+                    ? (store.editorLevel[0]?.length ?? 0)
+                    : (store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0);
+                const levelRows = store.appState === 'editing'
+                    ? store.editorLevel.length
+                    : (store.levelDesigns[store.currentLevelIndex]?.length ?? 0);
+                const levelWidth = levelCols * TILE_SIZE;
+                const levelHeight = levelRows * TILE_SIZE;
+                
+                // Calcular límites de cámara considerando el zoom
+                // Con zoom, la ventana visible es más pequeña
+                const visibleWidth = actualCanvasWidth / currentScale;
+                const visibleHeight = actualCanvasHeight / currentScale;
+                const maxCamX = Math.max(0, levelWidth - visibleWidth);
+                const maxCamY = Math.max(0, levelHeight - visibleHeight);
+                
+                // Actualizar la posición de la cámara
+                store.cameraX = Math.max(0, Math.min(initialCamera.x + worldDeltaX, maxCamX));
+                store.cameraY = Math.max(0, Math.min(initialCamera.y + worldDeltaY, maxCamY));
+            }
+            
+            // Aplicar solo zoom al canvas wrapper (el pan se maneja con la cámara)
             canvasWrapper.style.transform = `scale(${currentScale})`;
             canvasWrapper.style.transformOrigin = 'center center';
         }
     };
     
     const handleTouchEnd = (e: TouchEvent) => {
-        // Si quedan menos de 2 dedos, detener el zoom
+        // Si quedan menos de 2 dedos, detener el zoom/pan
         if (e.touches.length < 2) {
-            initialDistance = 0;
+            isPinching = false;
         }
     };
     
@@ -426,6 +721,22 @@ const setupPinchZoom = (store: GameStore) => {
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    
+    // Resetear zoom/pan con doble tap
+    let lastTapTime = 0;
+    canvas.addEventListener('touchend', (e: TouchEvent) => {
+        if (e.touches.length === 0 && e.changedTouches.length === 1) {
+            const now = Date.now();
+            if (now - lastTapTime < 300) {
+                // Doble tap detectado - resetear zoom y pan
+                currentScale = 1;
+                store.dom.zoomScale = 1;
+                canvasWrapper.style.transform = 'scale(1)';
+                // El pan se reseteará al iniciar el juego o editor
+            }
+            lastTapTime = now;
+        }
+    }, { passive: true });
 };
 
 const startJoystick = (store: GameStore) => {
@@ -662,6 +973,15 @@ const startJoystick = (store: GameStore) => {
 };
 
 export const startGame = (store: GameStore, levelOverride: string[] | null = null, startIndex?: number, preserveLevels?: boolean) => {
+    // Resetear zoom y pan del canvas al iniciar el juego
+    const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+    if (canvasWrapper) {
+        canvasWrapper.style.transform = 'scale(1)';
+    }
+    if (store.dom.zoomScale) {
+        store.dom.zoomScale = 1;
+    }
+    
     // Ocultar modal de game over si está visible
     if (store.dom.ui.gameoverModal) {
         store.dom.ui.gameoverModal.classList.add('hidden');
@@ -847,23 +1167,14 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             }
         }
         
-        // Hacer clicable el título del panel de usuario para abrir el modal de perfil
-        const userPanelTitle = document.getElementById('user-panel-title');
-        if (userPanelTitle) {
-            userPanelTitle.style.cursor = 'pointer';
-            userPanelTitle.addEventListener('click', () => {
-                const profileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
-                profileBtn?.click();
-            });
-        }
+        // El título del panel de usuario ya tiene un listener en attachDomReferences que lo cierra
+        // No agregamos otro listener aquí para evitar conflictos
         
         // Actualizar área de usuario mobile
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         const userAreaMobile = document.getElementById('user-area-mobile');
-        const usernameDisplayMobile = document.getElementById('username-display-mobile');
-        if (userAreaMobile && usernameDisplayMobile) {
+        if (userAreaMobile) {
             if (isLoggedIn && nickname) {
-                usernameDisplayMobile.textContent = nickname;
                 userAreaMobile.style.display = 'block';
             } else {
                 userAreaMobile.style.display = 'none';
@@ -901,7 +1212,6 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             // Iniciar con el panel abierto (no colapsado)
             const panel = editorPanelEl as HTMLElement;
             panel.classList.remove('collapsed');
-            toggle.querySelector('span')!.textContent = '<'; // '<' indica que está abierto, '>' que está cerrado
         }
         editorPanelEl.classList.remove('collapsed');
         
@@ -910,8 +1220,79 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         if (userToggle && userPanel) {
             userToggle.classList.remove('hidden');
             userPanel.classList.remove('collapsed');
-            userToggle.querySelector('span')!.textContent = '<'; // '<' indica que está abierto, '>' que está cerrado
         }
+        
+        // Actualizar estados visuales de los paneles (ocultar toggles y mostrar iconos en títulos)
+        // Usar setTimeout para asegurar que los elementos están en el DOM
+        setTimeout(() => {
+            // Reutilizar la función updatePanelStates definida en attachDomReferences
+            const editorPanel = editorPanelEl as HTMLElement;
+            const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement | null;
+            const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+            const editorPanelTitle = document.getElementById('editor-panel-title');
+            const userPanelTitle = document.getElementById('user-panel-title');
+            
+            if (editorPanel && editorToggleBtn && editorPanelTitle) {
+                const isEditorCollapsed = editorPanel.classList.contains('collapsed');
+                const editorIconSpan = editorPanelTitle.querySelector('.toggle-icon-title');
+                const toggleTitle = editorToggleBtn.querySelector('.toggle-title');
+                const toggleIcon = editorToggleBtn.querySelector('.toggle-icon');
+                
+                if (!isEditorCollapsed) {
+                    editorToggleBtn.style.display = 'none';
+                    if (editorIconSpan) {
+                        (editorIconSpan as HTMLElement).style.display = 'inline';
+                        editorIconSpan.textContent = '<';
+                    }
+                } else {
+                    editorToggleBtn.style.display = 'flex';
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '<';
+                    }
+                    if (toggleTitle) {
+                        (toggleTitle as HTMLElement).style.display = 'inline';
+                    }
+                    if (editorIconSpan) {
+                        (editorIconSpan as HTMLElement).style.display = 'none';
+                    }
+                }
+            }
+            
+            if (userPanel && userPanelToggleBtn && userPanelTitle) {
+                const isUserCollapsed = userPanel.classList.contains('collapsed');
+                const userIconSpan = userPanelTitle.querySelector('.toggle-icon-title');
+                const toggleTitle = userPanelToggleBtn.querySelector('.toggle-title');
+                const toggleIcon = userPanelToggleBtn.querySelector('.toggle-icon');
+                
+                if (!isUserCollapsed) {
+                    userPanelToggleBtn.style.display = 'none';
+                    if (userIconSpan) {
+                        (userIconSpan as HTMLElement).style.display = 'inline';
+                        userIconSpan.textContent = '>';
+                    }
+                } else {
+                    userPanelToggleBtn.style.display = 'flex';
+                    if (toggleIcon) {
+                        toggleIcon.textContent = '>';
+                    }
+                    if (toggleTitle) {
+                        (toggleTitle as HTMLElement).style.display = 'inline';
+                    }
+                    if (userIconSpan) {
+                        (userIconSpan as HTMLElement).style.display = 'none';
+                    }
+                }
+            }
+            
+            // Ajustar posición del canvas
+            // Los paneles ahora tienen position: absolute, por lo que no restan ancho al canvas
+            const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+            if (canvasWrapper) {
+                // El canvas siempre ocupa 100vw ya que los paneles se superponen con position: absolute
+                canvasWrapper.style.left = '0';
+                canvasWrapper.style.width = '100vw';
+            }
+        }, 0);
 
         // Toggle secciones del panel (Edición / Niveles)
         const bindSectionToggle = (btnId: string, arrowId: string, contentId: string) => {
@@ -953,9 +1334,11 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         const levelRows = store.editorLevel.length;
         const levelWidth = levelCols * TILE_SIZE;
         const levelHeight = levelRows * TILE_SIZE;
-        const desiredX = playerCol * TILE_SIZE - canvas.width / 2; // Centrar horizontalmente
+        // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+        const canvasInternalWidth = 1440; // 20 tiles * 72px
+        const desiredX = playerCol * TILE_SIZE - canvasInternalWidth / 2; // Centrar horizontalmente
         const desiredY = playerRow * TILE_SIZE - canvas.height / 2; // Centrar verticalmente
-        const maxCamX = Math.max(0, levelWidth - canvas.width);
+        const maxCamX = Math.max(0, levelWidth - canvasInternalWidth);
         const maxCamY = Math.max(0, levelHeight - canvas.height);
         store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
         store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
@@ -1463,7 +1846,7 @@ const populatePalette = (store: GameStore) => {
         // Crear grid de tiles
         const tilesGrid = document.createElement('div');
         tilesGrid.className = 'tile-category-grid';
-        tilesGrid.style.cssText = 'display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; border:1px solid #444;';
+        tilesGrid.style.cssText = 'display:grid; grid-template-columns:repeat(2,1fr); gap:2px; padding:0px; border:1px solid #444;';
         
         // Agregar tiles
         category.tiles.forEach(({ key, name }) => {
@@ -1604,7 +1987,7 @@ export const setupUI = (store: GameStore) => {
                     // Actualizar botones y área de usuario
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                     if (levelEditorBtn) {
-                        levelEditorBtn.textContent = 'Editor';
+                        levelEditorBtn.textContent = 'HERRAMIENTAS';
                     }
                     // Cargar niveles del usuario después de iniciar sesión
                     await tryLoadUserLevels(store);
@@ -2008,12 +2391,20 @@ const setupHamburgerMenu = (
     // Listeners para los botones hamburguesa
     hamburgerBtn?.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleMenu();
+        // Abrir el modal de pausa (pause-menu-modal) en lugar del menú hamburguesa
+        const pauseMenu = document.getElementById('pause-menu-modal');
+        if (pauseMenu) {
+            pauseMenu.classList.remove('hidden');
+        }
     });
     
     hamburgerBtnMobile?.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleMenu();
+        // Abrir el modal de pausa (pause-menu-modal) en lugar del menú hamburguesa
+        const pauseMenu = document.getElementById('pause-menu-modal');
+        if (pauseMenu) {
+            pauseMenu.classList.remove('hidden');
+        }
     });
     
     // Cerrar menú al hacer click fuera
@@ -2096,8 +2487,8 @@ const setupHamburgerMenu = (
         const exitCancelBtn = store.dom.ui.exitCancelBtn;
         
         if (!exitModalEl) return;
-        if (exitTitleEl) exitTitleEl.textContent = 'Volver al Menú';
-        if (exitTextEl) exitTextEl.textContent = '¿Deseas volver al menú principal?';
+        if (exitTitleEl) exitTitleEl.textContent = 'Menú Inicial';
+        if (exitTextEl) exitTextEl.textContent = '¿Deseas volver al menú inicial?';
         exitModalEl.classList.remove('hidden');
         
         const confirmHandler = () => {
@@ -2105,7 +2496,7 @@ const setupHamburgerMenu = (
             if (store.isPaused) {
                 store.isPaused = false;
                 store.player.isFrozen = false;
-                if (pauseResumeBtn) pauseResumeBtn.textContent = '⏸️ Pausar';
+                if (pauseResumeBtn) pauseResumeBtn.textContent = 'Pausar';
             }
             showMenu(store);
             exitModalEl.classList.add('hidden');
@@ -2130,7 +2521,7 @@ const setupHamburgerMenu = (
         if (store.isPaused) {
             store.isPaused = false;
             store.player.isFrozen = false;
-            if (pauseResumeBtn) pauseResumeBtn.textContent = '⏸️ Pausar';
+            if (pauseResumeBtn) pauseResumeBtn.textContent = 'Pausar';
         }
         
         // Conservar el nivel actual antes de volver al editor
@@ -2147,6 +2538,7 @@ const setupHamburgerMenu = (
         const creditsModal = document.getElementById('credits-modal');
         if (creditsModal) {
             creditsModal.classList.remove('hidden');
+            // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
         }
     });
     
@@ -2154,6 +2546,173 @@ const setupHamburgerMenu = (
     const updateResumeEditorVisibility = () => {
         // Este se actualizará desde startGame cuando sea necesario
     };
+};
+
+// Variables globales para partículas de créditos
+let creditsParticlesAnimation: number | null = null;
+let creditsParticlesInitialized = false;
+
+// Función para inicializar partículas de créditos
+const initCreditsParticles = () => {
+    const canvas = document.getElementById('credits-particles') as HTMLCanvasElement;
+    const creditsModal = document.getElementById('credits-modal');
+    if (!canvas || !creditsModal || creditsModal.classList.contains('hidden')) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    if (!creditsParticlesInitialized) {
+        creditsParticlesInitialized = true;
+        
+        // Ajustar tamaño del canvas
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+    }
+    
+    // Configuración de partículas
+    interface Particle {
+        x: number;
+        y: number;
+        vx: number;
+        vy: number;
+        size: number;
+        color: string;
+        life: number;
+        maxLife: number;
+    }
+    
+    const particles: Particle[] = [];
+    const colors = [
+        '#ff6b6b', '#ffd93d', '#6bcf7f', '#4ecdc4',
+        '#45b7d1', '#96ceb4', '#ffeaa7', '#d4a574',
+        '#ff6b9d', '#a29bfe', '#fd79a8', '#fdcb6e'
+    ];
+    
+    // Crear partículas iniciales
+    const createParticle = (): Particle => {
+        const side = Math.floor(Math.random() * 4);
+        let x, y;
+        
+        switch (side) {
+            case 0: // Top
+                x = Math.random() * canvas.width;
+                y = -10;
+                break;
+            case 1: // Right
+                x = canvas.width + 10;
+                y = Math.random() * canvas.height;
+                break;
+            case 2: // Bottom
+                x = Math.random() * canvas.width;
+                y = canvas.height + 10;
+                break;
+            default: // Left
+                x = -10;
+                y = Math.random() * canvas.height;
+                break;
+        }
+        
+        const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
+        const speed = 0.5 + Math.random() * 1.5;
+        
+        return {
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: 2 + Math.random() * 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 0,
+            maxLife: 200 + Math.random() * 300
+        };
+    };
+    
+    // Inicializar partículas
+    for (let i = 0; i < 50; i++) {
+        particles.push(createParticle());
+    }
+    
+    // Función de animación
+    const animate = () => {
+        if (creditsModal?.classList.contains('hidden')) {
+            return;
+        }
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Actualizar y dibujar partículas
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            
+            // Actualizar posición
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life++;
+            
+            // Atracción hacia el centro con fuerza variable
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const dx = centerX - p.x;
+            const dy = centerY - p.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                const force = 0.02;
+                p.vx += (dx / distance) * force;
+                p.vy += (dy / distance) * force;
+            }
+            
+            // Limitar velocidad
+            const maxSpeed = 3;
+            const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+            if (speed > maxSpeed) {
+                p.vx = (p.vx / speed) * maxSpeed;
+                p.vy = (p.vy / speed) * maxSpeed;
+            }
+            
+            // Actualizar opacidad basada en vida
+            const alpha = Math.min(1, (p.maxLife - p.life) / 100);
+            
+            // Dibujar partícula con glow
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = p.color;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Glow adicional
+            ctx.shadowBlur = 20;
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // Remover partícula si está muerta o muy lejos
+            if (p.life > p.maxLife || 
+                p.x < -50 || p.x > canvas.width + 50 ||
+                p.y < -50 || p.y > canvas.height + 50) {
+                particles[i] = createParticle();
+            }
+        }
+        
+        // Agregar nuevas partículas ocasionalmente
+        if (particles.length < 80 && Math.random() < 0.1) {
+            particles.push(createParticle());
+        }
+        
+        creditsParticlesAnimation = requestAnimationFrame(animate);
+    };
+    
+    animate();
 };
 
 const setupMenuButtons = (store: GameStore) => {
@@ -2181,7 +2740,7 @@ const setupMenuButtons = (store: GameStore) => {
     const updateEditorButton = () => {
         const { isLoggedIn } = checkLoginStatus();
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'Editor' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? 'HERRAMIENTAS' : 'Ingresar';
         }
     };
 
@@ -2205,13 +2764,11 @@ const setupMenuButtons = (store: GameStore) => {
         
         // Actualizar panel mobile
         const userAreaMobile = document.getElementById('user-area-mobile');
-        const usernameDisplayMobile = document.getElementById('username-display-mobile');
         const userPanelNickname = document.getElementById('user-panel-nickname');
         const userPanelAvatar = document.getElementById('user-panel-avatar');
         
-        if (userAreaMobile && usernameDisplayMobile) {
+        if (userAreaMobile) {
             if (isLoggedIn && displayName) {
-                usernameDisplayMobile.textContent = displayName;
                 userAreaMobile.style.display = 'block';
                 // Actualizar nickname del panel
                 if (userPanelNickname) {
@@ -2271,12 +2828,150 @@ const setupMenuButtons = (store: GameStore) => {
         ni.open('signup');
     });
 
-    // Créditos
+    // Variables para MIDI.js
+    let midiPluginLoaded = false;
+    let midiIsPlaying = false;
+    let midiLoopInterval: number | null = null;
+    
+    // Función para inicializar MIDI.js si aún no está cargado
+    const initMIDI = (callback: () => void) => {
+        const MIDI = (window as any).MIDI;
+        if (!MIDI) {
+            console.warn('MIDI.js no está disponible. Asegúrate de que el script esté cargado.');
+            return;
+        }
+        
+        if (midiPluginLoaded) {
+            callback();
+            return;
+        }
+        
+        // Cargar plugin de MIDI.js con soundfonts
+        MIDI.loadPlugin({
+            soundfontUrl: 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/',
+            instrument: 'acoustic_grand_piano',
+            onsuccess: () => {
+                midiPluginLoaded = true;
+                console.log('MIDI.js plugin cargado correctamente');
+                callback();
+            },
+            onerror: (error: any) => {
+                console.error('Error cargando MIDI.js plugin:', error);
+            }
+        });
+    };
+    
+    // Función para reproducir astronomia.mid
+    const playAstronomiaMIDI = () => {
+        const MIDI = (window as any).MIDI;
+        if (!MIDI || !midiPluginLoaded) {
+            console.warn('MIDI.js no está listo');
+            return;
+        }
+        
+        const baseUrl = getNetlifyBaseUrl();
+        const midiPath = `${baseUrl}audio/astronomia.mid`;
+        
+        // Detener cualquier reproducción anterior
+        if (MIDI.Player.playing) {
+            MIDI.Player.stop();
+        }
+        
+        // Limpiar intervalo anterior si existe
+        if (midiLoopInterval !== null) {
+            clearInterval(midiLoopInterval);
+            midiLoopInterval = null;
+        }
+        
+        // Cargar y reproducir el archivo MIDI
+        MIDI.Player.loadFile(midiPath, () => {
+            const audioState = getAudioState();
+            MIDI.setVolume(Math.floor(audioState.musicVolume * 127)); // MIDI.js usa 0-127
+            MIDI.Player.start();
+            midiIsPlaying = true;
+            
+            // Configurar loop (reiniciar cuando termine)
+            midiLoopInterval = window.setInterval(() => {
+                if (!MIDI.Player.playing && midiIsPlaying) {
+                    // Reiniciar si se detuvo pero debería estar sonando
+                    MIDI.Player.loadFile(midiPath, () => {
+                        MIDI.setVolume(Math.floor(audioState.musicVolume * 127));
+                        MIDI.Player.start();
+                    });
+                }
+                if (!midiIsPlaying) {
+                    if (midiLoopInterval !== null) {
+                        clearInterval(midiLoopInterval);
+                        midiLoopInterval = null;
+                    }
+                }
+            }, 1000);
+        });
+    };
+    
+    // Función para detener MIDI
+    const stopMIDI = () => {
+        const MIDI = (window as any).MIDI;
+        if (MIDI && MIDI.Player) {
+            MIDI.Player.stop();
+            midiIsPlaying = false;
+        }
+        if (midiLoopInterval !== null) {
+            clearInterval(midiLoopInterval);
+            midiLoopInterval = null;
+        }
+    };
+    
+    // Créditos - NO iniciar partículas automáticamente
     creditsBtn?.addEventListener('click', () => {
         creditsModal?.classList.remove('hidden');
     });
+    
     creditsCloseBtn?.addEventListener('click', () => {
         creditsModal?.classList.add('hidden');
+        // Detener partículas si están activas
+        if (creditsParticlesAnimation !== null) {
+            cancelAnimationFrame(creditsParticlesAnimation);
+            creditsParticlesAnimation = null;
+        }
+        // Detener música de astronomía MIDI si está sonando
+        stopMIDI();
+        // Reanudar música de fondo si estaba sonando antes
+        const wasPlayingMusic = (window as any).wasPlayingMusicBeforePaolo;
+        if (wasPlayingMusic) {
+            playBackgroundMusic().catch(() => {});
+            (window as any).wasPlayingMusicBeforePaolo = false;
+        }
+    });
+    
+    // Listener para click en "Paolo" - iniciar partículas y música
+    const creditsSpecialText = document.querySelector('.credits-special') as HTMLElement;
+    
+    creditsSpecialText?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        // Solo activar si se clickea en el texto que contiene "Paolo"
+        if (target.textContent?.includes('Paolo') || target.closest('.credits-special')) {
+            // Pausar música de fondo actual si está sonando
+            const audioState = getAudioState();
+            
+            // Verificar si la música estaba sonando antes de pausarla
+            const wasPlaying = isBackgroundMusicPlaying();
+            if (wasPlaying) {
+                pauseBackgroundMusic();
+            }
+            
+            (window as any).wasPlayingMusicBeforePaolo = wasPlaying;
+            
+            // Iniciar partículas
+            setTimeout(() => {
+                initCreditsParticles();
+            }, 50);
+            
+            // Inicializar MIDI.js y reproducir astronomia.mid
+            initMIDI(() => {
+                playAstronomiaMIDI();
+            });
+        }
     });
 
     // Modal autenticación: handlers
@@ -2289,7 +2984,12 @@ const setupMenuButtons = (store: GameStore) => {
     authLoginBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
         if (ni) {
-            ni.open('login');
+            // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
+            closeAuthModal();
+            // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
+            setTimeout(() => {
+                ni.open('login');
+            }, 100);
             // Escuchar cuando se complete el login
             ni.on('login', (user: any) => {
                 if (user && user.email) {
@@ -2298,32 +2998,13 @@ const setupMenuButtons = (store: GameStore) => {
                     localStorage.setItem('username', username);
                     updateEditorButton();
                     updateUserArea();
-                    closeAuthModal();
                     startEditor(store);
                 }
             });
         } else {
             // Login simple para demo (sin Netlify Identity)
-            const username = prompt('Ingresa tu nombre de usuario:');
-            if (username) {
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('username', username);
-                updateEditorButton();
-                updateUserArea();
-                closeAuthModal();
-                startEditor(store);
-            }
-        }
-        closeAuthModal();
-    });
-    authSignupBtn?.addEventListener('click', () => {
-        const ni: any = (window as any).netlifyIdentity;
-        if (ni) {
-            ni.open('signup');
-            // Escuchar cuando se complete el registro
-            ni.on('signup', (user: any) => {
-                if (user && user.email) {
-                    const username = user.email.split('@')[0];
+            showPromptModal(store, 'Ingresa tu nombre de usuario:', '').then(username => {
+                if (username) {
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     updateEditorButton();
@@ -2332,19 +3013,41 @@ const setupMenuButtons = (store: GameStore) => {
                     startEditor(store);
                 }
             });
+        }
+    });
+    authSignupBtn?.addEventListener('click', () => {
+        const ni: any = (window as any).netlifyIdentity;
+        if (ni) {
+            // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
+            closeAuthModal();
+            // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
+            setTimeout(() => {
+                ni.open('signup');
+            }, 100);
+            // Escuchar cuando se complete el registro
+            ni.on('signup', (user: any) => {
+                if (user && user.email) {
+                    const username = user.email.split('@')[0];
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    updateEditorButton();
+                    updateUserArea();
+                    startEditor(store);
+                }
+            });
         } else {
             // Registro simple para demo
-            const username = prompt('Ingresa tu nombre de usuario:');
-            if (username) {
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('username', username);
-                updateEditorButton();
-                updateUserArea();
-                closeAuthModal();
-                startEditor(store);
-            }
+            showPromptModal(store, 'Ingresa tu nombre de usuario:', '').then(username => {
+                if (username) {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    updateEditorButton();
+                    updateUserArea();
+                    closeAuthModal();
+                    startEditor(store);
+                }
+            });
         }
-        closeAuthModal();
     });
 
     // Handler del botón de cerrar sesión
@@ -2458,15 +3161,10 @@ const setupMenuButtons = (store: GameStore) => {
             if (userPanelNickname) {
                 userPanelNickname.textContent = newNickname.toUpperCase();
             }
-            // Actualizar también el nombre de usuario en el panel mobile
-            const usernameDisplayMobile = document.getElementById('username-display-mobile');
-            if (usernameDisplayMobile) {
-                usernameDisplayMobile.textContent = newNickname;
-            }
             // Actualizar área de usuario
             updateUserArea();
             // Aquí podrías guardar en la BD también
-            alert('Nickname guardado exitosamente');
+            showNotification(store, 'Éxito', 'Nickname guardado exitosamente');
         }
         profileModal?.classList.add('hidden');
     });
@@ -2536,6 +3234,11 @@ const setupMenuButtons = (store: GameStore) => {
     // Acciones del menú flotante
     pauseResumeBtn?.addEventListener('click', () => {
         closePauseMenu();
+        // Si está pausado, reanudar
+        if (store.isPaused) {
+            store.isPaused = false;
+            store.player.isFrozen = false;
+        }
     });
     pauseRestartBtn?.addEventListener('click', () => {
         closePauseMenu();
@@ -2545,10 +3248,11 @@ const setupMenuButtons = (store: GameStore) => {
         closePauseMenu();
         showMenu(store);
     });
-    pauseCreditsBtn?.addEventListener('click', () => {
-        closePauseMenu();
-        creditsModal?.classList.remove('hidden');
-    });
+        pauseCreditsBtn?.addEventListener('click', () => {
+            closePauseMenu();
+            creditsModal?.classList.remove('hidden');
+            // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
+        });
     
     // Botón de configuración en el menú de pausa
     const pauseSettingsBtn = document.getElementById('pause-settings-btn') as HTMLButtonElement | null;
@@ -2609,6 +3313,78 @@ const hideNotification = (store: GameStore) => {
     if (notificationModalEl) {
         notificationModalEl.classList.add('hidden');
     }
+};
+
+/**
+ * Muestra un modal de prompt con input para reemplazar prompt()
+ * @param store - Store del juego
+ * @param message - Mensaje a mostrar
+ * @param defaultValue - Valor por defecto del input
+ * @returns Promise<string | null> - El valor ingresado o null si se cancela
+ */
+export const showPromptModal = (store: GameStore, message: string, defaultValue: string = ''): Promise<string | null> => {
+    return new Promise((resolve) => {
+        const promptModal = document.getElementById('prompt-modal');
+        const promptTitle = document.getElementById('prompt-title');
+        const promptMessage = document.getElementById('prompt-message');
+        const promptInput = document.getElementById('prompt-input') as HTMLInputElement | null;
+        const promptOkBtn = document.getElementById('prompt-ok-btn');
+        const promptCancelBtn = document.getElementById('prompt-cancel-btn');
+
+        if (!promptModal || !promptInput || !promptOkBtn || !promptCancelBtn) {
+            resolve(null);
+            return;
+        }
+
+        if (promptMessage) {
+            promptMessage.textContent = message;
+        }
+        
+        promptInput.value = defaultValue;
+        
+        const cleanup = () => {
+            promptModal.classList.add('hidden');
+            promptInput.value = '';
+            promptOkBtn.removeEventListener('click', handleOk);
+            promptCancelBtn.removeEventListener('click', handleCancel);
+            promptInput.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keydown', handleEscape);
+        };
+
+        const handleOk = () => {
+            const value = promptInput.value.trim();
+            cleanup();
+            resolve(value || null);
+        };
+
+        const handleCancel = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleOk();
+            }
+        };
+
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                handleCancel();
+            }
+        };
+
+        promptOkBtn.addEventListener('click', handleOk);
+        promptCancelBtn.addEventListener('click', handleCancel);
+        promptInput.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleEscape);
+
+        promptModal.classList.remove('hidden');
+        promptInput.focus();
+        promptInput.select();
+    });
 };
 
 /**
@@ -2715,10 +3491,10 @@ const shareLevelToGallery = async (store: GameStore) => {
         const screenshot = generateLevelScreenshotForShare(cleanedLevel);
         
         // Preguntar por nombre y descripción
-        const name = prompt('Nombre del nivel (aparecerá en la galería):', `Mi Nivel ${index + 1}`);
+        const name = await showPromptModal(store, 'Nombre del nivel (aparecerá en la galería):', `Mi Nivel ${index + 1}`);
         if (!name) return;
         
-        const description = prompt('Descripción opcional del nivel:', '');
+        const description = await showPromptModal(store, 'Descripción opcional del nivel:', '');
         
         const res = await fetch(`${baseUrl}/.netlify/functions/gallery`, {
             method: 'POST',
@@ -2869,9 +3645,11 @@ const setupLevelData = (store: GameStore) => {
             const levelRows = store.editorLevel.length;
             const levelWidth = levelCols * TILE_SIZE;
             const levelHeight = levelRows * TILE_SIZE;
-            const desiredX = playerCol * TILE_SIZE - (canvas?.width ?? 0) / 2;
+            // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+            const canvasInternalWidth = 1440; // 20 tiles * 72px
+            const desiredX = playerCol * TILE_SIZE - canvasInternalWidth / 2;
             const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
-            const maxCamX = Math.max(0, levelWidth - canvas.width);
+            const maxCamX = Math.max(0, levelWidth - canvasInternalWidth);
             const maxCamY = Math.max(0, levelHeight - canvas.height);
             store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
             store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
@@ -2894,7 +3672,7 @@ const setupLevelData = (store: GameStore) => {
         if (!canvas) return;
         
         // Calcular dimensiones del nivel basado en el canvas
-        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1440 / 72 = 20 tiles
+        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1600 / 72 = ~22 tiles
         const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
         
         // Patrón por defecto especificado por el usuario
@@ -2947,8 +3725,10 @@ const setupLevelData = (store: GameStore) => {
         const playerCol = Math.floor(levelWidth / 2);
         const playerRow = Math.floor(levelHeight / 2);
         const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
+        // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+        const canvasInternalWidth = 1440; // 20 tiles * 72px
         const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
-        const maxCamX = Math.max(0, levelWidth * TILE_SIZE - canvas.width);
+        const maxCamX = Math.max(0, levelWidth * TILE_SIZE - canvasInternalWidth);
         const maxCamY = Math.max(0, levelHeight * TILE_SIZE - canvas.height);
         store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
         store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
@@ -2966,7 +3746,7 @@ const setupLevelData = (store: GameStore) => {
         
         // Calcular dimensiones del nivel basado en el canvas
         // Usar exactamente el ancho del canvas para evitar columnas vacías
-        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1440 / 72 = 20 tiles
+        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1600 / 72 = ~22 tiles
         const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
         
         // Generar nivel con dificultad basada en el índice

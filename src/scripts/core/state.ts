@@ -92,6 +92,7 @@ export const createInitialStore = (): GameStore => ({
         offscreenCanvas: null,
         offscreenCtx: null,
         renderScale: 1.0,
+        zoomScale: 1.0,
         ui: {
             livesCountEl: null,
             scoreCountEl: null,

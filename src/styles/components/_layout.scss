@@ -1,14 +1,28 @@
 #main-container {
     width: 100%;
-    max-width: 1440px;
-    margin: 0 auto;
+    max-width: none; /* Sin límite de ancho para que el canvas pueda ocupar todo el espacio */
+    margin: 0;
     padding: 0;
 }
 
+/* ========================================
+   #gameCanvas - Definición Base
+   ========================================
+   Esta es la definición principal del canvas.
+   El canvas tiene dimensiones internas de 1440px (20 tiles * 72px),
+   pero se muestra visualmente a 1600px de ancho para mejor uso del espacio.
+   Las variaciones para desktop, mobile y editor
+   están en sus respectivos archivos de componentes.
+*/
 #gameCanvas {
-    width: 100%;
-    max-width: 1440px;
-    height: 100vh;
-    margin: 0 auto;
     display: block;
+    width: 1600px; /* Escalado visualmente a 1600px (20 tiles internamente, pero más grandes visualmente) */
+    max-width: 100vw; /* Si el viewport es más pequeño, ajustar */
+    height: 100vh !important; /* Alto exacto del viewport */
+    max-height: 100vh !important; /* Asegurar que no exceda el viewport */
+    margin: 0 auto; /* Centrado por el canvas-wrapper que usa flexbox */
+    background-color: #000;
+    image-rendering: pixelated;
+    /* El canvas internamente tiene 1440px (20 tiles), pero visualmente se muestra a 1600px */
+    /* El alto siempre será 100vh para ocupar todo el viewport vertical */
 }

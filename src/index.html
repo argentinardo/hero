@@ -22,9 +22,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- NES.css para estilos retro -->
+    <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+    <!-- MIDI.js para reproducir archivos MIDI -->
+    <script src="https://cdn.jsdelivr.net/npm/midi.js@0.3.0/midi.js"></script>
         <!-- Netlify Identity Widget -->
         <script>
-            // Configurar URL fija ANTES de cargar el widget para evitar que pida URL al usuario
+            // Configurar URL fija ANTES de cargar el widget para evitar que pida URL al user
             window.IDENTITY_URL = 'https://newhero.netlify.app/.netlify/identity';
             // También guardar en localStorage como respaldo
             localStorage.setItem('netlify-identity-url', 'https://newhero.netlify.app/.netlify/identity');
@@ -60,7 +64,7 @@
                 }
                 
                 try { 
-                    // Inicializar con la URL fija y configurar para que no pida URL al usuario
+                    // Inicializar con la URL fija y configurar para que no pida URL al user
                     ni.init({ 
                         APIUrl: apiUrl,
                         locale: 'es' // Configurar idioma español si está disponible
@@ -149,21 +153,30 @@
                     <button id="hamburger-btn" class="hamburger-btn" aria-label="Menú">
                     </button>
                 </div>
-                <div id="credit-bar" class="text-xs">
-                    <span style="opacity: 0.85;">developed by <a href="https://www.damiannardini.com" target="_blank" rel="noopener" style="text-decoration: underline;">argentinardo</a></span>
-                </div>
-                <!-- Menú Hamburguesa Desplegable -->
+
+                <!-- Menú Hamburguesa Desplegable (ya no se usa, el hamburger abre pause-menu-modal) -->
                 <div id="hamburger-menu" class="hamburger-menu hidden">
-                    <button id="pause-resume-btn" class="menu-item">Pausar</button>
-                    <button id="restart-game-btn" class="menu-item">Reiniciar</button>
-                    <button id="settings-btn" class="menu-item">Configuración</button>
-                    <button id="credits-btn-hamburger" class="menu-item">Créditos</button>
-                    <button id="back-to-menu-btn-game" class="menu-item">Volver al Menú</button>
-                    <button id="resume-editor-btn-menu" class="menu-item hidden">Volver al Editor</button>
+                    <button id="hamburger-pause-resume-btn" class="nes-btn is-success menu-item w-full">Pausar</button>
+                    <button id="hamburger-restart-game-btn" class="nes-btn is-warning menu-item w-full">Reiniciar</button>
+                    <button id="hamburger-back-to-menu-btn-game" class="nes-btn is-error menu-item w-full">Menú Inicial</button>
+                    <button id="hamburger-resume-editor-btn-menu" class="nes-btn is-primary menu-item w-full hidden">Volver a TOOLS</button>
+                    <button id="hamburger-settings-btn" class="nes-btn is-primary menu-item w-full">Configuración</button>
+                    <button id="hamburger-credits-btn" class="nes-btn menu-item w-full">Créditos</button>
                 </div>
-                
+                        <!-- Botón Toggle del Panel de Usuario (siempre visible cuando el editor está activo) -->
+        <button id="user-panel-toggle" aria-label="Toggle User Panel" class="hidden fixed left-0 text-white cursor-pointer flex items-center justify-start gap-2" style="top: 50%; transform: translateY(-50%); padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-right: none; border-radius: 0 8px 8px 0; z-index: 310; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
+            <span class="toggle-icon" style="font-size: 1.2rem;">&gt;</span>
+            <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">USUARIO</span>
+        </button>
                 <!-- Canvas del Juego / Editor -->
-                <canvas id="gameCanvas" width="1440" height="900"></canvas>
+                <canvas id="gameCanvas" width="1440" height="1000"></canvas>
+                        <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
+        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2" style="top: 50%; transform: translateY(-50%); padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 310; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
+            <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">HERRAMIENTAS</span>
+            <span class="toggle-icon" style="font-size: 1.2rem;">&lt;</span>
+        </button>
+        
+
                 
                 <!-- Contador de FPS (para debugging de rendimiento) -->
                 <div id="fps-counter" style="position: fixed; top: 70px; right: 10px; background: rgba(0, 0, 0, 0.7); color: #00ff00; padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; z-index: 1000; pointer-events: none; display: none;">
@@ -189,62 +202,57 @@
                 </div>
             </div>
 
-        <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
-        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 top-0  text-white cursor-pointer flex items-center justify-center" style="width: 36px; height: 60px; font-size: 1.2rem; border-left: none; border-radius: 0 8px 8px 0; z-index: 210;">
-            <span></span>
-        </button>
-        
-        <!-- Botón Toggle del Panel de Usuario (siempre visible cuando el editor está activo) -->
-        <button id="user-panel-toggle" aria-label="Toggle User Panel" class="hidden fixed left-0 top-0  text-white cursor-pointer flex items-center justify-center" style="width: 36px; height: 60px; font-size: 1.2rem; border-right: none; border-radius: 8px 0 0 8px; z-index: 210;">
-            <span>&gt;</span>
-        </button>
 
-        <!-- Panel de Usuario para Mobile (izquierda del canvas) -->
+
+        <!-- Panel de user para Mobile (izquierda del canvas) -->
         <div id="user-panel" class="user-panel flex-col gap-2 w-64 hidden bg-gray-800">
-            <h2 id="user-panel-title" class="text-center text-lg mb-2 flex items-center justify-center gap-2" style="font-family: 'Press Start 2P', monospace;">
-                <canvas id="user-panel-avatar" width="40" height="40" class="avatar-canvas"></canvas>
-                <span id="user-panel-nickname">USUARIO</span>
+            <h2 id="user-panel-title" class="text-center text-lg mb-2 flex items-center justify-center gap-2 cursor-pointer" style="font-family: 'Press Start 2P', monospace;">
+                <canvas id="user-panel-avatar" width="40" height="40" class="avatar-canvas cursor-pointer"></canvas>
+                <span id="user-panel-nickname" class="cursor-pointer">user</span>
+                <span class="toggle-icon-title" style="font-size: 1.2rem; display: none;"></span>
             </h2>
             
-            <!-- Área de usuario (duplicada del editor para mobile) -->
-            <div id="user-area-mobile" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
-                <button id="user-profile-btn-mobile" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs mb-2">👤 Mi Área</button>
-                <p id="user-greeting-mobile" class="text-xs mb-2"><span id="username-display-mobile">Usuario</span></p>
-                <button id="logout-btn-mobile" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs">Cerrar sesión</button>
-            </div>
+                <!-- Área de user (duplicada del editor para mobile) -->
+                <div id="user-area-mobile" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
+                    <button id="user-profile-btn-mobile" class="nes-btn is-primary w-full text-xs mb-2">👤 Mi Área</button>
+                    <button id="logout-btn-mobile" class="nes-btn is-error w-full text-xs">Cerrar sesión</button>
+                </div>
             
             <!-- Botón Jugar Nivel -->
-            <button id="play-test-btn-mobile" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
+            <button id="play-test-btn-mobile" class="nes-btn is-success w-full mb-4 text-xs">Jugar Nivel</button>
             
             <!-- Sección Niveles (completa) -->
             <div class="mt-4 border-t-2 border-gray-500 pt-4">
                 <h3 class="text-center text-sm mb-3" style="font-family: 'Press Start 2P', monospace;">NIVELES</h3>
                 <div id="levels-section-mobile-content" class="mt-2">
                     <select id="level-selector-mobile" class="w-full bg-gray-700 border-2 border-white p-1 text-sm mb-2"></select>
-                    <button id="add-level-btn-mobile" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white text-xs">➕ Nuevo Nivel</button>
-                    <button id="generate-level-btn-mobile" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white text-xs">Generar Nivel</button>
-                    <button id="save-all-btn-mobile" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar en Archivo</button>
-                    <button id="share-level-btn-mobile" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white mt-2 text-xs">📤 Compartir Nivel</button>
+                    <button id="add-level-btn-mobile" class="nes-btn is-primary w-full text-xs">Nuevo Nivel</button>
+                    <button id="generate-level-btn-mobile" class="nes-btn is-success w-full text-xs">Generar Nivel</button>
+                    <button id="save-all-btn-mobile" class="nes-btn is-error w-full mt-2 text-xs">Guardar Nivel</button>
+                    <button id="share-level-btn-mobile" class="nes-btn is-primary w-full mt-2 text-xs">Compartir Nivel</button>
                 </div>
             </div>
             
             <!-- Botón Volver al Menú -->
-            <button id="back-to-menu-btn-mobile" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>
+            <button id="back-to-menu-btn-mobile" class="nes-btn w-full mt-4 text-xs">Menú Inicial</button>
         </div>
 
         <!-- Panel del Editor (drawer derecho) -->
         <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden bg-gray-800">
-                <h2 class="text-center text-lg mb-2" style="font-family: 'Press Start 2P', monospace;">EDITOR</h2>
+                <h2 id="editor-panel-title" class="text-center text-lg mb-2 cursor-pointer" style="font-family: 'Press Start 2P', monospace;">
+                    <span class="toggle-icon-title" style="font-size: 1.2rem; display: none;">&gt;</span>
+                    <span>TOOLS</span>
+                </h2>
                 
-                <!-- Área de usuario (oculta en mobile, visible en desktop) -->
+                <!-- Área de user (oculta en mobile, visible en desktop) -->
                 <div id="user-area" class="user-area-desktop mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
-                    <button id="user-profile-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs mb-2">👤 Mi Área</button>
-                    <p id="user-greeting" class="text-xs mb-2"><span id="username-display">Usuario</span></p>
-                    <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs">Cerrar sesión</button>
+                    <button id="user-profile-btn" class="nes-btn is-primary w-full text-xs mb-2">Mi Área</button>
+                    <p id="user-greeting" class="text-xs mb-2"><span id="username-display">user</span></p>
+                    <button id="logout-btn" class="nes-btn is-error w-full text-xs">Cerrar sesión</button>
                 </div>
                 
                 <!-- Botón Jugar Nivel (oculto en mobile) -->
-                <button id="play-test-btn" class="play-test-desktop w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white mb-4 text-xs">Jugar Nivel</button>
+                <button id="play-test-btn" class="play-test-desktop nes-btn is-success w-full mb-4 text-xs">Probar Nivel</button>
                 
                 <div id="tile-palette" class="flex flex-col gap-4">
                     <!-- Tiles se agregarán dinámicamente aquí -->
@@ -258,12 +266,12 @@
                     </button>
                     <div id="edit-section-content" class="mt-2">
                         <div class="grid grid-cols-2 gap-2">
-                            <button id="undo-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white text-xs">↶ Deshacer</button>
-                            <button id="redo-btn" class="w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white text-xs">↷ Rehacer</button>
+                            <button id="undo-btn" class="nes-btn w-full text-xs">Deshacer</button>
+                            <button id="redo-btn" class="nes-btn w-full text-xs">Rehacer</button>
                         </div>
                         <div class="mt-2">
-                            <button id="duplicate-row-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">📋 Duplicar Fila</button>
-                            <button id="delete-row-btn" class="w-full bg-red-600 hover:bg-red-700 p-2 border-2 border-white text-xs mt-1">🗑️ Borrar Fila</button>
+                            <button id="duplicate-row-btn" class="nes-btn is-primary w-full text-xs">Duplicar Fila</button>
+                            <button id="delete-row-btn" class="nes-btn is-error w-full text-xs mt-1">Borrar Fila</button>
                         </div>
                     </div>
                 </div>
@@ -276,77 +284,90 @@
                     </button>
                     <div id="levels-section-content" class="mt-2">
                         <select id="level-selector" class="w-full bg-gray-700 border-2 border-white p-1 text-sm mb-2"></select>
-                        <button id="add-level-btn" class="w-full bg-purple-600 hover:bg-purple-700 p-2 border-2 border-white text-xs">➕ Nuevo Nivel</button>
-                        <button id="generate-level-btn" class="w-full bg-green-600 hover:bg-green-700 p-2 border-2 border-white text-xs">Generar Nivel</button>
-                        <button id="save-all-btn" class="w-full bg-red-700 hover:bg-red-800 p-2 border-2 border-white mt-2 text-xs">Guardar en Archivo</button>
-                        <button id="share-level-btn" class="w-full bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white mt-2 text-xs">📤 Compartir Nivel</button>
+                        <button id="add-level-btn" class="nes-btn is-primary w-full text-xs">➕ Nuevo Nivel</button>
+                        <button id="generate-level-btn" class="nes-btn is-success w-full text-xs">Generar Nivel</button>
+                        <button id="save-all-btn" class="nes-btn is-error w-full mt-2 text-xs">Guardar en Archivo</button>
+                        <button id="share-level-btn" class="nes-btn is-primary w-full mt-2 text-xs">📤 Compartir Nivel</button>
                     </div>
                 </div>
                 
                 <!-- Botón Volver al Menú (oculto en mobile) -->
-                <button id="back-to-menu-btn" class="back-to-menu-desktop w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-white mt-4 text-xs">Volver al Menú</button>
+                <button id="back-to-menu-btn" class="back-to-menu-desktop nes-btn w-full mt-4 text-xs">Volver al Menú</button>
             </div>
         </div>
 
         <!-- Modal de Confirmación -->
         <div id="confirmation-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-20">
-            <div class="bg-gray-800 p-8 border-4 border-white">
-                <h2 id="modal-title" class="text-2xl mb-6">¿Estás seguro?</h2>
+            <div class="nes-container with-title is-dark">
+                <p class="title" id="modal-title">¿Estás seguro?</p>
                 <p id="modal-text" class="mb-8">Esto guardará el nivel actual y todos los cambios en el archivo JSON.</p>
                 <div class="flex justify-center gap-4">
-                    <button id="confirm-save-btn" class="bg-green-600 hover:bg-green-700 p-3 w-32 border-2 border-white">Confirmar</button>
-                    <button id="cancel-save-btn" class="bg-gray-600 hover:bg-gray-700 p-3 w-32 border-2 border-white">Cancelar</button>
+                    <button id="confirm-save-btn" class="nes-btn is-success">Confirmar</button>
+                    <button id="cancel-save-btn" class="nes-btn">Cancelar</button>
                 </div>
             </div>
         </div>
 
         <!-- Modal de Confirmación de Salida -->
         <div id="exit-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg">
-                <h2 id="exit-title" class="text-2xl mb-6">Confirmar acción</h2>
+            <div class="nes-container with-title is-dark max-w-lg">
+                <p class="title" id="exit-title">Confirmar acción</p>
                 <p id="exit-text" class="mb-8 text-lg whitespace-pre-line">¿Seguro que deseas continuar?</p>
                 <div class="flex justify-center gap-4">
-                    <button id="exit-confirm-btn" class="bg-red-600 hover:bg-red-700 p-3 w-32 border-2 border-white">Sí</button>
-                    <button id="exit-cancel-btn" class="bg-gray-600 hover:bg-gray-700 p-3 w-32 border-2 border-white">No</button>
+                    <button id="exit-confirm-btn" class="nes-btn is-error">Sí</button>
+                    <button id="exit-cancel-btn" class="nes-btn">No</button>
                 </div>
             </div>
         </div>
 
         <!-- Menú flotante (pausa) -->
-        <div id="pause-menu-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-sm w-80 max-h-[80vh] overflow-y-auto">
-                <h2 class="text-2xl mb-6">Menú</h2>
+        <div id="pause-menu-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-[200]">
+            <div class="nes-container with-title is-dark max-w-sm w-80 max-h-[80vh] overflow-y-auto">
+                <p class="title">Menú</p>
                 <div class="flex flex-col gap-3">
-                    <button id="pause-resume-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Continuar</button>
-                    <button id="pause-restart-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white">Reiniciar</button>
-                    <button id="pause-settings-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Configuración</button>
-                    <button id="pause-mainmenu-btn" class="bg-red-600 hover:bg-red-700 p-3 border-2 border-white">Volver al menú</button>
-                    <button id="pause-credits-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white">Créditos</button>
-                    <button id="pause-cancel-btn" class="bg-gray-700 hover:bg-gray-800 p-3 border-2 border-white">Cerrar</button>
+                    <button id="pause-resume-btn" class="nes-btn is-success">Continuar</button>
+                    <button id="pause-restart-btn" class="nes-btn is-warning">Reiniciar</button>
+                    <button id="pause-mainmenu-btn" class="nes-btn is-error">Menú Inicial</button>
+                    <button id="pause-settings-btn" class="nes-btn is-primary">Configuración</button>
+                    <button id="pause-credits-btn" class="nes-btn">Créditos</button>
+                    <button id="pause-cancel-btn" class="nes-btn">Cerrar</button>
                 </div>
             </div>
         </div>
 
         <!-- Modal de Notificación -->
         <div id="notification-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-30">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg">
-                <h2 id="notification-title" class="text-2xl mb-6">Notificación</h2>
+            <div class="nes-container with-title is-dark max-w-lg">
+                <p class="title" id="notification-title">Notificación</p>
                 <p id="notification-message" class="mb-8 text-lg whitespace-pre-line"></p>
                 <div class="flex justify-center">
-                    <button id="notification-ok-btn" class="bg-blue-600 hover:bg-blue-700 p-3 w-32 border-2 border-white">Aceptar</button>
+                    <button id="notification-ok-btn" class="nes-btn is-primary">Aceptar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Prompt (para reemplazar prompt()) -->
+        <div id="prompt-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-30">
+            <div class="nes-container with-title is-dark max-w-lg">
+                <p class="title" id="prompt-title">Entrada</p>
+                <p id="prompt-message" class="mb-4 text-lg"></p>
+                <input type="text" id="prompt-input" class="nes-input mb-4 w-full" placeholder="Escribe aquí...">
+                <div class="flex justify-center gap-4">
+                    <button id="prompt-cancel-btn" class="nes-btn">Cancelar</button>
+                    <button id="prompt-ok-btn" class="nes-btn is-primary">Aceptar</button>
                 </div>
             </div>
         </div>
 
         <!-- Modal de Autenticación: elegir Entrar o Crear cuenta -->
         <div id="auth-choice-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 10000;">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-sm">
-                <h2 class="text-2xl mb-6">Autenticación</h2>
-                <p class="mb-6 text-sm">Para Editor, inicia sesión o crea una cuenta.</p>
+            <div class="nes-container with-title is-dark max-w-sm">
+                <p class="title">Autenticación</p>
+                <p class="mb-6 text-sm">Para TOOLS, inicia sesión o crea una cuenta.</p>
                 <div class="flex flex-col gap-3">
-                    <button id="auth-login-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Entrar</button>
-                    <button id="auth-signup-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Crear cuenta</button>
-                    <button id="auth-cancel-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white">Cancelar</button>
+                    <button id="auth-login-btn" class="nes-btn is-success">Entrar</button>
+                    <button id="auth-signup-btn" class="nes-btn is-primary">Crear cuenta</button>
+                    <button id="auth-cancel-btn" class="nes-btn">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -360,42 +381,42 @@
             
             <!-- Botón Principal: JUGAR -->
             <div class="mt-6 mb-4">
-                <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 p-5 border-4 border-white text-2xl font-bold shadow-lg hover:shadow-green-500/50 transition-all" style="font-family: 'Press Start 2P', monospace; min-width: 300px;">
+                <button id="start-game-btn" class="nes-btn is-success" style="font-family: 'Press Start 2P', monospace; min-width: 300px; font-size: 1.5rem; padding: 1rem 2rem;">
                 JUGAR
                 </button>
             </div>
             
             <!-- Botones Secundarios -->
             <div class="flex gap-3 flex-wrap justify-center">
-                <button id="gallery-btn" class="bg-purple-600 hover:bg-purple-700 p-3 border-2 border-white shadow-lg hover:shadow-purple-500/50 transition-all" style="font-family: 'Press Start 2P', monospace;">
+                <button id="gallery-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace;">
                 GALERÍA
                 </button>
-                <button id="level-editor-btn" class="bg-indigo-600 hover:bg-indigo-700 p-3 border-2 border-white shadow-lg hover:shadow-indigo-500/50 transition-all" style="font-family: 'Press Start 2P', monospace;">
-                EDITOR
+                <button id="level-editor-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace;">
+                TOOLS
                 </button>
-                <button id="credits-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white shadow-lg hover:shadow-gray-500/50 transition-all" style="font-family: 'Press Start 2P', monospace;">
+                <button id="credits-btn" class="nes-btn" style="font-family: 'Press Start 2P', monospace;">
                 CRÉDITOS
                 </button>
             </div>
             
             <!-- Botón Retry (hidden por defecto) -->
-            <button id="retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-3 border-2 border-white mt-4 hidden">Volver a jugar</button>
+            <button id="retry-btn" class="nes-btn is-warning mt-4 hidden">Volver a jugar</button>
         </div>
 
         <!-- Modal Game Over -->
         <div id="gameover-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center z-50">
-            <div class="bg-gray-900 p-12 border-4 border-red-600 max-w-lg mx-6" style="box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);">
-                <h1 id="gameover-title" class="text-6xl md:text-7xl font-bold mb-6 text-red-600" style="text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4); font-family: 'Press Start 2P', monospace;">
+            <div class="nes-container with-title is-dark max-w-lg mx-6">
+                <h1 id="gameover-title" class="title text-6xl md:text-7xl font-bold mb-6 text-red-600" style="text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4); font-family: 'Press Start 2P', monospace;">
                     GAME OVER
                 </h1>
                 <p id="gameover-score" class="text-xl mb-8 text-white font-bold" style="font-family: 'Press Start 2P', monospace;">
                     Puntuación final: <span id="gameover-score-value" class="text-yellow-400">0</span>
                 </p>
                 <div class="flex flex-col gap-4">
-                    <button id="gameover-retry-btn" class="bg-yellow-600 hover:bg-yellow-700 p-4 border-4 border-white text-lg font-bold" style="font-family: 'Press Start 2P', monospace; min-width: 200px;">
+                    <button id="gameover-retry-btn" class="nes-btn is-warning" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
                         Volver a Intentar
                     </button>
-                    <button id="gameover-menu-btn" class="bg-blue-600 hover:bg-blue-700 p-4 border-4 border-white text-lg font-bold" style="font-family: 'Press Start 2P', monospace; min-width: 200px;">
+                    <button id="gameover-menu-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
                         Menú Principal
                     </button>
                 </div>
@@ -404,23 +425,27 @@
 
         <!-- Modal Créditos -->
         <div id="credits-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg mx-6">
-                <h2 class="text-2xl mb-4" style="font-family: 'Press Start 2P', monospace;">Créditos</h2>
-                <p class="mb-6 text-sm leading-relaxed" style="font-family: 'Press Start 2P', monospace;">
-                    developed by: <strong>argentinardo</strong>
+            <!-- Canvas para partículas animadas -->
+            <canvas id="credits-particles" class="absolute inset-0 w-full h-full" style="z-index: 0;"></canvas>
+            
+            <!-- Contenido del modal -->
+            <div class="nes-container with-title is-dark max-w-lg mx-6 relative" style="z-index: 10;">
+                <p class="title credits-title" style="font-family: 'Press Start 2P', monospace;">Créditos</p>
+                <p class="mb-6 text-sm leading-relaxed credits-text" style="font-family: 'Press Start 2P', monospace;">
+                    developed by: <strong class="credits-name">argentinardo</strong>
                     <br>
-                    <a href="https://www.damiannardini.com" target="_blank" rel="noopener" class="underline text-yellow-400 hover:text-yellow-300">damiannardini.com</a>
+                    <a href="https://www.damiannardini.com" target="_blank" rel="noopener" class="credits-link underline text-yellow-400 hover:text-yellow-300">damiannardini.com</a>
                     <br><br>
-                    con la gran ayuda de mi hijo ❤️Paolo❤️ 
+                    <span class="credits-special">con la gran ayuda de mi hijo ❤️Paolo❤️</span>
                 </p>
-                <button id="credits-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white" style="font-family: 'Press Start 2P', monospace;">Cerrar</button>
+                <button id="credits-close-btn" class="nes-btn is-primary credits-btn" style="font-family: 'Press Start 2P', monospace;">Cerrar</button>
             </div>
         </div>
 
         <!-- Modal de Configuración -->
         <div id="settings-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
-            <div class="bg-gray-800 p-8 border-4 border-white max-w-lg mx-6 max-h-[90vh] overflow-y-auto">
-                <h2 class="text-2xl mb-6">Configuración</h2>
+            <div class="nes-container with-title is-dark max-w-lg mx-6 max-h-[90vh] overflow-y-auto">
+                <p class="title">Configuración</p>
                 
                 <!-- Sección Audio -->
                 <div class="mb-6 text-left">
@@ -505,7 +530,7 @@
                 
                 <!-- Botones -->
                 <div class="flex justify-center gap-4">
-                    <button id="settings-close-btn" class="bg-blue-600 hover:bg-blue-700 p-3 border-2 border-white">Cerrar</button>
+                    <button id="settings-close-btn" class="nes-btn is-primary">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -515,7 +540,7 @@
             <div id="directional-buttons">
                 <div class="button-row">
                     <button id="btn-up-left" class="directional-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg) scale(2.6)">
                             <path d="M12 19V5M5 12l7-7 7 7"/>
                         </svg>
                     </button>
@@ -525,7 +550,7 @@
                         </svg>
                     </button>
                     <button id="btn-up-right" class="directional-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg) scale(2.6)">
                             <path d="M12 19V5M5 12l7-7 7 7"/>
                         </svg>
                     </button>
@@ -554,18 +579,18 @@
 
         <!-- Modal Galería de Niveles -->
         <div id="gallery-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50 overflow-y-auto">
-            <div class="bg-gray-900 p-8 border-4 border-purple-600 max-w-6xl mx-6 my-8" style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto;">
+            <div class="nes-container with-title is-dark max-w-6xl mx-6 my-8" style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto;">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">GALERÍA DE NIVELES</h2>
-                    <button id="gallery-close-btn" class="bg-gray-700 hover:bg-gray-600 p-2 border-2 border-white">✕</button>
+                    <p class="title text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">GALERÍA DE NIVELES</p>
+                    <button id="gallery-close-btn" class="nes-btn">✕</button>
                 </div>
                 
                 <!-- Filtros y ordenamiento -->
                 <div class="mb-6 flex gap-4 items-center flex-wrap">
                     <label class="text-sm">Ordenar por:</label>
-                    <button id="gallery-sort-likes" class="gallery-sort-btn active bg-purple-700 hover:bg-purple-600 px-4 py-2 border border-white">Más Votados</button>
-                    <button id="gallery-sort-newest" class="gallery-sort-btn bg-gray-700 hover:bg-gray-600 px-4 py-2 border border-white">Más Nuevos</button>
-                    <button id="gallery-sort-downloads" class="gallery-sort-btn bg-gray-700 hover:bg-gray-600 px-4 py-2 border border-white">Más Descargados</button>
+                    <button id="gallery-sort-likes" class="nes-btn is-primary">Más Votados</button>
+                    <button id="gallery-sort-newest" class="nes-btn">Más Nuevos</button>
+                    <button id="gallery-sort-downloads" class="nes-btn">Más Descargados</button>
                 </div>
                 
                 <!-- Grid de niveles -->
@@ -578,12 +603,12 @@
             </div>
         </div>
 
-        <!-- Modal Mi Área de Usuario -->
+        <!-- Modal Mi Área de user -->
         <div id="profile-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50">
-            <div class="bg-gray-900 p-8 border-4 border-blue-600 max-w-2xl mx-6" style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
+            <div class="nes-container with-title is-dark max-w-2xl mx-6" style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI ÁREA</h2>
-                    <button id="profile-close-btn" class="bg-gray-700 hover:bg-gray-600 p-2 border-2 border-white">✕</button>
+                    <p class="title text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI ÁREA</p>
+                    <button id="profile-close-btn" class="nes-btn">✕</button>
                 </div>
                 
                 <div class="space-y-4">
@@ -592,7 +617,7 @@
                         <label class="block text-sm mb-2">Avatar:</label>
                         <div class="flex items-center gap-4">
                             <canvas id="profile-avatar-preview" width="80" height="80" class="w-20 h-20 bg-gray-700 border-2 border-white rounded avatar-canvas"></canvas>
-                            <button id="profile-avatar-btn" class="bg-blue-600 hover:bg-blue-700 p-2 border-2 border-white text-xs">Cambiar Avatar</button>
+                            <button id="profile-avatar-btn" class="nes-btn is-primary text-xs">Cambiar Avatar</button>
                         </div>
                     </div>
                     
@@ -610,8 +635,8 @@
                     
                     <!-- Botones -->
                     <div class="flex gap-4 justify-end">
-                        <button id="profile-cancel-btn" class="bg-gray-600 hover:bg-gray-700 p-3 border-2 border-white">Cancelar</button>
-                        <button id="profile-save-btn" class="bg-green-600 hover:bg-green-700 p-3 border-2 border-white">Guardar</button>
+                        <button id="profile-cancel-btn" class="nes-btn">Cancelar</button>
+                        <button id="profile-save-btn" class="nes-btn is-success">Guardar</button>
                     </div>
                 </div>
             </div>

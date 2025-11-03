@@ -38,6 +38,36 @@ declare module '*.ogg' {
     export default value;
 }
 
+declare module '*.mid' {
+    const value: any;
+    export default value;
+}
+
+// Declaraciones para MIDI.js (vía CDN)
+declare global {
+    interface Window {
+        MIDI: {
+            loadPlugin: (options: {
+                soundfontUrl?: string;
+                instrument?: string;
+                onsuccess?: () => void;
+                onerror?: (error: any) => void;
+            }) => void;
+            Player: {
+                loadFile: (file: string, callback: () => void) => void;
+                start: () => void;
+                stop: () => void;
+                pause: () => void;
+                resume: () => void;
+                playing: boolean;
+                currentTime: number;
+            };
+            setVolume: (volume: number) => void;
+            audioBuffers: any;
+        };
+    }
+}
+
 declare module 'nipplejs' {
   export interface JoystickManagerOptions {
     catchforce?: boolean;

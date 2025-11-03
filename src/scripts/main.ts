@@ -42,7 +42,7 @@ store.levelDataStore = expanded.map(level => level.map(row => row.split('')));
  * 
  * IMPLEMENTACIÓN DE CÁMARA:
  * - Deadzone vertical: La cámara se mueve solo cuando el jugador sale de la zona central (1/3 superior/inferior)
- * - Bloques horizontales: La cámara se mueve por bloques de 20 tiles (1440px) para mejor performance
+ * - Bloques horizontales: La cámara se mueve por bloques de tiles basados en el ancho del canvas (1600px) para mejor performance
  * - Límites: La cámara no puede salir de los bordes del nivel
  * 
  * @remarks Esta función modifica directamente store.cameraX y store.cameraY
@@ -77,8 +77,10 @@ const updateCamera = () => {
         store.cameraX = playerBlock * BLOCK_WIDTH_PIXELS;
     }
 
+    // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+    const canvasInternalWidth = 1440; // 20 tiles * 72px
     const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
-    const maxCameraX = Math.max(0, levelCols * TILE_SIZE - canvas.width);
+    const maxCameraX = Math.max(0, levelCols * TILE_SIZE - canvasInternalWidth);
     store.cameraX = Math.max(0, Math.min(store.cameraX, maxCameraX));
 };
 

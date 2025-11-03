@@ -1,6 +1,38 @@
+/* Quitar outline de Chrome en focus para todos los elementos */
+* {
+    outline: none !important;
+}
+
+*:focus {
+    outline: none !important;
+}
+
+*:focus-visible {
+    outline: none !important;
+}
+
+button:focus,
+button:focus-visible,
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+a:focus,
+a:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 /* Contenedor principal con posicionamiento para las barras */
 body {
     background-color: #4a2d23; /* Fondo más apagado/oscuro para el menú */
+}
+
+/* Todos los nes-container deben tener scroll automático en Y */
+.nes-container {
+    overflow-y: auto;
 }
 
 
@@ -16,10 +48,15 @@ body {
 
 /* Contenedor para canvas + barras superpuestas */
 .canvas-wrapper {
-    position: relative;
-    width: min(100vw, calc(100vh * 4 / 3));
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw; /* Ocupar todo el ancho del viewport */
     height: 100vh;
-    margin: 0 auto;
+    margin: 0; /* Sin márgenes */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     /* Fondos laterales: skins específicos izquierda/derecha - solo en mobile cuando está jugando */
     background-image: none;
     background-repeat: no-repeat, no-repeat;
@@ -60,34 +97,25 @@ body {
     }
 }
 
-/* Canvas - siempre 100vh de alto, escalado proporcional */
-#gameCanvas {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-height: 100vh;
-    aspect-ratio: 4 / 3;
-    margin: 0 auto;
-    background-color: #000; /* Fondo negro para las bandas laterales */
-    /* Los efectos de brightness/contrast se aplican dinámicamente via JavaScript */
-}
+/* Canvas base está definido en _layout.scss */
 
 /* Barra superior - superpuesta sobre el canvas */
 #game-ui {
-    position: fixed; /* Fixed para alinearse con el canvas */
+    position: fixed; /* Fixed para centrarse en la pantalla */
     top: 0;
-    left: 0;
-    width: 100%; /* Se ajustará dinámicamente por JavaScript */
+    left: 50%; /* Centrado horizontalmente */
+    transform: translateX(-50%); /* Centrar usando transform */
+    width: 1600px; /* Ancho igual al canvas (1600px visual) */
+    max-width: 100vw; /* Si el viewport es más pequeño, ajustar */
     height: 10vh; /* 10% del alto del viewport */
     background-color: rgba(0, 0, 0, 0.8); /* Fondo más opaco */
     display: flex !important; /* forzar sobre inline style */
     align-items: center;
-    justify-content: center; /* Contenido centrado */
+    justify-content: space-between; /* Contenido distribuido */
     gap: 3rem; /* Espacio entre elementos */
     z-index: 100;
     padding: 0 40px;
     box-sizing: border-box;
-    justify-content: space-between;
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
@@ -213,20 +241,21 @@ body {
 
 /* Barra inferior - superpuesta sobre el canvas */
 #bottom-ui {
-    position: fixed; /* Fixed para alinearse con el canvas */
+    position: fixed; /* Fixed para centrarse con el canvas */
     bottom: 0;
-    left: 0;
-    width: 100%; /* Se ajustará dinámicamente por JavaScript */
+    left: 50%; /* Centrado horizontalmente */
+    transform: translateX(-50%); /* Centrar usando transform */
+    width: 1600px; /* Ancho igual al canvas (1600px visual) - se ajustará dinámicamente por JavaScript */
+    max-width: 100vw; /* Si el viewport es más pequeño, ajustar */
     height: 10vh; /* 10% del alto del viewport */
     background-color: rgba(0, 0, 0, 0.8); /* Fondo más opaco */
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between; /* Contenido distribuido */
     gap: 3rem; /* Espacio uniforme entre elementos */
     z-index: 100;
     padding: 0 40px;
     box-sizing: border-box;
-    justify-content: space-between;
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
@@ -309,7 +338,7 @@ body {
     flex-direction: column;
     background-color: rgba(0, 0, 0, 0.95);
     padding: 10px;
-    z-index: 99;
+    z-index: 300;
     overflow-y: auto;
     overflow-x: hidden;
     border-right: 2px solid rgba(255, 255, 255, 0.3);
@@ -330,7 +359,7 @@ body {
     width: 27%;
     height: 100vh;
     overflow-y: auto;
-    z-index: 200;
+    z-index: 300;
     transform: translateX(0);
     transition: transform 200ms ease-in-out;
     
@@ -366,15 +395,19 @@ body.state-editing {
         height: 100vh;
         margin: 0;
         background-image: none !important;
-        transition: none; /* No necesita transición, el canvas siempre ocupa 100% */
+        transition: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
+    /* Canvas en modo editor - 20 tiles internos escalados a 1600px visuales */
     #gameCanvas {
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
-        max-width: 100%;
-        object-fit: contain;
+        width: 1600px; /* Escalado visualmente a 1600px (20 tiles internamente) */
+        max-width: 100vw; /* Si el viewport es más pequeño, ajustar */
+        height: 100vh !important; /* Alto exacto del viewport */
+        max-height: 100vh !important; /* Asegurar que no exceda el viewport */
+        margin: 0 auto;
     }
     
     /* Mostrar panel de usuario */
@@ -577,6 +610,9 @@ body.state-editing {
             background-color: transparent !important;
         }
     }
+    
+    /* Cuando se está jugando, las barras UI se mantienen centradas */
+    /* No necesitamos reglas específicas ya que el CSS base ya las centra correctamente */
 }
 
 
@@ -655,7 +691,6 @@ body.state-editing {
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); /* Overlay oscuro del 50% */
         z-index: 1;
         pointer-events: none;
     }
@@ -671,7 +706,7 @@ body.state-menu {
         z-index: 0 !important;
     }
     
-    /* Asegurar que el canvas esté detrás del splash */
+    /* Asegurar que el canvas esté detrás del splash en el menú */
     #gameCanvas {
         z-index: -1 !important;
     }
@@ -777,5 +812,313 @@ body.state-menu {
             font-size: 12px;
             padding: 10px 12px;
         }
+    }
+}
+
+/* ========================================
+   PALETA DE COLORES DE MINA PARA BOTONES NES
+   ========================================
+   Sobrescribe los colores brillantes de NES.css con una paleta oscura y terrosa
+   que refleja el ambiente de una mina.
+*/
+
+/* Botón primario - Marrón oscuro/óxido (como herramientas de minero) */
+.nes-btn.is-primary {
+    color: #d4a574 !important; /* Amarillo mostaza apagado */
+    background-color: #5c4a3a !important; /* Marrón oscuro */
+    border-color: #8b7355 !important; /* Marrón medio */
+    box-shadow: 
+        inset -4px -4px #4a3a2d,
+        inset 4px 4px #6e5a4a !important;
+    
+    &:hover,
+    &:focus {
+        color: #e6c594 !important;
+        background-color: #6d5a4a !important;
+        border-color: #9b8365 !important;
+    }
+    
+    &:active {
+        box-shadow: 
+            inset 4px 4px #4a3a2d,
+            inset -4px -4px #6e5a4a !important;
+    }
+}
+
+/* Botón success - Verde oliva apagado (como musgo en rocas) */
+.nes-btn.is-success {
+    color: #9fb896 !important; /* Verde apagado */
+    background-color: #4a5c3a !important; /* Verde oliva oscuro */
+    border-color: #6b7d5a !important; /* Verde oliva medio */
+    box-shadow: 
+        inset -4px -4px #3a4c2d,
+        inset 4px 4px #5a6c4a !important;
+    
+    &:hover,
+    &:focus {
+        color: #afc8a6 !important;
+        background-color: #5a6c4a !important;
+        border-color: #7b8d6a !important;
+    }
+    
+    &:active {
+        box-shadow: 
+            inset 4px 4px #3a4c2d,
+            inset -4px -4px #5a6c4a !important;
+    }
+}
+
+/* Botón warning - Naranja/amarillo oscuro (como luz de lámpara de minero) */
+.nes-btn.is-warning {
+    color: #d4a574 !important; /* Amarillo mostaza */
+    background-color: #6c5a3a !important; /* Marrón anaranjado oscuro */
+    border-color: #8b7355 !important; /* Marrón anaranjado medio */
+    box-shadow: 
+        inset -4px -4px #5a4a2d,
+        inset 4px 4px #7c6a4a !important;
+    
+    &:hover,
+    &:focus {
+        color: #e6b584 !important;
+        background-color: #7c6a4a !important;
+        border-color: #9b8365 !important;
+    }
+    
+    &:active {
+        box-shadow: 
+            inset 4px 4px #5a4a2d,
+            inset -4px -4px #7c6a4a !important;
+    }
+}
+
+/* Botón error - Rojo oscuro/óxido (como metal oxidado o peligro) */
+.nes-btn.is-error {
+    color: #c89696 !important; /* Rojo apagado */
+    background-color: #5c3a3a !important; /* Rojo oscuro */
+    border-color: #7b5555 !important; /* Rojo medio oscuro */
+    box-shadow: 
+        inset -4px -4px #4a2d2d,
+        inset 4px 4px #6c4a4a !important;
+    
+    &:hover,
+    &:focus {
+        color: #d8a6a6 !important;
+        background-color: #6c4a4a !important;
+        border-color: #8b6565 !important;
+    }
+    
+    &:active {
+        box-shadow: 
+            inset 4px 4px #4a2d2d,
+            inset -4px -4px #6c4a4a !important;
+    }
+}
+
+/* Botón normal/default - Gris oscuro (como roca) */
+.nes-btn:not(.is-primary):not(.is-success):not(.is-warning):not(.is-error) {
+    color: #b8b8b8 !important; /* Gris claro apagado */
+    background-color: #4a4a4a !important; /* Gris oscuro */
+    border-color: #6b6b6b !important; /* Gris medio */
+    box-shadow: 
+        inset -4px -4px #3a3a3a,
+        inset 4px 4px #5a5a5a !important;
+    
+    &:hover,
+    &:focus {
+        color: #c8c8c8 !important;
+        background-color: #5a5a5a !important;
+        border-color: #7b7b7b !important;
+    }
+    
+    &:active {
+        box-shadow: 
+            inset 4px 4px #3a3a3a,
+            inset -4px -4px #5a5a5a !important;
+    }
+}
+
+/* Container NES oscuro - mantener el tema de mina */
+.nes-container.is-dark {
+    background-color: #3a2d23 !important; /* Marrón muy oscuro */
+    border-color: #5c4a3a !important; /* Marrón medio */
+    color: #d4c4b4 !important; /* Texto claro apagado */
+    
+    .title {
+        color: #d4a574 !important; /* Título en amarillo mostaza apagado */
+    }
+}
+
+/* ========================================
+   EFECTOS Y ANIMACIONES PARA CRÉDITOS
+   ======================================== */
+
+/* Canvas de partículas */
+#credits-particles {
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.9) 100%);
+}
+
+/* Animaciones para el título de créditos */
+.credits-title {
+    animation: creditsTitlePulse 2s ease-in-out infinite;
+    text-shadow: 
+        0 0 10px rgba(212, 165, 116, 0.8),
+        0 0 20px rgba(212, 165, 116, 0.6),
+        0 0 30px rgba(212, 165, 116, 0.4);
+}
+
+@keyframes creditsTitlePulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.05);
+        filter: brightness(1.3);
+    }
+}
+
+/* Animación de arcoíris para el nombre */
+.credits-name {
+    background: linear-gradient(
+        90deg,
+        #ff6b6b 0%,
+        #ffd93d 16.66%,
+        #6bcf7f 33.33%,
+        #4ecdc4 50%,
+        #45b7d1 66.66%,
+        #96ceb4 83.33%,
+        #ffeaa7 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbowShift 3s linear infinite;
+    display: inline-block;
+}
+
+@keyframes rainbowShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+/* Efecto de brillo para el link */
+.credits-link {
+    position: relative;
+    transition: all 0.3s ease;
+    animation: linkGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes linkGlow {
+    0%, 100% {
+        text-shadow: 
+            0 0 5px rgba(234, 179, 8, 0.5),
+            0 0 10px rgba(234, 179, 8, 0.3);
+    }
+    50% {
+        text-shadow: 
+            0 0 15px rgba(234, 179, 8, 0.8),
+            0 0 25px rgba(234, 179, 8, 0.6),
+            0 0 35px rgba(234, 179, 8, 0.4);
+    }
+}
+
+.credits-link:hover {
+    transform: scale(1.1);
+    filter: brightness(1.5);
+}
+
+/* Efecto especial para el mensaje de Paolo */
+.credits-special {
+    display: inline-block;
+    animation: heartBeat 1.5s ease-in-out infinite;
+    color: #ff6b9d;
+    text-shadow: 
+        0 0 10px rgba(255, 107, 157, 0.8),
+        0 0 20px rgba(255, 107, 157, 0.6);
+}
+
+@keyframes heartBeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    25% {
+        transform: scale(1.1);
+    }
+    50% {
+        transform: scale(1);
+    }
+    75% {
+        transform: scale(1.08);
+    }
+}
+
+/* Efecto de hover para el botón de cerrar */
+.credits-btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.credits-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(212, 165, 116, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.credits-btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.credits-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 
+        0 0 20px rgba(212, 165, 116, 0.6),
+        0 0 40px rgba(212, 165, 116, 0.4);
+}
+
+/* Animación de entrada para el modal */
+#credits-modal:not(.hidden) .nes-container {
+    animation: creditsModalEntrance 0.5s ease-out;
+}
+
+@keyframes creditsModalEntrance {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+        filter: blur(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
+    }
+}
+
+/* Efecto de texto brillante pulsante */
+.credits-text {
+    animation: textShimmer 3s ease-in-out infinite;
+}
+
+@keyframes textShimmer {
+    0%, 100% {
+        opacity: 0.9;
+    }
+    50% {
+        opacity: 1;
+        filter: brightness(1.2);
     }
 }

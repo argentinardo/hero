@@ -1,6 +1,7 @@
 import { GameStore } from '../core/types';
 import { getNetlifyBaseUrl } from '../utils/device';
 import { expandChunkedLevels, chunkifyLevel20x18 } from '../utils/levels';
+import { showNotification, showPromptModal } from './ui';
 
 /**
  * Representa un nivel público en la galería
@@ -343,7 +344,7 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
             const target = e.target as HTMLElement;
             const levelId = target.getAttribute('data-level-id');
             if (levelId) {
-                await toggleLike(levelId);
+                await toggleLike(store, levelId);
             }
         });
     });
@@ -373,16 +374,17 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
  * Alterna el estado de "Me gusta" de un nivel
  * Incrementa o decrementa los likes según si el usuario ya votó antes
  * 
+ * @param {GameStore} store - Store del juego
  * @param {string} levelId - ID del nivel a votar
  * @returns {Promise<void>}
  */
-const toggleLike = async (levelId: string): Promise<void> => {
+const toggleLike = async (store: GameStore, levelId: string): Promise<void> => {
     try {
         const ni: any = (window as any).netlifyIdentity;
         const user = ni?.currentUser?.();
         
         if (!user) {
-            alert('Necesitas iniciar sesión para votar');
+            showNotification(store, 'Acción requerida', 'Necesitas iniciar sesión para votar');
             return;
         }
 
@@ -417,7 +419,7 @@ const toggleLike = async (levelId: string): Promise<void> => {
         
     } catch (error) {
         console.error('Error dando like:', error);
-        alert('Error al votar. Por favor intenta de nuevo.');
+        showNotification(store, 'Error', 'Error al votar. Por favor intenta de nuevo.');
     }
 };
 
@@ -449,7 +451,7 @@ const playLevel = async (store: GameStore, levelId: string): Promise<void> => {
     } else if (level.data.level && Array.isArray(level.data.level)) {
         levelData = level.data.level;
     } else {
-        alert('Formato de nivel no compatible');
+        showNotification(store, 'Error', 'Formato de nivel no compatible');
         return;
     }
 
@@ -483,7 +485,7 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
         const user = ni?.currentUser?.();
         
         if (!user) {
-            alert('Necesitas iniciar sesión para implementar niveles');
+            showNotification(store, 'Acción requerida', 'Necesitas iniciar sesión para implementar niveles');
             return;
         }
 
@@ -506,7 +508,7 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
         } else if (level.data.level && Array.isArray(level.data.level)) {
             levelDataArray = level.data.level;
         } else {
-            alert('Formato de nivel no compatible');
+            showNotification(store, 'Error', 'Formato de nivel no compatible');
             return;
         }
         
@@ -518,8 +520,8 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
             levels: [chunkifyLevel20x18(levelDataArray.map(row => row.join('')))]
         };
 
-        // Preguntar por un nombre personalizado
-        const customName = prompt(`¿Cómo quieres llamar a tu versión de "${level.name}"?`, `${level.name} (mi versión)`);
+        // Preguntar por un nombre personalizado usando modal
+        const customName = await showPromptModal(store, `¿Cómo quieres llamar a tu versión de "${level.name}"?`, `${level.name} (mi versión)`);
         if (!customName) return;
 
         const res = await fetch(`${baseUrl}/.netlify/functions/gallery/${levelId}/implement`, {
@@ -545,7 +547,7 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
 
         const result = await res.json();
         
-        alert('✅ Nivel implementado en tu cuenta. Ahora puedes editarlo en el Editor.');
+        showNotification(store, 'Éxito', '✅ Nivel implementado en tu cuenta. Ahora puedes editarlo en Herramientas.');
         
         // Cerrar la galería y abrir el editor
         document.getElementById('gallery-modal')?.classList.add('hidden');
@@ -556,7 +558,7 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
         
     } catch (error) {
         console.error('Error implementando nivel:', error);
-        alert('Error al implementar nivel. Por favor intenta de nuevo.');
+        showNotification(store, 'Error', 'Error al implementar nivel. Por favor intenta de nuevo.');
     }
 };
 

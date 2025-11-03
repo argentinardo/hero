@@ -139,247 +139,151 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         max-width: 100vw;
     }
 
+    /* Canvas simplificado - 20 tiles ancho x 12 tiles alto en mobile */
     #gameCanvas {
-        width: auto !important;
-        height: 100vh !important;
-        max-height: 100vh;
-        max-width: 100vw;
+        width: 1600px !important; /* 20 tiles visualmente escalados (1440px internos * 1.111) */
+        max-width: 100vw !important;
+        /* Alto para mostrar 12 tiles: 12 * 72 = 864px interno, escalado visualmente */
+        /* Escalado: 1600/1440 = 1.111..., entonces 864 * 1.111 = 960px */
+        height: 960px !important; /* 12 tiles visualmente escalados */
+        max-height: 100vh !important; /* No exceder el viewport */
         margin: 0 auto;
         display: block;
-        object-fit: contain;
-        position: relative;
-        box-shadow: 2px 2px 7px 0px #f29c93a6;
-        
-        &::after {
-            display: block;
-            box-shadow: -1px -1px 2px 5px #000000ab;
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            border-radius: 0;
-        }
-        
-        &::before {
-            content: "";
-            box-shadow: 1px 1px 3px 5px #ffffff73;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            border-radius: 0;
-        }
+        object-fit: unset;
     }
     
-    /* UI Elements - Game UI (Level y Score) */
+    /* UI Elements - Game UI - escalar para que quepan todos los elementos */
     #game-ui {
-        position: fixed !important;
-        top: 0 !important;
-        left: auto !important;
-        width: 56% !important;
-        z-index: var(--mobile-ui-z-index) !important;
-        padding: 6px 12px !important;
-        display: flex !important;
-        flex-direction: row !important;
-        gap: var(--mobile-ui-gap) !important;
-        pointer-events: none !important;
-        background: rgba(0, 0, 0, 0.8) !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        height: 8vh !important;
-        
-        > span:first-child,
-        > span:nth-child(2) {
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
-            font-weight: bold;
-        }
-        
-        #lives, #energy-bar, #bombs, #volume-toggle, button {
-            display: none;
-        }
-            /* Logo del hero en móvil - arriba del bottom-ui */
-    #hero-logo {
-        position: fixed;
-        top: 0;
-        left: 23px;
-        z-index: var(--mobile-ui-z-index);
-        display: block !important;
-        image-rendering: pixelated;
-        -webkit-image-rendering: pixelated;
-        pointer-events: none;
-        width: 34vh;
-        height: auto;
-    }
-    }
-    
+        /* Mantener estilos de desktop, pero escalar proporcionalmente en mobile */
+        left: 50% !important;
+        max-width: 100vw !important;
+        transform-origin: center top;
+        height: 90px; /* 10% del alto del viewport */
 
-    
-    /* UI Elements - Bottom UI (Lives, Power, TNT) */
-    #bottom-ui {
-        position: absolute;
-        top: 18vh;
-        left: -0.5vw;
-                width: auto;
-        z-index: var(--mobile-ui-z-index);
-        padding: 12px;
-        display: flex
-;
-        flex-direction: column;
-        gap: 3px;
-        pointer-events: none;
-        z-index: 20;
-        background-color: rgba(0, 0, 0, 1);
-        border-radius: 8px;
-        border: 2px solid rgba(180, 180, 180, 0.8);
-        align-items: flex-start;
-        transform: scale(0.8);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
-        height: 185px;
         
-        /* ::after - Borde interior superior/izquierdo (resalte) */
-        &::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border-radius: 6px; /* Un poco más pequeño que el contenedor */
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            pointer-events: none;
-            z-index: 1;
+        /* Escalar proporcionalmente - usar calc() directamente sin que SCSS lo evalúe */
+        /* Escalar cuando el viewport es menor a 1600px */
+        min-width: 1600px !important;
+        transform: translateX(-50%) scale(#{'calc(100vw / 1600px)'}) !important;
+        
+        /* Limitar escala máxima a 1 en pantallas grandes */
+        @media (min-width: 1600px) {
+            transform: translateX(-50%) scale(1) !important;
         }
         
-        /* ::before - Borde exterior (sombra/pantalla) */
-        &::before {
-            content: "";
-            position: absolute;
-            top: -3px;
-            left: -3px;
-            right: -3px;
-            bottom: -3px;
-            border-radius: 10px; /* Más grande que el contenedor */
-            box-shadow: 
-                0 2px 8px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            pointer-events: none;
-            z-index: -1;
+        overflow: visible !important;
+        
+        /* Reducir gap y padding para que quepan todos los elementos al escalar */
+        gap: 1rem !important;
+        padding: 0 20px !important;
+        
+        @media (max-width: 800px) {
+            gap: 0.5rem !important;
+            padding: 0 10px !important;
         }
         
-        /* Ocultar todas las etiquetas de texto en mobile */
-        span {
-            display: none !important;
+        @media (max-width: 600px) {
+            gap: 0.25rem !important;
+            padding: 0 5px !important;
         }
         
-        /* Lives y Bombs - estilos compartidos */
-        #lives, #bombs {
-            display: flex;
-            flex-direction: column;
-            gap: var(--mobile-ui-gap);
-            align-items: center;
-            transform: scale(0.8);
+        /* Asegurar que el botón hamburguesa sea visible sin fondo ni sombras (estilo desktop) */
+        .hamburger-btn {
+            display: flex !important;
+            flex-shrink: 0 !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            width: auto !important;
+            height: auto !important;
+            padding: 8px 12px !important;
+            margin-left: 2rem !important;
+            font-size: 20px !important;
             
-            span {
-                display: none !important;
-            }
-            
-            canvas, img {
-                width: var(--mobile-miniature-size) !important;
-                height: var(--mobile-miniature-height) !important;
-            }
-        }
-        
-        /* Contenedores específicos para lives-count y bombs-count */
-        #lives-count, #bombs-count {
-            display: flex;
-            gap: 2px;
-            
-            canvas, img {
-                max-width: 24px !important;
-                width: 24px !important;
-                height: 48px !important;
-            }
-        }
-        .energy-bar-container {
-            width: 156px;
-            position: relative;
             &::after {
-                content: "POWER";
-                position: absolute;
-                color: black;
-                font-size: 10px;
-                font-weight: bold;
-                font-family: 'Press Start 2P', monospace;
-                z-index: 10;
-                text-align: center;
-                line-height: 1;
-                pointer-events: none;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-            }
-        }
-        /* Energy Bar */
-        #energy-bar {
-            position: relative;
-            background: transparent;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            
-            /* Texto POWER centrado sobre la barra */
-
-            
-            span {
                 display: none !important;
+            }
+            
+            &::before {
+                box-shadow: none !important;
+                background-color: transparent !important;
+                position: static !important;
             }
         }
         
-        /* Contenedor de la barra de energía */
-        #bottom-ui .flex.items-center.gap-3:nth-child(2) {
-            width: 100%;
-            justify-content: center;
-            
-            > div:last-child {
-                width: 50% !important;
-                height: var(--mobile-energy-bar-height);
-                @include energy-bar;
-                position: relative;
-                
-                #energy-bar {
-                    width: 100% !important;
-                    height: 100% !important;
-                    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%) !important;
-                    transform-origin: left center !important;
-                    transition: transform 0.3s ease-in-out !important;
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                }
-            }
+        /* Primer div (logo + level) - no debe encogerse */
+        > div:first-child {
+            flex-shrink: 0 !important;
+        }
+        
+        /* Score - debe mantenerse centrado visualmente */
+        /* Usar un wrapper invisible para centrarlo mejor */
+        > span:nth-child(2) {
+            flex: 1 1 0 !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            /* Asegurar que ocupe el espacio del medio */
+            min-width: 0 !important;
+        }
+        
+        /* Botón hamburguesa - no debe encogerse */
+        > button.hamburger-btn {
+            flex-shrink: 0 !important;
         }
     }
     
-    /* UI Elements - Right Panel */
+    /* Logo arriba como en desktop */
+    #hero-logo {
+        /* Los estilos de desktop ya aplican, no necesitamos cambios especiales */
+        display: block !important;
+    }
+    
+
+    
+    /* UI Elements - Bottom UI - escalar para que quepan todos los elementos */
+    #bottom-ui {
+        /* Mantener estilos de desktop, pero escalar proporcionalmente en mobile */
+        left: 50% !important;
+        max-width: 100vw !important;
+        transform-origin: center bottom;
+        
+        /* Escalar proporcionalmente - usar calc() directamente sin que SCSS lo evalúe */
+        /* Escalar cuando el viewport es menor a 1600px */
+        min-width: 1600px !important;
+        transform: translateX(-50%) scale(#{'calc(100vw / 1600px)'}) !important;
+        
+        /* Limitar escala máxima a 1 en pantallas grandes */
+        @media (min-width: 1600px) {
+            transform: translateX(-50%) scale(1) !important;
+        }
+        
+        /* Ajustar altura mínima para evitar que se comprima demasiado */
+        min-height: 60px;
+        
+        /* Reducir padding y gap si es necesario en pantallas pequeñas */
+        @media (max-width: 800px) {
+            padding: 0 20px !important;
+            gap: 1.5rem !important;
+        }
+        
+        /* Ajustar tamaño de fuente si es muy pequeño */
+        @media (max-width: 600px) {
+            font-size: 0.875rem !important;
+            
+            .text-lg {
+                font-size: 0.875rem !important;
+            }
+            
+            /* Reducir aún más padding y gap */
+            padding: 0 10px !important;
+            gap: 1rem !important;
+        }
+    }
+    
+    /* UI Elements - Right Panel - oculto en mobile */
     #right-ui {
-        position: fixed;
-        top: 8%;
-        right: 0.9%;
-        z-index: var(--mobile-ui-z-index);
-        padding: 8px;
-        font-size: 0.4rem;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        border-radius: 8px;
-        pointer-events: auto;
+        display: none !important;
     }
     
     /* Editor Panel */
@@ -499,11 +403,11 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         }
         
         #gameCanvas {
-            width: 100vw;
-            height: 100vh;
-            margin: 0;
-            max-width: 100%;
-            object-fit: contain;
+            width: 1600px; /* Igual que desktop - 20 tiles escalados visualmente */
+            max-width: 100vw; /* Si el viewport es más pequeño, ajustar */
+            height: 100vh !important; /* Alto exacto del viewport */
+            max-height: 100vh !important; /* Asegurar que no exceda el viewport */
+            margin: 0 auto; /* Centrado */
         }
         
         /* Botón toggle del panel de usuario */
@@ -542,7 +446,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     /* Zona de joystick - ocupa toda el área del canvas-wrapper */
     #joystick-zone {
         position: absolute;
-        top: 0;
+        top: 30px;
         left: 0;
         width: 100%;
         height: 100vh;
@@ -560,9 +464,10 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
 
     /* Botones direccionales - lado izquierdo */
     #directional-buttons {
-position: absolute;
+        opacity: 0.5; /* Opacidad como solicitado */
+        position: absolute;
         left: 0;
-        bottom: 2vw;
+        bottom: 3vw;
         /* width: auto; */
         /* min-width: 120px; */
         /* height: auto; */
@@ -599,7 +504,8 @@ position: absolute;
         
         /* Estilos para los iconos SVG - en tonos grises */
         svg {
-            @include svg-icon(20px);
+            width: 30px !important; /* 20px * 1.5 = 30px - forzar con !important */
+            height: 30px !important; /* 20px * 1.5 = 30px - forzar con !important */
             stroke: rgba(220, 220, 220, 0.9); /* Gris claro para los iconos */
             fill: none;
             position: relative;
@@ -612,8 +518,31 @@ position: absolute;
             height: 15vh;
             
             svg {
-                @include svg-icon(24px);
+                width: 60px !important; /* Más grandes para mejor visibilidad en primera fila */
+                height: 60px !important; /* Más grandes para mejor visibilidad en primera fila */
                 stroke: rgba(220, 220, 220, 0.9);
+                fill: none;
+                stroke-width: 2.5 !important; /* Línea más gruesa para mejor visibilidad */
+                transform-origin: center center !important; /* Centro de transformación */
+                transform: scale(2.6);
+            }
+            
+            /* Botones específicos: aplicar AMBAS transformaciones (rotate + scale) */
+            /* El orden importa: primero rotate, luego scale */
+            /* Usar máxima especificidad para sobrescribir estilos inline */
+            .button-row:first-child #btn-up-left svg {
+                transform: rotate(-45deg) !important;
+                transform-origin: center center !important;
+
+            }
+            
+            .button-row:first-child #btn-up svg {
+                transform-origin: center center !important;
+            }
+            
+            .button-row:first-child #btn-up-right svg {
+                transform: rotate(45deg) scale(2.6);
+                transform-origin: center center !important;
             }
             
             &::after {
@@ -633,8 +562,10 @@ position: absolute;
             height: 100%;
             
             svg {
-                @include svg-icon(28px);
+                width: 42px !important; /* 28px * 1.5 = 42px - forzar con !important */
+                height: 42px !important; /* 28px * 1.5 = 42px - forzar con !important */
                 stroke: rgba(220, 220, 220, 0.9);
+                fill: none;
             }
             
             &::after {
@@ -691,18 +622,16 @@ position: absolute;
     /* Área de botones de acción - lado derecho */
     #action-zone {
         position: absolute;
-        right: 1.5%;
+        right: 0;
         top: 60%;
         transform: translateY(-50%);
-        width: auto;
-        min-width: 100px;
+        width: 33vw !important; /* 33% del ancho de la pantalla */
         height: auto;
         pointer-events: auto;
-        display: flex
-;
-        flex-direction: column;
-        gap: 7vh;
-        justify-content: center;
+        display: flex;
+        flex-direction: column; /* Cambiar a fila horizontal */
+        gap: 2vw;
+        justify-content: space-between; /* TNT al inicio, FIRE al final */
         align-items: center;
         padding: 10px;
         z-index: 21;
@@ -710,6 +639,7 @@ position: absolute;
 
     /* Botones de acción - Base común */
     .action-button {
+        opacity: 0.5;
         border-radius: 100%;
         display: inline-block;
         cursor: pointer;
@@ -753,6 +683,19 @@ position: absolute;
             border-radius: 100%;
             pointer-events: none;
         }
+    }
+    
+    /* Ordenar botones: TNT a la izquierda, FIRE a la derecha */
+    #bomb-btn {
+        order: 1; /* TNT al principio (izquierda) */
+        align-self: flex-end;
+        position: relative;
+        top: 11vh;
+    }
+    
+    #shoot-btn {
+        order: 2; /* FIRE al final (derecha) */
+        align-self: flex-start;
     }
     
     /* Botón LÁSER - Bronce/Cobre envejecido (verde/marrón apagado) */

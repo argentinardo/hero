@@ -412,8 +412,11 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     });
 
     resetPlayer(store, playerStartX, playerStartY);
-    store.cameraY = store.player.y - (store.dom.canvas?.height ?? 0) / 2;
-    store.cameraX = store.player.x - (store.dom.canvas?.width ?? 0) / 2;
+    // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+    const canvasInternalWidth = 1440; // 20 tiles * 72px
+    const canvasInternalHeight = store.dom.canvas?.height ?? 0;
+    store.cameraY = store.player.y - canvasInternalHeight / 2;
+    store.cameraX = store.player.x - canvasInternalWidth / 2;
     
     // Rellenar bombas al comenzar el nivel
     store.bombsRemaining = 5;
@@ -591,7 +594,7 @@ export const loadLevel = (store: GameStore) => {
         const { messageOverlay, messageText, messageTitle } = store.dom.ui;
         if (messageOverlay && messageText && messageTitle) {
             messageTitle.textContent = '¡HAS GANADO!';
-            messageText.textContent = `Puntuación final: ${store.score}. Presiona ENTER para volver al menú.`;
+            messageText.textContent = `Puntuación final: ${store.score}. Presiona ENTER para volver al inicio.`;
             messageOverlay.style.display = 'flex';
         }
         return;

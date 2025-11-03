@@ -530,3 +530,11 @@ export const getAudioState = () => {
         sfxVolume: audioSystem.sfxVolume,
     };
 };
+
+// Verificar si la música de fondo está sonando actualmente
+export const isBackgroundMusicPlaying = (): boolean => {
+    return audioSystem.bgMusic !== null && 
+           !audioSystem.bgMusic.paused && 
+           audioSystem.bgMusic.currentTime > 0 &&
+           !audioSystem.isMuted;
+};
