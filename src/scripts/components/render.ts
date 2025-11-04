@@ -245,8 +245,9 @@ const drawWall = (store: GameStore, wall: Wall) => {
         ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
     }
 
-    // Aplicar tint del nivel actual con tres tonos según posición vertical, excepto para lava ('3'), columnas ('C') y columnas de lava ('K')
-    if (wall.tile !== '3' && wall.tile !== 'C' && wall.tile !== 'K') {
+    // Aplicar tint del nivel actual con tres tonos según posición vertical, excepto para lava ('3') y columnas de lava ('K')
+    // Las columnas destructibles ('C') también se tiñen
+    if (wall.tile !== '3' && wall.tile !== 'K') {
         const levelHeight = store.levelDesigns[store.currentLevelIndex]?.length || 22;
         const levelTintColor = getLevelColorByPattern(store.currentLevelIndex, wall.y, levelHeight);
         const prevAlpha = ctx.globalAlpha;

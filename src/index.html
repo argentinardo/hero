@@ -262,7 +262,7 @@
                 <div class="mt-4 border-t-2 border-gray-500 pt-4">
                     <button id="edit-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
                         <span>Edición</span>
-                        <span id="edit-section-arrow">▾</span>
+                        <span id="edit-section-arrow">▼</span>
                     </button>
                     <div id="edit-section-content" class="mt-2">
                         <div class="grid grid-cols-2 gap-2">
@@ -280,7 +280,7 @@
                 <div id="levels-section-desktop" class="levels-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
                     <button id="levels-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
                         <span>Niveles</span>
-                        <span id="levels-section-arrow">▾</span>
+                        <span id="levels-section-arrow">▼</span>
                     </button>
                     <div id="levels-section-content" class="mt-2">
                         <select id="level-selector" class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
@@ -322,7 +322,7 @@
 
         <!-- Menú flotante (pausa) -->
         <div id="pause-menu-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-[200]">
-            <div class="nes-container with-title is-dark max-w-sm w-80 max-h-[80vh] overflow-y-auto">
+            <div class="nes-container with-title is-dark max-w-sm w-80 max-h-[80vh] overflow-y-auto overflow-x-hidden">
                 <p class="title">Menú</p>
                 <div class="flex flex-col gap-3">
                     <button id="pause-resume-btn" class="nes-btn is-success">Continuar</button>
@@ -375,6 +375,22 @@
         <!-- Splash animado -->
         <div id="splash-container"></div>
 
+        <!-- Selector de Idioma (arriba a la derecha) -->
+        <div id="language-selector-container" class="fixed top-4 right-4 z-50" style="z-index: 1000;">
+        <p style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 0.8rem;">LANGUAGE</p>
+            <div class="flex gap-2">
+                <button id="lang-es-btn" class="language-btn nes-btn is-primary active" data-lang="es" title="Español" style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 1.2rem;">
+                    ESP
+                </button>
+                <button id="lang-ca-btn" class="language-btn nes-btn" data-lang="ca" title="Català" style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 1.2rem;">
+                    CAT
+                </button>
+                <button id="lang-en-btn" class="language-btn nes-btn" data-lang="en" title="English" style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 1.2rem;">
+                    ENG
+                </button>
+            </div>
+        </div>
+
         <!-- Pantalla de Mensajes (Inicio) -->
         <div id="message-overlay" class="absolute inset-0 flex flex-col justify-center items-center text-center" style="padding-top: 52vh; background: transparent; z-index: 2;">
             <p id="message-text" class="text-sm opacity-90"></p>
@@ -396,6 +412,16 @@
                 </button>
                 <button id="credits-btn" class="nes-btn" style="font-family: 'Press Start 2P', monospace;">
                 CRÉDITOS
+                </button>
+            </div>
+            
+            <!-- Botones de Instalación -->
+            <div class="mt-4 flex gap-2 flex-wrap justify-center">
+                <button id="install-pwa-btn" class="nes-btn is-success hidden text-xs" style="font-family: 'Press Start 2P', monospace;">
+                    📱 INSTALAR APP
+                </button>
+                <button id="play-store-btn" class="nes-btn is-disabled text-xs opacity-50 cursor-not-allowed" style="font-family: 'Press Start 2P', monospace;">
+                    📲 PLAY STORE (PRÓXIMAMENTE)
                 </button>
             </div>
             
@@ -444,7 +470,7 @@
 
         <!-- Modal de Configuración -->
         <div id="settings-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center z-40">
-            <div class="nes-container with-title is-dark max-w-lg mx-6 max-h-[90vh] overflow-y-auto">
+            <div class="nes-container with-title is-dark max-w-lg mx-6 max-h-[90vh] overflow-y-auto overflow-x-hidden">
                 <p class="title">Configuración</p>
                 
                 <!-- Sección Audio -->
@@ -542,6 +568,19 @@
                     </div>
                 </div>
                 
+                <!-- Sección Idioma -->
+                <div class="mb-6 text-left">
+                    <h3 class="text-xl mb-4 border-b-2 border-gray-600 pb-2" id="settings-language-title">Idioma</h3>
+                    <div class="mb-3">
+                        <label for="language-selector" class="block mb-2 text-sm" id="settings-language-label">Idioma:</label>
+                        <select id="language-selector" class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
+                            <option value="es">Español</option>
+                            <option value="en">English</option>
+                            <option value="ca">Català</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <!-- Botones -->
                 <div class="flex justify-center gap-4">
                     <button id="settings-close-btn" class="nes-btn is-primary">Cerrar</button>
@@ -593,7 +632,7 @@
 
         <!-- Modal Galería de Niveles -->
         <div id="gallery-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50 overflow-y-auto">
-            <div class="nes-container with-title is-dark max-w-6xl mx-6 my-8" style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto;">
+            <div class="nes-container with-title is-dark max-w-6xl mx-6 my-8" style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
                 <div class="flex justify-between items-center mb-6">
                     <p class="title text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">GALERÍA DE NIVELES</p>
                     <button id="gallery-close-btn" class="nes-btn">✕</button>

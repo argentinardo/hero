@@ -7,6 +7,8 @@
  * - Persistencia en localStorage
  */
 
+import { getCurrentLanguage, type Language } from '../utils/i18n';
+
 export interface GameSettings {
     audio: {
         musicVolume: number;      // 0.0 - 1.0
@@ -22,6 +24,7 @@ export interface GameSettings {
         showFps: boolean;          // Mostrar contador de FPS
         mobileFullWidth: boolean;  // En mobile: ocupar todo el ancho ignorando max-width de relación de aspecto
     };
+    language: Language;        // Idioma del juego
 }
 
 /**
@@ -48,6 +51,7 @@ const DEFAULT_SETTINGS: GameSettings = {
         showFps: false, // Por defecto oculto
         mobileFullWidth: false,    // No aplica en desktop
     },
+    language: 'es',
 };
 
 // Configuración por defecto para móvil (todos los efectos activados excepto showFps para mejor rendimiento)
@@ -66,6 +70,7 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
         showFps: false,   // Por defecto oculto en mobile
         mobileFullWidth: false,   // Por defecto respeta relación de aspecto en mobile
     },
+    language: 'es',
 };
 
 const SETTINGS_KEY = 'hero_game_settings';
@@ -94,13 +99,16 @@ export const loadSettings = (): GameSettings => {
                     ...defaults.graphics,
                     ...parsed.graphics,
                 },
+                language: parsed.language || getCurrentLanguage() || defaults.language,
             };
         }
     } catch (error) {
         console.warn('Error cargando configuración:', error);
     }
     // Si no hay configuración guardada, usar defaults según el dispositivo
-    return isMobileDevice() ? { ...DEFAULT_MOBILE_SETTINGS } : { ...DEFAULT_SETTINGS };
+    const defaults = isMobileDevice() ? { ...DEFAULT_MOBILE_SETTINGS } : { ...DEFAULT_SETTINGS };
+    defaults.language = getCurrentLanguage();
+    return defaults;
 };
 
 /**
@@ -122,6 +130,7 @@ export const updateSettings = (updates: Partial<GameSettings>): GameSettings => 
     const updated = {
         audio: { ...current.audio, ...updates.audio },
         graphics: { ...current.graphics, ...updates.graphics },
+        language: updates.language || current.language,
     };
     saveSettings(updated);
     return updated;

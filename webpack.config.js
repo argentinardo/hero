@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 const fs = require('fs');
 const express = require('express');
@@ -50,6 +51,13 @@ module.exports = {
     // Esto evita warnings cuando el plugin no está presente
     new webpack.IgnorePlugin({
       resourceRegExp: /^@capacitor\/status-bar$/,
+    }),
+    // Copiar Service Worker a dist
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'src/sw.js', to: 'sw.js' },
+        { from: 'manifest.json', to: 'manifest.json' }
+      ],
     }),
   ],
   module: {

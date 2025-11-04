@@ -363,7 +363,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         /* Panel de Usuario (izquierda) - Solo visible en mobile */
         #user-panel {
             display: flex !important;
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 23%;
@@ -386,7 +386,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         /* Panel del Editor (derecha) - Solo paleta y TOOLS en mobile */
         #editor-panel {
             display: flex !important;
-            position: absolute;
+            position: fixed;
             top: 0;
             right: 0;
             width: 30%; /* Doble del ancho anterior (15% -> 30%) */

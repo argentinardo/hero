@@ -10,6 +10,13 @@ import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
 import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume, isBackgroundMusicPlaying } from './audio';
 import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings } from '../core/settings';
+import { t, setLanguage, getCurrentLanguage, type Language } from '../utils/i18n';
+
+// Helper para guardar settings con idioma incluido
+const saveSettingsWithLanguage = (settings: any) => {
+    const lang = (settings as any).language || getCurrentLanguage();
+    saveSettings({ ...settings, language: lang } as any);
+};
 import { 
     undo, 
     redo, 
@@ -356,6 +363,10 @@ export const attachDomReferences = (store: GameStore) => {
             const toggleTitle = userPanelToggleBtn.querySelector('.toggle-title');
             const toggleIcon = userPanelToggleBtn.querySelector('.toggle-icon');
             
+            // Verificar si estamos en modo juego desde el editor (preserveLevels)
+            // Si el toggle no está oculto, significa que estamos en modo editor o juego desde editor
+            const isToggleHidden = userPanelToggleBtn.classList.contains('hidden');
+            
             // Si el panel está abierto, ocultar el botón toggle y mostrar icono en el título
             if (!isUserCollapsed) {
                 userPanelToggleBtn.style.display = 'none';
@@ -365,6 +376,14 @@ export const attachDomReferences = (store: GameStore) => {
                 }
             } else {
                 // Si está cerrado, mostrar el botón toggle con icono '>' y texto 'USUARIO'
+                // Si el toggle estaba oculto pero estamos en modo juego desde editor, mostrarlo
+                if (isToggleHidden && store.appState === 'playing') {
+                    // Verificar si hay un botón "Volver al Editor" en el panel (indica que venimos del editor)
+                    const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
+                    if (resumeEditorBtnPanel && resumeEditorBtnPanel.style.display !== 'none') {
+                        userPanelToggleBtn.classList.remove('hidden');
+                    }
+                }
                 userPanelToggleBtn.style.display = 'flex';
                 if (toggleIcon) {
                     toggleIcon.textContent = '>';
@@ -413,6 +432,7 @@ export const attachDomReferences = (store: GameStore) => {
         let touchStartX = 0;
         let touchStartY = 0;
         let isSwipe = false;
+        let hasSwiped = false;
         const threshold = 50; // Mínimo de píxeles para considerar swipe
         
         panel.addEventListener('touchstart', (e: TouchEvent) => {
@@ -420,11 +440,12 @@ export const attachDomReferences = (store: GameStore) => {
                 touchStartX = e.touches[0].clientX;
                 touchStartY = e.touches[0].clientY;
                 isSwipe = false;
+                hasSwiped = false;
             }
         }, { passive: true });
         
         panel.addEventListener('touchmove', (e: TouchEvent) => {
-            if (e.touches.length === 1 && !isSwipe) {
+            if (e.touches.length === 1 && !hasSwiped) {
                 const touchX = e.touches[0].clientX;
                 const touchY = e.touches[0].clientY;
                 const deltaX = touchX - touchStartX;
@@ -433,14 +454,20 @@ export const attachDomReferences = (store: GameStore) => {
                 // Determinar si es un swipe horizontal (más horizontal que vertical)
                 if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
                     isSwipe = true;
-                    // Swipe izquierdo para ocultar panel izquierdo
-                    // Swipe derecho para ocultar panel derecho
+                }
+                
+                // Si es un swipe horizontal y el panel está abierto, cerrarlo
+                if (isSwipe && !panel.classList.contains('collapsed')) {
+                    // Swipe izquierdo para cerrar panel izquierdo
+                    // Swipe derecho para cerrar panel derecho
                     if (isLeft && deltaX < -threshold) {
                         panel.classList.add('collapsed');
                         updatePanelStates();
+                        hasSwiped = true;
                     } else if (!isLeft && deltaX > threshold) {
                         panel.classList.add('collapsed');
                         updatePanelStates();
+                        hasSwiped = true;
                     }
                 }
             }
@@ -450,6 +477,7 @@ export const attachDomReferences = (store: GameStore) => {
             touchStartX = 0;
             touchStartY = 0;
             isSwipe = false;
+            hasSwiped = false;
         }, { passive: true });
     };
     
@@ -500,6 +528,18 @@ export const attachDomReferences = (store: GameStore) => {
     
     // Configurar modal de configuración
     setupSettingsModal(store);
+    
+    // Inicializar idioma y actualizar textos
+    const currentLang = (store.settings as any).language || getCurrentLanguage();
+    if (currentLang) {
+        setLanguage(currentLang);
+    }
+    updateAllTexts(store);
+    
+    // Escuchar cambios de idioma
+    window.addEventListener('languageChanged', () => {
+        updateAllTexts(store);
+    });
     
     // Configurar botón OK del modal de notificación
     const notificationOkBtn = document.getElementById('notification-ok-btn') as HTMLButtonElement | null;
@@ -557,6 +597,15 @@ export const showMenu = (store: GameStore) => {
     store.appState = 'menu';
     store.gameState = 'start';
     setBodyClass('menu');
+    
+    // Mostrar selector de idioma (banderas) cuando esté en el menú
+    const languageSelectorContainer = document.getElementById('language-selector-container');
+    if (languageSelectorContainer) {
+        languageSelectorContainer.style.display = 'block';
+    }
+    
+    // Actualizar textos según idioma actual
+    updateAllTexts(store);
     
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
@@ -618,7 +667,7 @@ export const showMenu = (store: GameStore) => {
         messageTitle.textContent = 'NEW H.E.R.O.';
     }
     if (messageText) {
-        messageText.innerHTML = 'Presiona ENTER o el botón para empezar';
+        messageText.innerHTML = t('messages.pressEnter');
     }
     // Ocultar botón de reintentar en el menú principal
     if (retryBtn) {
@@ -638,7 +687,7 @@ export const showMenu = (store: GameStore) => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'EDITOR' : 'INGRESAR';
+            levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
         }
     };
     updateEditorButton();
@@ -1071,6 +1120,12 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
+    
+    // Ocultar selector de idioma (banderas) cuando esté en juego
+    const languageSelectorContainer = document.getElementById('language-selector-container');
+    if (languageSelectorContainer) {
+        languageSelectorContainer.style.display = 'none';
+    }
     const splashContainer = document.getElementById('splash-container');
     if (splashContainer) {
         splashContainer.style.display = 'none';
@@ -1115,8 +1170,12 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         // Ocultar toggle del editor cuando salimos del editor
         const toggle = document.getElementById('editor-toggle') as HTMLButtonElement | null;
         if (toggle) toggle.classList.add('hidden');
-        const userToggle = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
-        if (userToggle) userToggle.classList.add('hidden');
+        // Solo ocultar el toggle del panel de usuario si NO venimos del editor
+        // Si venimos del editor (preserveLevels), mantenerlo visible para poder abrir el panel
+        if (!preserveLevels) {
+            const userToggle = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+            if (userToggle) userToggle.classList.add('hidden');
+        }
     }
     startJoystick(store);
 
@@ -1143,6 +1202,18 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     if (preserveLevels) {
         const userPanel = document.getElementById('user-panel');
         if (userPanel) {
+            // Mostrar el panel de usuario y el toggle para poder abrirlo/cerrarlo
+            userPanel.style.display = 'flex';
+            const userToggle = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+            if (userToggle) {
+                userToggle.classList.remove('hidden');
+                // Actualizar el texto del toggle para que diga "USUARIO"
+                const toggleTitle = userToggle.querySelector('.toggle-title');
+                if (toggleTitle) {
+                    (toggleTitle as HTMLElement).style.display = 'inline';
+                }
+            }
+            
             // Ocultar todos los elementos excepto el título y el botón de volver al editor
             const userAreaMobile = document.getElementById('user-area-mobile');
             const playTestBtnMobile = document.getElementById('play-test-btn-mobile');
@@ -1159,7 +1230,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
                 resumeEditorBtnPanel = document.createElement('button');
                 resumeEditorBtnPanel.id = 'resume-editor-btn-panel';
                 resumeEditorBtnPanel.className = 'nes-btn is-primary w-full mt-4 text-xs';
-                resumeEditorBtnPanel.textContent = 'Volver al Editor';
+                resumeEditorBtnPanel.textContent = t('editor.backToEditor');
                 userPanel.appendChild(resumeEditorBtnPanel);
                 
                 // Agregar listener
@@ -1232,6 +1303,12 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     
     store.appState = 'editing';
     setBodyClass('editing');
+    
+    // Ocultar selector de idioma (banderas) cuando esté en editor
+    const languageSelectorContainer = document.getElementById('language-selector-container');
+    if (languageSelectorContainer) {
+        languageSelectorContainer.style.display = 'none';
+    }
     const splashContainer = document.getElementById('splash-container');
     if (splashContainer) {
         splashContainer.style.display = 'none';
@@ -1441,7 +1518,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             btn.addEventListener('click', () => {
                 const isHidden = content.style.display === 'none';
                 content.style.display = isHidden ? 'block' : 'none';
-                arrow.textContent = isHidden ? '▾' : '▸';
+                arrow.textContent = isHidden ? '▼' : '▶';
             });
         };
         bindSectionToggle('edit-section-toggle', 'edit-section-arrow', 'edit-section-content');
@@ -1919,44 +1996,49 @@ const populatePalette = (store: GameStore) => {
     // Organizar tiles por categorías
     const categories = [
         {
-            name: 'Personajes',
+            name: t('editor.palette.categories.characters'),
+            nameKey: 'characters',
             tiles: [
-                { key: 'P', name: 'Player' },
-                { key: '9', name: 'Minero' }
+                { key: 'P', nameKey: 'player' },
+                { key: '9', nameKey: 'miner' }
             ]
         },
         {
-            name: 'Terreno',
+            name: t('editor.palette.categories.terrain'),
+            nameKey: 'terrain',
             tiles: [
-                { key: '0', name: 'Vacío' },
-                { key: '1', name: 'Muro' },
-                { key: '2', name: 'agua' }
+                { key: '0', nameKey: 'empty' },
+                { key: '1', nameKey: 'wall' },
+                { key: '2', nameKey: 'water' }
             ]
         },
         {
-            name: 'Elementos',
+            name: t('editor.palette.categories.elements'),
+            nameKey: 'elements',
             tiles: [
-                { key: 'C', name: 'Columna' },
-                { key: 'K', name: 'Col. Lava' },
-                { key: '3', name: 'Lava' },
-                { key: 'L', name: 'Luz' },
-                { key: 'A', name: 'Plataforma' }
+                { key: 'C', nameKey: 'column' },
+                { key: 'K', nameKey: 'lavaColumn' },
+                { key: '3', nameKey: 'lava' },
+                { key: 'L', nameKey: 'light' },
+                { key: 'A', nameKey: 'platform' }
             ]
         },
         {
-            name: 'Paredes Aplastantes',
+            name: t('editor.palette.categories.crushingWalls'),
+            nameKey: 'crushingWalls',
             tiles: [
-                { key: 'H', name: 'Pared ←' },
-                { key: 'J', name: 'Pared →' }
+                { key: 'H', nameKey: 'wallLeft' },
+                { key: 'J', nameKey: 'wallRight' }
             ]
         },
         {
-            name: 'Enemigos',
+            name: t('editor.palette.categories.enemies'),
+            nameKey: 'enemies',
             tiles: [
-                { key: '8', name: 'Bat' },
-                { key: 'S', name: 'Araña' },
-                { key: 'V', name: 'Víbora' },
-                { key: 'T', name: 'Tentáculo' }
+                { key: '8', nameKey: 'bat' },
+                { key: 'S', nameKey: 'spider' },
+                { key: 'V', nameKey: 'snake' },
+                { key: 'T', nameKey: 'tentacle' }
             ]
         }
     ];
@@ -1967,16 +2049,14 @@ const populatePalette = (store: GameStore) => {
         const categorySection = document.createElement('div');
         categorySection.className = 'tile-category';
         
-        // Crear encabezado con flecha
+        // Crear encabezado con flecha (mismo estilo que sección Edición)
         const categoryHeader = document.createElement('button');
         categoryHeader.type = 'button';
-        categoryHeader.className = 'tile-category-header';
-        categoryHeader.style.cssText = 'width:100%; display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:2px solid #fff; background:#1f2937; color:#fff; font-family:"Press Start 2P", monospace; font-size:11px; cursor:pointer;';
+        categoryHeader.className = 'w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700';
         const headerText = document.createElement('span');
         headerText.textContent = category.name;
         const headerArrow = document.createElement('span');
-        headerArrow.textContent = '\u25BE'; // ▾ abierto por defecto
-        headerArrow.style.cssText = 'margin-left:8px;';
+        headerArrow.textContent = '▼'; // Mismo icono que Edición
         categoryHeader.appendChild(headerText);
         categoryHeader.appendChild(headerArrow);
         categorySection.appendChild(categoryHeader);
@@ -1987,10 +2067,11 @@ const populatePalette = (store: GameStore) => {
         tilesGrid.style.cssText = 'display:grid; grid-template-columns:repeat(2,1fr); gap:2px; padding:0px; border:1px solid #444;';
         
         // Agregar tiles
-        category.tiles.forEach(({ key, name }) => {
+        category.tiles.forEach(({ key, nameKey }) => {
             const tileData = TILE_TYPES[key];
             if (tileData) {
-                const tileButton = createTileButton(key, name);
+                const tileName = t(`editor.palette.tiles.${nameKey}`);
+                const tileButton = createTileButton(key, tileName);
                 tilesGrid.appendChild(tileButton);
             }
         });
@@ -1998,7 +2079,7 @@ const populatePalette = (store: GameStore) => {
         categorySection.appendChild(tilesGrid);
         
         // Si es la categoría de Paredes Aplastantes, agregar controles de configuración
-        if (category.name === 'Paredes Aplastantes') {
+        if (category.nameKey === 'crushingWalls') {
             const configSection = document.createElement('div');
             configSection.className = 'crushing-wall-controls';
             configSection.style.cssText = 'padding: 10px; border-top: 1px solid #444; margin-top: 8px;';
@@ -2006,7 +2087,7 @@ const populatePalette = (store: GameStore) => {
             // Control de velocidad
             const speedLabel = document.createElement('label');
             speedLabel.style.cssText = 'display: block; font-size: 11px; margin-bottom: 4px; color: #ccc;';
-            speedLabel.textContent = 'Velocidad:';
+            speedLabel.textContent = `${t('editor.speed')}:`;
             
             const speedContainer = document.createElement('div');
             speedContainer.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 12px;';
@@ -2031,7 +2112,7 @@ const populatePalette = (store: GameStore) => {
             // Control de color
             const colorLabel = document.createElement('label');
             colorLabel.style.cssText = 'display: block; font-size: 11px; margin-bottom: 4px; color: #ccc;';
-            colorLabel.textContent = 'Color:';
+            colorLabel.textContent = `${t('editor.color')}:`;
             
             const colorInput = document.createElement('input');
             colorInput.type = 'color';
@@ -2051,16 +2132,16 @@ const populatePalette = (store: GameStore) => {
                 const isHidden = tilesGrid.style.display === 'none';
                 tilesGrid.style.display = isHidden ? 'grid' : 'none';
                 configSection.style.display = isHidden ? 'block' : 'none';
-                headerArrow.textContent = isHidden ? '\u25BE' : '\u25B8';
+                headerArrow.textContent = isHidden ? '▼' : '▶';
             });
         }
         
         // Para otras categorías, el header toggle solo afecta el grid
-        if (category.name !== 'Paredes Aplastantes') {
+        if (category.nameKey !== 'crushingWalls') {
             categoryHeader.addEventListener('click', () => {
                 const isHidden = tilesGrid.style.display === 'none';
                 tilesGrid.style.display = isHidden ? 'grid' : 'none';
-                headerArrow.textContent = isHidden ? '\u25BE' : '\u25B8';
+                headerArrow.textContent = isHidden ? '▼' : '▶';
             });
         }
         
@@ -2080,7 +2161,7 @@ const syncLevelSelector = (store: GameStore) => {
     for (let i = 0; i < totalLevels; i++) {
         const option = document.createElement('option');
         option.value = `${i}`;
-        option.textContent = `Nivel ${i + 1}`;
+        option.textContent = `${t('editor.levelNumber')} ${i + 1}`;
         levelSelectorEl.appendChild(option);
     }
     
@@ -2125,7 +2206,7 @@ export const setupUI = (store: GameStore) => {
                     // Actualizar botones y área de usuario
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                     if (levelEditorBtn) {
-                        levelEditorBtn.textContent = 'EDITOR';
+                        levelEditorBtn.textContent = t('menu.editor');
                     }
                     // Cargar niveles del usuario después de iniciar sesión
                     await tryLoadUserLevels(store);
@@ -2144,7 +2225,7 @@ export const setupUI = (store: GameStore) => {
                 localStorage.removeItem('username');
                 const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                 if (levelEditorBtn) {
-                    levelEditorBtn.textContent = 'INGRESAR';
+                    levelEditorBtn.textContent = t('menu.login');
                 }
             });
         }
@@ -2302,6 +2383,7 @@ const setupSettingsModal = (store: GameStore) => {
     const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     const mobileFullWidthToggle = document.getElementById('mobile-fullwidth-toggle') as HTMLInputElement | null;
     const mobileFullWidthOption = document.getElementById('mobile-fullwidth-option') as HTMLElement | null;
+    const languageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
     
     // Mostrar/ocultar opción de fullwidth solo en mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -2311,6 +2393,20 @@ const setupSettingsModal = (store: GameStore) => {
     }
     
     if (!settingsModal) return;
+    
+    // Configurar selector de idioma
+    if (languageSelector) {
+        const currentLang = (store.settings as any).language || getCurrentLanguage();
+        languageSelector.value = currentLang;
+        
+        languageSelector.addEventListener('change', (e) => {
+            const newLang = (e.target as HTMLSelectElement).value as Language;
+            setLanguage(newLang);
+            (store.settings as any).language = newLang;
+            saveSettings({ ...store.settings, language: newLang } as any);
+            updateAllTexts(store);
+        });
+    }
     
     // Cerrar modal
     const closeModal = () => {
@@ -2336,7 +2432,7 @@ const setupSettingsModal = (store: GameStore) => {
         const volume = value / 100;
         store.settings.audio.musicVolume = volume;
         setMusicVolume(volume);
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     // Actualizar volumen de efectos
@@ -2349,7 +2445,7 @@ const setupSettingsModal = (store: GameStore) => {
         const volume = value / 100;
         store.settings.audio.sfxVolume = volume;
         setSFXVolume(volume);
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     // Toggle de mute
@@ -2360,7 +2456,7 @@ const setupSettingsModal = (store: GameStore) => {
         // Actualizar estado visual
         if (muteStatus) {
             const audioState = getAudioState();
-            muteStatus.textContent = audioState.isMuted ? 'OFF' : 'ON';
+            muteStatus.textContent = audioState.isMuted ? t('settings.soundOff') : t('settings.soundOn');
         }
     });
     
@@ -2372,7 +2468,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     glowToggle?.addEventListener('change', (e) => {
@@ -2382,7 +2478,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     brightnessToggle?.addEventListener('change', (e) => {
@@ -2392,7 +2488,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     contrastToggle?.addEventListener('change', (e) => {
@@ -2402,7 +2498,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     vignetteToggle?.addEventListener('change', (e) => {
@@ -2412,7 +2508,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     blurToggle?.addEventListener('change', (e) => {
@@ -2426,7 +2522,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     fpsToggle?.addEventListener('change', (e) => {
@@ -2436,7 +2532,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
     
     mobileFullWidthToggle?.addEventListener('change', (e) => {
@@ -2446,7 +2542,7 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettings(store.settings);
+        saveSettingsWithLanguage(store.settings);
     });
 };
 
@@ -2491,7 +2587,7 @@ const updateSettingsUI = (store: GameStore) => {
     // Actualizar toggle de mute
     const audioState = getAudioState();
     if (muteToggle) muteToggle.checked = !audioState.isMuted; // Checked = ON, !checked = OFF
-    if (muteStatus) muteStatus.textContent = audioState.isMuted ? 'OFF' : 'ON';
+    if (muteStatus) muteStatus.textContent = audioState.isMuted ? t('settings.soundOff') : t('settings.soundOn');
     
     // Actualizar toggles de gráficos
     if (scanlineToggle) scanlineToggle.checked = store.settings.graphics.scanline;
@@ -2502,6 +2598,374 @@ const updateSettingsUI = (store: GameStore) => {
     if (blurToggle) blurToggle.checked = store.settings.graphics.blur > 0;
     if (fpsToggle) fpsToggle.checked = store.settings.graphics.showFps;
     if (mobileFullWidthToggle) mobileFullWidthToggle.checked = store.settings.graphics.mobileFullWidth ?? false;
+    
+    // Actualizar selector de idioma
+    const languageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
+    if (languageSelector) {
+        languageSelector.value = (store.settings as any).language || getCurrentLanguage();
+    }
+};
+
+/**
+ * Actualiza todos los textos del juego según el idioma actual
+ */
+const updateAllTexts = (store: GameStore) => {
+    // Menú principal
+    const startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
+    const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
+    const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+    const creditsBtn = document.getElementById('credits-btn') as HTMLButtonElement | null;
+    const retryBtn = document.getElementById('retry-btn') as HTMLButtonElement | null;
+    
+    if (startGameBtn) startGameBtn.textContent = t('menu.play');
+    if (galleryBtn) galleryBtn.textContent = t('menu.gallery');
+    if (levelEditorBtn) {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
+    }
+    if (creditsBtn) creditsBtn.textContent = t('menu.credits');
+    if (retryBtn) retryBtn.textContent = t('game.retry');
+    
+    // Botones de instalación y Play Store
+    const installPwaBtn = document.getElementById('install-pwa-btn') as HTMLButtonElement | null;
+    const playStoreBtn = document.getElementById('play-store-btn') as HTMLButtonElement | null;
+    if (installPwaBtn) installPwaBtn.textContent = `📱 ${t('menu.installPWA')}`;
+    if (playStoreBtn) playStoreBtn.textContent = `📲 ${t('menu.playStore')} (${t('menu.playStoreComingSoon')})`;
+    
+    // Actualizar botones de idioma (banderas) - solo visible en menú
+    const langEsBtn = document.getElementById('lang-es-btn');
+    const langEnBtn = document.getElementById('lang-en-btn');
+    const langCaBtn = document.getElementById('lang-ca-btn');
+    const currentLang = getCurrentLanguage();
+    if (langEsBtn && langEnBtn && langCaBtn) {
+        // Resetear todos los botones
+        [langEsBtn, langEnBtn, langCaBtn].forEach(btn => {
+            btn.classList.remove('is-primary', 'active', 'is-disabled');
+        });
+        
+        // Activar el botón del idioma actual
+        if (currentLang === 'es') {
+            langEsBtn.classList.add('is-primary', 'active');
+            langEnBtn.classList.add('is-disabled');
+            langCaBtn.classList.add('is-disabled');
+        } else if (currentLang === 'en') {
+            langEnBtn.classList.add('is-primary', 'active');
+            langEsBtn.classList.add('is-disabled');
+            langCaBtn.classList.add('is-disabled');
+        } else if (currentLang === 'ca') {
+            langCaBtn.classList.add('is-primary', 'active');
+            langEsBtn.classList.add('is-disabled');
+            langEnBtn.classList.add('is-disabled');
+        }
+    }
+    
+    // Mensajes del juego
+    const messageText = document.getElementById('message-text');
+    if (messageText) messageText.innerHTML = t('messages.pressEnter');
+    
+    // Game Over Modal
+    const gameoverTitle = document.getElementById('gameover-title');
+    const gameoverScore = document.getElementById('gameover-score');
+    const gameoverRetryBtn = document.getElementById('gameover-retry-btn');
+    const gameoverMenuBtn = document.getElementById('gameover-menu-btn');
+    
+    if (gameoverTitle) gameoverTitle.textContent = t('game.gameOver');
+    if (gameoverScore) {
+        const scoreValue = document.getElementById('gameover-score-value')?.textContent || '0';
+        gameoverScore.innerHTML = `${t('game.finalScore')}: <span id="gameover-score-value" class="text-yellow-400">${scoreValue}</span>`;
+    }
+    if (gameoverRetryBtn) gameoverRetryBtn.textContent = t('game.retry');
+    if (gameoverMenuBtn) gameoverMenuBtn.textContent = t('game.mainMenu');
+    
+    // Modal de configuración
+    const settingsTitle = document.querySelector('#settings-modal .title');
+    const settingsLanguageTitle = document.getElementById('settings-language-title');
+    const settingsLanguageLabel = document.getElementById('settings-language-label');
+    const settingsCloseBtn = document.getElementById('settings-close-btn');
+    
+    if (settingsTitle) settingsTitle.textContent = t('settings.title');
+    if (settingsLanguageTitle) settingsLanguageTitle.textContent = t('settings.language');
+    if (settingsLanguageLabel) settingsLanguageLabel.textContent = `${t('settings.language')}:`;
+    if (settingsCloseBtn) settingsCloseBtn.textContent = t('modals.close');
+    
+    // Actualizar labels de configuración
+    updateSettingsLabels();
+    
+    // Editor (incluye paleta)
+    updateEditorTexts();
+    // Actualizar paleta si el editor está activo
+    if (store.appState === 'editing' && store.dom.ui.paletteEl) {
+        populatePalette(store);
+    }
+    
+    // Usuario
+    updateUserTexts();
+    
+    // Modales
+    updateModalsTexts();
+    
+    // Modal de pausa
+    updatePauseMenuTexts();
+    
+    // Modal de autenticación
+    updateAuthModalTexts();
+    
+    // Créditos
+    updateCreditsTexts();
+};
+
+/**
+ * Actualiza los labels de configuración
+ */
+const updateSettingsLabels = () => {
+    const soundTitle = document.querySelector('#settings-modal h3');
+    const graphicsTitle = document.querySelectorAll('#settings-modal h3')[1];
+    const graphicsDesc = document.querySelector('#settings-modal .mb-6.text-left p.text-xs');
+    const musicVolumeLabel = document.querySelector('label[for="music-volume-slider"]');
+    const sfxVolumeLabel = document.querySelector('label[for="sfx-volume-slider"]');
+    const soundStatusLabel = document.querySelector('label[for="mute-toggle"]');
+    
+    // Audio
+    if (soundTitle && soundTitle.textContent?.includes('Sonido')) {
+        soundTitle.textContent = t('settings.sound');
+    }
+    if (musicVolumeLabel) musicVolumeLabel.textContent = `${t('settings.musicVolume')}:`;
+    if (sfxVolumeLabel) sfxVolumeLabel.textContent = `${t('settings.sfxVolume')}:`;
+    if (soundStatusLabel) soundStatusLabel.textContent = `${t('settings.soundStatus')}:`;
+    
+    // Gráficos
+    if (graphicsTitle && graphicsTitle.textContent?.includes('Gráficos')) {
+        graphicsTitle.textContent = t('settings.graphics');
+    }
+    if (graphicsDesc) {
+        graphicsDesc.textContent = t('settings.scanlineDesc');
+    }
+    
+    // Labels de efectos gráficos
+    const scanlineLabel = document.querySelector('label[for="scanline-toggle"]');
+    const glowLabel = document.querySelector('label[for="glow-toggle"]');
+    const brightnessLabel = document.querySelector('label[for="brightness-toggle"]');
+    const contrastLabel = document.querySelector('label[for="contrast-toggle"]');
+    const vignetteLabel = document.querySelector('label[for="vignette-toggle"]');
+    const blurLabel = document.querySelector('label[for="blur-toggle"]');
+    const fpsLabel = document.querySelector('label[for="fps-toggle"]');
+    const mobileFullWidthLabel = document.querySelector('label[for="mobile-fullwidth-toggle"]');
+    
+    if (scanlineLabel) scanlineLabel.textContent = `${t('settings.scanline')}:`;
+    if (glowLabel) glowLabel.textContent = `${t('settings.glow')}:`;
+    if (brightnessLabel) brightnessLabel.textContent = `${t('settings.brightness')}:`;
+    if (contrastLabel) contrastLabel.textContent = `${t('settings.contrast')}:`;
+    if (vignetteLabel) vignetteLabel.textContent = `${t('settings.vignette')}:`;
+    if (blurLabel) blurLabel.textContent = `${t('settings.blur')}:`;
+    if (fpsLabel) fpsLabel.textContent = `${t('settings.showFps')}:`;
+    if (mobileFullWidthLabel) mobileFullWidthLabel.textContent = `${t('settings.mobileFullWidth')}:`;
+};
+
+/**
+ * Actualiza los textos del editor
+ */
+const updateEditorTexts = () => {
+    // Botones de volver al editor
+    const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel') as HTMLButtonElement | null;
+    const resumeEditorBtnMenu = document.getElementById('resume-editor-btn-menu') as HTMLButtonElement | null;
+    if (resumeEditorBtnPanel) resumeEditorBtnPanel.textContent = t('editor.backToEditor');
+    if (resumeEditorBtnMenu) resumeEditorBtnMenu.textContent = t('editor.backToEditor');
+    
+    // Título del panel del editor
+    const editorPanelTitle = document.querySelector('#editor-panel-title span:last-child');
+    if (editorPanelTitle) editorPanelTitle.textContent = t('editor.tools');
+    
+    // Sección Edición
+    const editSectionToggle = document.querySelector('#edit-section-toggle span:first-child');
+    if (editSectionToggle) editSectionToggle.textContent = t('editor.edition');
+    
+    // Botones de edición
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
+    const duplicateRowBtn = document.getElementById('duplicate-row-btn');
+    const deleteRowBtn = document.getElementById('delete-row-btn');
+    if (undoBtn) undoBtn.textContent = t('editor.undo');
+    if (redoBtn) redoBtn.textContent = t('editor.redo');
+    if (duplicateRowBtn) duplicateRowBtn.textContent = t('editor.duplicateRow');
+    if (deleteRowBtn) deleteRowBtn.textContent = t('editor.deleteRow');
+    
+    // Sección Niveles
+    const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
+    const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center');
+    if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
+    if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = t('editor.levels').toUpperCase();
+    
+    // Botones de niveles (desktop)
+    const addLevelBtn = document.getElementById('add-level-btn');
+    const generateLevelBtn = document.getElementById('generate-level-btn');
+    const saveAllBtn = document.getElementById('save-all-btn');
+    const shareLevelBtn = document.getElementById('share-level-btn');
+    const playTestBtn = document.getElementById('play-test-btn');
+    const backToMenuBtn = document.getElementById('back-to-menu-btn');
+    
+    if (addLevelBtn) addLevelBtn.textContent = `➕ ${t('editor.newLevel')}`;
+    if (generateLevelBtn) generateLevelBtn.textContent = t('editor.generateLevel');
+    if (saveAllBtn) saveAllBtn.textContent = t('editor.saveToFile');
+    if (shareLevelBtn) shareLevelBtn.textContent = `📤 ${t('editor.shareLevel')}`;
+    if (playTestBtn) playTestBtn.textContent = t('editor.playTest');
+    if (backToMenuBtn) backToMenuBtn.textContent = t('editor.backToMenu');
+    
+    // Botones de niveles (mobile)
+    const addLevelBtnMobile = document.getElementById('add-level-btn-mobile');
+    const generateLevelBtnMobile = document.getElementById('generate-level-btn-mobile');
+    const saveAllBtnMobile = document.getElementById('save-all-btn-mobile');
+    const shareLevelBtnMobile = document.getElementById('share-level-btn-mobile');
+    const playTestBtnMobile = document.getElementById('play-test-btn-mobile');
+    const backToMenuBtnMobile = document.getElementById('back-to-menu-btn-mobile');
+    
+    if (addLevelBtnMobile) addLevelBtnMobile.textContent = t('editor.newLevel');
+    if (generateLevelBtnMobile) generateLevelBtnMobile.textContent = t('editor.generateLevel');
+    if (saveAllBtnMobile) saveAllBtnMobile.textContent = t('editor.saveLevel');
+    if (shareLevelBtnMobile) shareLevelBtnMobile.textContent = t('editor.shareLevel');
+    if (playTestBtnMobile) playTestBtnMobile.textContent = t('editor.playLevel');
+    if (backToMenuBtnMobile) backToMenuBtnMobile.textContent = t('modals.backToMainMenuTitle');
+};
+
+/**
+ * Actualiza los textos del usuario
+ */
+const updateUserTexts = () => {
+    // Botones de cerrar sesión
+    const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
+    const logoutBtnMobile = document.getElementById('logout-btn-mobile') as HTMLButtonElement | null;
+    if (logoutBtn) logoutBtn.textContent = t('user.logout');
+    if (logoutBtnMobile) logoutBtnMobile.textContent = t('user.logout');
+    
+    // Botones de perfil
+    const userProfileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
+    const userProfileBtnMobile = document.getElementById('user-profile-btn-mobile') as HTMLButtonElement | null;
+    if (userProfileBtn) userProfileBtn.textContent = t('user.myArea');
+    if (userProfileBtnMobile) userProfileBtnMobile.textContent = `👤 ${t('user.myArea')}`;
+    
+    // Título del panel de usuario cuando no hay login
+    const userPanelNickname = document.getElementById('user-panel-nickname');
+    if (userPanelNickname && (userPanelNickname.textContent === 'user' || userPanelNickname.textContent === 'USUARIO')) {
+        userPanelNickname.textContent = t('user.user');
+    }
+    
+    // Toggle del panel de usuario
+    const userPanelToggleTitle = document.querySelector('#user-panel-toggle .toggle-title');
+    if (userPanelToggleTitle) userPanelToggleTitle.textContent = t('user.user');
+    
+    // Toggle del panel del editor
+    const editorToggleTitle = document.querySelector('#editor-toggle .toggle-title');
+    if (editorToggleTitle) editorToggleTitle.textContent = t('editor.tools');
+    
+    // Título del modal de perfil
+    const profileModalTitle = document.querySelector('#profile-modal .title');
+    if (profileModalTitle) profileModalTitle.textContent = t('user.profileTitle');
+    
+    // Botones del modal de perfil
+    const profileSaveBtn = document.getElementById('profile-save-btn');
+    const profileCancelBtn = document.getElementById('profile-cancel-btn');
+    const profileAvatarBtn = document.getElementById('profile-avatar-btn');
+    if (profileSaveBtn) profileSaveBtn.textContent = t('user.save');
+    if (profileCancelBtn) profileCancelBtn.textContent = t('modals.cancel');
+    if (profileAvatarBtn) profileAvatarBtn.textContent = t('user.changeAvatar');
+};
+
+/**
+ * Actualiza los textos de los modales
+ */
+const updateModalsTexts = () => {
+    // Modal de confirmación de salida
+    const exitTitleEl = document.getElementById('exit-title');
+    const exitTextEl = document.getElementById('exit-text');
+    const exitConfirmBtn = document.getElementById('exit-confirm-btn');
+    const exitCancelBtn = document.getElementById('exit-cancel-btn');
+    
+    // Modal de confirmación de guardar
+    const modalTitle = document.getElementById('modal-title');
+    const modalText = document.getElementById('modal-text');
+    const confirmSaveBtn = document.getElementById('confirm-save-btn');
+    const cancelSaveBtn = document.getElementById('cancel-save-btn');
+    
+    // Modal de prompt
+    const promptTitle = document.getElementById('prompt-title');
+    const promptCancelBtn = document.getElementById('prompt-cancel-btn');
+    const promptOkBtn = document.getElementById('prompt-ok-btn');
+    const promptInput = document.getElementById('prompt-input') as HTMLInputElement | null;
+    
+    // Modal de salida (se actualiza dinámicamente según el contexto)
+    // Valores por defecto cuando no hay contexto específico
+    if (exitTitleEl && exitTitleEl.textContent === 'Confirmar acción') {
+        exitTitleEl.textContent = t('modals.confirmAction');
+    }
+    if (exitTextEl && exitTextEl.textContent === '¿Seguro que deseas continuar?') {
+        exitTextEl.textContent = t('modals.confirmActionMessage');
+    }
+    if (exitConfirmBtn && exitConfirmBtn.textContent === 'Sí') {
+        exitConfirmBtn.textContent = t('modals.yes');
+    }
+    if (exitCancelBtn && exitCancelBtn.textContent === 'No') {
+        exitCancelBtn.textContent = t('modals.no');
+    }
+    
+    // Modal de confirmación de guardar
+    if (modalTitle) modalTitle.textContent = t('modals.saveConfirm');
+    if (modalText) modalText.textContent = t('modals.saveMessage');
+    if (confirmSaveBtn) confirmSaveBtn.textContent = t('modals.confirm');
+    if (cancelSaveBtn) cancelSaveBtn.textContent = t('modals.cancel');
+    
+    // Modal de prompt
+    if (promptTitle) promptTitle.textContent = t('modals.entry');
+    if (promptCancelBtn) promptCancelBtn.textContent = t('modals.cancel');
+    if (promptOkBtn) promptOkBtn.textContent = t('modals.accept');
+    if (promptInput) promptInput.placeholder = t('modals.writeHere');
+};
+
+/**
+ * Actualiza los textos del modal de pausa
+ */
+const updatePauseMenuTexts = () => {
+    const pauseMenuTitle = document.querySelector('#pause-menu-modal .title');
+    const pauseResumeBtn = document.getElementById('pause-resume-btn');
+    const pauseRestartBtn = document.getElementById('pause-restart-btn');
+    const pauseMainMenuBtn = document.getElementById('pause-mainmenu-btn');
+    const pauseSettingsBtn = document.getElementById('pause-settings-btn');
+    const pauseCreditsBtn = document.getElementById('pause-credits-btn');
+    const pauseCancelBtn = document.getElementById('pause-cancel-btn');
+    
+    if (pauseMenuTitle) pauseMenuTitle.textContent = t('modals.menuTitle');
+    if (pauseResumeBtn) pauseResumeBtn.textContent = t('game.resume');
+    if (pauseRestartBtn) pauseRestartBtn.textContent = t('game.restart');
+    if (pauseMainMenuBtn) pauseMainMenuBtn.textContent = t('modals.backToMainMenuTitle');
+    if (pauseSettingsBtn) pauseSettingsBtn.textContent = t('game.settings');
+    if (pauseCreditsBtn) pauseCreditsBtn.textContent = t('menu.credits');
+    if (pauseCancelBtn) pauseCancelBtn.textContent = t('modals.close');
+};
+
+/**
+ * Actualiza los textos de créditos
+ */
+const updateCreditsTexts = () => {
+    const creditsTitle = document.querySelector('#credits-modal .title');
+    const creditsCloseBtn = document.getElementById('credits-close-btn');
+    
+    if (creditsTitle) creditsTitle.textContent = t('credits.title');
+    if (creditsCloseBtn) creditsCloseBtn.textContent = t('modals.close');
+};
+
+/**
+ * Actualiza los textos del modal de autenticación
+ */
+const updateAuthModalTexts = () => {
+    const authModalTitle = document.querySelector('#auth-choice-modal .title');
+    const authModalMessage = document.querySelector('#auth-choice-modal p.mb-6');
+    const authLoginBtn = document.getElementById('auth-login-btn');
+    const authSignupBtn = document.getElementById('auth-signup-btn');
+    const authCancelBtn = document.getElementById('auth-cancel-btn');
+    
+    if (authModalTitle) authModalTitle.textContent = t('auth.authentication');
+    if (authModalMessage) authModalMessage.textContent = t('auth.loginMessage');
+    if (authLoginBtn) authLoginBtn.textContent = t('auth.login');
+    if (authSignupBtn) authSignupBtn.textContent = t('auth.createAccount');
+    if (authCancelBtn) authCancelBtn.textContent = t('modals.cancel');
 };
 
 /**
@@ -2513,6 +2977,9 @@ const openSettingsModal = (store: GameStore) => {
     
     // Actualizar UI con valores actuales
     updateSettingsUI(store);
+    
+    // Actualizar textos
+    updateAllTexts(store);
     
     // Mostrar modal
     settingsModal.classList.remove('hidden');
@@ -2604,12 +3071,12 @@ const setupHamburgerMenu = (
         
         if (store.isPaused) {
             pauseBackgroundMusic();
-            pauseResumeBtn.textContent = 'Reanudar';
+            pauseResumeBtn.textContent = t('game.resume');
             // Congelar el juego
             store.player.isFrozen = true;
         } else {
             playBackgroundMusic().catch(() => {});
-            pauseResumeBtn.textContent = 'Pausar';
+            pauseResumeBtn.textContent = t('game.pause');
             // Descongelar el juego
             store.player.isFrozen = false;
         }
@@ -2627,8 +3094,8 @@ const setupHamburgerMenu = (
         const exitCancelBtn = store.dom.ui.exitCancelBtn;
         
         if (!exitModalEl) return;
-        if (exitTitleEl) exitTitleEl.textContent = 'Reiniciar Nivel';
-        if (exitTextEl) exitTextEl.textContent = '¿Deseas reiniciar el nivel actual?';
+        if (exitTitleEl) exitTitleEl.textContent = t('messages.restartLevelTitle');
+        if (exitTextEl) exitTextEl.textContent = t('messages.restartLevelMessage');
         exitModalEl.classList.remove('hidden');
         
         const confirmHandler = () => {
@@ -2636,7 +3103,7 @@ const setupHamburgerMenu = (
             if (store.isPaused) {
                 store.isPaused = false;
                 store.player.isFrozen = false;
-                if (pauseResumeBtn) pauseResumeBtn.textContent = '⏸️ Pausar';
+                if (pauseResumeBtn) pauseResumeBtn.textContent = `⏸️ ${t('game.pause')}`;
             }
             startGame(store, null, store.currentLevelIndex, true);
             exitModalEl.classList.add('hidden');
@@ -2671,8 +3138,8 @@ const setupHamburgerMenu = (
         const exitCancelBtn = store.dom.ui.exitCancelBtn;
         
         if (!exitModalEl) return;
-        if (exitTitleEl) exitTitleEl.textContent = 'Menú Inicial';
-        if (exitTextEl) exitTextEl.textContent = '¿Deseas volver al menú inicial?';
+        if (exitTitleEl) exitTitleEl.textContent = t('modals.backToMainMenuTitle');
+        if (exitTextEl) exitTextEl.textContent = t('modals.backToMainMenuMessage');
         exitModalEl.classList.remove('hidden');
         
         const confirmHandler = () => {
@@ -2680,7 +3147,7 @@ const setupHamburgerMenu = (
             if (store.isPaused) {
                 store.isPaused = false;
                 store.player.isFrozen = false;
-                if (pauseResumeBtn) pauseResumeBtn.textContent = 'Pausar';
+                if (pauseResumeBtn) pauseResumeBtn.textContent = t('game.pause');
             }
             showMenu(store);
             exitModalEl.classList.add('hidden');
@@ -2705,7 +3172,7 @@ const setupHamburgerMenu = (
         if (store.isPaused) {
             store.isPaused = false;
             store.player.isFrozen = false;
-            if (pauseResumeBtn) pauseResumeBtn.textContent = 'Pausar';
+            if (pauseResumeBtn) pauseResumeBtn.textContent = t('game.pause');
         }
         
         // Conservar el nivel actual antes de volver al editor
@@ -2926,7 +3393,7 @@ const setupMenuButtons = (store: GameStore) => {
     const updateEditorButton = () => {
         const { isLoggedIn } = checkLoginStatus();
         if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? 'Editor' : 'Ingresar';
+            levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
         }
     };
 
@@ -2976,7 +3443,7 @@ const setupMenuButtons = (store: GameStore) => {
             } else {
                 userAreaMobile.style.display = 'none';
                 if (userPanelNickname) {
-                    userPanelNickname.textContent = 'USUARIO';
+                    userPanelNickname.textContent = t('user.user');
                 }
                 const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
                 if (userPanelAvatarCanvas) {
@@ -3249,7 +3716,7 @@ const setupMenuButtons = (store: GameStore) => {
     // Handler del botón de cerrar sesión
     const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
     logoutBtn?.addEventListener('click', () => {
-        openExitModal('Cerrar Sesión', '¿Estás seguro de que deseas cerrar sesión?', () => {
+        openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), () => {
             // Cerrar sesión en Netlify Identity si está disponible
             const ni: any = (window as any).netlifyIdentity;
             if (ni && ni.currentUser()) {
@@ -3362,7 +3829,7 @@ const setupMenuButtons = (store: GameStore) => {
             // Actualizar área de usuario
             updateUserArea();
             // Aquí podrías guardar en la BD también
-            showNotification(store, 'Éxito', 'Nickname guardado exitosamente');
+            showNotification(store, t('modals.errors.nicknameSaved'), t('modals.errors.nicknameSaved'));
         }
         profileModal?.classList.add('hidden');
     });
@@ -3422,7 +3889,7 @@ const setupMenuButtons = (store: GameStore) => {
     menuBtn?.addEventListener('click', openPauseMenu);
 
     restartBtn?.addEventListener('click', () => {
-        openExitModal('Reiniciar Nivel', '¿Deseas reiniciar el nivel actual?', () => {
+        openExitModal(t('messages.restartLevelTitle'), t('messages.restartLevelMessage'), () => {
             startGame(store, null, store.currentLevelIndex, true);
         });
     });
@@ -3464,9 +3931,164 @@ const setupMenuButtons = (store: GameStore) => {
     pauseCancelBtn?.addEventListener('click', closePauseMenu);
 
     restartBtnDesktop?.addEventListener('click', () => {
-        openExitModal('Reiniciar Nivel', '¿Deseas reiniciar el nivel actual?', () => {
+        openExitModal(t('messages.restartLevelTitle'), t('messages.restartLevelMessage'), () => {
             startGame(store, null, store.currentLevelIndex, true);
         });
+    });
+    
+    // Selector de idioma con banderas (arriba a la derecha)
+    const langEsBtn = document.getElementById('lang-es-btn') as HTMLButtonElement | null;
+    const langEnBtn = document.getElementById('lang-en-btn') as HTMLButtonElement | null;
+    const langCaBtn = document.getElementById('lang-ca-btn') as HTMLButtonElement | null;
+    
+    const updateLanguageButtons = () => {
+        const currentLang = getCurrentLanguage();
+        if (langEsBtn && langEnBtn && langCaBtn) {
+            // Resetear todos los botones
+            [langEsBtn, langEnBtn, langCaBtn].forEach(btn => {
+                btn.classList.remove('is-primary', 'active', 'is-disabled');
+            });
+            
+            // Activar el botón del idioma actual
+            if (currentLang === 'es') {
+                langEsBtn.classList.add('is-primary', 'active');
+                langEnBtn.classList.add('is-disabled');
+                langCaBtn.classList.add('is-disabled');
+            } else if (currentLang === 'en') {
+                langEnBtn.classList.add('is-primary', 'active');
+                langEsBtn.classList.add('is-disabled');
+                langCaBtn.classList.add('is-disabled');
+            } else if (currentLang === 'ca') {
+                langCaBtn.classList.add('is-primary', 'active');
+                langEsBtn.classList.add('is-disabled');
+                langEnBtn.classList.add('is-disabled');
+            }
+        }
+    };
+    
+    // Inicializar estado de los botones
+    updateLanguageButtons();
+    
+    // Manejar clic en botón español
+    langEsBtn?.addEventListener('click', () => {
+        setLanguage('es');
+        updateAllTexts(store);
+        updateLanguageButtons();
+        // Actualizar también el selector en el modal de configuración
+        const settingsLanguageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
+        if (settingsLanguageSelector) {
+            settingsLanguageSelector.value = 'es';
+        }
+    });
+    
+    // Manejar clic en botón inglés
+    langEnBtn?.addEventListener('click', () => {
+        setLanguage('en');
+        updateAllTexts(store);
+        updateLanguageButtons();
+        // Actualizar también el selector en el modal de configuración
+        const settingsLanguageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
+        if (settingsLanguageSelector) {
+            settingsLanguageSelector.value = 'en';
+        }
+    });
+    
+    // Manejar clic en botón catalán
+    langCaBtn?.addEventListener('click', () => {
+        setLanguage('ca');
+        updateAllTexts(store);
+        updateLanguageButtons();
+        // Actualizar también el selector en el modal de configuración
+        const settingsLanguageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
+        if (settingsLanguageSelector) {
+            settingsLanguageSelector.value = 'ca';
+        }
+    });
+    
+    // Escuchar cambios de idioma desde otros lugares (como el modal de configuración)
+    window.addEventListener('languageChanged', () => {
+        updateLanguageButtons();
+    });
+    
+    // Botón de instalación PWA
+    const installPwaBtn = document.getElementById('install-pwa-btn') as HTMLButtonElement | null;
+    let deferredPrompt: any = null;
+    
+    // Detectar si la app puede instalarse
+    const checkPWAInstallability = () => {
+        if (installPwaBtn) {
+            // Verificar si ya está instalada
+            if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+                installPwaBtn.classList.add('hidden');
+                return;
+            }
+            
+            // Escuchar el evento beforeinstallprompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                installPwaBtn.classList.remove('hidden');
+            });
+            
+            // Si el evento no se disparó, verificar si ya está instalada
+            setTimeout(() => {
+                if (!deferredPrompt && installPwaBtn) {
+                    // Verificar si está instalada de otra manera
+                    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+                        installPwaBtn.classList.add('hidden');
+                    } else {
+                        // En algunos casos, el evento no se dispara pero la app puede instalarse
+                        // Mostrar el botón si no estamos en modo standalone
+                        if (!window.matchMedia('(display-mode: standalone)').matches && !(window.navigator as any).standalone) {
+                            // Intentar mostrar el botón (puede que no funcione en todos los navegadores)
+                            installPwaBtn.classList.remove('hidden');
+                        }
+                    }
+                }
+            }, 1000);
+        }
+    };
+    
+    // Inicializar verificación de PWA
+    checkPWAInstallability();
+    
+    // Manejar el clic en el botón de instalación
+    installPwaBtn?.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            // Si no hay prompt diferido, mostrar mensaje
+            const noInstallMessage = getCurrentLanguage() === 'es'
+                ? 'La instalación no está disponible en este momento. Por favor, usa el menú de tu navegador para instalar la app.'
+                : 'Installation is not available at this time. Please use your browser menu to install the app.';
+            showNotification(store, t('modals.notification'), noInstallMessage);
+            return;
+        }
+        
+        // Mostrar el prompt de instalación
+        deferredPrompt.prompt();
+        
+        // Esperar la respuesta del usuario
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+            const successMessage = getCurrentLanguage() === 'es' 
+                ? '¡App instalada correctamente!' 
+                : 'App installed successfully!';
+            showNotification(store, t('modals.notification'), successMessage);
+        }
+        
+        // Limpiar el prompt
+        deferredPrompt = null;
+        if (installPwaBtn) {
+            installPwaBtn.classList.add('hidden');
+        }
+    });
+    
+    // Escuchar cuando la app se instala
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        if (installPwaBtn) {
+            installPwaBtn.classList.add('hidden');
+        }
     });
 };
 
@@ -3663,7 +4285,7 @@ const shareLevelToGallery = async (store: GameStore) => {
     // Verificar si el usuario está logueado
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (!isLoggedIn) {
-        showNotification(store, '❌ Error', 'Debes estar logueado para compartir niveles.');
+        showNotification(store, `❌ ${t('modals.errors.notLoggedInShare')}`, t('modals.errors.notLoggedInShare'));
         return;
     }
 
@@ -3671,7 +4293,7 @@ const shareLevelToGallery = async (store: GameStore) => {
     const user = ni?.currentUser?.();
     
     if (!user) {
-        showNotification(store, '❌ Error', 'No se pudo verificar tu sesión. Por favor, vuelve a iniciar sesión.');
+        showNotification(store, `❌ ${t('modals.errors.sessionExpired')}`, t('modals.errors.sessionExpired'));
         return;
     }
 
@@ -3691,10 +4313,10 @@ const shareLevelToGallery = async (store: GameStore) => {
         const screenshot = generateLevelScreenshotForShare(cleanedLevel);
         
         // Preguntar por nombre y descripción
-        const name = await showPromptModal(store, 'Nombre del nivel (aparecerá en la galería):', `Mi Nivel ${index + 1}`);
+        const name = await showPromptModal(store, t('messages.levelNamePrompt'), `${t('messages.myLevel')} ${index + 1}`);
         if (!name) return;
         
-        const description = await showPromptModal(store, 'Descripción opcional del nivel:', '');
+        const description = await showPromptModal(store, t('messages.levelDescriptionPrompt'), '');
         
         const res = await fetch(`${baseUrl}/.netlify/functions/gallery`, {
             method: 'POST',
@@ -3717,7 +4339,7 @@ const shareLevelToGallery = async (store: GameStore) => {
         const result = await res.json();
         
         if (result.ok) {
-            showNotification(store, '✅ Nivel Compartido', '¡Tu nivel ahora está disponible en la Galería!');
+            showNotification(store, `✅ ${t('messages.levelShared')}`, t('messages.levelSharedSuccess'));
         } else {
             throw new Error(result.error || 'Error desconocido');
         }
@@ -3725,9 +4347,9 @@ const shareLevelToGallery = async (store: GameStore) => {
     } catch (error: any) {
         console.error('Error compartiendo nivel:', error);
         if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-            showNotification(store, '❌ No Autorizado', 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+            showNotification(store, `❌ ${t('modals.errors.unauthorized')}`, t('modals.errors.unauthorized'));
         } else {
-            showNotification(store, '❌ Error', 'Error al compartir nivel. Por favor intenta de nuevo.');
+            showNotification(store, `❌ ${t('modals.errors.shareError')}`, t('modals.errors.shareError'));
         }
     }
 };
@@ -3936,7 +4558,7 @@ const setupLevelData = (store: GameStore) => {
         // Reinicializar el editor avanzado
         initializeAdvancedEditor(store);
         
-        showNotification(store, '➕ Nuevo Nivel', `Nivel ${newIndex + 1} creado.\nComienza a diseñar tu nivel.`);
+        showNotification(store, `➕ ${t('editor.newLevel')}`, t('messages.newLevelCreated').replace('{n}', `${newIndex + 1}`));
     });
 
     generateLevelBtn?.addEventListener('click', () => {
@@ -3991,7 +4613,7 @@ const setupLevelData = (store: GameStore) => {
         // Reinicializar el editor avanzado
         initializeAdvancedEditor(store);
         
-        showNotification(store, '🎲 Nivel Generado', `Nivel ${index + 1} generado automáticamente con dificultad ${difficulty}.`);
+        showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${index + 1}, ${t('editor.difficulty')}: ${difficulty})`);
     });
 
     playTestBtn?.addEventListener('click', () => {
@@ -4039,7 +4661,7 @@ const setupLevelData = (store: GameStore) => {
         // Verificar si el usuario está logueado
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         if (!isLoggedIn) {
-            showNotification(store, '❌ Error', 'Debes estar logueado para guardar los niveles.');
+            showNotification(store, `❌ ${t('modals.errors.notLoggedInSave')}`, t('modals.errors.notLoggedInSave'));
             return;
         }
 
@@ -4058,7 +4680,7 @@ const setupLevelData = (store: GameStore) => {
             anchor.click();
             document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
-            showNotification(store, '⬇️ Descarga Manual', 'No se pudo guardar automáticamente.\nSe descargó un archivo levels.json con los datos.');
+            showNotification(store, `⬇️ ${t('modals.errors.manualDownload')}`, t('modals.errors.manualDownload'));
             ensureEditorVisible(store);
         };
 
@@ -4101,11 +4723,11 @@ const setupLevelData = (store: GameStore) => {
         if (!token) {
             console.warn('No se pudo obtener token JWT. El usuario puede no estar autenticado correctamente.');
             if (!user) {
-                showNotification(store, '❌ No Autenticado', 'Por favor, inicia sesión nuevamente para guardar en la nube.');
+                showNotification(store, `❌ ${t('modals.errors.notAuthenticated')}`, t('modals.errors.notAuthenticated'));
                 // Guardar en localStorage como respaldo
                 localStorage.setItem('userLevels', JSON.stringify(payload));
             } else {
-                showNotification(store, '⚠️ Token Expirado', 'Tu sesión puede haber expirado. Intentando guardar de todos modos...');
+                showNotification(store, `⚠️ ${t('modals.errors.tokenExpired')}`, t('modals.errors.tokenExpired'));
                 // Continuar con el intento de guardado incluso sin token válido
             }
         }
@@ -4162,7 +4784,7 @@ const setupLevelData = (store: GameStore) => {
                                     if (retryResponse.ok) {
                                         const retryResult = await retryResponse.json();
                                         if (retryResult.ok) {
-                                            showNotification(store, '💾 Guardado Exitoso', '¡Tus niveles se han guardado en tu cuenta!');
+                                            showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, t('modals.errors.saveSuccess'));
                                             ensureEditorVisible(store);
                                             return;
                                         }
@@ -4180,7 +4802,7 @@ const setupLevelData = (store: GameStore) => {
 
             const result = await response.json();
             if (result.ok) {
-                showNotification(store, '💾 Guardado Exitoso', '¡Tus niveles se han guardado en tu cuenta!');
+                showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, t('modals.errors.saveSuccess'));
             } else {
                 throw new Error(result.error || 'Error desconocido');
             }
@@ -4197,9 +4819,9 @@ const setupLevelData = (store: GameStore) => {
             }
             
             if (errorMessage?.includes('401') || errorMessage?.includes('Unauthorized')) {
-                showNotification(store, '❌ No Autorizado', 'Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.\nSe guardó una copia local como respaldo.');
+                showNotification(store, `❌ ${t('modals.errors.unauthorized')}`, t('modals.errors.unauthorized'));
             } else if (errorMessage?.includes('NetworkError') || errorMessage?.includes('Failed to fetch') || errorMessage?.includes('Network request failed')) {
-                showNotification(store, '🌐 Sin Conexión', 'No hay conexión a Internet.\nSe guardó una copia local.\nReintenta cuando tengas conexión.');
+                showNotification(store, `🌐 ${t('modals.errors.noConnection')}`, t('modals.errors.noConnection'));
             } else {
                 console.error('Error completo:', error);
                 downloadFallback();
@@ -4341,8 +4963,8 @@ const setupLevelData = (store: GameStore) => {
     logoutBtnMobile?.addEventListener('click', () => {
         const { exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
         if (!exitModalEl) return;
-        if (exitTitleEl) exitTitleEl.textContent = 'Cerrar Sesión';
-        if (exitTextEl) exitTextEl.textContent = '¿Estás seguro de que deseas cerrar sesión?';
+        if (exitTitleEl) exitTitleEl.textContent = t('modals.logoutConfirm');
+        if (exitTextEl) exitTextEl.textContent = t('modals.logoutMessage');
         exitModalEl.classList.remove('hidden');
         const confirmHandler = () => {
             // Cerrar sesión en Netlify Identity si está disponible

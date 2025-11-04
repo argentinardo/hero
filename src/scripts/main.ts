@@ -655,12 +655,45 @@ const setupViewportAdjustment = (): void => {
  * @see {@link preloadCriticalAssets} - Carga de assets críticos
  * @see {@link loadSpritesLazy} - Carga diferida de sprites
  */
+/**
+ * Registra el Service Worker para habilitar funcionalidad PWA
+ */
+const registerServiceWorker = async (): Promise<void> => {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js', {
+                scope: '/'
+            });
+            console.log('[PWA] Service Worker registrado:', registration.scope);
+            
+            // Escuchar actualizaciones del Service Worker
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('[PWA] Nueva versión disponible. Recarga la página para actualizar.');
+                        }
+                    });
+                }
+            });
+        } catch (error) {
+            console.warn('[PWA] Error registrando Service Worker:', error);
+        }
+    }
+};
+
 const bootstrap = async (): Promise<void> => {
     // Inicializar StatusBar primero para que ocupe todo el espacio (solo en Capacitor)
     await initStatusBar();
     
     // Ajustar viewport para navegadores móviles web (compensar barra de direcciones)
     setupViewportAdjustment();
+    
+    // Registrar Service Worker para PWA (no bloqueante)
+    registerServiceWorker().catch(() => {
+        console.warn('[PWA] No se pudo registrar el Service Worker');
+    });
     
     setupUI(store);
     initAudio();

@@ -1,6 +1,28 @@
 {
   "name": "NEW H.E.R.O.",
+  "short_name": "HERO",
+  "description": "Un juego retro de plataformas estilo arcade",
+  "start_url": "/",
+  "scope": "/",
   "display": "fullscreen",
-  "orientation": "landscape"
+  "orientation": "landscape",
+  "theme_color": "#1f2937",
+  "background_color": "#111827",
+  "icons": [
+    {
+      "src": "/src/assets/sprites/hero-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/src/assets/sprites/hero-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "screenshots": [],
+  "prefer_related_applications": false
 }
-
