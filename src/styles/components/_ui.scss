@@ -345,6 +345,29 @@ body {
     display: none; /* Se mostrará cuando esté en modo editor */
     transform: translateX(0);
     transition: transform 200ms ease-in-out;
+    
+    /* Título sticky */
+    #user-panel-title {
+        position: sticky;
+        top: 0;
+        background-color: rgba(0, 0, 0, 0.95);
+        z-index: 10;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Bordes de color #666 para botones y elementos dentro del panel */
+    .nes-btn {
+        border-color: #666 !important;
+    }
+    
+    select {
+        border-color: #666 !important;
+    }
+    
+    #edit-section-toggle {
+        border-color: #666 !important;
+    }
 }
 
 #user-panel.collapsed {
@@ -370,6 +393,33 @@ body {
     .levels-section-desktop,
     .back-to-menu-desktop {
         display: none !important;
+    }
+    
+    /* Título sticky */
+    #editor-panel-title {
+        position: sticky;
+        top: 0;
+        background-color: rgba(0, 0, 0, 0.95);
+        z-index: 10;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Bordes de color #666 para botones y elementos dentro del panel */
+    .nes-btn {
+        border-color: #666 !important;
+    }
+    
+    select {
+        border-color: #666 !important;
+    }
+    
+    #edit-section-toggle {
+        border-color: #666 !important;
+    }
+    
+    #levels-section-toggle {
+        border-color: #666 !important;
     }
 }
 

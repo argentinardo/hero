@@ -225,7 +225,7 @@
             <div class="mt-4 border-t-2 border-gray-500 pt-4">
                 <h3 class="text-center text-sm mb-3" style="font-family: 'Press Start 2P', monospace;">NIVELES</h3>
                 <div id="levels-section-mobile-content" class="mt-2">
-                    <select id="level-selector-mobile" class="w-full bg-gray-700 border-2 border-white p-1 text-sm mb-2"></select>
+                    <select id="level-selector-mobile" class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
                     <button id="add-level-btn-mobile" class="nes-btn is-primary w-full text-xs">Nuevo Nivel</button>
                     <button id="generate-level-btn-mobile" class="nes-btn is-success w-full text-xs">Generar Nivel</button>
                     <button id="save-all-btn-mobile" class="nes-btn is-error w-full mt-2 text-xs">Guardar Nivel</button>
@@ -260,7 +260,7 @@
 
                 <!-- Sección Edición (colapsable) -->
                 <div class="mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="edit-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-white bg-gray-700">
+                    <button id="edit-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
                         <span>Edición</span>
                         <span id="edit-section-arrow">▾</span>
                     </button>
@@ -278,12 +278,12 @@
 
                 <!-- Sección Niveles (colapsable) - Oculto en mobile -->
                 <div id="levels-section-desktop" class="levels-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="levels-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-white bg-gray-700">
+                    <button id="levels-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
                         <span>Niveles</span>
                         <span id="levels-section-arrow">▾</span>
                     </button>
                     <div id="levels-section-content" class="mt-2">
-                        <select id="level-selector" class="w-full bg-gray-700 border-2 border-white p-1 text-sm mb-2"></select>
+                        <select id="level-selector" class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
                         <button id="add-level-btn" class="nes-btn is-primary w-full text-xs">➕ Nuevo Nivel</button>
                         <button id="generate-level-btn" class="nes-btn is-success w-full text-xs">Generar Nivel</button>
                         <button id="save-all-btn" class="nes-btn is-error w-full mt-2 text-xs">Guardar en Archivo</button>
@@ -554,8 +554,8 @@
             <div id="directional-buttons">
                 <div class="button-row">
                     <button id="btn-up-left" class="directional-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg) scale(2.6)">
-                            <path d="M12 19V5M5 12l7-7 7 7"/>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: scale(2.6)">
+                            <path d="M19 19L5 5M5 5H12M5 5V12"/>
                         </svg>
                     </button>
                     <button id="btn-up" class="directional-btn">
@@ -564,8 +564,8 @@
                         </svg>
                     </button>
                     <button id="btn-up-right" class="directional-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg) scale(2.6)">
-                            <path d="M12 19V5M5 12l7-7 7 7"/>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: scale(2.6)">
+                            <path d="M5 19L19 5M19 5H12M19 5V12"/>
                         </svg>
                     </button>
                 </div>

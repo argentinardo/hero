@@ -463,7 +463,7 @@ const gameLoop = (currentTime: number): void => {
             });
         } else if (store.appState === 'menu') {
             // Animar splash también en mobile
-            animateSplash(store);
+                animateSplash(store);
         }
     }
 

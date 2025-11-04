@@ -407,6 +407,59 @@ export const attachDomReferences = (store: GameStore) => {
     // Toggle del panel de usuario (drawer izquierdo)
     const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
     const userPanel = document.getElementById('user-panel');
+    
+    // Swipe para ocultar/mostrar paneles
+    const setupPanelSwipe = (panel: HTMLElement, isLeft: boolean) => {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isSwipe = false;
+        const threshold = 50; // Mínimo de píxeles para considerar swipe
+        
+        panel.addEventListener('touchstart', (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                isSwipe = false;
+            }
+        }, { passive: true });
+        
+        panel.addEventListener('touchmove', (e: TouchEvent) => {
+            if (e.touches.length === 1 && !isSwipe) {
+                const touchX = e.touches[0].clientX;
+                const touchY = e.touches[0].clientY;
+                const deltaX = touchX - touchStartX;
+                const deltaY = touchY - touchStartY;
+                
+                // Determinar si es un swipe horizontal (más horizontal que vertical)
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+                    isSwipe = true;
+                    // Swipe izquierdo para ocultar panel izquierdo
+                    // Swipe derecho para ocultar panel derecho
+                    if (isLeft && deltaX < -threshold) {
+                        panel.classList.add('collapsed');
+                        updatePanelStates();
+                    } else if (!isLeft && deltaX > threshold) {
+                        panel.classList.add('collapsed');
+                        updatePanelStates();
+                    }
+                }
+            }
+        }, { passive: true });
+        
+        panel.addEventListener('touchend', () => {
+            touchStartX = 0;
+            touchStartY = 0;
+            isSwipe = false;
+        }, { passive: true });
+    };
+    
+    if (userPanel) {
+        setupPanelSwipe(userPanel as HTMLElement, true);
+    }
+    if (ui.editorPanelEl) {
+        setupPanelSwipe(ui.editorPanelEl as HTMLElement, false);
+    }
+    
     if (userPanelToggleBtn && userPanel) {
         // Click en el botón toggle (solo visible cuando está cerrado)
         userPanelToggleBtn.addEventListener('click', () => {
@@ -1086,6 +1139,53 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         resumeEditorBtnMenu?.classList.add('hidden');
     }
     
+    // Si venimos desde el editor, modificar el panel de usuario para mostrar solo "Volver al Editor"
+    if (preserveLevels) {
+        const userPanel = document.getElementById('user-panel');
+        if (userPanel) {
+            // Ocultar todos los elementos excepto el título y el botón de volver al editor
+            const userAreaMobile = document.getElementById('user-area-mobile');
+            const playTestBtnMobile = document.getElementById('play-test-btn-mobile');
+            const levelsSectionMobile = userPanel.querySelector('.mt-4');
+            const backToMenuBtnMobile = document.getElementById('back-to-menu-btn-mobile');
+            
+            if (userAreaMobile) userAreaMobile.style.display = 'none';
+            if (playTestBtnMobile) playTestBtnMobile.style.display = 'none';
+            if (levelsSectionMobile) (levelsSectionMobile as HTMLElement).style.display = 'none';
+            
+            // Crear o mostrar botón "Volver al Editor" en el panel de usuario
+            let resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
+            if (!resumeEditorBtnPanel) {
+                resumeEditorBtnPanel = document.createElement('button');
+                resumeEditorBtnPanel.id = 'resume-editor-btn-panel';
+                resumeEditorBtnPanel.className = 'nes-btn is-primary w-full mt-4 text-xs';
+                resumeEditorBtnPanel.textContent = 'Volver al Editor';
+                userPanel.appendChild(resumeEditorBtnPanel);
+                
+                // Agregar listener
+                resumeEditorBtnPanel.addEventListener('click', () => {
+                    if (store.appState === 'playing') {
+                        const index = store.currentLevelIndex;
+                        const levelRows = store.levelDesigns[index] ?? [];
+                        store.editorLevel = levelRows.map(row => row.split(''));
+                        startEditor(store, true);
+                    }
+                });
+            }
+            resumeEditorBtnPanel.style.display = 'block';
+        }
+    } else {
+        // Si no venimos del editor, restaurar el panel normal
+        const userPanel = document.getElementById('user-panel');
+        if (userPanel) {
+            const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
+            if (resumeEditorBtnPanel) {
+                resumeEditorBtnPanel.style.display = 'none';
+            }
+            // Restaurar elementos (se restaurarán cuando se vuelva al editor)
+        }
+    }
+    
     store.lives = 5;
     store.score = 0;
     store.scoreLifeMilestone = 0;
@@ -1172,8 +1272,28 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     if (userPanel) {
         userPanel.style.display = 'flex';
         
+        // Restaurar elementos del panel si estaban ocultos (por ejemplo, después de jugar nivel)
+        const userAreaMobileEl = document.getElementById('user-area-mobile');
+        const playTestBtnMobileEl = document.getElementById('play-test-btn-mobile');
+        const levelsSectionMobile = userPanel.querySelector('.mt-4');
+        const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
+        
         // Actualizar título con nickname del usuario (priorizar nickname sobre username)
         const nickname = localStorage.getItem('nickname') || localStorage.getItem('username') || 'Usuario';
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        
+        // Restaurar elementos que podrían estar ocultos
+        if (userAreaMobileEl) {
+            if (isLoggedIn && nickname) {
+                userAreaMobileEl.style.display = 'block';
+            } else {
+                userAreaMobileEl.style.display = 'none';
+            }
+        }
+        if (playTestBtnMobileEl) playTestBtnMobileEl.style.display = 'block';
+        if (levelsSectionMobile) (levelsSectionMobile as HTMLElement).style.display = 'block';
+        if (resumeEditorBtnPanel) resumeEditorBtnPanel.style.display = 'none';
+        
         const userPanelNickname = document.getElementById('user-panel-nickname');
         const userPanelAvatar = document.getElementById('user-panel-avatar');
         
@@ -1198,17 +1318,6 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         
         // El título del panel de usuario ya tiene un listener en attachDomReferences que lo cierra
         // No agregamos otro listener aquí para evitar conflictos
-        
-        // Actualizar área de usuario mobile
-        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        const userAreaMobile = document.getElementById('user-area-mobile');
-        if (userAreaMobile) {
-            if (isLoggedIn && nickname) {
-                userAreaMobile.style.display = 'block';
-            } else {
-                userAreaMobile.style.display = 'none';
-            }
-        }
         
         // Sincronizar selector de niveles mobile con el desktop
         const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
@@ -3140,17 +3249,19 @@ const setupMenuButtons = (store: GameStore) => {
     // Handler del botón de cerrar sesión
     const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
     logoutBtn?.addEventListener('click', () => {
-        // Cerrar sesión en Netlify Identity si está disponible
-        const ni: any = (window as any).netlifyIdentity;
-        if (ni && ni.currentUser()) {
-            ni.logout();
-        }
-        // Limpiar localStorage
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('username');
-        updateEditorButton();
-        updateUserArea();
-        showMenu(store);
+        openExitModal('Cerrar Sesión', '¿Estás seguro de que deseas cerrar sesión?', () => {
+            // Cerrar sesión en Netlify Identity si está disponible
+            const ni: any = (window as any).netlifyIdentity;
+            if (ni && ni.currentUser()) {
+                ni.logout();
+            }
+            // Limpiar localStorage
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('username');
+            updateEditorButton();
+            updateUserArea();
+            showMenu(store);
+        });
     });
     
     // Handler del botón Mi Área
@@ -4226,10 +4337,45 @@ const setupLevelData = (store: GameStore) => {
         profileBtn?.click();
     });
     
-    // Cerrar sesión (mobile) - duplicar lógica
+    // Cerrar sesión (mobile) - usar modal directamente
     logoutBtnMobile?.addEventListener('click', () => {
-        const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
-        logoutBtn?.click();
+        const { exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
+        if (!exitModalEl) return;
+        if (exitTitleEl) exitTitleEl.textContent = 'Cerrar Sesión';
+        if (exitTextEl) exitTextEl.textContent = '¿Estás seguro de que deseas cerrar sesión?';
+        exitModalEl.classList.remove('hidden');
+        const confirmHandler = () => {
+            // Cerrar sesión en Netlify Identity si está disponible
+            const ni: any = (window as any).netlifyIdentity;
+            if (ni && ni.currentUser()) {
+                ni.logout();
+            }
+            // Limpiar localStorage
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('username');
+            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+            if (levelEditorBtn) {
+                levelEditorBtn.textContent = 'INGRESAR';
+            }
+            const updateUserArea = () => {
+                const userAreaMobile = document.getElementById('user-area-mobile');
+                if (userAreaMobile) {
+                    userAreaMobile.style.display = 'none';
+                }
+            };
+            updateUserArea();
+            showMenu(store);
+            exitModalEl.classList.add('hidden');
+            exitConfirmBtn?.removeEventListener('click', confirmHandler);
+            exitCancelBtn?.removeEventListener('click', cancelHandler);
+        };
+        const cancelHandler = () => {
+            exitModalEl.classList.add('hidden');
+            exitConfirmBtn?.removeEventListener('click', confirmHandler);
+            exitCancelBtn?.removeEventListener('click', cancelHandler);
+        };
+        exitConfirmBtn?.addEventListener('click', confirmHandler);
+        exitCancelBtn?.addEventListener('click', cancelHandler);
     });
 
 
