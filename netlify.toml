@@ -13,12 +13,11 @@
   command = "pnpm build"
   publish = "dist"
 
-# Configuración para entorno de desarrollo (rama developer)
-[context.branch-deploy]
-  command = "pnpm build"
-  publish = "dist"
-
 # Contexto específico para la rama developer
+# Esta rama se desplegará en una URL fija: developer--[tu-sitio].netlify.app
+# IMPORTANTE: En el dashboard de Netlify, ve a:
+# Site settings → Build & deploy → Continuous Deployment → Branch deploys
+# Asegúrate de que "Deploy all branches" esté activado o agrega "developer" manualmente
 [context.developer]
   command = "pnpm build"
   publish = "dist"

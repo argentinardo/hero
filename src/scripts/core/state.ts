@@ -53,7 +53,7 @@ export const createInitialStore = (): GameStore => ({
     levelEndSequence: null,
     levelEndTimer: 0,
     virtualEnergyDrain: null,
-     playingFromEditor: false,
+    playingFromEditor: false,
     player: createInitialPlayer(),
     walls: [],
     enemies: [],
