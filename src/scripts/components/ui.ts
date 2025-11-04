@@ -1296,8 +1296,19 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         await tryLoadUserLevels(store);
     }
     
-    // Actualizar el selector de niveles para mostrar todos los niveles disponibles
-    syncLevelSelector(store);
+    // Actualizar el selector de niveles
+    // Si hay una campaña seleccionada, mostrar solo los niveles de esa campaña
+    if (store.currentCampaignId) {
+        import('./campaigns-ui').then(({ syncLevelSelectorForCampaign }) => {
+            syncLevelSelectorForCampaign(store);
+        }).catch(() => {
+            // Si falla, usar el método normal
+            syncLevelSelector(store);
+        });
+    } else {
+        // Si no hay campaña seleccionada, mostrar todos los niveles
+        syncLevelSelector(store);
+    }
     
     store.appState = 'editing';
     setBodyClass('editing');

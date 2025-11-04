@@ -18,6 +18,50 @@ import {
 import { t } from '../utils/i18n';
 
 /**
+ * Sincroniza el selector de niveles para mostrar solo los niveles de la campaña actual
+ */
+export const syncLevelSelectorForCampaign = (store: GameStore) => {
+    const { levelSelectorEl } = store.dom.ui;
+    if (!levelSelectorEl) {
+        return;
+    }
+    
+    // Obtener los índices de niveles de la campaña actual
+    const levelIndices = getCampaignLevelIndices(store, store.currentCampaignId);
+    
+    // Limpiar el selector
+    levelSelectorEl.innerHTML = '';
+    
+    // Agregar solo los niveles de la campaña actual
+    levelIndices.forEach((levelIndex, orderIndex) => {
+        const option = document.createElement('option');
+        option.value = `${levelIndex}`;
+        option.textContent = `${t('editor.levelNumber')} ${orderIndex + 1}`;
+        levelSelectorEl.appendChild(option);
+    });
+    
+    // Seleccionar el primer nivel si hay alguno
+    if (levelIndices.length > 0 && levelSelectorEl.options.length > 0) {
+        levelSelectorEl.value = `${levelIndices[0]}`;
+    }
+    
+    // Sincronizar selector mobile
+    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+    if (levelSelectorMobile) {
+        levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
+        levelSelectorMobile.value = levelSelectorEl.value;
+    }
+    
+    // Si estamos en el editor, cargar el nivel seleccionado
+    if (store.appState === 'editing') {
+        const selectedIndex = parseInt(levelSelectorEl.value ?? '0', 10);
+        if (store.levelDataStore[selectedIndex]) {
+            store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[selectedIndex]));
+        }
+    }
+};
+
+/**
  * Muestra el modal de campañas (versión simplificada para jugar)
  */
 export const showCampaignsModal = (store: GameStore, isPlayMode: boolean = false) => {
@@ -52,7 +96,7 @@ const updateCampaignsModal = (store: GameStore, isPlayMode: boolean = false) => 
     const manageSection = document.querySelector('#campaigns-modal .border-t-2');
     
     if (isPlayMode) {
-        // Modo jugar: solo mostrar selector simple
+        // Modo cargar: solo mostrar selector simple
         if (campaignSelectorSection) {
             campaignSelectorSection.style.display = 'block';
         }
@@ -183,51 +227,13 @@ const updateCampaignsList = (store: GameStore) => {
             store.currentCampaignId = campaign.id;
             hideCampaignsModal();
             
-            // Obtener el primer nivel de la campaña
-            const sortedLevels = [...campaign.levels].sort((a, b) => a.order - b.order);
-            const firstLevelIndex = sortedLevels.length > 0 ? sortedLevels[0].levelIndex : 0;
+            // Actualizar el nombre de la campaña en el panel izquierdo
+            import('./ui').then(({ updateEditorTexts }) => {
+                updateEditorTexts(store);
+            });
             
-            // Si no estamos en el editor, iniciarlo
-            if (store.appState !== 'editing') {
-                import('./ui').then(({ startEditor }) => {
-                    startEditor(store);
-                    // Seleccionar el primer nivel de la campaña después de iniciar el editor
-                    setTimeout(() => {
-                        if (store.dom.ui.levelSelectorEl) {
-                            store.dom.ui.levelSelectorEl.value = `${firstLevelIndex}`;
-                            const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
-                            if (levelSelectorMobile) {
-                                levelSelectorMobile.value = `${firstLevelIndex}`;
-                            }
-                            // Cargar el nivel en el editor usando la función del editor
-                            import('./editor').then(({ updateEditorLevelFromSelector }) => {
-                                updateEditorLevelFromSelector(store);
-                            });
-                            // Actualizar textos
-                            import('./ui').then(({ updateEditorTexts }) => {
-                                updateEditorTexts(store);
-                            });
-                        }
-                    }, 100);
-                });
-            } else {
-                // Si ya estamos en el editor, actualizar el selector y los textos
-                if (store.dom.ui.levelSelectorEl) {
-                    store.dom.ui.levelSelectorEl.value = `${firstLevelIndex}`;
-                    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
-                    if (levelSelectorMobile) {
-                        levelSelectorMobile.value = `${firstLevelIndex}`;
-                    }
-                    // Cargar el nivel en el editor usando la función del editor
-                    import('./editor').then(({ updateEditorLevelFromSelector }) => {
-                        updateEditorLevelFromSelector(store);
-                    });
-                }
-                // Actualizar los textos para mostrar la campaña correcta
-                import('./ui').then(({ updateEditorTexts }) => {
-                    updateEditorTexts(store);
-                });
-            }
+            // Sincronizar el selector de niveles para mostrar solo los niveles de esta campaña
+            syncLevelSelectorForCampaign(store);
         });
         
         const deleteBtn = document.createElement('button');
@@ -364,14 +370,15 @@ export const setupCampaignsModal = (store: GameStore) => {
         if (!campaignId) return;
         
         store.currentCampaignId = campaignId;
-        const levelIndices = getCampaignLevelIndices(store, campaignId);
+        hideCampaignsModal();
         
-        if (levelIndices.length > 0) {
-            hideCampaignsModal();
-            import('./ui').then(({ startGame }) => {
-                startGame(store, null, levelIndices[0], false);
-            });
-        }
+        // Actualizar el nombre de la campaña en el panel izquierdo
+        import('./ui').then(({ updateEditorTexts }) => {
+            updateEditorTexts(store);
+        });
+        
+        // Sincronizar el selector de niveles para mostrar solo los niveles de esta campaña
+        syncLevelSelectorForCampaign(store);
     });
     
     // Modal: Agregar nivel a campaña
