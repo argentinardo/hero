@@ -2817,7 +2817,7 @@ const updateSettingsLabels = () => {
 /**
  * Actualiza los textos del editor
  */
-const updateEditorTexts = (store: GameStore) => {
+export const updateEditorTexts = (store: GameStore) => {
     // Botones de volver al editor
     const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel') as HTMLButtonElement | null;
     const resumeEditorBtnMenu = document.getElementById('resume-editor-btn-menu') as HTMLButtonElement | null;

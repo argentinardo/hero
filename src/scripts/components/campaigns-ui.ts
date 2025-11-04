@@ -174,7 +174,61 @@ const updateCampaignsList = (store: GameStore) => {
         const name = document.createElement('h3');
         name.className = 'text-sm font-bold';
         name.style.fontFamily = "'Press Start 2P', monospace";
+        name.style.cursor = 'pointer';
+        name.style.textDecoration = 'underline';
         name.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
+        
+        // Al hacer click en el nombre, cargar la campaña en el editor
+        name.addEventListener('click', () => {
+            store.currentCampaignId = campaign.id;
+            hideCampaignsModal();
+            
+            // Obtener el primer nivel de la campaña
+            const sortedLevels = [...campaign.levels].sort((a, b) => a.order - b.order);
+            const firstLevelIndex = sortedLevels.length > 0 ? sortedLevels[0].levelIndex : 0;
+            
+            // Si no estamos en el editor, iniciarlo
+            if (store.appState !== 'editing') {
+                import('./ui').then(({ startEditor }) => {
+                    startEditor(store);
+                    // Seleccionar el primer nivel de la campaña después de iniciar el editor
+                    setTimeout(() => {
+                        if (store.dom.ui.levelSelectorEl) {
+                            store.dom.ui.levelSelectorEl.value = `${firstLevelIndex}`;
+                            const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                            if (levelSelectorMobile) {
+                                levelSelectorMobile.value = `${firstLevelIndex}`;
+                            }
+                            // Cargar el nivel en el editor usando la función del editor
+                            import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                                updateEditorLevelFromSelector(store);
+                            });
+                            // Actualizar textos
+                            import('./ui').then(({ updateEditorTexts }) => {
+                                updateEditorTexts(store);
+                            });
+                        }
+                    }, 100);
+                });
+            } else {
+                // Si ya estamos en el editor, actualizar el selector y los textos
+                if (store.dom.ui.levelSelectorEl) {
+                    store.dom.ui.levelSelectorEl.value = `${firstLevelIndex}`;
+                    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                    if (levelSelectorMobile) {
+                        levelSelectorMobile.value = `${firstLevelIndex}`;
+                    }
+                    // Cargar el nivel en el editor usando la función del editor
+                    import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                        updateEditorLevelFromSelector(store);
+                    });
+                }
+                // Actualizar los textos para mostrar la campaña correcta
+                import('./ui').then(({ updateEditorTexts }) => {
+                    updateEditorTexts(store);
+                });
+            }
+        });
         
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'nes-btn is-error text-xs';
