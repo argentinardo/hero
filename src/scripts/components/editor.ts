@@ -315,12 +315,14 @@ export const bindEditorCanvas = (store: GameStore) => {
         if (store.appState !== 'editing') {
             return;
         }
-        event.preventDefault();
 
         const touches = event.touches;
 
-        // Si hay dos dedos y estamos en un gesto de dos dedos, procesar como scroll
+        // Si hay dos dedos y estamos en un gesto de dos dedos, NO prevenir comportamiento por defecto
+        // Esto permite el scroll nativo de dos dedos para generar más espacio
         if (touches.length === 2 && isTwoFingerGesture) {
+            // NO hacer preventDefault para permitir scroll nativo del navegador
+            // El scroll nativo generará más espacio automáticamente
             const currentY1 = touches[0].clientY;
             const currentY2 = touches[1].clientY;
             const currentTwoFingerY = (currentY1 + currentY2) / 2;
@@ -336,15 +338,16 @@ export const bindEditorCanvas = (store: GameStore) => {
 
                 // Aplicar scroll suave con límites
                 store.cameraY = Math.max(0, Math.min(store.cameraY + scrollAmount, maxCameraY));
-
-                // Debug del scroll con dos dedos
-                console.log(`Two-finger scroll: deltaY=${deltaY}, scrollAmount=${scrollAmount}, new cameraY=${store.cameraY}`);
             }
 
             // Actualizar posición para el siguiente cálculo
             lastTwoFingerY = currentTwoFingerY;
+            // NO hacer preventDefault - permitir scroll nativo
             return; // No procesar como colocación de tiles
         }
+        
+        // Solo prevenir el comportamiento por defecto para un dedo (para dibujar)
+        event.preventDefault();
 
         // Si hay un solo dedo, procesar como colocación normal de tiles
         if (touches.length === 1 && !isTwoFingerGesture) {
@@ -416,19 +419,23 @@ export const bindEditorCanvas = (store: GameStore) => {
         if (store.appState !== 'editing') {
             return;
         }
-        event.preventDefault();
 
         const touches = event.touches;
 
-        // Si hay dos dedos tocando, iniciar gesto de dos dedos
+        // Si hay dos dedos tocando, NO prevenir el comportamiento por defecto
+        // Esto permite el scroll nativo de dos dedos para generar más espacio
         if (touches.length === 2) {
             touchStartY1 = touches[0].clientY;
             touchStartY2 = touches[1].clientY;
             touchStartTime = Date.now();
             isTwoFingerGesture = true;
             lastTwoFingerY = (touchStartY1 + touchStartY2) / 2;
+            // NO hacer preventDefault para permitir scroll nativo
             return; // No procesar como toque normal
         }
+        
+        // Solo prevenir el comportamiento por defecto para un dedo (para dibujar)
+        event.preventDefault();
 
         // Si hay un solo dedo, procesar normalmente
         if (touches.length === 1) {

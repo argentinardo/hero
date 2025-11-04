@@ -746,13 +746,15 @@ const setupPinchZoom = (store: GameStore) => {
         if (e.touches.length === 2) {
             const isEditorMode = store.appState === 'editing';
             
-            // En editor: NO prevenir el comportamiento por defecto inicialmente
-            // Esto permite que el scroll de dos dedos del editor funcione correctamente
-            // Solo preveniremos cuando detectemos que es claramente un gesto de zoom
-            if (!isEditorMode) {
-                e.preventDefault();
+            if (isEditorMode) {
+                // En editor: NO hacer zoom, solo permitir scroll de dos dedos
+                // No prevenir el comportamiento por defecto para permitir scroll nativo
+                isPinching = false; // Desactivar pinch en editor
+                return; // Dejar que el editor maneje el scroll de dos dedos
             }
             
+            // En modo juego: permitir zoom y pan
+            e.preventDefault();
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
             initialDistance = getTouchDistance(touch1, touch2);
@@ -769,6 +771,16 @@ const setupPinchZoom = (store: GameStore) => {
     const handleTouchMove = (e: TouchEvent) => {
         // Solo procesar si hay exactamente 2 dedos
         if (e.touches.length === 2 && isPinching) {
+            const isEditorMode = store.appState === 'editing';
+            
+            if (isEditorMode) {
+                // En editor: NO hacer zoom, solo permitir scroll de dos dedos
+                // No prevenir el comportamiento por defecto para permitir scroll nativo
+                return; // Dejar que el editor maneje el scroll de dos dedos
+            }
+            
+            // En modo juego: zoom + pan
+            e.preventDefault();
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
             const currentDistance = getTouchDistance(touch1, touch2);
@@ -778,65 +790,43 @@ const setupPinchZoom = (store: GameStore) => {
             currentScale = Math.max(0.5, Math.min(3.0, initialScale * scaleChange)); // Limitar entre 0.5x y 3x
             store.dom.zoomScale = currentScale;
             
-            // CRÍTICO: En modo editor, solo permitir zoom, NO pan
-            // El pan en editor interfiere con el scroll de dos dedos necesario para navegar el nivel
-            const isEditorMode = store.appState === 'editing';
+            const currentCenter = getTouchCenter(touch1, touch2);
             
-            if (isEditorMode) {
-                // En editor: solo zoom, NO pan
-                // Calcular el cambio de distancia para determinar si es un gesto de zoom
-                const distanceChange = Math.abs(currentDistance - initialDistance);
-                const distanceChangePercent = distanceChange / initialDistance;
+            // Calcular el desplazamiento del centro (pan)
+            const deltaX = currentCenter.x - initialCenter.x;
+            const deltaY = currentCenter.y - initialCenter.y;
+            
+            // Convertir el desplazamiento en píxeles de pantalla a coordenadas de mundo
+            const canvas = store.dom.canvas;
+            if (canvas) {
+                const canvasRect = canvas.getBoundingClientRect();
+                const actualCanvasWidth = canvasRect.width;
+                const actualCanvasHeight = canvasRect.height;
                 
-                // Si hay cambio significativo de distancia (>5% = gesto de zoom claro), prevenir scroll y aplicar zoom
-                if (distanceChangePercent > 0.05) {
-                    e.preventDefault();
-                    // Aplicar solo el zoom al canvas wrapper (sin pan)
-                    canvasWrapper.style.transform = `scale(${currentScale})`;
-                    canvasWrapper.style.transformOrigin = 'center center';
-                }
-                // Si no hay cambio significativo, dejar que el scroll de dos dedos del editor funcione
-            } else {
-                // En modo juego: zoom + pan
-                e.preventDefault();
-                const currentCenter = getTouchCenter(touch1, touch2);
+                // Convertir píxeles de pantalla a coordenadas del mundo
+                const worldDeltaX = -deltaX / currentScale;
+                const worldDeltaY = -deltaY / currentScale;
                 
-                // Calcular el desplazamiento del centro (pan)
-                const deltaX = currentCenter.x - initialCenter.x;
-                const deltaY = currentCenter.y - initialCenter.y;
+                // Obtener dimensiones del nivel
+                const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+                const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
+                const levelWidth = levelCols * TILE_SIZE;
+                const levelHeight = levelRows * TILE_SIZE;
                 
-                // Convertir el desplazamiento en píxeles de pantalla a coordenadas de mundo
-                const canvas = store.dom.canvas;
-                if (canvas) {
-                    const canvasRect = canvas.getBoundingClientRect();
-                    const actualCanvasWidth = canvasRect.width;
-                    const actualCanvasHeight = canvasRect.height;
-                    
-                    // Convertir píxeles de pantalla a coordenadas del mundo
-                    const worldDeltaX = -deltaX / currentScale;
-                    const worldDeltaY = -deltaY / currentScale;
-                    
-                    // Obtener dimensiones del nivel
-                    const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
-                    const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
-                    const levelWidth = levelCols * TILE_SIZE;
-                    const levelHeight = levelRows * TILE_SIZE;
-                    
-                    // Calcular límites de cámara considerando el zoom
-                    const visibleWidth = actualCanvasWidth / currentScale;
-                    const visibleHeight = actualCanvasHeight / currentScale;
-                    const maxCamX = Math.max(0, levelWidth - visibleWidth);
-                    const maxCamY = Math.max(0, levelHeight - visibleHeight);
-                    
-                    // Actualizar la posición de la cámara
-                    store.cameraX = Math.max(0, Math.min(initialCamera.x + worldDeltaX, maxCamX));
-                    store.cameraY = Math.max(0, Math.min(initialCamera.y + worldDeltaY, maxCamY));
-                }
+                // Calcular límites de cámara considerando el zoom
+                const visibleWidth = actualCanvasWidth / currentScale;
+                const visibleHeight = actualCanvasHeight / currentScale;
+                const maxCamX = Math.max(0, levelWidth - visibleWidth);
+                const maxCamY = Math.max(0, levelHeight - visibleHeight);
                 
-                // Aplicar zoom al canvas wrapper
-                canvasWrapper.style.transform = `scale(${currentScale})`;
-                canvasWrapper.style.transformOrigin = 'center center';
+                // Actualizar la posición de la cámara
+                store.cameraX = Math.max(0, Math.min(initialCamera.x + worldDeltaX, maxCamX));
+                store.cameraY = Math.max(0, Math.min(initialCamera.y + worldDeltaY, maxCamY));
             }
+            
+            // Aplicar zoom al canvas wrapper
+            canvasWrapper.style.transform = `scale(${currentScale})`;
+            canvasWrapper.style.transformOrigin = 'center center';
         }
     };
     

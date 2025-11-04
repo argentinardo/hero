@@ -316,12 +316,42 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     }
 
     /* Message Overlay */
+    /* Botones del menú inicial - reducir a 80% del tamaño en mobile */
+    #start-game-btn,
+    #gallery-btn,
+    #level-editor-btn,
+    #credits-btn,
+    #install-pwa-btn,
+    #play-store-btn {
+        transform: scale(0.8) !important;
+        transform-origin: center center;
+    }
+    
+    /* Eliminar todos los márgenes y espaciado entre botones del menú inicial en mobile */
     #message-overlay {
         position: fixed;
         z-index: 50;
-        
+        top: auto;
+        bottom:30px;        
         p {
             display: none;
+        }
+        
+        /* Eliminar todos los márgenes del botón principal */
+        > div:first-of-type {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Eliminar gap entre botones secundarios */
+        > div.flex.gap-3 {
+            gap: 0 !important;
+        }
+        
+        /* Eliminar márgenes y gap de botones de instalación */
+        > div.mt-4 {
+            margin-top: 0 !important;
+            gap: 0 !important;
         }
     }
     
@@ -437,6 +467,13 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             height: 100vh !important; /* Alto exacto del viewport */
             max-height: 100vh !important; /* Asegurar que no exceda el viewport */
             margin: 0 auto; /* Centrado */
+            /* En mobile: permitir solo scroll vertical, no zoom */
+            touch-action: pan-y;
+        }
+        
+        .canvas-wrapper {
+            /* En mobile editor: permitir solo scroll vertical, no zoom */
+            touch-action: pan-y;
         }
         
         /* Botón toggle del panel de usuario */

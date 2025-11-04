@@ -425,7 +425,6 @@ body {
     #editor-panel-title {
         position: sticky;
         top: 0;
-        background-color: rgba(0, 0, 0, 0.95);
         z-index: 10;
         padding-bottom: 0.5rem;
         margin-bottom: 0.5rem;
@@ -453,8 +452,12 @@ body {
     transform: translateX(100%);
 }
 
-/* Botón toggle del panel de usuario */
+/* Botón toggle del panel de usuario - fijado al viewport */
 #user-panel-toggle {
+    position: fixed !important;
+    left: 0 !important;
+    top: 12px !important;
+    z-index: 310 !important;
     transition: opacity 0.2s ease-in-out;
     
     &.hidden {
@@ -476,6 +479,8 @@ body.state-editing {
         display: flex;
         align-items: center;
         justify-content: center;
+        /* En mobile: permitir solo scroll vertical, no zoom */
+        touch-action: pan-y;
     }
     
     /* Canvas en modo editor - 20 tiles internos escalados a 1600px visuales */
@@ -485,6 +490,8 @@ body.state-editing {
         height: 100vh !important; /* Alto exacto del viewport */
         max-height: 100vh !important; /* Asegurar que no exceda el viewport */
         margin: 0 auto;
+        /* En mobile: permitir solo scroll vertical, no zoom */
+        touch-action: pan-y;
     }
     
     /* Mostrar panel de usuario */
@@ -498,8 +505,12 @@ body.state-editing {
     }
 }
 
-/* Botón toggle del editor - siempre visible cuando el editor está activo */
+/* Botón toggle del editor - siempre visible cuando el editor está activo - fijado al viewport */
 #editor-toggle {
+    position: fixed !important;
+    right: 0 !important;
+    top: 12px !important;
+    z-index: 310 !important;
     transition: opacity 0.2s ease-in-out;
     
     &.hidden {
@@ -811,9 +822,17 @@ body.state-menu {
 
 /* Message Overlay - Pantalla de mensajes */
 #message-overlay {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
+    position: fixed;
+    z-index: 50;
+    top: auto;
+    bottom:30px; 
+    width: 100%;
     
     p, span, button, div {
         user-select: none;
