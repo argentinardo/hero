@@ -282,6 +282,21 @@ export interface DomReferences {
     ui: UiElements;
 }
 
+// Sistema de Campañas
+export interface CampaignLevel {
+    levelIndex: number; // Índice del nivel en levelDataStore
+    order: number; // Orden en la campaña (0 = primero)
+}
+
+export interface Campaign {
+    id: string; // ID único de la campaña
+    name: string; // Nombre de la campaña
+    levels: CampaignLevel[]; // Niveles en orden de juego
+    isDefault: boolean; // Si es la campaña por defecto (20 niveles originales)
+    createdAt: number; // Timestamp de creación
+    updatedAt: number; // Timestamp de última actualización
+}
+
 export interface GameStore {
     appState: AppState;
     gameState: GameState;
@@ -303,6 +318,8 @@ export interface GameStore {
     levelEndSequence: 'energy' | 'bombs' | 'complete' | null;
     levelEndTimer: number;
     virtualEnergyDrain: number | null;
+    // Flag para saber si estamos jugando desde el editor
+    playingFromEditor: boolean;
     
     // Configuración de paredes aplastantes (editor)
     crushingWallConfig?: {
@@ -327,6 +344,8 @@ export interface GameStore {
     levelDesigns: string[][];
     levelDataStore: string[][][];
     editorLevel: string[][];
+    campaigns: Campaign[]; // Campañas del usuario
+    currentCampaignId: string | null; // ID de la campaña actual
     selectedTile: string;
     mouse: MouseState;
     keys: Record<string, boolean>;

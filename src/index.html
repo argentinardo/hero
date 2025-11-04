@@ -372,6 +372,67 @@
             </div>
         </div>
 
+        <!-- Modal de Campañas -->
+        <div id="campaigns-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center z-50">
+            <div class="nes-container with-title is-dark max-w-2xl mx-6 max-h-[90vh] overflow-y-auto">
+                <h1 id="campaigns-modal-title" class="title text-2xl md:text-3xl font-bold mb-4" style="font-family: 'Press Start 2P', monospace;">
+                    Campañas
+                </h1>
+                
+                <!-- Selector de campaña para jugar -->
+                <div id="campaign-selector-section" class="mb-6">
+                    <select id="campaign-selector" class="nes-select w-full mb-4"></select>
+                    <button id="campaign-play-btn" class="nes-btn is-success w-full">Jugar</button>
+                </div>
+
+                <div class="border-t-2 border-gray-600 pt-4 mb-4">
+                    <h2 class="text-lg mb-4" style="font-family: 'Press Start 2P', monospace;">Gestionar Campañas</h2>
+                    
+                    <!-- Crear nueva campaña -->
+                    <div class="mb-4">
+                        <input type="text" id="new-campaign-name" class="nes-input w-full mb-2" placeholder="Nombre de la campaña">
+                        <button id="create-campaign-btn" class="nes-btn is-primary w-full">Crear Campaña</button>
+                    </div>
+
+                    <!-- Lista de campañas -->
+                    <div id="campaigns-list" class="mb-4">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="flex justify-center gap-4">
+                    <button id="campaigns-modal-close-btn" class="nes-btn">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Agregar nivel a campaña -->
+        <div id="add-to-campaign-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center z-50">
+            <div class="nes-container with-title is-dark max-w-lg mx-6">
+                <h1 id="add-to-campaign-title" class="title text-xl md:text-2xl font-bold mb-4" style="font-family: 'Press Start 2P', monospace;">
+                    Agregar a Campaña
+                </h1>
+                <p id="add-to-campaign-message" class="mb-4">Selecciona una campaña para agregar este nivel:</p>
+                
+                <!-- Opción: Crear nueva campaña -->
+                <div class="mb-4 p-3 border-2 border-gray-600 bg-gray-700">
+                    <label class="block mb-2 text-sm font-bold" style="font-family: 'Press Start 2P', monospace;">Crear Nueva Campaña</label>
+                    <input type="text" id="new-campaign-name-input" class="nes-input w-full mb-2" placeholder="Nombre de la nueva campaña">
+                    <button id="create-campaign-and-add-btn" class="nes-btn is-success w-full">Crear y Agregar</button>
+                </div>
+                
+                <div class="border-t-2 border-gray-600 pt-4 mb-4">
+                    <label class="block mb-2 text-sm font-bold" style="font-family: 'Press Start 2P', monospace;">O Agregar a Campaña Existente</label>
+                    <select id="add-to-campaign-selector" class="nes-select w-full mb-4"></select>
+                </div>
+                
+                <div class="flex justify-center gap-4">
+                    <button id="add-to-campaign-cancel-btn" class="nes-btn">Cancelar</button>
+                    <button id="add-to-campaign-confirm-btn" class="nes-btn is-primary">Agregar</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Splash animado -->
         <div id="splash-container"></div>
 
@@ -444,6 +505,23 @@
                     </button>
                     <button id="gameover-menu-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
                         Menú Principal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Level Complete (para editor) -->
+        <div id="level-complete-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center z-50">
+            <div class="nes-container with-title is-dark max-w-lg mx-6">
+                <h1 id="level-complete-title" class="title text-4xl md:text-5xl font-bold mb-6 text-green-400" style="text-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 0 40px rgba(0, 255, 0, 0.4); font-family: 'Press Start 2P', monospace;">
+                    LEVEL COMPLETE
+                </h1>
+                <div class="flex flex-col gap-4">
+                    <button id="level-complete-back-to-editor-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                        Volver al Editor
+                    </button>
+                    <button id="level-complete-restart-btn" class="nes-btn is-warning" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                        Reiniciar
                     </button>
                 </div>
             </div>

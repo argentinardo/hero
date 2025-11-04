@@ -270,6 +270,11 @@ export const attachDomReferences = (store: GameStore) => {
     ui.gameoverRetryBtn = document.getElementById('gameover-retry-btn') as HTMLButtonElement | null;
     ui.gameoverMenuBtn = document.getElementById('gameover-menu-btn') as HTMLButtonElement | null;
     
+    // Modal Level Complete (editor)
+    const levelCompleteModal = document.getElementById('level-complete-modal');
+    const levelCompleteBackToEditorBtn = document.getElementById('level-complete-back-to-editor-btn') as HTMLButtonElement | null;
+    const levelCompleteRestartBtn = document.getElementById('level-complete-restart-btn') as HTMLButtonElement | null;
+    
     // Elementos del contador de FPS
     ui.fpsCounterEl = document.getElementById('fps-counter');
     ui.fpsValueEl = document.getElementById('fps-value');
@@ -1263,6 +1268,9 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     }
     // Establecer índice inicial
     store.currentLevelIndex = startIndex ?? 0;
+    
+    // Marcar si estamos jugando desde el editor
+    store.playingFromEditor = preserveLevels ?? false;
     loadLevel(store);
 };
 
@@ -1512,7 +1520,42 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             });
         };
         bindSectionToggle('edit-section-toggle', 'edit-section-arrow', 'edit-section-content');
-        bindSectionToggle('levels-section-toggle', 'levels-section-arrow', 'levels-section-content');
+        
+        // Para la sección de niveles, hacer que el botón abra el modal de campañas
+        const levelsSectionToggle = document.getElementById('levels-section-toggle') as HTMLButtonElement | null;
+        const levelsSectionArrow = document.getElementById('levels-section-arrow') as HTMLElement | null;
+        const levelsSectionContent = document.getElementById('levels-section-content') as HTMLElement | null;
+        if (levelsSectionToggle) {
+            levelsSectionToggle.addEventListener('click', (e) => {
+                // Si se hace click en el span del nombre (no en el arrow), abrir modal de campañas
+                const target = e.target as HTMLElement;
+                const span = levelsSectionToggle.querySelector('span:first-child');
+                if (span && (target === span || span.contains(target))) {
+                    // Abrir modal de campañas
+                    import('./campaigns-ui').then(({ showCampaignsModal }) => {
+                        showCampaignsModal(store);
+                    });
+                } else {
+                    // Si se hace click en el arrow o en otra parte, toggle normal
+                    if (levelsSectionContent && levelsSectionArrow) {
+                        const isHidden = levelsSectionContent.style.display === 'none';
+                        levelsSectionContent.style.display = isHidden ? 'block' : 'none';
+                        levelsSectionArrow.textContent = isHidden ? '▼' : '▶';
+                    }
+                }
+            });
+        }
+        
+        // También para mobile
+        const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center') as HTMLElement | null;
+        if (levelsSectionMobileTitle) {
+            levelsSectionMobileTitle.style.cursor = 'pointer';
+            levelsSectionMobileTitle.addEventListener('click', () => {
+                import('./campaigns-ui').then(({ showCampaignsModal }) => {
+                    showCampaignsModal(store);
+                });
+            });
+        }
     }
     
     // Solo cargar desde levelDataStore si no estamos preservando el nivel actual
@@ -1560,7 +1603,12 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
 export const updateUiBar = (store: GameStore) => {
     const { livesCountEl, levelCountEl, scoreCountEl, energyBarEl } = store.dom.ui;
     if (livesCountEl) {
-        livesCountEl.textContent = `${store.lives}`;
+        // Si hay más de 5 vidas, mostrar "Nx player", de lo contrario mostrar el número
+        if (store.lives > 5) {
+            livesCountEl.textContent = `${store.lives}x player`;
+        } else {
+            livesCountEl.textContent = `${store.lives}`;
+        }
     }
     if (levelCountEl) {
         levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
@@ -2225,6 +2273,10 @@ export const setupUI = (store: GameStore) => {
         showMenu(store);
         // Intentar cargar niveles del usuario si está logueado
         tryLoadUserLevels(store);
+        // Configurar modal de campañas
+        import('./campaigns-ui').then(({ setupCampaignsModal }) => {
+            setupCampaignsModal(store);
+        });
         requestAnimationFrame(() => {
             const ctx = store.dom.ctx;
             if (ctx && store.dom.canvas) {
@@ -2235,7 +2287,7 @@ export const setupUI = (store: GameStore) => {
 };
 
 // Cargar niveles personalizados del usuario si está autenticado
-const tryLoadUserLevels = async (store: GameStore) => {
+export const tryLoadUserLevels = async (store: GameStore) => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (!isLoggedIn) {
         // Intentar cargar desde localStorage como respaldo
@@ -2329,6 +2381,16 @@ const tryLoadUserLevels = async (store: GameStore) => {
             ) as string[][][];
             store.levelDesigns = JSON.parse(JSON.stringify(levelsToLoad));
             store.initialLevels = JSON.parse(JSON.stringify(levelsToLoad));
+            
+            // Actualizar campañas para que coincidan con los niveles cargados
+            const { initializeCampaigns, loadCampaignsFromServer } = await import('../utils/campaigns');
+            // Primero intentar cargar campañas del servidor
+            const loadedFromServer = await loadCampaignsFromServer(store);
+            if (!loadedFromServer) {
+                // Si no hay campañas en el servidor, inicializar con los niveles cargados
+                initializeCampaigns(store, levelsToLoad.length);
+            }
+            
             syncLevelSelector(store);
             console.log('Niveles cargados desde la cuenta del usuario:', levelsToLoad.length);
         } else {
@@ -2600,6 +2662,7 @@ const updateSettingsUI = (store: GameStore) => {
  * Actualiza todos los textos del juego según el idioma actual
  */
 const updateAllTexts = (store: GameStore) => {
+    updateEditorTexts(store);
     // Menú principal
     const startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
@@ -2682,7 +2745,7 @@ const updateAllTexts = (store: GameStore) => {
     updateSettingsLabels();
     
     // Editor (incluye paleta)
-    updateEditorTexts();
+    updateEditorTexts(store);
     // Actualizar paleta si el editor está activo
     if (store.appState === 'editing' && store.dom.ui.paletteEl) {
         populatePalette(store);
@@ -2754,7 +2817,7 @@ const updateSettingsLabels = () => {
 /**
  * Actualiza los textos del editor
  */
-const updateEditorTexts = () => {
+const updateEditorTexts = (store: GameStore) => {
     // Botones de volver al editor
     const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel') as HTMLButtonElement | null;
     const resumeEditorBtnMenu = document.getElementById('resume-editor-btn-menu') as HTMLButtonElement | null;
@@ -2779,11 +2842,24 @@ const updateEditorTexts = () => {
     if (duplicateRowBtn) duplicateRowBtn.textContent = t('editor.duplicateRow');
     if (deleteRowBtn) deleteRowBtn.textContent = t('editor.deleteRow');
     
-    // Sección Niveles
+    // Sección Niveles - Mostrar nombre de la campaña actual
     const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
     const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center');
-    if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
-    if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = t('editor.levels').toUpperCase();
+    
+    // Obtener el nombre de la campaña actual
+    import('../utils/campaigns').then(({ getCurrentCampaign }) => {
+        const campaign = getCurrentCampaign(store);
+        const campaignName = campaign 
+            ? (campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name)
+            : t('editor.levels');
+        
+        if (levelsSectionToggle) levelsSectionToggle.textContent = campaignName;
+        if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = campaignName.toUpperCase();
+    }).catch(() => {
+        // Fallback si hay error
+        if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
+        if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = t('editor.levels').toUpperCase();
+    });
     
     // Botones de niveles (desktop)
     const addLevelBtn = document.getElementById('add-level-btn');
@@ -3453,7 +3529,28 @@ const setupMenuButtons = (store: GameStore) => {
     // Actualizar el botón al cargar
     updateEditorButton();
 
-    startGameBtn?.addEventListener('click', () => startGame(store));
+    startGameBtn?.addEventListener('click', async () => {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        
+        if (!isLoggedIn) {
+            // Usuario no logueado: iniciar directamente con la campaña original
+            const { getCampaignLevelIndices } = await import('../utils/campaigns');
+            const DEFAULT_CAMPAIGN_ID = 'default';
+            store.currentCampaignId = DEFAULT_CAMPAIGN_ID;
+            const levelIndices = getCampaignLevelIndices(store, DEFAULT_CAMPAIGN_ID);
+            
+            if (levelIndices.length > 0) {
+                startGame(store, null, levelIndices[0], false);
+            } else {
+                // Fallback: iniciar con el primer nivel si no hay campaña
+                startGame(store, null, 0, false);
+            }
+        } else {
+            // Usuario logueado: mostrar modal para seleccionar campaña
+            const { showCampaignsModal } = await import('./campaigns-ui');
+            showCampaignsModal(store, true);
+        }
+    });
     levelEditorBtn?.addEventListener('click', () => {
         const { isLoggedIn } = checkLoginStatus();
         if (!isLoggedIn) {
@@ -3838,6 +3935,35 @@ const setupMenuButtons = (store: GameStore) => {
             gameoverModal.classList.add('hidden');
         }
         showMenu(store);
+    });
+    
+    // Configurar event listeners para el modal Level Complete (editor)
+    const levelCompleteModal = document.getElementById('level-complete-modal');
+    const levelCompleteBackToEditorBtn = document.getElementById('level-complete-back-to-editor-btn') as HTMLButtonElement | null;
+    const levelCompleteRestartBtn = document.getElementById('level-complete-restart-btn') as HTMLButtonElement | null;
+    
+    levelCompleteBackToEditorBtn?.addEventListener('click', () => {
+        if (levelCompleteModal) {
+            levelCompleteModal.classList.add('hidden');
+        }
+        // Volver al editor preservando el nivel actual
+        if (store.appState === 'playing') {
+            const index = store.currentLevelIndex;
+            const levelRows = store.levelDesigns[index] ?? [];
+            store.editorLevel = levelRows.map(row => row.split(''));
+            startEditor(store, true);
+        }
+    });
+    
+    levelCompleteRestartBtn?.addEventListener('click', () => {
+        if (levelCompleteModal) {
+            levelCompleteModal.classList.add('hidden');
+        }
+        // Reiniciar el mismo nivel desde el editor
+        if (store.appState === 'playing' && store.playingFromEditor) {
+            const index = store.currentLevelIndex;
+            startGame(store, null, index, true);
+        }
     });
     
     window.addEventListener('keydown', event => {
@@ -4291,16 +4417,48 @@ const shareLevelToGallery = async (store: GameStore) => {
         const token = await user.jwt();
         const baseUrl = getNetlifyBaseUrl();
         
+        // Verificar que el nivel del editor existe y no está vacío
+        if (!store.editorLevel || store.editorLevel.length === 0) {
+            showNotification(store, `❌ Error`, 'El nivel está vacío. Por favor crea un nivel antes de compartir.');
+            return;
+        }
+        
         // Obtener el nivel actual del editor
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
         
+        // Verificar que el nivel limpiado no está vacío
+        if (!cleanedLevel || cleanedLevel.length === 0 || (cleanedLevel[0] && cleanedLevel[0].length === 0)) {
+            showNotification(store, `❌ Error`, 'El nivel está vacío después de limpiar. Por favor agrega contenido al nivel.');
+            return;
+        }
+        
         // Convertir a formato chunks20x18
         const levelsAsStrings = [cleanedLevel.map(row => row.join(''))];
-        const levelData = buildChunkedFile20x18(levelsAsStrings);
+        let levelData;
+        try {
+            levelData = buildChunkedFile20x18(levelsAsStrings);
+        } catch (conversionError: any) {
+            console.error('Error convirtiendo nivel:', conversionError);
+            showNotification(store, `❌ Error`, `Error al convertir el nivel: ${conversionError.message || 'Error desconocido'}`);
+            return;
+        }
+        
+        // Verificar que levelData es válido
+        if (!levelData || !levelData.format || !levelData.levels) {
+            console.error('levelData inválido:', levelData);
+            showNotification(store, `❌ Error`, 'Error al procesar el formato del nivel.');
+            return;
+        }
         
         // Generar captura de pantalla del nivel
-        const screenshot = generateLevelScreenshotForShare(cleanedLevel);
+        let screenshot: string;
+        try {
+            screenshot = generateLevelScreenshotForShare(cleanedLevel);
+        } catch (screenshotError: any) {
+            console.error('Error generando screenshot:', screenshotError);
+            screenshot = ''; // Continuar sin screenshot si falla
+        }
         
         // Preguntar por nombre y descripción
         const name = await showPromptModal(store, t('messages.levelNamePrompt'), `${t('messages.myLevel')} ${index + 1}`);
@@ -4308,22 +4466,29 @@ const shareLevelToGallery = async (store: GameStore) => {
         
         const description = await showPromptModal(store, t('messages.levelDescriptionPrompt'), '');
         
+        // Preparar el payload
+        const payload = {
+            name: name,
+            description: description || null,
+            data: levelData,
+            screenshot: screenshot || null
+        };
+        
+        console.log('Compartiendo nivel:', { name, hasData: !!levelData, hasScreenshot: !!screenshot });
+        
         const res = await fetch(`${baseUrl}/.netlify/functions/gallery`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({
-                name: name,
-                description: description || null,
-                data: levelData,
-                screenshot: screenshot
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
+            const errorText = await res.text().catch(() => 'Error desconocido');
+            console.error('Error del servidor:', res.status, errorText);
+            throw new Error(`HTTP ${res.status}: ${errorText}`);
         }
 
         const result = await res.json();
@@ -4336,10 +4501,15 @@ const shareLevelToGallery = async (store: GameStore) => {
         
     } catch (error: any) {
         console.error('Error compartiendo nivel:', error);
-        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        const errorMessage = error.message || String(error);
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
             showNotification(store, `❌ ${t('modals.errors.unauthorized')}`, t('modals.errors.unauthorized'));
+        } else if (errorMessage.includes('400')) {
+            showNotification(store, `❌ Error`, `Error en la solicitud: ${errorMessage}`);
+        } else if (errorMessage.includes('500')) {
+            showNotification(store, `❌ Error`, 'Error del servidor. Por favor intenta más tarde.');
         } else {
-            showNotification(store, `❌ ${t('modals.errors.shareError')}`, t('modals.errors.shareError'));
+            showNotification(store, `❌ ${t('modals.errors.shareError')}`, `${t('modals.errors.shareError')}: ${errorMessage}`);
         }
     }
 };
@@ -4476,6 +4646,11 @@ const setupLevelData = (store: GameStore) => {
     // Cargar nivel automáticamente cuando cambia el selector
     store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
         loadLevelFromStore();
+        // Actualizar el número de nivel en el game-ui cuando cambia el selector
+        if (store.dom.ui.levelCountEl && store.dom.ui.levelSelectorEl) {
+            const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
+            store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
+        }
     });
 
     store.dom.ui.addLevelBtn?.addEventListener('click', () => {
@@ -4819,8 +4994,15 @@ const setupLevelData = (store: GameStore) => {
         }
     };
 
-    saveAllBtn?.addEventListener('click', () => {
-        confirmationModalEl?.classList.remove('hidden');
+    saveAllBtn?.addEventListener('click', async () => {
+        // Mostrar modal con opción de guardar en archivo o agregar a campaña
+        const { updateAddToCampaignSelector } = await import('./campaigns-ui');
+        const addToCampaignModal = document.getElementById('add-to-campaign-modal');
+        if (addToCampaignModal) {
+            // Cargar campañas en el selector
+            updateAddToCampaignSelector(store);
+            addToCampaignModal.classList.remove('hidden');
+        }
     });
 
     confirmSaveBtn?.addEventListener('click', async () => {
@@ -4895,10 +5077,20 @@ const setupLevelData = (store: GameStore) => {
     // Sincronizar selectores cuando cambien
     store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
         syncLevelSelectors(false);
+        // Actualizar el número de nivel en el game-ui cuando cambia el selector
+        if (store.dom.ui.levelCountEl && store.dom.ui.levelSelectorEl) {
+            const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
+            store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
+        }
     });
     
     levelSelectorMobile?.addEventListener('change', () => {
         syncLevelSelectors(true);
+        // Actualizar el número de nivel en el game-ui cuando cambia el selector mobile
+        if (store.dom.ui.levelCountEl && levelSelectorMobile) {
+            const selectedIndex = parseInt(levelSelectorMobile.value ?? '0', 10);
+            store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
+        }
     });
     
     // Jugar Nivel (mobile) - usar selector mobile
@@ -4994,6 +5186,16 @@ const setupLevelData = (store: GameStore) => {
 };
 
 /**
+ * Muestra el modal de "Level Complete" cuando se completa un nivel desde el editor
+ */
+export const showLevelCompleteModal = (store: GameStore) => {
+    const levelCompleteModal = document.getElementById('level-complete-modal');
+    if (levelCompleteModal) {
+        levelCompleteModal.classList.remove('hidden');
+    }
+};
+
+/**
  * Configura los atajos de teclado para mejorar la navegación
  * ESC: Cerrar modales, P: Pausar, R: Reiniciar, E: Editor, M: Menú, S: Settings
  */
@@ -5014,9 +5216,13 @@ const setupKeyboardShortcuts = (store: GameStore) => {
             const authModal = document.getElementById('auth-choice-modal');
             const pauseMenu = document.getElementById('pause-menu-modal');
             const gameoverModal = document.getElementById('gameover-modal');
+            const levelCompleteModal = document.getElementById('level-complete-modal');
             
             if (gameoverModal && !gameoverModal.classList.contains('hidden')) {
                 return; // No cerrar Game Over con ESC
+            }
+            if (levelCompleteModal && !levelCompleteModal.classList.contains('hidden')) {
+                return; // No cerrar Level Complete con ESC
             }
             if (galleryModal && !galleryModal.classList.contains('hidden')) {
                 galleryModal.classList.add('hidden');

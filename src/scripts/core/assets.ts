@@ -13,7 +13,6 @@ import tentacleSrc from '../../assets/sprites/tentaculo.png';
 import bombSrc from '../../assets/sprites/bomba.png';
 import explosionSrc from '../../assets/sprites/boooom.png';
 import wallSrc from '../../assets/sprites/wall_small.png';
-import dirtSrc from '../../assets/sprites/tierra_small.png';
 import aguaSrc from '../../assets/sprites/agua_small.png';
 import columnSrc from '../../assets/sprites/weakwall.png';
 import lavaSrc from '../../assets/sprites/lava.png';

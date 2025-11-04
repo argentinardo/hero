@@ -673,8 +673,12 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
         
         showNotification(store, 'Éxito', '✅ Nivel implementado en tu cuenta. Ahora puedes editarlo en TOOLS.');
         
-        // Cerrar la galería y abrir el editor
+        // Cerrar la galería
         document.getElementById('gallery-modal')?.classList.add('hidden');
+        
+        // Recargar niveles del usuario para que el nuevo nivel aparezca
+        const { tryLoadUserLevels } = await import('./ui');
+        await tryLoadUserLevels(store);
         
         // Importar y llamar a startEditor para evitar dependencia circular
         const { startEditor } = await import('./ui');

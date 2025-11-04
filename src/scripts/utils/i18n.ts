@@ -204,6 +204,31 @@ export interface Translations {
         myLevel: string;
         levelDescriptionPrompt: string;
     };
+    // Campañas
+    campaigns: {
+        title: string;
+        manage: string;
+        create: string;
+        delete: string;
+        select: string;
+        defaultCampaign: string;
+        addToCampaign: string;
+        selectCampaign: string;
+        campaignName: string;
+        campaignNamePlaceholder: string;
+        levelAdded: string;
+        levelRemoved: string;
+        campaignCreated: string;
+        campaignDeleted: string;
+        reorderLevels: string;
+        moveUp: string;
+        moveDown: string;
+        remove: string;
+        saveToCampaign: string;
+        saveToCampaignMessage: string;
+        noCampaigns: string;
+        cannotDeleteDefault: string;
+    };
 }
 
 const translations: Record<Language, Translations> = {
@@ -395,6 +420,30 @@ const translations: Record<Language, Translations> = {
             myLevel: 'Mi Nivel',
             levelDescriptionPrompt: 'Descripción opcional del nivel:',
         },
+        campaigns: {
+            title: 'Campañas',
+            manage: 'Gestionar Campañas',
+            create: 'Crear Campaña',
+            delete: 'Eliminar',
+            select: 'Seleccionar Campaña',
+            defaultCampaign: 'Campaña Original',
+            addToCampaign: 'Agregar a Campaña',
+            selectCampaign: 'Selecciona una campaña',
+            campaignName: 'Nombre de la campaña',
+            campaignNamePlaceholder: 'Mi Campaña',
+            levelAdded: 'Nivel agregado a la campaña',
+            levelRemoved: 'Nivel eliminado de la campaña',
+            campaignCreated: 'Campaña creada exitosamente',
+            campaignDeleted: 'Campaña eliminada',
+            reorderLevels: 'Reordenar Niveles',
+            moveUp: 'Subir',
+            moveDown: 'Bajar',
+            remove: 'Quitar',
+            saveToCampaign: 'Guardar en Campaña',
+            saveToCampaignMessage: '¿Deseas agregar este nivel a una campaña?',
+            noCampaigns: 'No hay campañas disponibles',
+            cannotDeleteDefault: 'No se puede eliminar la campaña por defecto',
+        },
     },
     en: {
         menu: {
@@ -584,6 +633,30 @@ const translations: Record<Language, Translations> = {
             myLevel: 'My Level',
             levelDescriptionPrompt: 'Optional level description:',
         },
+        campaigns: {
+            title: 'Campaigns',
+            manage: 'Manage Campaigns',
+            create: 'Create Campaign',
+            delete: 'Delete',
+            select: 'Select Campaign',
+            defaultCampaign: 'Original Campaign',
+            addToCampaign: 'Add to Campaign',
+            selectCampaign: 'Select a campaign',
+            campaignName: 'Campaign name',
+            campaignNamePlaceholder: 'My Campaign',
+            levelAdded: 'Level added to campaign',
+            levelRemoved: 'Level removed from campaign',
+            campaignCreated: 'Campaign created successfully',
+            campaignDeleted: 'Campaign deleted',
+            reorderLevels: 'Reorder Levels',
+            moveUp: 'Move Up',
+            moveDown: 'Move Down',
+            remove: 'Remove',
+            saveToCampaign: 'Save to Campaign',
+            saveToCampaignMessage: 'Do you want to add this level to a campaign?',
+            noCampaigns: 'No campaigns available',
+            cannotDeleteDefault: 'Cannot delete the default campaign',
+        },
     },
     ca: {
         menu: {
@@ -772,6 +845,30 @@ const translations: Record<Language, Translations> = {
             levelNamePrompt: 'Nom del nivell (apareixerà a la galeria):',
             myLevel: 'El Meu Nivell',
             levelDescriptionPrompt: 'Descripció opcional del nivell:',
+        },
+        campaigns: {
+            title: 'Campanyes',
+            manage: 'Gestionar Campanyes',
+            create: 'Crear Campanya',
+            delete: 'Eliminar',
+            select: 'Seleccionar Campanya',
+            defaultCampaign: 'Campanya Original',
+            addToCampaign: 'Afegir a Campanya',
+            selectCampaign: 'Selecciona una campanya',
+            campaignName: 'Nom de la campanya',
+            campaignNamePlaceholder: 'La Meva Campanya',
+            levelAdded: 'Nivell afegit a la campanya',
+            levelRemoved: 'Nivell eliminat de la campanya',
+            campaignCreated: 'Campanya creada exitosament',
+            campaignDeleted: 'Campanya eliminada',
+            reorderLevels: 'Reordenar Nivells',
+            moveUp: 'Pujar',
+            moveDown: 'Baixar',
+            remove: 'Treure',
+            saveToCampaign: 'Guardar a Campanya',
+            saveToCampaignMessage: 'Vols afegir aquest nivell a una campanya?',
+            noCampaigns: 'No hi ha campanyes disponibles',
+            cannotDeleteDefault: 'No es pot eliminar la campanya per defecte',
         },
     },
 };

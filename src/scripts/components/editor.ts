@@ -877,8 +877,8 @@ export const drawEditor = (store: GameStore) => {
         for (let colIndex = paddedStartCol; colIndex <= paddedEndCol; colIndex++) {
             const tile = row[colIndex];
             if (tile === 'P') {
-                // Dibujar jugador con sprite hero-die.png - ocupando 2 tiles de altura
-                const playerSprite = store.sprites.P_die;
+                // Dibujar jugador con sprite hero-success.png - ocupando 2 tiles de altura
+                const playerSprite = store.sprites.P_success;
                 if (playerSprite) {
                     // Asegurar que el sprite ocupe exactamente 2 tiles de altura
                     ctx.drawImage(
@@ -1145,8 +1145,8 @@ export const drawEditor = (store: GameStore) => {
             ctx.globalAlpha = 1;
         }
     } else if (store.selectedTile === 'P') {
-        // Preview del jugador con sprite hero-die.png - ocupando 2 tiles de altura
-        const playerSprite = store.sprites.P_die;
+        // Preview del jugador con sprite hero-success.png - ocupando 2 tiles de altura
+        const playerSprite = store.sprites.P_success;
         if (playerSprite) {
             ctx.globalAlpha = 0.5;
             ctx.drawImage(
@@ -1347,7 +1347,7 @@ export const drawEditor = (store: GameStore) => {
                             // Manejar casos especiales para el preview del área
                             if (store.selectedTile === 'P') {
                                 // Preview del jugador en área - ocupando 2 tiles de altura
-                                const playerSprite = store.sprites.P_die;
+                                const playerSprite = store.sprites.P_success;
                                 if (playerSprite) {
                                     ctx.drawImage(
                                         playerSprite,

@@ -401,12 +401,53 @@ const handleLevelEndSequence = (store: GameStore) => {
 
     // Fase 3: Completar nivel
     if (store.levelEndSequence === 'complete') {
-        // Avanzar al siguiente nivel después de un breve delay
+        // Si estamos jugando desde el editor, mostrar modal de "Level Complete"
+        if (store.playingFromEditor) {
+            // Importar función dinámicamente para evitar dependencias circulares
+            import('./ui').then(({ showLevelCompleteModal }) => {
+                showLevelCompleteModal(store);
+            });
+            
+            // Limpiar la secuencia de fin de nivel y energía virtual
+            store.levelEndSequence = null;
+            store.levelEndTimer = 0;
+            store.virtualEnergyDrain = null;
+            return;
+        }
+        
+        // En modo juego normal: avanzar al siguiente nivel después de un breve delay
         window.setTimeout(() => {
-            store.currentLevelIndex += 1;
-            loadLevel(store);
-            // Reanudar música de fondo al iniciar el nuevo nivel
-            try { const { playBackgroundMusic } = require('./audio'); playBackgroundMusic().catch(() => {}); } catch {}
+            // Usar campaña si está disponible
+            import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices }) => {
+                const campaign = getCurrentCampaign(store);
+                if (campaign && campaign.levels.length > 0) {
+                    // Buscar el índice actual en la campaña
+                    const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                    const currentIndexInCampaign = levelIndices.findIndex(idx => idx === store.currentLevelIndex);
+                    
+                    if (currentIndexInCampaign >= 0 && currentIndexInCampaign < levelIndices.length - 1) {
+                        // Avanzar al siguiente nivel en la campaña
+                        store.currentLevelIndex = levelIndices[currentIndexInCampaign + 1];
+                    } else {
+                        // Fin de campaña
+                        store.gameState = 'win';
+                        const { messageOverlay, messageText, messageTitle } = store.dom.ui;
+                        if (messageOverlay && messageText && messageTitle) {
+                            messageTitle.textContent = '¡HAS GANADO!';
+                            messageText.textContent = `Puntuación final: ${store.score}. Presiona ENTER para volver al inicio.`;
+                            messageOverlay.style.display = 'flex';
+                        }
+                        return;
+                    }
+                } else {
+                    // Modo normal sin campaña: incrementar índice
+                    store.currentLevelIndex += 1;
+                }
+                
+                loadLevel(store);
+                // Reanudar música de fondo al iniciar el nuevo nivel
+                try { const { playBackgroundMusic } = require('./audio'); playBackgroundMusic().catch(() => {}); } catch {}
+            });
         }, 2000); // 2 segundos de delay
         
         // Limpiar la secuencia de fin de nivel y energía virtual

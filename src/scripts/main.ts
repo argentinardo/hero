@@ -98,6 +98,10 @@ store.levelDesigns = JSON.parse(JSON.stringify(expanded));
 // Inicializar levelDataStore con los niveles expandidos (formato string[][][] para editor)
 // levelDataStore: Array de niveles, cada nivel es un array de filas, cada fila es un array de caracteres
 store.levelDataStore = expanded.map(level => level.map(row => row.split('')));
+// Inicializar sistema de campañas
+import('./utils/campaigns').then(({ initializeCampaigns }) => {
+    initializeCampaigns(store, expanded.length);
+});
 
 /**
  * Actualiza la posición de la cámara siguiendo al jugador.
@@ -227,6 +231,10 @@ let gameModulesCache: {
     checkEnemyCollision?: (store: GameStore) => void;
     awardMinerRescue?: (store: GameStore) => void;
 } = {};
+
+// Cache para el editor
+let editorModuleCache: { drawEditor?: (store: GameStore) => void } | null = null;
+let editorLoadingPromise: Promise<void> | null = null;
 
 // Cargar módulos una sola vez cuando el juego comienza
 let modulesLoadingPromise: Promise<void> | null = null;
@@ -458,9 +466,21 @@ const gameLoop = (currentTime: number): void => {
             updateGameState();
             renderGame(store);
         } else if (store.appState === 'editing') {
-            import('./components/editor').then(({ drawEditor }) => {
-                renderEditor(store, drawEditor);
-            });
+            if (!editorModuleCache) {
+                if (!editorLoadingPromise) {
+                    editorLoadingPromise = import('./components/editor').then((editorModule) => {
+                        editorModuleCache = { drawEditor: editorModule.drawEditor };
+                    });
+                }
+                // Saltar este frame si aún se está cargando
+                if (!editorModuleCache) {
+                    requestAnimationFrame(gameLoop);
+                    return;
+                }
+            }
+            if (editorModuleCache && editorModuleCache.drawEditor) {
+                renderEditor(store, editorModuleCache.drawEditor);
+            }
         } else if (store.appState === 'menu') {
             // Animar splash también en mobile
                 animateSplash(store);

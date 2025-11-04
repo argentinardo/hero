@@ -126,7 +126,38 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'GET') {
     try {
       const rows = await sql`SELECT data FROM levels WHERE user_id = ${userId} LIMIT 1`;
-      const data = rows?.[0]?.data || { levels: [] };
+      let data = rows?.[0]?.data || { levels: [] };
+      
+      // También cargar niveles implementados desde user_implemented_levels
+      const implementedRows = await sql`
+        SELECT modified_data, name 
+        FROM user_implemented_levels 
+        WHERE user_id = ${userId}
+        ORDER BY created_at ASC
+      `;
+      
+      if (implementedRows.length > 0) {
+        // Si no hay formato chunked, inicializar
+        if (!data.format || data.format !== 'chunks20x18') {
+          data = {
+            format: 'chunks20x18',
+            chunkWidth: 20,
+            chunkHeight: 18,
+            levels: []
+          };
+        }
+        
+        // Agregar niveles implementados a los niveles existentes
+        implementedRows.forEach((impl: any) => {
+          if (impl.modified_data && impl.modified_data.levels && Array.isArray(impl.modified_data.levels)) {
+            // Agregar los chunks del nivel implementado
+            data.levels.push(...impl.modified_data.levels);
+          }
+        });
+        
+        console.log('Niveles implementados agregados:', implementedRows.length);
+      }
+      
       console.log('Datos recuperados para usuario:', userId, 'Formato:', data.format || 'legacy', 'Niveles:', Array.isArray(data.levels) ? data.levels.length : 'N/A');
       return { 
         statusCode: 200,

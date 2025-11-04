@@ -7,3 +7,18 @@
 
 [build.environment]
   PNPM_FLAGS = "--no-frozen-lockfile"
+
+# Configuración para producción (rama principal, generalmente main o master)
+[context.production]
+  command = "pnpm build"
+  publish = "dist"
+
+# Configuración para entorno de desarrollo (rama developer)
+[context.branch-deploy]
+  command = "pnpm build"
+  publish = "dist"
+
+# Contexto específico para la rama developer
+[context.developer]
+  command = "pnpm build"
+  publish = "dist"
