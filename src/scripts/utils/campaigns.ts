@@ -272,6 +272,28 @@ export const getCurrentCampaign = (store: GameStore): Campaign | null => {
 };
 
 /**
+ * Encuentra la campaña que contiene un nivel específico
+ * Si el nivel está en múltiples campañas, devuelve la primera que lo encuentre (priorizando no-default)
+ */
+export const getCampaignForLevel = (store: GameStore, levelIndex: number): Campaign | null => {
+    // Primero buscar en campañas no-default (personalizadas)
+    for (const campaign of store.campaigns) {
+        if (!campaign.isDefault && campaign.levels.some(l => l.levelIndex === levelIndex)) {
+            return campaign;
+        }
+    }
+    
+    // Si no está en ninguna campaña personalizada, buscar en la default
+    const defaultCampaign = store.campaigns.find(c => c.id === DEFAULT_CAMPAIGN_ID);
+    if (defaultCampaign && defaultCampaign.levels.some(l => l.levelIndex === levelIndex)) {
+        return defaultCampaign;
+    }
+    
+    // Si no está en ninguna campaña, devolver la default como fallback
+    return defaultCampaign || null;
+};
+
+/**
  * Sincroniza las campañas con el servidor (si el usuario está logueado)
  */
 export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> => {

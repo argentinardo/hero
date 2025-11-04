@@ -2846,9 +2846,11 @@ const updateEditorTexts = (store: GameStore) => {
     const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
     const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center');
     
-    // Obtener el nombre de la campaña actual
-    import('../utils/campaigns').then(({ getCurrentCampaign }) => {
-        const campaign = getCurrentCampaign(store);
+    // Obtener el nombre de la campaña del nivel que se está editando actualmente
+    import('../utils/campaigns').then(({ getCampaignForLevel }) => {
+        // Obtener el índice del nivel que se está editando
+        const currentLevelIndex = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        const campaign = getCampaignForLevel(store, currentLevelIndex);
         const campaignName = campaign 
             ? (campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name)
             : t('editor.levels');
@@ -4474,9 +4476,17 @@ const shareLevelToGallery = async (store: GameStore) => {
             screenshot: screenshot || null
         };
         
-        console.log('Compartiendo nivel:', { name, hasData: !!levelData, hasScreenshot: !!screenshot });
+        const galleryUrl = `${baseUrl}/.netlify/functions/gallery`;
+        console.log('Compartiendo nivel:', { 
+            name, 
+            hasData: !!levelData, 
+            hasScreenshot: !!screenshot,
+            baseUrl,
+            galleryUrl,
+            currentOrigin: window.location.origin
+        });
         
-        const res = await fetch(`${baseUrl}/.netlify/functions/gallery`, {
+        const res = await fetch(galleryUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -5082,6 +5092,8 @@ const setupLevelData = (store: GameStore) => {
             const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
             store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
         }
+        // Actualizar el nombre de la campaña cuando cambia el nivel
+        updateEditorTexts(store);
     });
     
     levelSelectorMobile?.addEventListener('change', () => {
@@ -5091,6 +5103,8 @@ const setupLevelData = (store: GameStore) => {
             const selectedIndex = parseInt(levelSelectorMobile.value ?? '0', 10);
             store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
         }
+        // Actualizar el nombre de la campaña cuando cambia el nivel
+        updateEditorTexts(store);
     });
     
     // Jugar Nivel (mobile) - usar selector mobile
