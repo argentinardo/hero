@@ -62,13 +62,13 @@ export const syncLevelSelectorForCampaign = (store: GameStore) => {
 };
 
 /**
- * Muestra el modal de campañas (versión simplificada para jugar)
+ * Muestra el modal de campañas
  */
-export const showCampaignsModal = (store: GameStore, isPlayMode: boolean = false) => {
+export const showCampaignsModal = (store: GameStore) => {
     const modal = document.getElementById('campaigns-modal');
     if (!modal) return;
     
-    updateCampaignsModal(store, isPlayMode);
+    updateCampaignsModal(store);
     modal.classList.remove('hidden');
 };
 
@@ -85,80 +85,9 @@ export const hideCampaignsModal = () => {
 /**
  * Actualiza el contenido del modal de campañas
  */
-const updateCampaignsModal = (store: GameStore, isPlayMode: boolean = false) => {
-    const titleEl = document.getElementById('campaigns-modal-title');
-    if (titleEl) {
-        titleEl.textContent = isPlayMode ? t('campaigns.select') : t('campaigns.title');
-    }
-    
-    // Ocultar/mostrar secciones según el modo
-    const campaignSelectorSection = document.getElementById('campaign-selector-section');
-    const manageSection = document.querySelector('#campaigns-modal .border-t-2');
-    
-    if (isPlayMode) {
-        // Modo cargar: solo mostrar selector simple
-        if (campaignSelectorSection) {
-            campaignSelectorSection.style.display = 'block';
-        }
-        if (manageSection) {
-            (manageSection as HTMLElement).style.display = 'none';
-        }
-        
-        // Actualizar selector de campaña (versión simple)
-        updateCampaignSelectorSimple(store);
-    } else {
-        // Modo gestión: mostrar todo
-        if (campaignSelectorSection) {
-            campaignSelectorSection.style.display = 'block';
-        }
-        if (manageSection) {
-            (manageSection as HTMLElement).style.display = 'block';
-        }
-        
-        // Actualizar selector de campaña
-        updateCampaignSelector(store);
-        
-        // Actualizar lista de campañas
-        updateCampaignsList(store);
-    }
-};
-
-/**
- * Actualiza el selector de campaña con versión simple (solo nombres)
- */
-const updateCampaignSelectorSimple = (store: GameStore) => {
-    const selector = document.getElementById('campaign-selector') as HTMLSelectElement | null;
-    if (!selector) return;
-    
-    selector.innerHTML = '';
-    store.campaigns.forEach(campaign => {
-        const option = document.createElement('option');
-        option.value = campaign.id;
-        option.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
-        if (campaign.id === store.currentCampaignId) {
-            option.selected = true;
-        }
-        selector.appendChild(option);
-    });
-};
-
-/**
- * Actualiza el selector de campaña
- */
-const updateCampaignSelector = (store: GameStore) => {
-    const selector = document.getElementById('campaign-selector') as HTMLSelectElement | null;
-    if (!selector) return;
-    
-    selector.innerHTML = '';
-    store.campaigns.forEach(campaign => {
-        const option = document.createElement('option');
-        option.value = campaign.id;
-        option.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
-        if (campaign.id === store.currentCampaignId) {
-            option.selected = true;
-        }
-        selector.appendChild(option);
-    });
+const updateCampaignsModal = (store: GameStore) => {
+    // Actualizar lista de campañas
+    updateCampaignsList(store);
 };
 
 /**
@@ -246,7 +175,7 @@ const updateCampaignsList = (store: GameStore) => {
         deleteBtn.addEventListener('click', () => {
             if (confirm('¿Seguro que deseas eliminar esta campaña?')) {
                 deleteCampaign(store, campaign.id);
-                updateCampaignsModal(store, false);
+                updateCampaignsModal(store);
             }
         });
         
@@ -285,7 +214,7 @@ const updateCampaignsList = (store: GameStore) => {
                                 order: i === idx ? idx - 1 : i === idx - 1 ? idx : l.order
                             }));
                             reorderCampaignLevels(store, campaign.id, newOrder);
-                            updateCampaignsModal(store, false);
+                            updateCampaignsModal(store);
                         }
                     });
                     
@@ -300,7 +229,7 @@ const updateCampaignsList = (store: GameStore) => {
                                 order: i === idx ? idx + 1 : i === idx + 1 ? idx : l.order
                             }));
                             reorderCampaignLevels(store, campaign.id, newOrder);
-                            updateCampaignsModal(store, false);
+                            updateCampaignsModal(store);
                         }
                     });
                     
@@ -309,7 +238,7 @@ const updateCampaignsList = (store: GameStore) => {
                     removeBtn.textContent = t('campaigns.remove');
                     removeBtn.addEventListener('click', () => {
                         removeLevelFromCampaign(store, campaign.id, level.levelIndex);
-                        updateCampaignsModal(store, false);
+                        updateCampaignsModal(store);
                     });
                     
                     controls.appendChild(moveUpBtn);
@@ -337,8 +266,6 @@ export const setupCampaignsModal = (store: GameStore) => {
     const closeBtn = document.getElementById('campaigns-modal-close-btn');
     const createBtn = document.getElementById('create-campaign-btn');
     const newCampaignNameInput = document.getElementById('new-campaign-name') as HTMLInputElement | null;
-    const campaignSelector = document.getElementById('campaign-selector') as HTMLSelectElement | null;
-    const playBtn = document.getElementById('campaign-play-btn');
     
     // Modal: Agregar nivel a campaña
     const addToCampaignModal = document.getElementById('add-to-campaign-modal');
@@ -357,28 +284,10 @@ export const setupCampaignsModal = (store: GameStore) => {
         
         createCampaign(store, newCampaignNameInput.value.trim());
         newCampaignNameInput.value = '';
-        updateCampaignsModal(store, false);
+        updateCampaignsModal(store);
         syncCampaignsToServer(store).catch(() => {
             // Ignorar errores de sincronización
         });
-    });
-    
-    playBtn?.addEventListener('click', () => {
-        if (!campaignSelector) return;
-        
-        const campaignId = campaignSelector.value;
-        if (!campaignId) return;
-        
-        store.currentCampaignId = campaignId;
-        hideCampaignsModal();
-        
-        // Actualizar el nombre de la campaña en el panel izquierdo
-        import('./ui').then(({ updateEditorTexts }) => {
-            updateEditorTexts(store);
-        });
-        
-        // Sincronizar el selector de niveles para mostrar solo los niveles de esta campaña
-        syncLevelSelectorForCampaign(store);
     });
     
     // Modal: Agregar nivel a campaña

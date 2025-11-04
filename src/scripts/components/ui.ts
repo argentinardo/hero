@@ -3561,7 +3561,7 @@ const setupMenuButtons = (store: GameStore) => {
         } else {
             // Usuario logueado: mostrar modal para seleccionar campaña
             const { showCampaignsModal } = await import('./campaigns-ui');
-            showCampaignsModal(store, true);
+            showCampaignsModal(store);
         }
     });
     levelEditorBtn?.addEventListener('click', () => {
