@@ -144,19 +144,17 @@ const updateCampaignsList = (store: GameStore) => {
         const header = document.createElement('div');
         header.className = 'flex items-center justify-between mb-2';
         
-        const name = document.createElement('h3');
-        name.className = 'text-sm font-bold';
+        const name = document.createElement('button');
+        name.className = 'nes-btn is-primary text-sm';
         name.style.fontFamily = "'Press Start 2P', monospace";
-        name.style.cursor = 'pointer';
-        name.style.textDecoration = 'underline';
         name.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
         
-        // Al hacer click en el nombre, cargar la campaña en el editor
+        // Al hacer click en el botón, cargar la campaña en el editor
         name.addEventListener('click', () => {
             store.currentCampaignId = campaign.id;
             hideCampaignsModal();
             
-            // Actualizar el nombre de la campaña en el panel izquierdo
+            // Actualizar el nombre de la campaña en el panel izquierdo inmediatamente
             import('./ui').then(({ updateEditorTexts }) => {
                 updateEditorTexts(store);
             });

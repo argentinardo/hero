@@ -5103,8 +5103,7 @@ const setupLevelData = (store: GameStore) => {
             const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
             store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
         }
-        // Actualizar el nombre de la campaña cuando cambia el nivel
-        updateEditorTexts(store);
+        // No actualizar el nombre de la campaña aquí, solo se actualiza al seleccionar la campaña
     });
     
     levelSelectorMobile?.addEventListener('change', () => {
@@ -5114,8 +5113,7 @@ const setupLevelData = (store: GameStore) => {
             const selectedIndex = parseInt(levelSelectorMobile.value ?? '0', 10);
             store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
         }
-        // Actualizar el nombre de la campaña cuando cambia el nivel
-        updateEditorTexts(store);
+        // No actualizar el nombre de la campaña aquí, solo se actualiza al seleccionar la campaña
     });
     
     // Jugar Nivel (mobile) - usar selector mobile
