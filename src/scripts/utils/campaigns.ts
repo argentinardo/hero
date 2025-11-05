@@ -11,7 +11,8 @@ const CAMPAIGNS_STORAGE_KEY = 'hero_campaigns';
 const DEFAULT_CAMPAIGN_ID = 'default';
 
 /**
- * Crea la campaña por defecto con los niveles originales
+ * Crea la campaña por defecto (Legacy) con los niveles originales desde levels.json
+ * IMPORTANTE: Esta campaña siempre se sirve desde assets/levels.json y es editable
  */
 export const createDefaultCampaign = (totalLevels: number): Campaign => {
     const levels: CampaignLevel[] = [];
@@ -24,7 +25,7 @@ export const createDefaultCampaign = (totalLevels: number): Campaign => {
     
     return {
         id: DEFAULT_CAMPAIGN_ID,
-        name: 'Campaña Original',
+        name: 'Legacy',
         levels,
         isDefault: true,
         createdAt: Date.now(),
@@ -68,23 +69,27 @@ export const saveCampaigns = (campaigns: Campaign[]): void => {
 
 /**
  * Inicializa las campañas del store
+ * IMPORTANTE: La campaña original siempre se crea desde levels.json (totalLevels)
+ * y siempre debe reflejar todos los niveles disponibles desde levels.json
  */
 export const initializeCampaigns = (store: GameStore, totalLevels: number): void => {
     const loaded = loadCampaigns();
     
     if (loaded.length === 0) {
-        // Si no hay campañas guardadas, crear la por defecto con todos los niveles
+        // Si no hay campañas guardadas, crear la por defecto con todos los niveles desde levels.json
         store.campaigns = [createDefaultCampaign(totalLevels)];
         saveCampaigns(store.campaigns);
     } else {
         store.campaigns = loaded;
         
-        // Actualizar la campaña por defecto si tiene menos niveles de los que debería
+        // Actualizar la campaña por defecto para que siempre refleje levels.json
+        // Si tiene menos niveles o más niveles, actualizarla para que coincida con levels.json
         const defaultCampaign = store.campaigns.find(c => c.id === DEFAULT_CAMPAIGN_ID);
         if (defaultCampaign) {
-            // Si la campaña por defecto tiene menos niveles, actualizarla
-            if (defaultCampaign.levels.length < totalLevels) {
-                // Crear una nueva campaña por defecto con todos los niveles
+            // Si la campaña por defecto tiene diferente cantidad de niveles, actualizarla
+            // Esto asegura que siempre refleje levels.json
+            if (defaultCampaign.levels.length !== totalLevels) {
+                // Crear una nueva campaña por defecto con todos los niveles desde levels.json
                 const updatedDefault = createDefaultCampaign(totalLevels);
                 // Reemplazar la campaña por defecto existente
                 const index = store.campaigns.findIndex(c => c.id === DEFAULT_CAMPAIGN_ID);
@@ -94,7 +99,7 @@ export const initializeCampaigns = (store: GameStore, totalLevels: number): void
                 }
             }
         } else {
-            // Si no existe la campaña por defecto, agregarla
+            // Si no existe la campaña por defecto, agregarla desde levels.json
             store.campaigns.unshift(createDefaultCampaign(totalLevels));
             saveCampaigns(store.campaigns);
         }
@@ -153,22 +158,22 @@ export const deleteCampaign = (store: GameStore, campaignId: string): boolean =>
 
 /**
  * Agrega un nivel a una campaña
+ * NOTA: Ahora se permite editar la campaña original
+ * Si el nivel ya existe, retorna true (el nivel ya está en la campaña)
  */
-export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIndex: number): boolean => {
+export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIndex: number): { success: boolean; alreadyExists: boolean } => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
     if (!campaign) {
-        return false;
-    }
-    
-    // No se puede agregar niveles a la campaña original
-    if (campaign.isDefault) {
-        return false;
+        return { success: false, alreadyExists: false };
     }
     
     // Verificar que el nivel no esté ya en la campaña
     const exists = campaign.levels.some(l => l.levelIndex === levelIndex);
     if (exists) {
-        return false;
+        // El nivel ya existe, actualizar la fecha de modificación
+        campaign.updatedAt = Date.now();
+        saveCampaigns(store.campaigns);
+        return { success: true, alreadyExists: true };
     }
     
     // Agregar al final
@@ -184,16 +189,17 @@ export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIn
     campaign.updatedAt = Date.now();
     saveCampaigns(store.campaigns);
     
-    return true;
+    return { success: true, alreadyExists: false };
 };
 
 /**
  * Elimina un nivel de una campaña
+ * NOTA: Ahora se permite editar la campaña original
  */
 export const removeLevelFromCampaign = (store: GameStore, campaignId: string, levelIndex: number): boolean => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
-    if (!campaign || campaign.isDefault) {
-        return false; // No se puede modificar la campaña por defecto
+    if (!campaign) {
+        return false;
     }
     
     campaign.levels = campaign.levels.filter(l => l.levelIndex !== levelIndex);
@@ -212,6 +218,7 @@ export const removeLevelFromCampaign = (store: GameStore, campaignId: string, le
 
 /**
  * Reordena los niveles de una campaña
+ * NOTA: Ahora se permite editar la campaña original
  */
 export const reorderCampaignLevels = (
     store: GameStore, 
@@ -219,8 +226,8 @@ export const reorderCampaignLevels = (
     newOrder: Array<{ levelIndex: number; order: number }>
 ): boolean => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
-    if (!campaign || campaign.isDefault) {
-        return false; // No se puede modificar la campaña por defecto
+    if (!campaign) {
+        return false;
     }
     
     // Actualizar los órdenes
@@ -327,6 +334,7 @@ export const getCampaignForLevel = (store: GameStore, levelIndex: number): Campa
 
 /**
  * Sincroniza las campañas con el servidor (si el usuario está logueado)
+ * IMPORTANTE: La campaña original NO se guarda en el servidor, siempre se sirve desde levels.json
  */
 export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -346,6 +354,10 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
             return false;
         }
         
+        // IMPORTANTE: Excluir la campaña original al sincronizar
+        // La campaña original siempre se sirve desde levels.json
+        const campaignsToSync = store.campaigns.filter(c => c.id !== DEFAULT_CAMPAIGN_ID);
+        
         const baseUrl = (window as any).NETLIFY_BASE_URL || '';
         const res = await fetch(`${baseUrl}/.netlify/functions/campaigns`, {
             method: 'POST',
@@ -354,7 +366,7 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                campaigns: store.campaigns
+                campaigns: campaignsToSync
             })
         });
         
@@ -367,6 +379,8 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
 
 /**
  * Carga las campañas desde el servidor (si el usuario está logueado)
+ * IMPORTANTE: La campaña original siempre se sirve desde levels.json
+ * Si existe una campaña original en la BD, se elimina automáticamente
  */
 export const loadCampaignsFromServer = async (store: GameStore): Promise<boolean> => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -397,13 +411,37 @@ export const loadCampaignsFromServer = async (store: GameStore): Promise<boolean
         if (res.ok) {
             const data = await res.json();
             if (data && data.campaigns && Array.isArray(data.campaigns)) {
-                // Mantener la campaña por defecto si no existe en el servidor
-                const hasDefault = data.campaigns.some((c: Campaign) => c.id === DEFAULT_CAMPAIGN_ID);
-                if (!hasDefault && store.levelDataStore.length > 0) {
-                    data.campaigns.unshift(createDefaultCampaign(store.levelDataStore.length));
+                // IMPORTANTE: Eliminar cualquier campaña original de la BD
+                // La campaña original siempre se sirve desde levels.json
+                const campaignsWithoutDefault = data.campaigns.filter((c: Campaign) => c.id !== DEFAULT_CAMPAIGN_ID);
+                
+                // Si había una campaña original en la BD, eliminarla del servidor
+                const hadDefaultInServer = data.campaigns.some((c: Campaign) => c.id === DEFAULT_CAMPAIGN_ID);
+                if (hadDefaultInServer) {
+                    console.log('Campaña original encontrada en BD, eliminándola del servidor...');
+                    // Intentar eliminarla del servidor
+                    try {
+                        await fetch(`${baseUrl}/.netlify/functions/campaigns`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ campaignId: DEFAULT_CAMPAIGN_ID })
+                        });
+                    } catch (e) {
+                        console.warn('No se pudo eliminar la campaña original del servidor (puede que el endpoint DELETE no exista):', e);
+                    }
                 }
                 
-                store.campaigns = data.campaigns;
+                // Crear la campaña original desde levels.json (siempre usar levels.json)
+                const originalCount = store.initialLevels.length;
+                const defaultCampaign = createDefaultCampaign(originalCount);
+                
+                // Agregar la campaña original al inicio (siempre desde levels.json)
+                campaignsWithoutDefault.unshift(defaultCampaign);
+                
+                store.campaigns = campaignsWithoutDefault;
                 saveCampaigns(store.campaigns);
                 return true;
             }

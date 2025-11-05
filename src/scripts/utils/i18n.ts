@@ -225,6 +225,7 @@ export interface Translations {
         campaignNamePlaceholder: string;
         levelAdded: string;
         levelRemoved: string;
+        levelAlreadyInCampaign: string;
         campaignCreated: string;
         campaignDeleted: string;
         reorderLevels: string;
@@ -440,13 +441,14 @@ const translations: Record<Language, Translations> = {
             create: 'Crear Campaña',
             delete: 'Eliminar',
             select: 'Seleccionar Campaña',
-            defaultCampaign: 'Campaña Original',
+            defaultCampaign: 'Legacy',
             addToCampaign: 'Agregar a Campaña',
             selectCampaign: 'Selecciona una campaña',
             campaignName: 'Nombre de la campaña',
             campaignNamePlaceholder: 'Mi Campaña',
             levelAdded: 'Nivel agregado a la campaña',
             levelRemoved: 'Nivel eliminado de la campaña',
+            levelAlreadyInCampaign: 'Nivel actualizado en la campaña',
             campaignCreated: 'Campaña creada exitosamente',
             campaignDeleted: 'Campaña eliminada',
             reorderLevels: 'Reordenar Niveles',
@@ -660,13 +662,14 @@ const translations: Record<Language, Translations> = {
             create: 'Create Campaign',
             delete: 'Delete',
             select: 'Select Campaign',
-            defaultCampaign: 'Original Campaign',
+            defaultCampaign: 'Legacy',
             addToCampaign: 'Add to Campaign',
             selectCampaign: 'Select a campaign',
             campaignName: 'Campaign name',
             campaignNamePlaceholder: 'My Campaign',
             levelAdded: 'Level added to campaign',
             levelRemoved: 'Level removed from campaign',
+            levelAlreadyInCampaign: 'Level updated in campaign',
             campaignCreated: 'Campaign created successfully',
             campaignDeleted: 'Campaign deleted',
             reorderLevels: 'Reorder Levels',
@@ -880,13 +883,14 @@ const translations: Record<Language, Translations> = {
             create: 'Crear Campanya',
             delete: 'Eliminar',
             select: 'Seleccionar Campanya',
-            defaultCampaign: 'Campanya Original',
+            defaultCampaign: 'Legacy',
             addToCampaign: 'Afegir a Campanya',
             selectCampaign: 'Selecciona una campanya',
             campaignName: 'Nom de la campanya',
             campaignNamePlaceholder: 'La Meva Campanya',
             levelAdded: 'Nivell afegit a la campanya',
             levelRemoved: 'Nivell eliminat de la campanya',
+            levelAlreadyInCampaign: 'Nivell actualitzat a la campanya',
             campaignCreated: 'Campanya creada exitosament',
             campaignDeleted: 'Campanya eliminada',
             reorderLevels: 'Reordenar Nivells',

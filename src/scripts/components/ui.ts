@@ -1292,10 +1292,47 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     setupEditorState(store);
     bindEditorCanvas(store);
     
-    // Si el usuario está logueado, intentar cargar sus niveles
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    if (isLoggedIn) {
-        await tryLoadUserLevels(store);
+    // IMPORTANTE: La campaña Legacy NO usa base de datos
+    // Verificar si la campaña actual es Legacy
+    const { getCurrentCampaign } = await import('../utils/campaigns');
+    const currentCampaign = getCurrentCampaign(store);
+    const isLegacyCampaign = currentCampaign?.isDefault === true;
+    
+    // Solo cargar niveles de la BD si NO es Legacy
+    // Legacy siempre se sirve desde assets/levels.json
+    if (!isLegacyCampaign) {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (isLoggedIn) {
+            await tryLoadUserLevels(store);
+        }
+    } else {
+        // Para Legacy, solo cargar cambios desde localStorage si existen
+        // pero nunca desde la BD
+        const savedLevels = localStorage.getItem('userLevels');
+        if (savedLevels) {
+            try {
+                const data = JSON.parse(savedLevels);
+                if (data && data.levels && Array.isArray(data.levels)) {
+                    // Si hay niveles guardados en localStorage, aplicar los cambios
+                    // pero solo si son del mismo tamaño que los originales (Legacy)
+                    const { expandChunkedLevels } = await import('../utils/levels');
+                    const expandedLevels = data.format === 'chunks20x18' 
+                        ? expandChunkedLevels(data)
+                        : data.levels;
+                    
+                    if (expandedLevels.length === store.initialLevels.length) {
+                        // Los niveles de Legacy guardados en localStorage
+                        store.levelDataStore = expandedLevels.map((lvl: string[]) => 
+                            typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : (lvl as any)
+                        ) as string[][][];
+                        store.levelDesigns = JSON.parse(JSON.stringify(expandedLevels));
+                        console.log('Cambios de Legacy cargados desde localStorage');
+                    }
+                }
+            } catch (e) {
+                console.error('Error cargando cambios de Legacy desde localStorage:', e);
+            }
+        }
     }
     
     // Actualizar el selector de niveles
@@ -2310,23 +2347,38 @@ export const setupUI = (store: GameStore) => {
 };
 
 // Cargar niveles personalizados del usuario si está autenticado
+// IMPORTANTE: Los niveles originales siempre se sirven desde levels.json
+// Esta función solo carga niveles personalizados adicionales, NO sobrescribe los originales
 export const tryLoadUserLevels = async (store: GameStore) => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (!isLoggedIn) {
-        // Intentar cargar desde localStorage como respaldo
+        // Intentar cargar desde localStorage como respaldo (solo niveles personalizados)
         const savedLevels = localStorage.getItem('userLevels');
         if (savedLevels) {
             try {
                 const data = JSON.parse(savedLevels);
                 if (data && data.levels && Array.isArray(data.levels)) {
-                    store.levelDataStore = data.levels.map((lvl: any) => 
-                        typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : lvl
-                    ) as string[][][];
-                    store.levelDesigns = data.levels.map((lvl: any) => 
-                        typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
-                    ) as string[][];
-                    syncLevelSelector(store);
-                    console.log('Niveles cargados desde localStorage');
+                    // Los niveles originales ya están en store desde levels.json
+                    // Solo agregar niveles personalizados adicionales
+                    const originalCount = store.initialLevels.length;
+                    const customLevels = data.levels.slice(originalCount);
+                    
+                    if (customLevels.length > 0) {
+                        const customLevelDataStore = customLevels.map((lvl: any) => 
+                            typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : lvl
+                        ) as string[][][];
+                        const customLevelDesigns = customLevels.map((lvl: any) => 
+                            typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+                        ) as string[][];
+                        
+                        // Agregar niveles personalizados después de los originales
+                        store.levelDataStore = [...store.levelDataStore, ...customLevelDataStore];
+                        store.levelDesigns = [...store.levelDesigns, ...customLevelDesigns];
+                        store.initialLevels = [...store.initialLevels, ...customLevelDesigns];
+                        
+                        syncLevelSelector(store);
+                        console.log('Niveles personalizados cargados desde localStorage:', customLevels.length);
+                    }
                 }
             } catch (e) {
                 console.error('Error cargando niveles desde localStorage:', e);
@@ -2340,6 +2392,9 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         const user = ni?.currentUser?.();
         if (!user) {
             console.warn('Usuario no encontrado en Netlify Identity');
+            // Aún así, cargar campañas del servidor si existen
+            const { loadCampaignsFromServer } = await import('../utils/campaigns');
+            await loadCampaignsFromServer(store);
             return;
         }
         
@@ -2356,6 +2411,15 @@ export const tryLoadUserLevels = async (store: GameStore) => {
             return;
         }
 
+        // IMPORTANTE: Los niveles originales siempre vienen de levels.json
+        // Solo cargar niveles personalizados adicionales de la BD
+        // Los niveles originales en store.initialLevels NO deben ser sobrescritos
+        
+        // Cargar campañas del servidor (esto puede eliminar campañas originales si existen)
+        const { loadCampaignsFromServer } = await import('../utils/campaigns');
+        await loadCampaignsFromServer(store);
+        
+        // Intentar cargar niveles personalizados adicionales de la BD
         // Usar URL completa en Android/Capacitor, relativa en web
         const baseUrl = getNetlifyBaseUrl();
         const res = await fetch(`${baseUrl}/.netlify/functions/levels`, {
@@ -2366,7 +2430,7 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         });
         
         if (!res.ok) {
-            console.error('Error cargando niveles:', res.status, res.statusText);
+            console.log('No hay niveles personalizados en la base de datos o error al cargar');
             return;
         }
         
@@ -2398,26 +2462,26 @@ export const tryLoadUserLevels = async (store: GameStore) => {
             console.warn('Formato de datos desconocido:', data);
         }
         
-        if (levelsToLoad.length > 0) {
-            store.levelDataStore = levelsToLoad.map((lvl: string[]) => 
+        // IMPORTANTE: Los niveles originales ya están en store desde levels.json
+        // Solo agregar niveles personalizados adicionales que estén después de los originales
+        const originalCount = store.initialLevels.length;
+        if (levelsToLoad.length > originalCount) {
+            const customLevels = levelsToLoad.slice(originalCount);
+            
+            const customLevelDataStore = customLevels.map((lvl: string[]) => 
                 typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : (lvl as any)
             ) as string[][][];
-            store.levelDesigns = JSON.parse(JSON.stringify(levelsToLoad));
-            store.initialLevels = JSON.parse(JSON.stringify(levelsToLoad));
+            const customLevelDesigns = JSON.parse(JSON.stringify(customLevels));
             
-            // Actualizar campañas para que coincidan con los niveles cargados
-            const { initializeCampaigns, loadCampaignsFromServer } = await import('../utils/campaigns');
-            // Primero intentar cargar campañas del servidor
-            const loadedFromServer = await loadCampaignsFromServer(store);
-            if (!loadedFromServer) {
-                // Si no hay campañas en el servidor, inicializar con los niveles cargados
-                initializeCampaigns(store, levelsToLoad.length);
-            }
+            // Agregar niveles personalizados después de los originales
+            store.levelDataStore = [...store.levelDataStore, ...customLevelDataStore];
+            store.levelDesigns = [...store.levelDesigns, ...customLevelDesigns];
+            store.initialLevels = [...store.initialLevels, ...customLevelDesigns];
             
             syncLevelSelector(store);
-            console.log('Niveles cargados desde la cuenta del usuario:', levelsToLoad.length);
+            console.log('Niveles personalizados cargados desde la cuenta del usuario:', customLevels.length);
         } else {
-            console.warn('No se encontraron niveles para cargar');
+            console.log('No hay niveles personalizados adicionales en la base de datos');
         }
     } catch (error) {
         console.error('Error cargando niveles del usuario:', error);
@@ -4976,20 +5040,67 @@ const setupLevelData = (store: GameStore) => {
     backToMenuBtn?.addEventListener('click', () => showMenu(store));
 
     const saveAllLevelsToFile = async () => {
-        // Verificar si el usuario está logueado
+        // Verificar si la campaña actual es Legacy (por defecto)
+        const { getCurrentCampaign } = await import('../utils/campaigns');
+        const currentCampaign = getCurrentCampaign(store);
+        const isLegacyCampaign = currentCampaign?.isDefault === true;
+
+        // Limpiar todos los niveles eliminando filas y columnas vacías
+        const cleanedLevels = store.levelDataStore.map(level => purgeEmptyRowsAndColumns(level));
+        const levelsAsStrings = cleanedLevels.map(level => level.map(row => row.join('')));
+        
+        // IMPORTANTE: La campaña Legacy NO usa base de datos
+        // Se sirve únicamente de assets/levels.json
+        // Si se modifica, se guarda en localStorage y se ofrece descargar el archivo
+        if (isLegacyCampaign) {
+            // Payload completo para Legacy (todos los niveles de levels.json)
+            const fullPayload = buildChunkedFile20x18(levelsAsStrings);
+            
+            // Guardar en localStorage
+            try {
+                localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+                console.log('Cambios de campaña Legacy guardados en localStorage');
+            } catch (localError) {
+                console.error('Error guardando en localStorage:', localError);
+            }
+            
+            // Ofrecer descargar el archivo levels.json modificado
+            const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'levels.json';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+            
+            showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, 'Cambios de Legacy guardados. Archivo levels.json descargado.');
+            ensureEditorVisible(store);
+            return; // No guardar en BD para Legacy
+        }
+
+        // Para campañas NO Legacy, verificar si el usuario está logueado
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         if (!isLoggedIn) {
             showNotification(store, `❌ ${t('modals.errors.notLoggedInSave')}`, t('modals.errors.notLoggedInSave'));
             return;
         }
-
-        // Limpiar todos los niveles eliminando filas y columnas vacías
-        const cleanedLevels = store.levelDataStore.map(level => purgeEmptyRowsAndColumns(level));
-        const levelsAsStrings = cleanedLevels.map(level => level.map(row => row.join('')));
-        const payload = buildChunkedFile20x18(levelsAsStrings);
+        
+        // IMPORTANTE: Los niveles originales siempre se sirven desde levels.json
+        // Solo guardar niveles personalizados adicionales en la BD
+        // Pero guardar todos los niveles (incluyendo originales editados) en localStorage
+        const originalCount = store.initialLevels.length;
+        const customLevels = levelsAsStrings.slice(originalCount);
+        
+        // Payload completo para localStorage (incluye originales editados)
+        const fullPayload = buildChunkedFile20x18(levelsAsStrings);
+        
+        // Payload solo para BD (solo niveles personalizados adicionales)
+        const customPayload = customLevels.length > 0 ? buildChunkedFile20x18(customLevels) : { format: 'chunks20x18', chunkWidth: 20, chunkHeight: 18, levels: [] };
 
         const downloadFallback = () => {
-            const blob = new Blob([JSON.stringify(payload, null, 4)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
             anchor.href = url;
@@ -5042,12 +5153,19 @@ const setupLevelData = (store: GameStore) => {
             console.warn('No se pudo obtener token JWT. El usuario puede no estar autenticado correctamente.');
             if (!user) {
                 showNotification(store, `❌ ${t('modals.errors.notAuthenticated')}`, t('modals.errors.notAuthenticated'));
-                // Guardar en localStorage como respaldo
-                localStorage.setItem('userLevels', JSON.stringify(payload));
+                // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados)
+                localStorage.setItem('userLevels', JSON.stringify(fullPayload));
             } else {
                 showNotification(store, `⚠️ ${t('modals.errors.tokenExpired')}`, t('modals.errors.tokenExpired'));
                 // Continuar con el intento de guardado incluso sin token válido
             }
+        }
+        
+        // Guardar todos los niveles en localStorage (incluyendo originales editados)
+        try {
+            localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+        } catch (localError) {
+            console.error('Error guardando en localStorage:', localError);
         }
 
         // Intentar guardar en Netlify SIEMPRE, incluso si no hay token (el servidor puede tener el usuario en el contexto)
@@ -5062,17 +5180,21 @@ const setupLevelData = (store: GameStore) => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            console.log('Intentando guardar niveles en Netlify:', {
+            console.log('Intentando guardar niveles personalizados en Netlify:', {
                 baseUrl,
                 hasToken: !!token,
                 hasUser: !!user,
-                endpoint: `${baseUrl}/.netlify/functions/levels`
+                endpoint: `${baseUrl}/.netlify/functions/levels`,
+                originalLevels: originalCount,
+                customLevels: customLevels.length
             });
 
+            // IMPORTANTE: Solo guardar niveles personalizados adicionales en la BD
+            // Los niveles originales siempre se sirven desde levels.json
             const response = await fetch(`${baseUrl}/.netlify/functions/levels`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify(payload),
+                body: JSON.stringify(customPayload),
             });
 
             if (!response.ok) {
@@ -5089,14 +5211,14 @@ const setupLevelData = (store: GameStore) => {
                             if (user) {
                                 token = await user.jwt();
                                 if (token) {
-                                    // Reintentar con el nuevo token
+                                    // Reintentar con el nuevo token (solo niveles personalizados)
                                     const retryResponse = await fetch(`${baseUrl}/.netlify/functions/levels`, {
                                         method: 'POST',
                                         headers: {
                                             'Content-Type': 'application/json',
                                             'Authorization': `Bearer ${token}`,
                                         },
-                                        body: JSON.stringify(payload),
+                                        body: JSON.stringify(customPayload),
                                     });
                                     
                                     if (retryResponse.ok) {
@@ -5129,9 +5251,9 @@ const setupLevelData = (store: GameStore) => {
             console.error('Error guardando niveles en Netlify:', error);
             const errorMessage = error.message || String(error);
             
-            // Guardar en localStorage como respaldo
+            // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados)
             try {
-                localStorage.setItem('userLevels', JSON.stringify(payload));
+                localStorage.setItem('userLevels', JSON.stringify(fullPayload));
             } catch (localError) {
                 console.error('Error guardando en localStorage:', localError);
             }

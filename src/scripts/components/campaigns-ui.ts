@@ -187,13 +187,11 @@ export const updateAddToCampaignSelector = (store: GameStore) => {
     
     selector.innerHTML = '<option value="">' + t('campaigns.selectCampaign') + '</option>';
     store.campaigns.forEach(campaign => {
-        // No mostrar la campaña original en el selector (no se puede modificar)
-        if (campaign.isDefault) {
-            return;
-        }
+        // IMPORTANTE: La campaña Legacy ahora es editable, así que se incluye en el selector
         const option = document.createElement('option');
         option.value = campaign.id;
-        option.textContent = campaign.name;
+        // Mostrar el nombre traducido para Legacy
+        option.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
         selector.appendChild(option);
     });
 };
@@ -509,9 +507,14 @@ export const setupCampaignsModal = (store: GameStore) => {
         const newCampaign = createCampaign(store, campaignName);
         
         // Agregar el nivel a la nueva campaña
-        if (addLevelToCampaign(store, newCampaign.id, levelIndex)) {
+        const result = addLevelToCampaign(store, newCampaign.id, levelIndex);
+        if (result.success) {
             import('./ui').then(({ showNotification }) => {
-                showNotification(store, `✅ ${t('campaigns.campaignCreated')} - ${t('campaigns.levelAdded')}`, t('campaigns.levelAdded'));
+                if (result.alreadyExists) {
+                    showNotification(store, `ℹ️ ${t('campaigns.levelAlreadyInCampaign')}`, 'El nivel ya estaba en la campaña y se ha actualizado.');
+                } else {
+                    showNotification(store, `✅ ${t('campaigns.campaignCreated')} - ${t('campaigns.levelAdded')}`, t('campaigns.levelAdded'));
+                }
             });
             
             // Limpiar el input
@@ -531,7 +534,7 @@ export const setupCampaignsModal = (store: GameStore) => {
         }
     });
     
-    addToCampaignConfirmBtn?.addEventListener('click', () => {
+    addToCampaignConfirmBtn?.addEventListener('click', async () => {
         if (!addToCampaignSelector || !addToCampaignSelector.value) {
             return;
         }
@@ -539,15 +542,76 @@ export const setupCampaignsModal = (store: GameStore) => {
         const campaignId = addToCampaignSelector.value;
         const levelIndex = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         
-        if (addLevelToCampaign(store, campaignId, levelIndex)) {
+        // IMPORTANTE: Guardar los cambios del nivel antes de agregarlo a la campaña
+        // Esto asegura que los cambios editados se persistan
+        // Nota: purgeEmptyRowsAndColumns se usa desde ui.ts, pero aquí simplemente guardamos el nivel actual
+        if (store.editorLevel && store.levelDataStore[levelIndex]) {
+            // Guardar el nivel actual del editor (ya viene limpio del editor)
+            store.levelDataStore[levelIndex] = JSON.parse(JSON.stringify(store.editorLevel));
+        }
+        
+        const result = addLevelToCampaign(store, campaignId, levelIndex);
+        if (result.success) {
+            const { getCurrentCampaign } = await import('../utils/campaigns');
+            const currentCampaign = getCurrentCampaign(store);
+            const isLegacyCampaign = currentCampaign?.isDefault === true;
+            
+            // Si es Legacy y el nivel ya existía, guardar y descargar el JSON
+            if (isLegacyCampaign && result.alreadyExists) {
+                // Guardar y descargar el JSON para Legacy
+                const { buildChunkedFile20x18 } = await import('../utils/levels');
+                
+                // Convertir todos los niveles a strings (ya están limpios del editor)
+                const levelsAsStrings = store.levelDataStore.map((level: string[][]) => 
+                    level.map((row: string[]) => row.join(''))
+                );
+                
+                // Payload completo para Legacy
+                const fullPayload = buildChunkedFile20x18(levelsAsStrings);
+                
+                // Guardar en localStorage
+                try {
+                    localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+                    console.log('Cambios de campaña Legacy guardados en localStorage');
+                } catch (localError) {
+                    console.error('Error guardando en localStorage:', localError);
+                }
+                
+                // Descargar el archivo levels.json modificado
+                const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = 'levels.json';
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+                URL.revokeObjectURL(url);
+            } else {
+                // Para otras campañas o cuando se agrega un nivel nuevo, solo sincronizar
+                syncCampaignsToServer(store).catch(() => {
+                    // Ignorar errores de sincronización
+                });
+            }
+            
             import('./ui').then(({ showNotification }) => {
-                showNotification(store, `✅ ${t('campaigns.levelAdded')}`, t('campaigns.levelAdded'));
+                if (result.alreadyExists) {
+                    if (isLegacyCampaign) {
+                        showNotification(store, `💾 ${t('campaigns.levelAlreadyInCampaign')}`, 'Nivel actualizado. Archivo levels.json descargado.');
+                    } else {
+                        showNotification(store, `ℹ️ ${t('campaigns.levelAlreadyInCampaign')}`, 'El nivel ya estaba en la campaña y se ha actualizado.');
+                    }
+                } else {
+                    showNotification(store, `✅ ${t('campaigns.levelAdded')}`, t('campaigns.levelAdded'));
+                }
             });
+            
             if (addToCampaignModal) {
                 addToCampaignModal.classList.add('hidden');
             }
-            syncCampaignsToServer(store).catch(() => {
-                // Ignorar errores de sincronización
+        } else {
+            import('./ui').then(({ showNotification }) => {
+                showNotification(store, `❌ Error`, 'No se pudo agregar el nivel a la campaña.');
             });
         }
     });
