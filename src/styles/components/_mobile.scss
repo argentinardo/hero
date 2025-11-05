@@ -330,7 +330,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     /* Eliminar todos los márgenes y espaciado entre botones del menú inicial en mobile */
     #message-overlay {
         position: fixed;
-        z-index: 50;
+        z-index: 10 !important; /* Debajo de modales pero visible */
         top: auto;
         bottom:30px;        
         p {
@@ -401,7 +401,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             flex-direction: column;
             background-color: rgba(0, 0, 0, 0.95);
             padding: 10px;
-            z-index: 99;
+            z-index: 20;
             overflow-y: auto;
             overflow-x: hidden;
             border-right: 2px solid rgba(255, 255, 255, 0.3);
@@ -567,49 +567,18 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         height: 18vh;
         @include directional-button;
         position: relative;
-        
-        /* Estilos para los iconos SVG - en tonos grises */
-        svg {
-            width: 30px !important; /* 20px * 1.5 = 30px - forzar con !important */
-            height: 30px !important; /* 20px * 1.5 = 30px - forzar con !important */
-            stroke: rgba(220, 220, 220, 0.9); /* Gris claro para los iconos */
-            fill: none;
-            position: relative;
-            z-index: 2; /* Por encima de los pseudo-elementos */
-        }
+        font-size: 2rem;
+        font-weight: bold;
+        color: rgba(220, 220, 220, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         
         /* Botones superiores (primera fila) rectangulares */
         .button-row:first-child & {
             width: 12vh;
             height: 15vh;
-            
-            svg {
-                width: 60px !important; /* Más grandes para mejor visibilidad en primera fila */
-                height: 60px !important; /* Más grandes para mejor visibilidad en primera fila */
-                stroke: rgba(220, 220, 220, 0.9);
-                fill: none;
-                stroke-width: 2.5 !important; /* Línea más gruesa para mejor visibilidad */
-                transform-origin: center center !important; /* Centro de transformación */
-                transform: scale(2.6);
-            }
-            
-            /* Botones específicos: aplicar AMBAS transformaciones (rotate + scale) */
-            /* El orden importa: primero rotate, luego scale */
-            /* Usar máxima especificidad para sobrescribir estilos inline */
-            .button-row:first-child #btn-up-left svg {
-                transform: rotate(-45deg) !important;
-                transform-origin: center center !important;
-
-            }
-            
-            .button-row:first-child #btn-up svg {
-                transform-origin: center center !important;
-            }
-            
-            .button-row:first-child #btn-up-right svg {
-                transform: rotate(45deg) scale(2.6);
-                transform-origin: center center !important;
-            }
+            font-size: 2.5rem;
             
             &::after {
                 width: 12vh;
@@ -626,13 +595,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         .button-row:last-child & {
             width: 18.4vh;
             height: 100%;
-            
-            svg {
-                width: 42px !important; /* 28px * 1.5 = 42px - forzar con !important */
-                height: 42px !important; /* 28px * 1.5 = 42px - forzar con !important */
-                stroke: rgba(220, 220, 220, 0.9);
-                fill: none;
-            }
+            font-size: 2rem;
             
             &::after {
                 width: 18.4vh;
@@ -645,13 +608,17 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             }
         }
         
-        /* Asegurar que el hover y active también afecten los iconos */
-        &:hover svg {
-            stroke: rgba(240, 240, 240, 1);
+        /* Hover y active */
+        &:hover {
+            color: rgba(240, 240, 240, 1);
         }
         
-        &:active svg {
-            stroke: rgba(200, 200, 200, 0.9);
+        &:active {
+            color: rgba(200, 200, 200, 0.9);
+        }
+        
+        &.active {
+            color: rgba(255, 255, 255, 1);
         }
         
         /* ::after - Sombra oscura (profundidad) */

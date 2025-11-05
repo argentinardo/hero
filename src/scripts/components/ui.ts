@@ -9,7 +9,8 @@ import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
 import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume, isBackgroundMusicPlaying } from './audio';
-import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings } from '../core/settings';
+import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings, type ControlMode } from '../core/settings';
+import { applyControlMode } from './mobile-controls';
 import { t, setLanguage, getCurrentLanguage, type Language } from '../utils/i18n';
 
 // Helper para guardar settings con idioma incluido
@@ -1172,7 +1173,8 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
             if (userToggle) userToggle.classList.add('hidden');
         }
     }
-    startJoystick(store);
+    // Aplicar modo de control configurado
+    applyControlMode(store, store.settings.controls.mobileMode);
 
     // Intento de bloqueo de orientación a landscape en navegadores que lo soportan
     try {
@@ -2456,6 +2458,8 @@ const setupSettingsModal = (store: GameStore) => {
     const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     const mobileFullWidthToggle = document.getElementById('mobile-fullwidth-toggle') as HTMLInputElement | null;
     const mobileFullWidthOption = document.getElementById('mobile-fullwidth-option') as HTMLElement | null;
+    const mobileControlsSettings = document.getElementById('mobile-controls-settings') as HTMLElement | null;
+    const controlModeSelector = document.getElementById('control-mode-selector') as HTMLSelectElement | null;
     const languageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
     
     // Mostrar/ocultar opción de fullwidth solo en mobile
@@ -2464,8 +2468,27 @@ const setupSettingsModal = (store: GameStore) => {
     if (mobileFullWidthOption) {
         mobileFullWidthOption.classList.toggle('hidden', !isMobile);
     }
+    if (mobileControlsSettings) {
+        mobileControlsSettings.style.display = isMobile ? 'block' : 'none';
+    }
     
     if (!settingsModal) return;
+    
+    // Configurar selector de modo de control
+    if (controlModeSelector) {
+        controlModeSelector.value = store.settings.controls.mobileMode;
+        
+        controlModeSelector.addEventListener('change', (e) => {
+            const newMode = (e.target as HTMLSelectElement).value as ControlMode;
+            store.settings.controls.mobileMode = newMode;
+            saveSettingsWithLanguage(store.settings);
+            
+            // Aplicar el nuevo modo si estamos en juego
+            if (store.appState === 'playing') {
+                applyControlMode(store, newMode);
+            }
+        });
+    }
     
     // Configurar selector de idioma
     if (languageSelector) {
@@ -2648,6 +2671,12 @@ const updateSettingsUI = (store: GameStore) => {
         mobileFullWidthOption.classList.toggle('hidden', !isMobile);
     }
     
+    // Mostrar/ocultar sección de controles solo en mobile
+    const mobileControlsSettings = document.getElementById('mobile-controls-settings') as HTMLElement | null;
+    if (mobileControlsSettings) {
+        mobileControlsSettings.style.display = isMobile ? 'block' : 'none';
+    }
+    
     // Actualizar sliders de audio
     const musicVolumePercent = Math.round(store.settings.audio.musicVolume * 100);
     if (musicVolumeSlider) musicVolumeSlider.value = musicVolumePercent.toString();
@@ -2677,6 +2706,12 @@ const updateSettingsUI = (store: GameStore) => {
     if (languageSelector) {
         languageSelector.value = (store.settings as any).language || getCurrentLanguage();
     }
+    
+    // Actualizar selector de modo de control
+    const controlModeSelector = document.getElementById('control-mode-selector') as HTMLSelectElement | null;
+    if (controlModeSelector) {
+        controlModeSelector.value = store.settings.controls.mobileMode;
+    }
 };
 
 /**
@@ -2699,6 +2734,10 @@ const updateAllTexts = (store: GameStore) => {
     }
     if (creditsBtn) creditsBtn.textContent = t('menu.credits');
     if (retryBtn) retryBtn.textContent = t('game.retry');
+    
+    // Botón de configuración en menú hamburger
+    const hamburgerSettingsBtn = document.getElementById('hamburger-settings-btn') as HTMLButtonElement | null;
+    if (hamburgerSettingsBtn) hamburgerSettingsBtn.textContent = t('game.settings');
     
     // Botones de instalación y Play Store
     const installPwaBtn = document.getElementById('install-pwa-btn') as HTMLButtonElement | null;
@@ -2792,28 +2831,27 @@ const updateAllTexts = (store: GameStore) => {
  * Actualiza los labels de configuración
  */
 const updateSettingsLabels = () => {
-    const soundTitle = document.querySelector('#settings-modal h3');
-    const graphicsTitle = document.querySelectorAll('#settings-modal h3')[1];
-    const graphicsDesc = document.querySelector('#settings-modal .mb-6.text-left p.text-xs');
-    const musicVolumeLabel = document.querySelector('label[for="music-volume-slider"]');
-    const sfxVolumeLabel = document.querySelector('label[for="sfx-volume-slider"]');
-    const soundStatusLabel = document.querySelector('label[for="mute-toggle"]');
+    // Título del modal
+    const settingsModalTitle = document.getElementById('settings-modal-title');
+    if (settingsModalTitle) settingsModalTitle.textContent = t('settings.title');
     
     // Audio
-    if (soundTitle && soundTitle.textContent?.includes('Sonido')) {
-        soundTitle.textContent = t('settings.sound');
-    }
+    const soundTitle = document.getElementById('settings-sound-title');
+    const musicVolumeLabel = document.getElementById('settings-music-volume-label');
+    const sfxVolumeLabel = document.getElementById('settings-sfx-volume-label');
+    const soundStatusLabel = document.getElementById('settings-sound-status-label');
+    
+    if (soundTitle) soundTitle.textContent = t('settings.sound');
     if (musicVolumeLabel) musicVolumeLabel.textContent = `${t('settings.musicVolume')}:`;
     if (sfxVolumeLabel) sfxVolumeLabel.textContent = `${t('settings.sfxVolume')}:`;
     if (soundStatusLabel) soundStatusLabel.textContent = `${t('settings.soundStatus')}:`;
     
     // Gráficos
-    if (graphicsTitle && graphicsTitle.textContent?.includes('Gráficos')) {
-        graphicsTitle.textContent = t('settings.graphics');
-    }
-    if (graphicsDesc) {
-        graphicsDesc.textContent = t('settings.scanlineDesc');
-    }
+    const graphicsTitle = document.getElementById('settings-graphics-title');
+    const graphicsDesc = document.getElementById('settings-graphics-desc');
+    
+    if (graphicsTitle) graphicsTitle.textContent = t('settings.graphics');
+    if (graphicsDesc) graphicsDesc.textContent = t('settings.scanlineDesc');
     
     // Labels de efectos gráficos
     const scanlineLabel = document.querySelector('label[for="scanline-toggle"]');
@@ -2833,6 +2871,19 @@ const updateSettingsLabels = () => {
     if (blurLabel) blurLabel.textContent = `${t('settings.blur')}:`;
     if (fpsLabel) fpsLabel.textContent = `${t('settings.showFps')}:`;
     if (mobileFullWidthLabel) mobileFullWidthLabel.textContent = `${t('settings.mobileFullWidth')}:`;
+    
+    // Controles
+    const controlsTitle = document.getElementById('settings-controls-title');
+    const controlModeLabel = document.getElementById('settings-control-mode-label');
+    const controlModeHybrid = document.getElementById('control-mode-hybrid');
+    const controlModeOnehand = document.getElementById('control-mode-onehand');
+    const controlModeVirtual = document.getElementById('control-mode-virtual');
+    
+    if (controlsTitle) controlsTitle.textContent = t('settings.controls');
+    if (controlModeLabel) controlModeLabel.textContent = `${t('settings.controlMode')}:`;
+    if (controlModeHybrid) controlModeHybrid.textContent = t('settings.controlModeHybrid');
+    if (controlModeOnehand) controlModeOnehand.textContent = t('settings.controlModeOnehand');
+    if (controlModeVirtual) controlModeVirtual.textContent = t('settings.controlModeVirtual');
 };
 
 /**
@@ -2862,6 +2913,10 @@ export const updateEditorTexts = (store: GameStore) => {
     if (redoBtn) redoBtn.textContent = t('editor.redo');
     if (duplicateRowBtn) duplicateRowBtn.textContent = t('editor.duplicateRow');
     if (deleteRowBtn) deleteRowBtn.textContent = t('editor.deleteRow');
+    
+    // Label de sección Campañas
+    const campaignsSectionLabel = document.getElementById('campaigns-section-label');
+    if (campaignsSectionLabel) campaignsSectionLabel.textContent = `${t('campaigns.title')}:`;
     
     // Sección Niveles - Mostrar nombre de la campaña actual
     const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
@@ -3062,6 +3117,14 @@ const updateAuthModalTexts = () => {
  * Abre el modal de configuración y carga los valores actuales
  */
 const openSettingsModal = (store: GameStore) => {
+    // Mostrar/ocultar sección de controles según dispositivo
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+    const mobileControlsSettings = document.getElementById('mobile-controls-settings') as HTMLElement | null;
+    if (mobileControlsSettings) {
+        mobileControlsSettings.style.display = isMobile ? 'block' : 'none';
+    }
+    
     const settingsModal = document.getElementById('settings-modal');
     if (!settingsModal) return;
     
@@ -3570,9 +3633,9 @@ const setupMenuButtons = (store: GameStore) => {
                 startGame(store, null, 0, false);
             }
         } else {
-            // Usuario logueado: mostrar modal para seleccionar campaña
+            // Usuario logueado: mostrar modal para seleccionar campaña (modo jugar)
             const { showCampaignsModal } = await import('./campaigns-ui');
-            showCampaignsModal(store);
+            showCampaignsModal(store, true);
         }
     });
     levelEditorBtn?.addEventListener('click', () => {

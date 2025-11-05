@@ -241,6 +241,33 @@ export const reorderCampaignLevels = (
 };
 
 /**
+ * Actualiza el nombre de un nivel en una campaña
+ */
+export const updateLevelName = (store: GameStore, campaignId: string, levelIndex: number, name: string): boolean => {
+    const campaign = store.campaigns.find(c => c.id === campaignId);
+    if (!campaign) {
+        return false;
+    }
+    
+    const level = campaign.levels.find(l => l.levelIndex === levelIndex);
+    if (!level) {
+        return false;
+    }
+    
+    // Si el nombre está vacío, eliminar el nombre personalizado
+    if (name.trim() === '') {
+        delete level.name;
+    } else {
+        level.name = name.trim();
+    }
+    
+    campaign.updatedAt = Date.now();
+    saveCampaigns(store.campaigns);
+    
+    return true;
+};
+
+/**
  * Obtiene los índices de niveles de una campaña en orden
  */
 export const getCampaignLevelIndices = (store: GameStore, campaignId: string | null): number[] => {

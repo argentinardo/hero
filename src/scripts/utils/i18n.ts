@@ -169,6 +169,11 @@ export interface Translations {
         mobileFullWidthDesc: string;
         showFps: string;
         language: string;
+        controls: string;
+        controlMode: string;
+        controlModeHybrid: string;
+        controlModeOnehand: string;
+        controlModeVirtual: string;
     };
     // Galería
     gallery: {
@@ -388,6 +393,11 @@ const translations: Record<Language, Translations> = {
             mobileFullWidthDesc: '',
             showFps: 'Mostrar FPS',
             language: 'Idioma',
+            controls: 'Controles',
+            controlMode: 'Modo de Control',
+            controlModeHybrid: 'Híbrido',
+            controlModeOnehand: 'Una Mano',
+            controlModeVirtual: 'Virtual',
         },
         gallery: {
             title: 'GALERÍA DE NIVELES',
@@ -601,6 +611,11 @@ const translations: Record<Language, Translations> = {
             mobileFullWidthDesc: '',
             showFps: 'Show FPS',
             language: 'Language',
+            controls: 'Controls',
+            controlMode: 'Control Mode',
+            controlModeHybrid: 'Hybrid',
+            controlModeOnehand: 'One Hand',
+            controlModeVirtual: 'Virtual',
         },
         gallery: {
             title: 'LEVEL GALLERY',
@@ -814,6 +829,11 @@ const translations: Record<Language, Translations> = {
             mobileFullWidthDesc: '',
             showFps: 'Mostrar FPS',
             language: 'Idioma',
+            controls: 'Controles',
+            controlMode: 'Modo de Control',
+            controlModeHybrid: 'Híbrido',
+            controlModeOnehand: 'Una Mano',
+            controlModeVirtual: 'Virtual',
         },
         gallery: {
             title: 'GALERIA DE NIVELLS',

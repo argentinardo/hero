@@ -286,6 +286,7 @@ export interface DomReferences {
 export interface CampaignLevel {
     levelIndex: number; // Índice del nivel en levelDataStore
     order: number; // Orden en la campaña (0 = primero)
+    name?: string; // Nombre personalizado del nivel (opcional)
 }
 
 export interface Campaign {
@@ -378,6 +379,9 @@ export interface GameStore {
             blur: number;
             showFps: boolean;
             mobileFullWidth: boolean;
+        };
+        controls: {
+            mobileMode: 'hybrid' | 'onehand' | 'virtual';
         };
     };
 }

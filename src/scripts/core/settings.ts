@@ -9,6 +9,8 @@
 
 import { getCurrentLanguage, type Language } from '../utils/i18n';
 
+export type ControlMode = 'hybrid' | 'onehand' | 'virtual';
+
 export interface GameSettings {
     audio: {
         musicVolume: number;      // 0.0 - 1.0
@@ -23,6 +25,9 @@ export interface GameSettings {
         blur: number;             // Efecto de blur en píxeles (0 = desactivado)
         showFps: boolean;          // Mostrar contador de FPS
         mobileFullWidth: boolean;  // En mobile: ocupar todo el ancho ignorando max-width de relación de aspecto
+    };
+    controls: {
+        mobileMode: ControlMode;   // Modo de control móvil: 'hybrid', 'onehand', 'virtual'
     };
     language: Language;        // Idioma del juego
 }
@@ -51,6 +56,9 @@ const DEFAULT_SETTINGS: GameSettings = {
         showFps: false, // Por defecto oculto
         mobileFullWidth: false,    // No aplica en desktop
     },
+    controls: {
+        mobileMode: 'hybrid',      // Por defecto modo híbrido
+    },
     language: 'es',
 };
 
@@ -69,6 +77,9 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
         blur: 0.7,       // Blur por defecto de 0.7px en móvil (menor que desktop para mejor rendimiento)
         showFps: false,   // Por defecto oculto en mobile
         mobileFullWidth: false,   // Por defecto respeta relación de aspecto en mobile
+    },
+    controls: {
+        mobileMode: 'hybrid',      // Por defecto modo híbrido en móvil
     },
     language: 'es',
 };
@@ -98,6 +109,10 @@ export const loadSettings = (): GameSettings => {
                 graphics: {
                     ...defaults.graphics,
                     ...parsed.graphics,
+                },
+                controls: {
+                    ...defaults.controls,
+                    ...parsed.controls,
                 },
                 language: parsed.language || getCurrentLanguage() || defaults.language,
             };
@@ -130,6 +145,7 @@ export const updateSettings = (updates: Partial<GameSettings>): GameSettings => 
     const updated = {
         audio: { ...current.audio, ...updates.audio },
         graphics: { ...current.graphics, ...updates.graphics },
+        controls: { ...current.controls, ...updates.controls },
         language: updates.language || current.language,
     };
     saveSettings(updated);

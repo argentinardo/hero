@@ -33,10 +33,21 @@ export const syncLevelSelectorForCampaign = (store: GameStore) => {
     levelSelectorEl.innerHTML = '';
     
     // Agregar solo los niveles de la campaña actual
+    const campaign = store.campaigns.find(c => c.id === store.currentCampaignId);
     levelIndices.forEach((levelIndex, orderIndex) => {
         const option = document.createElement('option');
         option.value = `${levelIndex}`;
-        option.textContent = `${t('editor.levelNumber')} ${orderIndex + 1}`;
+        
+        // Buscar el nivel en la campaña para obtener su nombre personalizado
+        let levelName = `${t('editor.levelNumber')} ${orderIndex + 1}`;
+        if (campaign) {
+            const campaignLevel = campaign.levels.find(l => l.levelIndex === levelIndex);
+            if (campaignLevel?.name) {
+                levelName = campaignLevel.name;
+            }
+        }
+        
+        option.textContent = levelName;
         levelSelectorEl.appendChild(option);
     });
     
@@ -63,12 +74,13 @@ export const syncLevelSelectorForCampaign = (store: GameStore) => {
 
 /**
  * Muestra el modal de campañas
+ * @param isPlayMode - Si es true, muestra solo nombres para seleccionar y jugar. Si es false, muestra el gestor completo.
  */
-export const showCampaignsModal = (store: GameStore) => {
+export const showCampaignsModal = (store: GameStore, isPlayMode: boolean = false) => {
     const modal = document.getElementById('campaigns-modal');
     if (!modal) return;
     
-    updateCampaignsModal(store);
+    updateCampaignsModal(store, isPlayMode);
     modal.classList.remove('hidden');
 };
 
@@ -85,9 +97,68 @@ export const hideCampaignsModal = () => {
 /**
  * Actualiza el contenido del modal de campañas
  */
-const updateCampaignsModal = (store: GameStore) => {
-    // Actualizar lista de campañas
-    updateCampaignsList(store);
+const updateCampaignsModal = (store: GameStore, isPlayMode: boolean = false) => {
+    // Actualizar título del modal
+    const modalTitle = document.getElementById('campaigns-modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = isPlayMode ? t('campaigns.select') : t('campaigns.title');
+    }
+    
+    // Ocultar/mostrar secciones según el modo
+    const manageSection = document.querySelector('#campaigns-modal .border-t-2');
+    
+    if (isPlayMode) {
+        // Modo jugar: solo mostrar lista de campañas sin gestión
+        if (manageSection) {
+            (manageSection as HTMLElement).style.display = 'none';
+        }
+        updateCampaignsListForPlay(store);
+    } else {
+        // Modo gestión: mostrar todo
+        if (manageSection) {
+            (manageSection as HTMLElement).style.display = 'block';
+        }
+        updateCampaignsList(store);
+    }
+};
+
+/**
+ * Actualiza la lista de campañas para modo jugar (solo nombres, sin niveles)
+ */
+const updateCampaignsListForPlay = (store: GameStore) => {
+    const listEl = document.getElementById('campaigns-list');
+    if (!listEl) return;
+    
+    listEl.innerHTML = '';
+    
+    if (store.campaigns.length === 0) {
+        listEl.innerHTML = '<p class="text-sm opacity-75">' + t('campaigns.noCampaigns') + '</p>';
+        return;
+    }
+    
+    store.campaigns.forEach(campaign => {
+        const campaignBtn = document.createElement('button');
+        campaignBtn.className = 'nes-btn is-primary w-full mb-3 text-sm';
+        campaignBtn.style.fontFamily = "'Press Start 2P', monospace";
+        campaignBtn.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
+        
+        // Al hacer click, iniciar el juego con esa campaña
+        campaignBtn.addEventListener('click', () => {
+            store.currentCampaignId = campaign.id;
+            hideCampaignsModal();
+            
+            // Obtener los niveles de la campaña y empezar desde el primero
+            const levelIndices = getCampaignLevelIndices(store, campaign.id);
+            
+            if (levelIndices.length > 0) {
+                import('./ui').then(({ startGame }) => {
+                    startGame(store, null, levelIndices[0], false);
+                });
+            }
+        });
+        
+        listEl.appendChild(campaignBtn);
+    });
 };
 
 /**
@@ -175,10 +246,37 @@ const updateCampaignsList = (store: GameStore) => {
             deleteBtn.title = t('campaigns.cannotDeleteDefault');
         }
         deleteBtn.addEventListener('click', () => {
-            if (confirm('¿Seguro que deseas eliminar esta campaña?')) {
+            // Usar modal de confirmación en lugar de alert
+            const exitModalEl = document.getElementById('exit-modal');
+            const exitTitleEl = document.getElementById('exit-title');
+            const exitTextEl = document.getElementById('exit-text');
+            const exitConfirmBtn = document.getElementById('exit-confirm-btn');
+            const exitCancelBtn = document.getElementById('exit-cancel-btn');
+            
+            if (!exitModalEl || !exitTitleEl || !exitTextEl || !exitConfirmBtn || !exitCancelBtn) {
+                return;
+            }
+            
+            exitTitleEl.textContent = t('campaigns.delete');
+            exitTextEl.textContent = `¿Seguro que deseas eliminar la campaña "${campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name}"?`;
+            exitModalEl.classList.remove('hidden');
+            
+            const confirmHandler = () => {
                 deleteCampaign(store, campaign.id);
                 updateCampaignsModal(store);
-            }
+                exitModalEl.classList.add('hidden');
+                exitConfirmBtn.removeEventListener('click', confirmHandler);
+                exitCancelBtn.removeEventListener('click', cancelHandler);
+            };
+            
+            const cancelHandler = () => {
+                exitModalEl.classList.add('hidden');
+                exitConfirmBtn.removeEventListener('click', confirmHandler);
+                exitCancelBtn.removeEventListener('click', cancelHandler);
+            };
+            
+            exitConfirmBtn.addEventListener('click', confirmHandler);
+            exitCancelBtn.addEventListener('click', cancelHandler);
         });
         
         header.appendChild(name);
@@ -186,23 +284,105 @@ const updateCampaignsList = (store: GameStore) => {
             header.appendChild(deleteBtn);
         }
         
+        // Crear desplegable para niveles
+        const levelsDropdown = document.createElement('div');
+        levelsDropdown.className = 'mt-2';
+        
+        // Botón para abrir/cerrar el desplegable
+        const dropdownButton = document.createElement('button');
+        dropdownButton.type = 'button';
+        dropdownButton.className = 'w-full text-left flex items-center justify-between px-2 py-1 border-2 border-gray-600 bg-gray-700 hover:bg-gray-600';
+        dropdownButton.style.fontFamily = "'Press Start 2P', monospace";
+        dropdownButton.style.fontSize = '0.7rem';
+        
+        const dropdownText = document.createElement('span');
+        dropdownText.textContent = `${t('editor.levels')} (${campaign.levels.length})`;
+        
+        const dropdownArrow = document.createElement('span');
+        dropdownArrow.textContent = '▶'; // Cerrado por defecto
+        dropdownArrow.style.marginLeft = '8px';
+        
+        dropdownButton.appendChild(dropdownText);
+        dropdownButton.appendChild(dropdownArrow);
+        
+        // Contenedor de la lista de niveles (inicialmente oculto)
         const levelsList = document.createElement('div');
-        levelsList.className = 'mt-2';
+        levelsList.className = 'mt-2 border-2 border-gray-600 bg-gray-800 p-2';
+        levelsList.style.display = 'none';
         
         if (campaign.levels.length === 0) {
-            levelsList.innerHTML = '<p class="text-xs opacity-75">Sin niveles</p>';
+            const noLevelsMsg = document.createElement('p');
+            noLevelsMsg.className = 'text-xs opacity-75 text-center';
+            noLevelsMsg.textContent = t('campaigns.noCampaigns');
+            levelsList.appendChild(noLevelsMsg);
         } else {
             const sortedLevels = [...campaign.levels].sort((a, b) => a.order - b.order);
             sortedLevels.forEach((level, idx) => {
                 const levelItem = document.createElement('div');
-                levelItem.className = 'flex items-center justify-between mb-1 p-1 bg-gray-800';
+                levelItem.className = 'flex items-center justify-start mb-1 p-1 bg-gray-800 gap-2';
                 
+                // Crear contenedor para el nombre editable
+                const levelNameContainer = document.createElement('div');
+                levelNameContainer.className = 'flex-1';
+                
+                // Nombre por defecto si no hay nombre personalizado
+                const defaultName = `${t('editor.levelNumber')} ${level.levelIndex + 1}`;
+                const displayName = level.name || defaultName;
+                
+                // Crear span que se convertirá en input al hacer click
                 const levelInfo = document.createElement('span');
-                levelInfo.className = 'text-xs';
-                levelInfo.textContent = `${t('editor.levelNumber')} ${level.levelIndex + 1} (Orden: ${idx + 1})`;
+                levelInfo.className = 'text-xs cursor-pointer hover:opacity-75';
+                levelInfo.textContent = displayName;
+                levelInfo.style.fontFamily = "'Press Start 2P', monospace";
+                
+                // Función para convertir a input editable
+                const makeEditable = () => {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'nes-input text-xs w-full';
+                    input.style.fontFamily = "'Press Start 2P', monospace";
+                    input.value = level.name || defaultName;
+                    input.style.fontSize = '0.6rem';
+                    input.style.padding = '2px 4px';
+                    
+                    const saveName = () => {
+                        import('../utils/campaigns').then(({ updateLevelName }) => {
+                            updateLevelName(store, campaign.id, level.levelIndex, input.value);
+                            // Actualizar el texto del span sin re-renderizar todo el modal
+                            const newName = input.value.trim() || defaultName;
+                            levelInfo.textContent = newName;
+                            levelNameContainer.replaceChild(levelInfo, input);
+                            // Actualizar el objeto level en memoria para que se refleje si se vuelve a renderizar
+                            level.name = input.value.trim() || undefined;
+                        });
+                    };
+                    
+                    const cancelEdit = () => {
+                        levelNameContainer.replaceChild(levelInfo, input);
+                    };
+                    
+                    input.addEventListener('blur', saveName);
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            input.blur();
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            cancelEdit();
+                        }
+                    });
+                    
+                    levelNameContainer.replaceChild(input, levelInfo);
+                    input.focus();
+                    input.select();
+                };
+                
+                levelInfo.addEventListener('click', makeEditable);
+                
+                levelNameContainer.appendChild(levelInfo);
                 
                 const controls = document.createElement('div');
-                controls.className = 'flex gap-1';
+                controls.className = 'gap-1';
                 
                 if (!campaign.isDefault) {
                     const moveUpBtn = document.createElement('button');
@@ -248,14 +428,24 @@ const updateCampaignsList = (store: GameStore) => {
                     controls.appendChild(removeBtn);
                 }
                 
-                levelItem.appendChild(levelInfo);
+                levelItem.appendChild(levelNameContainer);
                 levelItem.appendChild(controls);
                 levelsList.appendChild(levelItem);
             });
         }
         
+        // Toggle del desplegable
+        dropdownButton.addEventListener('click', () => {
+            const isHidden = levelsList.style.display === 'none';
+            levelsList.style.display = isHidden ? 'block' : 'none';
+            dropdownArrow.textContent = isHidden ? '▼' : '▶';
+        });
+        
+        levelsDropdown.appendChild(dropdownButton);
+        levelsDropdown.appendChild(levelsList);
+        
         campaignDiv.appendChild(header);
-        campaignDiv.appendChild(levelsList);
+        campaignDiv.appendChild(levelsDropdown);
         listEl.appendChild(campaignDiv);
     });
 };

@@ -3,7 +3,7 @@
     position: fixed;
     top: 1rem;
     right: 1rem;
-    z-index: 1000;
+    z-index: 49;
     
     .language-btn {
         transition: all 0.3s ease;
@@ -364,7 +364,7 @@ body {
     flex-direction: column;
     background-color: rgba(0, 0, 0, 0.95);
     padding: 10px;
-    z-index: 300;
+    z-index: 20;
     overflow-y: auto;
     overflow-x: hidden;
     border-right: 2px solid rgba(255, 255, 255, 0.3);
@@ -409,7 +409,7 @@ body {
     height: 100vh;
     padding:10px;
     overflow-y: auto;
-    z-index: 300;
+    z-index: 20;
     transform: translateX(0);
     transition: transform 200ms ease-in-out;
     
@@ -457,7 +457,7 @@ body {
     position: fixed !important;
     left: 0 !important;
     top: 12px !important;
-    z-index: 310 !important;
+    z-index: 20 !important;
     transition: opacity 0.2s ease-in-out;
     
     &.hidden {
@@ -510,7 +510,7 @@ body.state-editing {
     position: fixed !important;
     right: 0 !important;
     top: 12px !important;
-    z-index: 310 !important;
+    z-index: 20 !important;
     transition: opacity 0.2s ease-in-out;
     
     &.hidden {
@@ -822,6 +822,7 @@ body.state-menu {
 
 /* Message Overlay - Pantalla de mensajes */
 #message-overlay {
+    z-index: 10 !important; /* Debajo de modales pero visible */
     align-items: center;
     display: flex;
     flex-direction: column;
@@ -829,7 +830,6 @@ body.state-menu {
     -webkit-user-select: none;
     cursor: default;
     position: fixed;
-    z-index: 50;
     top: auto;
     bottom:30px; 
     width: 100%;
