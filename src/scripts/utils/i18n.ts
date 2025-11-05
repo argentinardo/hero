@@ -174,6 +174,7 @@ export interface Translations {
         controlModeHybrid: string;
         controlModeOnehand: string;
         controlModeVirtual: string;
+        controlModeFixed: string;
     };
     // Galería
     gallery: {
@@ -398,6 +399,7 @@ const translations: Record<Language, Translations> = {
             controlModeHybrid: 'Híbrido',
             controlModeOnehand: 'Una Mano',
             controlModeVirtual: 'Virtual',
+            controlModeFixed: 'Fija',
         },
         gallery: {
             title: 'GALERÍA DE NIVELES',
@@ -616,6 +618,7 @@ const translations: Record<Language, Translations> = {
             controlModeHybrid: 'Hybrid',
             controlModeOnehand: 'One Hand',
             controlModeVirtual: 'Virtual',
+            controlModeFixed: 'Fixed',
         },
         gallery: {
             title: 'LEVEL GALLERY',
@@ -834,6 +837,7 @@ const translations: Record<Language, Translations> = {
             controlModeHybrid: 'Híbrido',
             controlModeOnehand: 'Una Mano',
             controlModeVirtual: 'Virtual',
+            controlModeFixed: 'Fija',
         },
         gallery: {
             title: 'GALERIA DE NIVELLS',

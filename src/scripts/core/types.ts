@@ -381,7 +381,7 @@ export interface GameStore {
             mobileFullWidth: boolean;
         };
         controls: {
-            mobileMode: 'hybrid' | 'onehand' | 'virtual';
+            mobileMode: 'hybrid' | 'onehand' | 'virtual' | 'fixed';
         };
     };
 }

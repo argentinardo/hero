@@ -1,14 +1,31 @@
 /**
- * Sistema de controles móviles con 3 modos:
+ * Sistema de controles móviles con 4 modos:
  * - hybrid: Control fijo + virtual arrastrable + botones bomba y láser
  * - onehand: Sin control fijo izquierdo, sin botón bomba. Bomba con direccional abajo, fire como switch
  * - virtual: Solo joystick virtual + 2 botones
+ * - fixed: Solo control fijo, sin joystick virtual
  */
 
 import type { GameStore } from '../core/types';
 import type { ControlMode } from '../core/settings';
 import nipplejs from 'nipplejs';
 import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nipplejs';
+
+/**
+ * Restaura la posición por defecto de action-zone
+ */
+const resetActionZonePosition = () => {
+    const actionZone = document.getElementById('action-zone');
+    if (actionZone) {
+        actionZone.style.top = '';
+        actionZone.style.right = '';
+        actionZone.style.left = '';
+        actionZone.style.bottom = '';
+        actionZone.style.transform = '';
+        actionZone.style.justifyContent = '';
+        actionZone.style.paddingTop = '';
+    }
+};
 
 /**
  * Aplica el modo de control configurado
@@ -50,18 +67,29 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
     
     switch (mode) {
         case 'hybrid':
-            // Mostrar control fijo y botón bomba
+            // Mostrar control fijo y botón bomba, resetear posición de action-zone
             if (directionalButtons) directionalButtons.style.display = 'flex';
             if (bombBtn) bombBtn.style.display = '';
             if (shootBtn) shootBtn.style.display = '';
+            resetActionZonePosition();
             setupHybridMode(store);
             break;
             
         case 'onehand':
-            // Ocultar control fijo y botón bomba
+            // Ocultar control fijo y botón bomba, mover action-zone arriba izquierda
             if (directionalButtons) directionalButtons.style.display = 'none';
             if (bombBtn) bombBtn.style.display = 'none';
             if (shootBtn) shootBtn.style.display = '';
+            const actionZone = document.getElementById('action-zone');
+            if (actionZone) {
+                actionZone.style.top = '0';
+                actionZone.style.right = 'auto';
+                actionZone.style.left = '0';
+                actionZone.style.bottom = 'auto';
+                actionZone.style.transform = 'none';
+                actionZone.style.justifyContent = 'flex-start';
+                actionZone.style.paddingTop = '10px';
+            }
             setupOneHandMode(store);
             break;
             
@@ -70,7 +98,17 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             if (directionalButtons) directionalButtons.style.display = 'none';
             if (bombBtn) bombBtn.style.display = '';
             if (shootBtn) shootBtn.style.display = '';
+            resetActionZonePosition();
             setupVirtualMode(store);
+            break;
+            
+        case 'fixed':
+            // Solo control fijo, sin joystick virtual
+            if (directionalButtons) directionalButtons.style.display = 'flex';
+            if (bombBtn) bombBtn.style.display = '';
+            if (shootBtn) shootBtn.style.display = '';
+            resetActionZonePosition();
+            setupFixedMode(store);
             break;
     }
 };
@@ -178,6 +216,17 @@ const setupOneHandMode = (store: GameStore) => {
     
     // Configurar botones de acción (fire como switch)
     setupActionButtons(store, false, true);
+};
+
+/**
+ * Modo Fija: Solo control fijo, sin joystick virtual
+ */
+const setupFixedMode = (store: GameStore) => {
+    // No crear joystick virtual, solo usar botones direccionales fijos
+    setupDirectionalButtons(store);
+    
+    // Configurar botones de acción normales
+    setupActionButtons(store, true);
 };
 
 /**

@@ -2878,12 +2878,14 @@ const updateSettingsLabels = () => {
     const controlModeHybrid = document.getElementById('control-mode-hybrid');
     const controlModeOnehand = document.getElementById('control-mode-onehand');
     const controlModeVirtual = document.getElementById('control-mode-virtual');
+    const controlModeFixed = document.getElementById('control-mode-fixed');
     
     if (controlsTitle) controlsTitle.textContent = t('settings.controls');
     if (controlModeLabel) controlModeLabel.textContent = `${t('settings.controlMode')}:`;
     if (controlModeHybrid) controlModeHybrid.textContent = t('settings.controlModeHybrid');
     if (controlModeOnehand) controlModeOnehand.textContent = t('settings.controlModeOnehand');
     if (controlModeVirtual) controlModeVirtual.textContent = t('settings.controlModeVirtual');
+    if (controlModeFixed) controlModeFixed.textContent = t('settings.controlModeFixed');
 };
 
 /**

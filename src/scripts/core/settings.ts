@@ -9,7 +9,7 @@
 
 import { getCurrentLanguage, type Language } from '../utils/i18n';
 
-export type ControlMode = 'hybrid' | 'onehand' | 'virtual';
+export type ControlMode = 'hybrid' | 'onehand' | 'virtual' | 'fixed';
 
 export interface GameSettings {
     audio: {
