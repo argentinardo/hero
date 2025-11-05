@@ -142,6 +142,7 @@ export interface Translations {
         login: string;
         signup: string;
         createAccount: string;
+        continueWithGoogle: string;
     };
     // Configuración
     settings: {
@@ -368,6 +369,7 @@ const translations: Record<Language, Translations> = {
             login: 'Entrar',
             signup: 'Crear cuenta',
             createAccount: 'Crear cuenta',
+            continueWithGoogle: 'Continuar con Google',
         },
         settings: {
             title: 'Configuración',
@@ -587,6 +589,7 @@ const translations: Record<Language, Translations> = {
             login: 'Login',
             signup: 'Sign Up',
             createAccount: 'Create Account',
+            continueWithGoogle: 'Continue with Google',
         },
         settings: {
             title: 'Settings',
@@ -806,6 +809,7 @@ const translations: Record<Language, Translations> = {
             login: 'Entrar',
             signup: 'Crear compte',
             createAccount: 'Crear compte',
+            continueWithGoogle: 'Continuar amb Google',
         },
         settings: {
             title: 'Configuració',

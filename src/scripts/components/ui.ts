@@ -2464,7 +2464,7 @@ const setupSettingsModal = (store: GameStore) => {
     
     // Mostrar/ocultar opción de fullwidth solo en mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+                     window.innerWidth <= 1024;
     if (mobileFullWidthOption) {
         mobileFullWidthOption.classList.toggle('hidden', !isMobile);
     }
@@ -2666,7 +2666,7 @@ const updateSettingsUI = (store: GameStore) => {
     
     // Mostrar/ocultar opción de fullwidth solo en mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+                     window.innerWidth <= 1024;
     if (mobileFullWidthOption) {
         mobileFullWidthOption.classList.toggle('hidden', !isMobile);
     }
@@ -3104,12 +3104,14 @@ const updateCreditsTexts = () => {
 const updateAuthModalTexts = () => {
     const authModalTitle = document.querySelector('#auth-choice-modal .title');
     const authModalMessage = document.querySelector('#auth-choice-modal p.mb-6');
+    const authGoogleBtnText = document.getElementById('auth-google-btn-text');
     const authLoginBtn = document.getElementById('auth-login-btn');
     const authSignupBtn = document.getElementById('auth-signup-btn');
     const authCancelBtn = document.getElementById('auth-cancel-btn');
     
     if (authModalTitle) authModalTitle.textContent = t('auth.authentication');
     if (authModalMessage) authModalMessage.textContent = t('auth.loginMessage');
+    if (authGoogleBtnText) authGoogleBtnText.textContent = t('auth.continueWithGoogle');
     if (authLoginBtn) authLoginBtn.textContent = t('auth.login');
     if (authSignupBtn) authSignupBtn.textContent = t('auth.createAccount');
     if (authCancelBtn) authCancelBtn.textContent = t('modals.cancel');
@@ -3815,11 +3817,65 @@ const setupMenuButtons = (store: GameStore) => {
 
     // Modal autenticación: handlers
     const authModal = document.getElementById('auth-choice-modal');
+    const authGoogleBtn = document.getElementById('auth-google-btn') as HTMLButtonElement | null;
     const authLoginBtn = document.getElementById('auth-login-btn') as HTMLButtonElement | null;
     const authSignupBtn = document.getElementById('auth-signup-btn') as HTMLButtonElement | null;
     const authCancelBtn = document.getElementById('auth-cancel-btn') as HTMLButtonElement | null;
     const closeAuthModal = () => authModal?.classList.add('hidden');
     authCancelBtn?.addEventListener('click', closeAuthModal);
+    
+    // Handler del botón de Google
+    authGoogleBtn?.addEventListener('click', () => {
+        const ni: any = (window as any).netlifyIdentity;
+        if (ni) {
+            // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
+            closeAuthModal();
+            // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
+            setTimeout(() => {
+                // Usar el método correcto de Netlify Identity para providers externos
+                // El widget de Netlify Identity maneja automáticamente los providers externos
+                // si están configurados en el dashboard
+                try {
+                    // Método 1: Intentar usar el método open con provider específico
+                    // Si el widget soporta esto, lo usará
+                    if (typeof ni.open === 'function') {
+                        // Netlify Identity widget automáticamente mostrará el botón de Google
+                        // si está habilitado en la configuración del sitio
+                        ni.open('login');
+                    } else {
+                        // Método alternativo: usar la API directamente
+                        const identityUrl = ni.settings?.api_url || 'https://newhero.netlify.app/.netlify/identity';
+                        const currentUrl = window.location.href;
+                        // Usar el endpoint correcto de GoTrue para providers externos
+                        const googleAuthUrl = `${identityUrl}/authorize?provider=google&redirect_uri=${encodeURIComponent(currentUrl)}`;
+                        window.location.href = googleAuthUrl;
+                    }
+                } catch (error) {
+                    console.error('Error iniciando login con Google:', error);
+                    showNotification(store, '❌ Error', 'Error al iniciar sesión con Google. Asegúrate de que Google OAuth esté configurado en Netlify Identity.');
+                }
+            }, 100);
+            // Escuchar cuando se complete el login
+            // Nota: Este listener se puede duplicar, pero el setupUI ya tiene uno
+            // que maneja el login, así que esto es redundante pero seguro
+            const handleGoogleLogin = (user: any) => {
+                if (user && user.email) {
+                    const username = user.email.split('@')[0];
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    updateEditorButton();
+                    updateUserArea();
+                    startEditor(store);
+                    // Remover el listener después de usarlo para evitar duplicados
+                    ni.off('login', handleGoogleLogin);
+                }
+            };
+            ni.on('login', handleGoogleLogin);
+        } else {
+            showNotification(store, '❌ Error', 'Netlify Identity no está disponible. Por favor, configura el servicio en el dashboard de Netlify.');
+        }
+    });
+    
     authLoginBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
         if (ni) {
