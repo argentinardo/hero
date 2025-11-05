@@ -66,7 +66,11 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
     
     if (shootBtn) {
         shootBtn.classList.remove('sticky-active');
+        shootBtn.classList.remove('active');
     }
+    
+    // Resetear contador de taps
+    lastShootTap = 0;
     
     switch (mode) {
         case 'hybrid':
@@ -350,6 +354,10 @@ let bombTouchStartHandler: ((e: TouchEvent) => void) | null = null;
 let bombTouchEndHandler: ((e: TouchEvent) => void) | null = null;
 let shootTouchStartHandler: ((e: TouchEvent) => void) | null = null;
 let shootTouchEndHandler: ((e: TouchEvent) => void) | null = null;
+let shootMouseDownHandler: ((e: MouseEvent) => void) | null = null;
+let shootMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+let shootClickHandler: ((e: MouseEvent) => void) | null = null;
+let lastShootTap = 0; // Variable global para el modo normal
 
 /**
  * Configura los botones de acción (FIRE y TNT)
@@ -365,9 +373,24 @@ const setupActionButtons = (store: GameStore, showBomb: boolean = true, fireAsSw
         bombBtn.removeEventListener('touchstart', bombTouchStartHandler);
         bombBtn.removeEventListener('touchend', bombTouchEndHandler);
     }
-    if (shootBtn && shootTouchStartHandler && shootTouchEndHandler) {
-        shootBtn.removeEventListener('touchstart', shootTouchStartHandler);
-        shootBtn.removeEventListener('touchend', shootTouchEndHandler);
+    if (shootBtn) {
+        if (shootTouchStartHandler) {
+            shootBtn.removeEventListener('touchstart', shootTouchStartHandler);
+        }
+        if (shootTouchEndHandler) {
+            shootBtn.removeEventListener('touchend', shootTouchEndHandler);
+            shootBtn.removeEventListener('touchcancel', shootTouchEndHandler);
+        }
+        if (shootMouseDownHandler) {
+            shootBtn.removeEventListener('mousedown', shootMouseDownHandler);
+        }
+        if (shootMouseUpHandler) {
+            shootBtn.removeEventListener('mouseup', shootMouseUpHandler);
+            shootBtn.removeEventListener('mouseleave', shootMouseUpHandler);
+        }
+        if (shootClickHandler) {
+            shootBtn.removeEventListener('click', shootClickHandler);
+        }
     }
     
     if (showBomb && bombBtn) {
@@ -388,22 +411,80 @@ const setupActionButtons = (store: GameStore, showBomb: boolean = true, fireAsSw
             // Modo switch: un click activa/desactiva
             shootTouchStartHandler = (event: TouchEvent) => {
                 event.preventDefault();
+                event.stopPropagation();
                 store.isLaserSticky = !store.isLaserSticky;
                 store.keys.Space = store.isLaserSticky;
                 
+                // Actualizar estado visual del botón
                 if (store.isLaserSticky) {
                     shootBtn.classList.add('sticky-active');
                 } else {
                     shootBtn.classList.remove('sticky-active');
                 }
             };
-            shootBtn.addEventListener('touchstart', shootTouchStartHandler);
+            
+            shootClickHandler = (e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                store.isLaserSticky = !store.isLaserSticky;
+                store.keys.Space = store.isLaserSticky;
+                if (store.isLaserSticky) {
+                    shootBtn.classList.add('sticky-active');
+                } else {
+                    shootBtn.classList.remove('sticky-active');
+                }
+            };
+            
+            // Agregar listeners
+            shootBtn.addEventListener('touchstart', shootTouchStartHandler, { passive: false });
+            shootBtn.addEventListener('click', shootClickHandler);
         } else {
             // Modo normal: mantener presionado o doble click para sticky
-            let lastShootTap = 0;
+            // Resetear el contador de taps cuando se cambia de modo
+            lastShootTap = 0; // Usar la variable global
             
             shootTouchStartHandler = (event: TouchEvent) => {
                 event.preventDefault();
+                event.stopPropagation();
+                const now = Date.now();
+                
+                // Si ya está en modo sticky, un toque lo desactiva
+                if (store.isLaserSticky) {
+                    store.isLaserSticky = false;
+                    store.keys.Space = false;
+                    shootBtn.classList.remove('sticky-active');
+                    lastShootTap = 0;
+                    return;
+                }
+                
+                // Doble tap para activar sticky
+                if (lastShootTap && now - lastShootTap < 300) {
+                    store.isLaserSticky = true;
+                    store.keys.Space = true;
+                    shootBtn.classList.add('sticky-active');
+                    lastShootTap = 0;
+                    return;
+                }
+                
+                // Primer toque: disparo normal
+                lastShootTap = now;
+                store.keys.Space = true;
+                shootBtn.classList.add('active'); // Mostrar visualmente que está presionado
+            };
+            
+            shootTouchEndHandler = (event: TouchEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+                // Solo detener disparo si no está en modo sticky
+                if (!store.isLaserSticky) {
+                    store.keys.Space = false;
+                    shootBtn.classList.remove('active'); // Remover clase visual
+                }
+            };
+            
+            shootMouseDownHandler = (e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const now = Date.now();
                 
                 if (store.isLaserSticky) {
@@ -423,20 +504,26 @@ const setupActionButtons = (store: GameStore, showBomb: boolean = true, fireAsSw
                 }
                 
                 lastShootTap = now;
-                if (!store.isLaserSticky) {
-                    store.keys.Space = true;
-                }
+                store.keys.Space = true;
+                shootBtn.classList.add('active');
             };
             
-            shootTouchEndHandler = (event: TouchEvent) => {
-                event.preventDefault();
+            shootMouseUpHandler = (e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (!store.isLaserSticky) {
                     store.keys.Space = false;
+                    shootBtn.classList.remove('active');
                 }
             };
             
-            shootBtn.addEventListener('touchstart', shootTouchStartHandler);
-            shootBtn.addEventListener('touchend', shootTouchEndHandler);
+            // Agregar listeners
+            shootBtn.addEventListener('touchstart', shootTouchStartHandler, { passive: false });
+            shootBtn.addEventListener('touchend', shootTouchEndHandler, { passive: false });
+            shootBtn.addEventListener('touchcancel', shootTouchEndHandler, { passive: false });
+            shootBtn.addEventListener('mousedown', shootMouseDownHandler);
+            shootBtn.addEventListener('mouseup', shootMouseUpHandler);
+            shootBtn.addEventListener('mouseleave', shootMouseUpHandler);
         }
     }
 };

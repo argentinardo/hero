@@ -724,10 +724,29 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         background-color: #5a715f;
         border-color: #7a947f;
         text-shadow: 0px 1px 0px #3d4f42;
+        transition: all 0.15s ease;
         
         &:hover {
             background: linear-gradient(to bottom, #5a715f 5%, #7a947f 100%);
             background-color: #6b8573;
+        }
+        
+        // Estado activo (presionado momentáneamente)
+        &.active {
+            background: linear-gradient(to bottom, #6b8573 5%, #8b9d8f 100%);
+            background-color: #7a947f;
+            border-color: #9bad9f;
+            transform: scale(0.95);
+            box-shadow: inset 3px 3px 6px 4px #5a6d5f;
+        }
+        
+        // Estado sticky (disparo continuo activado)
+        &.sticky-active {
+            background: linear-gradient(to bottom, #8b9d8f 5%, #abbfaf 100%);
+            background-color: #9bad9f;
+            border-color: #bbcfbf;
+            box-shadow: inset 3px 3px 6px 4px #6b8573, 0 0 10px rgba(139, 157, 143, 0.6);
+            animation: pulse-glow 1.5s ease-in-out infinite;
         }
         
         &::after {
@@ -736,6 +755,16 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         
         &::before {
             box-shadow: 1px 1px 3px 5px rgba(107, 133, 115, 0.45);
+        }
+    }
+    
+    // Animación para el botón sticky
+    @keyframes pulse-glow {
+        0%, 100% {
+            box-shadow: inset 3px 3px 6px 4px #6b8573, 0 0 10px rgba(139, 157, 143, 0.6);
+        }
+        50% {
+            box-shadow: inset 3px 3px 6px 4px #6b8573, 0 0 15px rgba(139, 157, 143, 0.9);
         }
     }
     
