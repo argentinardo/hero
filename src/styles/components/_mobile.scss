@@ -82,6 +82,32 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
    ESTILOS MÓVILES
    ======================================== */
 @media (max-width: 1024px) and (orientation: landscape) {
+    // Reducir tamaño de selector de idioma a la mitad
+    #language-selector-container {
+        p {
+            font-size: 0.4rem !important; // Reducir de 0.8rem a la mitad
+        }
+        
+        .language-btn {
+            font-size: 0.6rem !important; // Reducir de 1.2rem a la mitad
+            padding: 0.25rem 0.5rem !important; // Reducir padding a la mitad
+            min-width: 30px !important; // Reducir min-width a la mitad
+        }
+    }
+    
+    // Reducir tamaño del selector de idioma en el modal de settings
+    #language-selector {
+        font-size: 0.5rem !important; // Reducir de text-sm a la mitad
+        padding: 0.25rem !important; // Reducir padding a la mitad
+    }
+    
+    #settings-language-label {
+        font-size: 0.5rem !important; // Reducir de text-sm a la mitad
+    }
+    
+    #settings-language-title {
+        font-size: 0.5rem !important; // Reducir de text-xl a la mitad
+    }
     /* Layout base */
     body, html {
         overflow: hidden;

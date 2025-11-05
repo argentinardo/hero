@@ -22,8 +22,11 @@ const resetActionZonePosition = () => {
         actionZone.style.left = '';
         actionZone.style.bottom = '';
         actionZone.style.transform = '';
+        actionZone.style.flexDirection = '';
         actionZone.style.justifyContent = '';
         actionZone.style.paddingTop = '';
+        actionZone.style.paddingBottom = '';
+        actionZone.style.marginTop = '';
     }
 };
 
@@ -70,25 +73,34 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             // Mostrar control fijo y botón bomba, resetear posición de action-zone
             if (directionalButtons) directionalButtons.style.display = 'flex';
             if (bombBtn) bombBtn.style.display = '';
-            if (shootBtn) shootBtn.style.display = '';
+            if (shootBtn) {
+                shootBtn.style.display = '';
+                shootBtn.style.top = '';
+            }
             resetActionZonePosition();
             setupHybridMode(store);
             break;
             
         case 'onehand':
-            // Ocultar control fijo y botón bomba, mover action-zone arriba izquierda
+            // Ocultar control fijo y botón bomba, mover action-zone abajo derecha con flex-direction row
             if (directionalButtons) directionalButtons.style.display = 'none';
             if (bombBtn) bombBtn.style.display = 'none';
-            if (shootBtn) shootBtn.style.display = '';
+            if (shootBtn) {
+                shootBtn.style.display = '';
+                shootBtn.style.top = '0';
+            }
             const actionZone = document.getElementById('action-zone');
             if (actionZone) {
-                actionZone.style.top = '0';
-                actionZone.style.right = 'auto';
-                actionZone.style.left = '0';
+                actionZone.style.top = '40px';
+                actionZone.style.right = '0';
+                actionZone.style.left = 'auto';
                 actionZone.style.bottom = 'auto';
                 actionZone.style.transform = 'none';
-                actionZone.style.justifyContent = 'flex-start';
-                actionZone.style.paddingTop = '10px';
+                actionZone.style.flexDirection = 'row';
+                actionZone.style.justifyContent = 'flex-end';
+                actionZone.style.paddingTop = '';
+                actionZone.style.paddingBottom = '';
+                actionZone.style.marginTop = '40px';
             }
             setupOneHandMode(store);
             break;
@@ -97,7 +109,10 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             // Ocultar control fijo, mostrar solo joystick virtual + botones
             if (directionalButtons) directionalButtons.style.display = 'none';
             if (bombBtn) bombBtn.style.display = '';
-            if (shootBtn) shootBtn.style.display = '';
+            if (shootBtn) {
+                shootBtn.style.display = '';
+                shootBtn.style.top = '';
+            }
             resetActionZonePosition();
             setupVirtualMode(store);
             break;
@@ -106,7 +121,10 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             // Solo control fijo, sin joystick virtual
             if (directionalButtons) directionalButtons.style.display = 'flex';
             if (bombBtn) bombBtn.style.display = '';
-            if (shootBtn) shootBtn.style.display = '';
+            if (shootBtn) {
+                shootBtn.style.display = '';
+                shootBtn.style.top = '';
+            }
             resetActionZonePosition();
             setupFixedMode(store);
             break;
