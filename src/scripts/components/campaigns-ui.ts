@@ -116,9 +116,13 @@ export const updateAddToCampaignSelector = (store: GameStore) => {
     
     selector.innerHTML = '<option value="">' + t('campaigns.selectCampaign') + '</option>';
     store.campaigns.forEach(campaign => {
+        // No mostrar la campaña original en el selector (no se puede modificar)
+        if (campaign.isDefault) {
+            return;
+        }
         const option = document.createElement('option');
         option.value = campaign.id;
-        option.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
+        option.textContent = campaign.name;
         selector.appendChild(option);
     });
 };

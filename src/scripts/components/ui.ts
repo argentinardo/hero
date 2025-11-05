@@ -1557,7 +1557,17 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             });
         }
         
-        // También para mobile
+        // También para mobile - botón de campaña
+        const campaignTitleBtn = document.getElementById('campaign-title-btn') as HTMLButtonElement | null;
+        if (campaignTitleBtn) {
+            campaignTitleBtn.addEventListener('click', () => {
+                import('./campaigns-ui').then(({ showCampaignsModal }) => {
+                    showCampaignsModal(store);
+                });
+            });
+        }
+        
+        // También para mobile - título alternativo
         const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center') as HTMLElement | null;
         if (levelsSectionMobileTitle) {
             levelsSectionMobileTitle.style.cursor = 'pointer';
@@ -2856,22 +2866,23 @@ export const updateEditorTexts = (store: GameStore) => {
     // Sección Niveles - Mostrar nombre de la campaña actual
     const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
     const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center');
+    const campaignTitleBtn = document.getElementById('campaign-title-btn');
     
-    // Obtener el nombre de la campaña del nivel que se está editando actualmente
-    import('../utils/campaigns').then(({ getCampaignForLevel }) => {
-        // Obtener el índice del nivel que se está editando
-        const currentLevelIndex = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        const campaign = getCampaignForLevel(store, currentLevelIndex);
+    // Obtener el nombre de la campaña actual (no del nivel, sino de la campaña seleccionada)
+    import('../utils/campaigns').then(({ getCurrentCampaign }) => {
+        const campaign = getCurrentCampaign(store);
         const campaignName = campaign 
             ? (campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name)
             : t('editor.levels');
         
         if (levelsSectionToggle) levelsSectionToggle.textContent = campaignName;
         if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = campaignName.toUpperCase();
+        if (campaignTitleBtn) campaignTitleBtn.textContent = campaignName.toUpperCase();
     }).catch(() => {
         // Fallback si hay error
         if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
         if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = t('editor.levels').toUpperCase();
+        if (campaignTitleBtn) campaignTitleBtn.textContent = t('editor.levels').toUpperCase();
     });
     
     // Botones de niveles (desktop)

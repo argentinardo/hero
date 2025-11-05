@@ -160,6 +160,11 @@ export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIn
         return false;
     }
     
+    // No se puede agregar niveles a la campaña original
+    if (campaign.isDefault) {
+        return false;
+    }
+    
     // Verificar que el nivel no esté ya en la campaña
     const exists = campaign.levels.some(l => l.levelIndex === levelIndex);
     if (exists) {
