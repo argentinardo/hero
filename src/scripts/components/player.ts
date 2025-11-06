@@ -1085,7 +1085,7 @@ export const checkEnemyCollision = (store: GameStore) => {
         return;
     }
     enemies.forEach(enemy => {
-        if (enemy.type === 'viper' && !enemy.isHidden && enemy.initialX !== undefined) {
+        if (enemy.type === 'viper' && !enemy.isHidden && !enemy.isDead && enemy.initialX !== undefined) {
             let headHitbox: Enemy | null = null;
             if (enemy.direction === 1) {
                 headHitbox = {

@@ -99,14 +99,8 @@ const drawWall = (store: GameStore, wall: Wall) => {
     }
     
     // Paredes aplastantes: renderizado con efectos eléctricos
-    // IMPORTANTE: Si está en modo oscuro y está afectada, no dibujar aquí (se dibujará en negro en el modo oscuro)
+    // IMPORTANTE: Las paredes aplastantes siempre brillan, incluso en la oscuridad
     if (wall.type === 'crushing') {
-        // Si está en modo oscuro y está afectada, no dibujar aquí
-        if (store.isDark && wall.affectedByDark) {
-            ctx.restore();
-            return;
-        }
-        
         const isMobile = isMobileDevice();
         const wallColor = wall.color || '#cc0000';
         
@@ -319,7 +313,7 @@ const drawWall = (store: GameStore, wall: Wall) => {
 
 const drawEnemy = (store: GameStore, enemy: Enemy) => {
     const { ctx, scale } = getRenderContext(store);
-    if (!ctx || enemy.isHidden) return;
+    if (!ctx || enemy.isHidden || enemy.isDead) return;
 
     const sprite = store.sprites[enemy.tile];
     if (!sprite) return;
@@ -1002,10 +996,16 @@ const drawGameWorld = (store: GameStore) => {
                 continue;
             }
             
+            // Paredes aplastantes siempre visibles (brillan incluso en la oscuridad)
+            if (wall.type === 'crushing') {
+                unaffectedWalls.push(wall);
+                continue;
+            }
+            
             // Excluir agua para clasificación
             if (wall.tile === '2') continue;
             
-            // Clasificar por afectación (incluyendo paredes aplastantes)
+            // Clasificar por afectación
             if (wall.affectedByDark) {
                 affectedWalls.push(wall);
             } else {
@@ -1057,6 +1057,10 @@ const drawGameWorld = (store: GameStore) => {
             }
             
             if (enemy.type === 'viper') {
+                // No incluir víboras muertas u ocultas
+                if (enemy.isDead || enemy.isHidden) {
+                    continue;
+                }
                 if (enemy.affectedByDark) {
                     affectedVipers.push(enemy);
                 } else {
@@ -1270,7 +1274,10 @@ const drawGameWorld = (store: GameStore) => {
             }
             
             if (enemy.type === 'viper') {
-                vipers.push(enemy);
+                // No incluir víboras muertas u ocultas
+                if (!enemy.isDead && !enemy.isHidden) {
+                    vipers.push(enemy);
+                }
             } else {
                 otherEnemies.push(enemy);
             }

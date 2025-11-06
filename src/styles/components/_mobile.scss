@@ -644,7 +644,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         right: 0;
         top: 60%;
         transform: translateY(-50%);
-        width: 240px !important;
+        max-width: 240px !important;
         height: auto;
         pointer-events: auto;
         display: flex;
@@ -709,7 +709,6 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         order: 1; /* FIRE al principio (izquierda) */
         align-self: flex-end;
         position: relative;
-        top: 11vh;
     }
     
     #bomb-btn {

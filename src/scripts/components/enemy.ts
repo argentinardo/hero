@@ -74,6 +74,11 @@ export const updateEnemies = (store: GameStore) => {
             }
         }
 
+        // No actualizar enemigos muertos u ocultos (excepto tentáculos que tienen animación de muerte)
+        if (enemy.isDead && enemy.type !== 'tentacle') {
+            return;
+        }
+        
         switch (enemy.type) {
             case 'bat': {
                 const initialX = enemy.initialX ?? enemy.x;
@@ -123,13 +128,13 @@ export const updateEnemies = (store: GameStore) => {
                     height: enemy.height
                 };
                 
-                // Buscar colisiones con paredes sólidas
+                // Buscar colisiones con paredes sólidas y lava
                 let willCollideWithWall = false;
                 let collidingWall: typeof store.walls[0] | null = null;
                 
                 for (const wall of store.walls) {
-                    // Solo considerar paredes sólidas (no agua, lava, etc.)
-                    if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v') {
+                    // Considerar paredes sólidas, destructibles y lava (no agua)
+                    if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v' || wall.type === 'lava') {
                         if (checkCollision(futureRect, wall)) {
                             willCollideWithWall = true;
                             collidingWall = wall;
@@ -154,12 +159,17 @@ export const updateEnemies = (store: GameStore) => {
                         const batCenterX = enemy.x + enemy.width / 2;
                         const wallCenterX = collidingWall.x + collidingWall.width / 2;
                         
+                        // IMPORTANTE: Siempre alejar el murciélago de la pared en la dirección opuesta
                         if (batCenterX < wallCenterX) {
                             // Murciélago está a la izquierda de la pared, empujarlo más a la izquierda
-                            enemy.x = Math.min(enemy.x, collidingWall.x - enemy.width - 2);
+                            enemy.x = collidingWall.x - enemy.width - 2;
+                            // Asegurar que se mueva hacia la izquierda
+                            enemy.vx = -Math.abs(enemy.vx);
                         } else {
                             // Murciélago está a la derecha de la pared, empujarlo más a la derecha
-                            enemy.x = Math.max(enemy.x, collidingWall.x + collidingWall.width + 2);
+                            enemy.x = collidingWall.x + collidingWall.width + 2;
+                            // Asegurar que se mueva hacia la derecha
+                            enemy.vx = Math.abs(enemy.vx);
                         }
                     } else if (willHitBoundary) {
                         // Límites del nivel
@@ -191,7 +201,7 @@ export const updateEnemies = (store: GameStore) => {
                     
                     // Verificar colisión con la posición ajustada
                     for (const wall of store.walls) {
-                        if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v') {
+                        if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v' || wall.type === 'lava') {
                             if (checkCollision(checkRect, wall)) {
                                 // Aún está colisionando, empujarlo más lejos según la dirección
                                 const batCenterX = enemy.x + enemy.width / 2;
@@ -231,6 +241,11 @@ export const updateEnemies = (store: GameStore) => {
                 break;
             }
             case 'viper': {
+                // Si la víbora está muerta, no actualizar su estado
+                if (enemy.isDead) {
+                    break;
+                }
+                
                 const speed = 3; // Aumentado de 2 para enemigos más rápidos
                 switch (enemy.state) {
                     case 'idle':
