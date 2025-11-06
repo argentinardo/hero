@@ -50,6 +50,7 @@ export const createInitialStore = (): GameStore => ({
     cameraY: 0,
     cameraX: 0,
     isPaused: false,
+    globalFrameCount: 0,
     levelEndSequence: null,
     levelEndTimer: 0,
     virtualEnergyDrain: null,

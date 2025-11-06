@@ -1283,6 +1283,11 @@ export const awardExtraLifeByScore = (store: GameStore) => {
         const delta = milestone - (store.scoreLifeMilestone || 0);
         store.lives += delta;
         store.scoreLifeMilestone = milestone;
+        
+        // Reproducir sonido de vida extra
+        import('./audio').then(({ playOneUpSound }) => {
+            playOneUpSound();
+        });
     }
 };
 
@@ -2086,6 +2091,20 @@ const populatePalette = (store: GameStore) => {
             }
             tileDiv.classList.add('selected');
             store.selectedTile = key;
+            
+            // Desactivar modos de duplicar/eliminar fila cuando se selecciona un tile de la paleta
+            if (store.duplicateRowMode) {
+                store.duplicateRowMode = false;
+                if (store.dom.canvas) {
+                    store.dom.canvas.style.cursor = 'default';
+                }
+            }
+            if (store.deleteRowMode) {
+                store.deleteRowMode = false;
+                if (store.dom.canvas) {
+                    store.dom.canvas.style.cursor = 'default';
+                }
+            }
         });
         
         return tileDiv;
@@ -5051,7 +5070,7 @@ const setupLevelData = (store: GameStore) => {
         
         // IMPORTANTE: La campaña Legacy NO usa base de datos
         // Se sirve únicamente de assets/levels.json
-        // Si se modifica, se guarda en localStorage y se ofrece descargar el archivo
+        // Si se modifica, se guarda en localStorage y en el archivo del proyecto (si está en desarrollo)
         if (isLegacyCampaign) {
             // Payload completo para Legacy (todos los niveles de levels.json)
             const fullPayload = buildChunkedFile20x18(levelsAsStrings);
@@ -5064,7 +5083,29 @@ const setupLevelData = (store: GameStore) => {
                 console.error('Error guardando en localStorage:', localError);
             }
             
-            // Ofrecer descargar el archivo levels.json modificado
+            // Intentar guardar directamente en el archivo del proyecto (solo en desarrollo)
+            try {
+                const response = await fetch('/api/save-levels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(fullPayload),
+                });
+                
+                if (response.ok) {
+                    console.log('Archivo levels.json guardado exitosamente en src/assets/levels.json');
+                    showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, 'Cambios de Legacy guardados en src/assets/levels.json');
+                    ensureEditorVisible(store);
+                    return; // Guardado exitoso en el archivo del proyecto
+                } else {
+                    console.warn('No se pudo guardar en el archivo del proyecto, descargando...');
+                }
+            } catch (apiError) {
+                console.warn('Endpoint /api/save-levels no disponible (probablemente en producción), descargando archivo...', apiError);
+            }
+            
+            // Fallback: Ofrecer descargar el archivo levels.json modificado
             const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
@@ -5075,7 +5116,7 @@ const setupLevelData = (store: GameStore) => {
             document.body.removeChild(anchor);
             URL.revokeObjectURL(url);
             
-            showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, 'Cambios de Legacy guardados. Archivo levels.json descargado.');
+            showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, 'Cambios de Legacy guardados. Archivo levels.json descargado. Reemplaza src/assets/levels.json con el archivo descargado.');
             ensureEditorVisible(store);
             return; // No guardar en BD para Legacy
         }
@@ -5270,13 +5311,88 @@ const setupLevelData = (store: GameStore) => {
     };
 
     saveAllBtn?.addEventListener('click', async () => {
-        // Mostrar modal con opción de guardar en archivo o agregar a campaña
-        const { updateAddToCampaignSelector } = await import('./campaigns-ui');
-        const addToCampaignModal = document.getElementById('add-to-campaign-modal');
-        if (addToCampaignModal) {
-            // Cargar campañas en el selector
-            updateAddToCampaignSelector(store);
-            addToCampaignModal.classList.remove('hidden');
+        // Guardar automáticamente en la campaña actual
+        const { getCurrentCampaign } = await import('../utils/campaigns');
+        const { addLevelToCampaign, syncCampaignsToServer } = await import('../utils/campaigns');
+        const { buildChunkedFile20x18 } = await import('../utils/levels');
+        
+        const currentCampaign = getCurrentCampaign(store);
+        if (!currentCampaign) {
+            showNotification(store, `❌ Error`, 'No hay campaña seleccionada');
+            return;
+        }
+        
+        const levelIndex = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+        
+        // Limpiar filas y columnas vacías antes de guardar
+        const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
+        store.levelDataStore[levelIndex] = JSON.parse(JSON.stringify(cleanedLevel));
+        // Actualizar también el nivel del editor con la versión limpia
+        store.editorLevel = cleanedLevel;
+        
+        // Agregar el nivel a la campaña actual (o actualizar si ya existe)
+        const result = addLevelToCampaign(store, currentCampaign.id, levelIndex);
+        
+        if (result.success) {
+            const isLegacyCampaign = currentCampaign.isDefault === true;
+            
+            if (isLegacyCampaign) {
+                // Para Legacy: guardar en el archivo levels.json
+                const levelsAsStrings = store.levelDataStore.map((level: string[][]) => 
+                    level.map((row: string[]) => row.join(''))
+                );
+                const fullPayload = buildChunkedFile20x18(levelsAsStrings);
+                
+                // Guardar en localStorage
+                try {
+                    localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+                    console.log('Cambios de campaña Legacy guardados en localStorage');
+                } catch (localError) {
+                    console.error('Error guardando en localStorage:', localError);
+                }
+                
+                // Intentar guardar directamente en el archivo del proyecto (solo en desarrollo)
+                try {
+                    const response = await fetch('/api/save-levels', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(fullPayload),
+                    });
+                    
+                    if (response.ok) {
+                        console.log('Archivo levels.json guardado exitosamente en src/assets/levels.json');
+                        showNotification(store, `💾 Nivel guardado`, 'Nivel guardado en Legacy. Archivo levels.json actualizado en src/assets/levels.json');
+                        return;
+                    }
+                } catch (apiError) {
+                    console.warn('Endpoint /api/save-levels no disponible, descargando archivo...', apiError);
+                }
+                
+                // Fallback: descargar el archivo
+                const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = 'levels.json';
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+                URL.revokeObjectURL(url);
+                
+                showNotification(store, `💾 Nivel guardado`, 'Nivel guardado en Legacy. Archivo levels.json descargado. Reemplaza src/assets/levels.json con el archivo descargado.');
+            } else {
+                // Para otras campañas: sincronizar con el servidor
+                await syncCampaignsToServer(store);
+                
+                const message = result.alreadyExists 
+                    ? 'Nivel actualizado en la campaña'
+                    : 'Nivel agregado a la campaña';
+                showNotification(store, `💾 ${message}`, `${message}: ${currentCampaign.name}`);
+            }
+        } else {
+            showNotification(store, `❌ Error`, 'No se pudo guardar el nivel');
         }
     });
 
@@ -5524,6 +5640,24 @@ const setupKeyboardShortcuts = (store: GameStore) => {
             }
             if (pauseMenu && !pauseMenu.classList.contains('hidden')) {
                 pauseMenu.classList.add('hidden');
+                return;
+            }
+        }
+        
+        // Atajos de teclado para el editor: Ctrl+Z (undo) y Shift+Ctrl+Z (redo)
+        if (store.appState === 'editing') {
+            // Ctrl+Z: Deshacer
+            if (e.key === 'z' && e.ctrlKey && !e.shiftKey) {
+                e.preventDefault();
+                undo(store);
+                updateUndoRedoButtons(store);
+                return;
+            }
+            // Shift+Ctrl+Z: Rehacer
+            if (e.key === 'z' && e.ctrlKey && e.shiftKey) {
+                e.preventDefault();
+                redo(store);
+                updateUndoRedoButtons(store);
                 return;
             }
         }

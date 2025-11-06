@@ -59,7 +59,7 @@ const createWall = (x: number, y: number, tile: string, store: GameStore): Wall 
     };
 
     if (tile === '2') {
-        return { ...base, type: 'water', health: 0, isDamaged: false, spriteTick: Math.floor(Math.random() * 50), currentFrame: Math.floor(Math.random() * 4) };
+        return { ...base, type: 'water', health: 0, isDamaged: false, spriteTick: 0, currentFrame: 0 };
     }
     if (tile === 'C') {
         return { ...base, type: 'destructible_v', health: 60, isDamaged: false };
@@ -70,16 +70,16 @@ const createWall = (x: number, y: number, tile: string, store: GameStore): Wall 
             type: 'destructible_v', 
             health: 60, 
             isDamaged: false,
-            spriteTick: Math.floor(Math.random() * 50),
-            currentFrame: Math.floor(Math.random() * 11),
+            spriteTick: 0,
+            currentFrame: 0,
         };
     }
     if (tile === '3') {
         return {
             ...base,
             type: 'lava',
-            spriteTick: Math.floor(Math.random() * 50),
-            currentFrame: Math.floor(Math.random() * 11),
+            spriteTick: 0,
+            currentFrame: 0,
         };
     }
     // Las paredes aplastantes (H y J) se procesan directamente en parseLevel
@@ -260,6 +260,8 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     store.fallingEntities = [];
     store.particles = [];
     store.floatingScores = [];
+    // Reiniciar contador global de frames para sincronizar animaciones desde el inicio del nivel
+    store.globalFrameCount = 0;
 
     let playerStartX = TILE_SIZE * 1.5;
     let playerStartY = TILE_SIZE * 1.5;
@@ -305,8 +307,8 @@ export const parseLevel = (store: GameStore, map: string[]) => {
                     currentWidth: groupWidth,
                     originalX: tileX,
                     animationSpeed: config.speed,
+                    color: config.color, // Guardar el color configurado
                     isClosing: true,
-                    color: config.color
                 };
                 
                 store.walls.push(crushingWall);
@@ -424,15 +426,17 @@ export const parseLevel = (store: GameStore, map: string[]) => {
 };
 
 export const updateWalls = (store: GameStore) => {
-    // Primero actualizar animación de sprites (lava)
+    // Incrementar contador global de frames
+    store.globalFrameCount += 1;
+    
+    // Actualizar animación de sprites (lava, agua, columnas lava) usando frame global sincronizado
     store.walls.forEach(wall => {
         const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
         if (anim && wall.spriteTick !== undefined && wall.currentFrame !== undefined) {
-            wall.spriteTick += 1;
-            if (wall.spriteTick >= anim.speed) {
-                wall.spriteTick = 0;
-                wall.currentFrame = (wall.currentFrame + 1) % anim.frames;
-            }
+            // Calcular frame basado en el contador global para sincronizar todas las animaciones del mismo tipo
+            const globalTick = Math.floor(store.globalFrameCount / anim.speed);
+            wall.currentFrame = globalTick % anim.frames;
+            wall.spriteTick = store.globalFrameCount % anim.speed;
         }
     });
     
@@ -474,6 +478,11 @@ export const updateWalls = (store: GameStore) => {
                         leftWall.currentWidth = leftWall.maxWidth;
                         rightWall.currentWidth = rightWall.maxWidth;
                         
+                        // Reproducir sonido de choque de paredes
+                        import('./audio').then(({ playWallHitSound }) => {
+                            playWallHitSound();
+                        });
+                        
                         // EMITIR PARTÍCULAS DE CHOQUE - 3 veces más que las normales
                         const centerX = leftWall.x + leftWall.currentWidth;
                         const centerY = leftWall.y + leftWall.height / 2;
@@ -482,15 +491,18 @@ export const updateWalls = (store: GameStore) => {
                         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
                         const particleCount = isMobile ? 5 : 15; // Menos partículas en mobile
+                        const wallColor = leftWall.color || '#cc0000'; // Usar el color de la pared
                         for (let i = 0; i < particleCount; i++) {
+                            const maxLife = Math.random() * 40 + 20; // Vida más larga
                             store.particles.push({
                                 x: centerX + (Math.random() - 0.5) * 20,
                                 y: centerY + (Math.random() - 0.5) * 20,
                                 vx: (Math.random() - 0.5) * 6, // Velocidad más alta para el choque
                                 vy: (Math.random() - 0.5) * 6 - 2, // Gravedad inicial hacia abajo
                                 size: Math.random() * 4 + 2, // Partículas más grandes
-                                life: Math.random() * 40 + 20, // Vida más larga
-                                color: '#ffffff', // Partículas blancas
+                                life: maxLife, // Vida más larga
+                                maxLife: maxLife, // Guardar vida máxima para interpolación de color
+                                color: wallColor, // Color final (se interpolará desde amarillo)
                                 gravity: 0.3, // Más gravedad que las normales (0.05)
                             });
                         }
@@ -575,15 +587,18 @@ export const updateWalls = (store: GameStore) => {
             // Seleccionar una posición aleatoria del borde
             const edgePos = edgePositions[Math.floor(Math.random() * edgePositions.length)];
             
-            // Generar partícula eléctrica
+            // Generar partícula eléctrica usando el color de la pared
+            const wallColor = wall.color || '#cc0000'; // Usar el color configurado de la pared
+            const maxLife = Math.random() * 20 + 10;
             store.particles.push({
                 x: edgePos.x + (Math.random() - 0.5) * 10,
                 y: edgePos.y + (Math.random() - 0.5) * 10,
                 vx: (Math.random() - 0.5) * 2,
                 vy: (Math.random() - 0.5) * 2,
                 size: Math.random() * 2 + 1,
-                life: Math.random() * 20 + 10,
-                color: Math.random() > 0.5 ? '#00ffff' : '#ffffff', // Azul eléctrico o blanco
+                life: maxLife,
+                maxLife: maxLife, // Guardar vida máxima para interpolación de color
+                color: wallColor, // Color final (se interpolará desde amarillo)
             });
         }
     });

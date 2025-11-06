@@ -99,45 +99,63 @@ const drawWall = (store: GameStore, wall: Wall) => {
     }
     
     // Paredes aplastantes: renderizado con efectos eléctricos
+    // IMPORTANTE: Si está en modo oscuro y está afectada, no dibujar aquí (se dibujará en negro en el modo oscuro)
     if (wall.type === 'crushing') {
+        // Si está en modo oscuro y está afectada, no dibujar aquí
+        if (store.isDark && wall.affectedByDark) {
+            ctx.restore();
+            return;
+        }
+        
         const isMobile = isMobileDevice();
         const wallColor = wall.color || '#cc0000';
         
-        // Efecto de brillo (glow) exterior - Solo si está habilitado y NO en mobile (muy costoso)
+        // Función helper para aclarar levemente un color hex (solo para brillo sutil)
+        const lightenColor = (hex: string, percent: number): string => {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.min(255, (num >> 16) + Math.floor((255 - (num >> 16)) * percent));
+            const g = Math.min(255, ((num >> 8) & 0x00FF) + Math.floor((255 - ((num >> 8) & 0x00FF)) * percent));
+            const b = Math.min(255, (num & 0x0000FF) + Math.floor((255 - (num & 0x0000FF)) * percent));
+            return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+        };
+        
+        const slightlyLighterColor = lightenColor(wallColor, 0.15); // Color solo 15% más claro para brillo sutil
+        
+        // Efecto de brillo (glow) exterior usando el color configurado - Solo si está habilitado y NO en mobile (muy costoso)
         if (store.settings.graphics.glow && !isMobile) {
-            ctx.shadowColor = '#00ffff'; // Color eléctrico azul-cian
-            ctx.shadowBlur = 15;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
+            // Simular glow con múltiples capas usando el color configurado de la pared
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            
+            // Capa exterior del glow
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = wallColor; // Mismo color que la pared
+            ctx.fillRect(wall.x - 4, wall.y - 4, wall.width + 8, wall.height + 8);
+            
+            // Capa media del glow
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(wall.x - 2, wall.y - 2, wall.width + 4, wall.height + 4);
+            
+            ctx.restore();
         }
         
-        // En mobile, usar color sólido simple (sin gradiente costoso)
-        if (isMobile) {
-            ctx.fillStyle = wallColor;
-            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-        } else {
-            // Tint eléctrico con gradiente (solo en desktop)
-            const gradient = ctx.createLinearGradient(wall.x, wall.y, wall.x + wall.width, wall.y + wall.height);
-            gradient.addColorStop(0, wallColor);
-            gradient.addColorStop(0.5, '#ff4444'); // Rojo más brillante en el centro
-            gradient.addColorStop(1, wallColor);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-        }
+        // Usar color sólido sin degradado (respetar el color configurado)
+        ctx.fillStyle = wallColor;
+        ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
         
-        // Efecto de parpadeo eléctrico (simplificado en mobile)
+        // Efecto de parpadeo eléctrico con brillo sutil usando el color configurado (simplificado en mobile)
         const time = Date.now() * 0.01;
-        const flickerIntensity = Math.sin(time) * 0.3 + 0.7; // Oscila entre 0.4 y 1.0
+        const flickerIntensity = Math.sin(time) * 0.2 + 0.8; // Oscila entre 0.6 y 1.0 (más sutil)
         
         if (!isMobile) {
-            ctx.globalAlpha = flickerIntensity;
-            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = flickerIntensity * 0.3; // Brillo muy sutil (30% de la intensidad)
+            ctx.fillStyle = slightlyLighterColor; // Color solo levemente más claro
             ctx.fillRect(wall.x + 2, wall.y + 2, wall.width - 4, wall.height - 4);
             
-            // Efecto de arco eléctrico en los bordes (solo desktop)
-            ctx.strokeStyle = '#00ffff';
+            // Efecto de arco eléctrico en los bordes usando el color configurado (solo desktop)
+            ctx.strokeStyle = wallColor; // Mismo color que la pared
             ctx.lineWidth = 2;
-            ctx.globalAlpha = flickerIntensity * 0.8;
+            ctx.globalAlpha = flickerIntensity * 0.6;
             
             // Dibujar líneas eléctricas en los bordes
             ctx.beginPath();
@@ -152,10 +170,6 @@ const drawWall = (store: GameStore, wall: Wall) => {
             ctx.stroke();
         }
         
-        // Resetear efectos
-        if (store.settings.graphics.glow && !isMobile) {
-            ctx.shadowBlur = 0;
-        }
         ctx.globalAlpha = 1;
         
         ctx.restore();
@@ -191,8 +205,8 @@ const drawWall = (store: GameStore, wall: Wall) => {
 		}
 	}
 
-    // Mapear tile 'K' (columna lava) al sprite de lava '3'
-    const spriteKey = wall.tile === 'K' ? '3' : wall.tile;
+    // 'K' (columna lava) ahora usa su propio sprite 'K' (lava_col.png)
+    const spriteKey = wall.tile;
     const sprite = store.sprites[spriteKey];
     if (sprite) {
         const anim = ANIMATION_DATA[wall.tile as keyof typeof ANIMATION_DATA];
@@ -252,11 +266,52 @@ const drawWall = (store: GameStore, wall: Wall) => {
         const levelTintColor = getLevelColorByPattern(store.currentLevelIndex, wall.y, levelHeight);
         const prevAlpha = ctx.globalAlpha;
         ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.8; // Más saturado para mejor visibilidad del color del nivel
+        ctx.globalAlpha = 0.6; // Más saturado para mejor visibilidad del color del nivel
         ctx.fillStyle = levelTintColor;
         ctx.fillRect(renderX, wall.y, renderWidth, wall.height);
         ctx.globalAlpha = prevAlpha;
         ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // Efecto de glow rojo para lava ('3') y columnas de lava ('K') - simula box-shadow
+    if (wall.tile === '3' || wall.tile === 'K') {
+        const isMobile = isMobileDevice();
+        if (!isMobile && store.settings.graphics.glow) {
+            // Simular box-shadow con múltiples capas de rectángulos (glow muy delicado - 20% del actual)
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen'; // Modo screen para brillo
+            
+            // Capa exterior más difusa (simula box-shadow spread) - 20% de intensidad
+            ctx.globalAlpha = 0.0075; // 20% de 0.0375
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(renderX - 4, wall.y - 4, renderWidth + 8, wall.height + 8);
+            
+            // Capa media-exterior - 20% de intensidad
+            ctx.globalAlpha = 0.0125; // 20% de 0.0625
+            ctx.fillRect(renderX - 3, wall.y - 3, renderWidth + 6, wall.height + 6);
+            
+            // Capa media - 20% de intensidad
+            ctx.globalAlpha = 0.0175; // 20% de 0.0875
+            ctx.fillRect(renderX - 2, wall.y - 2, renderWidth + 4, wall.height + 4);
+            
+            // Capa media-interior - 20% de intensidad
+            ctx.globalAlpha = 0.0225; // 20% de 0.1125
+            ctx.fillRect(renderX - 1, wall.y - 1, renderWidth + 2, wall.height + 2);
+            
+            // Capa interior más intensa - 20% de intensidad
+            ctx.globalAlpha = 0.025; // 20% de 0.125
+            ctx.fillRect(renderX - 0.5, wall.y - 0.5, renderWidth + 1, wall.height + 1);
+            
+            ctx.restore();
+        } else if (isMobile) {
+            // Versión simplificada para mobile - 20% de intensidad
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.02; // 20% de 0.1
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(renderX - 1.5, wall.y - 1.5, renderWidth + 3, wall.height + 3);
+            ctx.restore();
+        }
     }
 
     ctx.restore();
@@ -360,9 +415,8 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
     let spriteKey = entity.tile;
     if (entity.tile === 'V') {
         spriteKey = 'V_death'; // Víbora usa sprite de muerte
-    } else if (entity.tile === 'K') {
-        spriteKey = '3'; // Columna lava usa sprite de lava
     }
+    // 'K' (columna lava) ahora usa su propio sprite 'K' (lava_col.png)
     const sprite = store.sprites[spriteKey];
     if (!sprite) return;
 
@@ -598,10 +652,35 @@ const drawParticles = (store: GameStore) => {
     const particles = store.particles;
     const particlesLength = Math.min(maxParticles, particles.length);
     
+    // Función helper para interpolar entre dos colores hex
+    const interpolateColor = (color1: string, color2: string, factor: number): string => {
+        const c1 = parseInt(color1.replace('#', ''), 16);
+        const c2 = parseInt(color2.replace('#', ''), 16);
+        const r1 = (c1 >> 16) & 0xFF;
+        const g1 = (c1 >> 8) & 0xFF;
+        const b1 = c1 & 0xFF;
+        const r2 = (c2 >> 16) & 0xFF;
+        const g2 = (c2 >> 8) & 0xFF;
+        const b2 = c2 & 0xFF;
+        const r = Math.round(r1 + (r2 - r1) * factor);
+        const g = Math.round(g1 + (g2 - g1) * factor);
+        const b = Math.round(b1 + (b2 - b1) * factor);
+        return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+    };
+    
     // Loop for es más rápido que forEach/slice
     for (let i = 0; i < particlesLength; i++) {
         const p = particles[i];
-        ctx.fillStyle = p.color;
+        
+        // Si tiene maxLife, interpolar entre amarillo y el color original
+        if (p.maxLife !== undefined && p.maxLife > 0) {
+            const lifeProgress = 1 - (p.life / p.maxLife); // 0 al inicio (amarillo), 1 al final (color original)
+            const displayColor = interpolateColor('#ffff00', p.color, lifeProgress);
+            ctx.fillStyle = displayColor;
+        } else {
+            ctx.fillStyle = p.color;
+        }
+        
         ctx.globalAlpha = p.life / 60;
         ctx.fillRect(p.x, p.y, p.size, p.size);
     }
@@ -926,7 +1005,7 @@ const drawGameWorld = (store: GameStore) => {
             // Excluir agua para clasificación
             if (wall.tile === '2') continue;
             
-            // Clasificar por afectación
+            // Clasificar por afectación (incluyendo paredes aplastantes)
             if (wall.affectedByDark) {
                 affectedWalls.push(wall);
             } else {

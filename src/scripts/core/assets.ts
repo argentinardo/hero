@@ -16,6 +16,7 @@ import wallSrc from '../../assets/sprites/wall_small.png';
 import aguaSrc from '../../assets/sprites/agua_small.png';
 import columnSrc from '../../assets/sprites/weakwall.png';
 import lavaSrc from '../../assets/sprites/lava.png';
+import lavaColSrc from '../../assets/sprites/lava_col.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splashSprite.jpg';
@@ -43,6 +44,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     '2': aguaSrc,
     C: columnSrc,
     '3': lavaSrc,
+    K: lavaColSrc,
     L: lightSrc,
     background: backgroundSrc,
     splash: splashSrc,
@@ -65,7 +67,7 @@ export const ANIMATION_DATA: AnimationMap = {
     '9_idle': { frames: 2, speed: 60, sprite: '9' },
     '9_rescued': { frames: 6, speed: 8, sprite: '9', loop: false }, // Acelerado de 10 a 8
     '3': { frames: 16, speed: 15, sprite: '3' }, // Acelerado de 19 a 15
-    K: { frames: 16, speed: 15, sprite: '3' }, // Acelerado de 19 a 15
+    K: { frames: 16, speed: 15, sprite: 'K' }, // Acelerado de 19 a 15
     bomb: { frames: 6, speed: 12, sprite: 'bomb', loop: false }, // Acelerado de 15 a 12
     explosion: { frames: 6, speed: 2, sprite: 'explosion', loop: false },
 };
@@ -76,7 +78,7 @@ export const TILE_TYPES: TileDictionary = {
     '1': { name: 'Muro', color: '#6d6d6d', class: 'wall', sprite: '1' },
     '2': { name: 'agua', color: '#a5682a', class: 'destructible-wall', sprite: '2' },
     C: { name: 'Columna', color: '#c5853f', class: 'destructible-wall', sprite: 'C' },
-    K: { name: 'Columna Lava', color: '#ff4500', class: 'lava-column', sprite: '3' },
+    K: { name: 'Columna Lava', color: '#ff4500', class: 'lava-column', sprite: 'K' },
     '3': { name: 'Lava', color: '#ff4500', class: 'lava', sprite: '3' },
     '8': { name: 'Murciélago', color: '#9400d3', class: 'bat', sprite: '8' },
     S: { name: 'Araña', color: '#ff8c00', class: 'spider', sprite: 'S' },

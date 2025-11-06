@@ -1523,6 +1523,15 @@ export const drawEditor = (store: GameStore) => {
 // Función para activar el modo de duplicación de fila
 export const activateDuplicateRowMode = (store: GameStore) => {
     store.duplicateRowMode = true;
+    // Desactivar el modo de borrado si estaba activo
+    store.deleteRowMode = false;
+    // "Olvidar" el tile seleccionado - limpiar selección visual e interna
+    const selected = store.dom.ui.paletteEl?.querySelector('.tile-item.selected');
+    if (selected) {
+        selected.classList.remove('selected');
+    }
+    // Resetear el tile seleccionado a un valor neutro para evitar interferencias
+    store.selectedTile = '0'; // Tile vacío
     // Cambiar el cursor para indicar el modo especial
     if (store.dom.canvas) {
         store.dom.canvas.style.cursor = 'copy';
@@ -1548,16 +1557,21 @@ export const duplicateRowAtPosition = (store: GameStore, rowIndex: number) => {
     // Actualizar botones de undo/redo
     updateUndoRedoButtons(store);
     
-    // Desactivar el modo de duplicación
-    store.duplicateRowMode = false;
-    if (store.dom.canvas) {
-        store.dom.canvas.style.cursor = 'default';
-    }
+    // NO desactivar el modo - permanecerá activo hasta que se seleccione otro elemento de la paleta
 };
 
 // Función para activar el modo de borrado de fila
 export const activateDeleteRowMode = (store: GameStore) => {
     store.deleteRowMode = true;
+    // Desactivar el modo de duplicación si estaba activo
+    store.duplicateRowMode = false;
+    // "Olvidar" el tile seleccionado - limpiar selección visual e interna
+    const selected = store.dom.ui.paletteEl?.querySelector('.tile-item.selected');
+    if (selected) {
+        selected.classList.remove('selected');
+    }
+    // Resetear el tile seleccionado a un valor neutro para evitar interferencias
+    store.selectedTile = '0'; // Tile vacío
     // Cambiar el cursor para indicar el modo especial
     if (store.dom.canvas) {
         store.dom.canvas.style.cursor = 'not-allowed';
@@ -1583,10 +1597,6 @@ export const deleteRowAtPosition = (store: GameStore, rowIndex: number) => {
     // Actualizar botones de undo/redo
     updateUndoRedoButtons(store);
     
-    // Desactivar el modo de borrado
-    store.deleteRowMode = false;
-    if (store.dom.canvas) {
-        store.dom.canvas.style.cursor = 'default';
-    }
+    // NO desactivar el modo - permanecerá activo hasta que se seleccione otro elemento de la paleta
 };
 

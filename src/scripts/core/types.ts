@@ -171,6 +171,7 @@ export interface Particle {
     life: number;
     color: string;
     gravity?: number; // Gravedad personalizada por partícula
+    maxLife?: number; // Vida máxima para interpolación de color (partículas de paredes aplastantes)
 }
 
 export interface FloatingScore {
@@ -314,6 +315,9 @@ export interface GameStore {
     
     // Estado de pausa
     isPaused: boolean;
+    
+    // Contador global de frames para sincronizar animaciones de tiles
+    globalFrameCount: number;
     
     // Secuencia de fin de nivel
     levelEndSequence: 'energy' | 'bombs' | 'complete' | null;

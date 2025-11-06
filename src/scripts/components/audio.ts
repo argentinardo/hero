@@ -16,6 +16,8 @@ import brickBounceSound from '../../assets/audio/brick.mp3';
 import bulbOffSound from '../../assets/audio/bulb.mp3';
 import energyDrainSound from '../../assets/audio/energy-drain.mp3';
 import tentacleSound from '../../assets/audio/tentacle.mp3';
+import wallHitSound from '../../assets/audio/wall_hit.mp3';
+import oneUpSound from '../../assets/audio/1up.mp3';
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -35,6 +37,8 @@ interface AudioSystem {
         bulb: HTMLAudioElement | null;
         energyDrain: HTMLAudioElement | null;
         tentacle: HTMLAudioElement | null;
+        wallHit: HTMLAudioElement | null;
+        oneUp: HTMLAudioElement | null;
     };
     isMuted: boolean;
     musicVolume: number;
@@ -59,6 +63,8 @@ let audioSystem: AudioSystem = {
         bulb: null,
         energyDrain: null,
         tentacle: null,
+        wallHit: null,
+        oneUp: null,
     },
     isMuted: false,
     musicVolume: 0.3,
@@ -138,7 +144,9 @@ export const loadAdditionalSFX = async (): Promise<void> => {
             { key: 'energyDrain', src: energyDrainSound, loop: true },
             { key: 'tentacle', src: tentacleSound, loop: false },
             { key: 'bombFire', src: bombFireSound, loop: true },
-            { key: 'bombBoom', src: bombBoomSound, loop: false }
+            { key: 'bombBoom', src: bombBoomSound, loop: false },
+            { key: 'wallHit', src: wallHitSound, loop: false },
+            { key: 'oneUp', src: oneUpSound, loop: false }
         ];
 
         let loaded = 0;
@@ -480,6 +488,24 @@ export const playBulbOff = () => {
         const bulbClone = audioSystem.sounds.bulb.cloneNode(true) as HTMLAudioElement;
         bulbClone.volume = audioSystem.sfxVolume;
         bulbClone.play().catch(() => {});
+    }
+};
+
+// Reproducir sonido cuando las paredes aplastantes chocan
+export const playWallHitSound = () => {
+    if (audioSystem.sounds.wallHit && !audioSystem.isMuted) {
+        const wallHitClone = audioSystem.sounds.wallHit.cloneNode(true) as HTMLAudioElement;
+        wallHitClone.volume = audioSystem.sfxVolume;
+        wallHitClone.play().catch(() => {});
+    }
+};
+
+// Reproducir sonido cuando el héroe gana una vida extra
+export const playOneUpSound = () => {
+    if (audioSystem.sounds.oneUp && !audioSystem.isMuted) {
+        const oneUpClone = audioSystem.sounds.oneUp.cloneNode(true) as HTMLAudioElement;
+        oneUpClone.volume = audioSystem.sfxVolume;
+        oneUpClone.play().catch(() => {});
     }
 };
 

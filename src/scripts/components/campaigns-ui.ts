@@ -556,9 +556,9 @@ export const setupCampaignsModal = (store: GameStore) => {
             const currentCampaign = getCurrentCampaign(store);
             const isLegacyCampaign = currentCampaign?.isDefault === true;
             
-            // Si es Legacy y el nivel ya existía, guardar y descargar el JSON
+            // Si es Legacy y el nivel ya existía, guardar en el archivo del proyecto
             if (isLegacyCampaign && result.alreadyExists) {
-                // Guardar y descargar el JSON para Legacy
+                // Guardar en el archivo del proyecto para Legacy
                 const { buildChunkedFile20x18 } = await import('../utils/levels');
                 
                 // Convertir todos los niveles a strings (ya están limpios del editor)
@@ -577,16 +577,48 @@ export const setupCampaignsModal = (store: GameStore) => {
                     console.error('Error guardando en localStorage:', localError);
                 }
                 
-                // Descargar el archivo levels.json modificado
-                const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const anchor = document.createElement('a');
-                anchor.href = url;
-                anchor.download = 'levels.json';
-                document.body.appendChild(anchor);
-                anchor.click();
-                document.body.removeChild(anchor);
-                URL.revokeObjectURL(url);
+                // Intentar guardar directamente en el archivo del proyecto (solo en desarrollo)
+                try {
+                    const response = await fetch('/api/save-levels', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(fullPayload),
+                    });
+                    
+                    if (response.ok) {
+                        console.log('Archivo levels.json guardado exitosamente en src/assets/levels.json');
+                        const { showNotification } = await import('./ui');
+                        showNotification(store, `💾 Nivel actualizado`, 'Archivo levels.json guardado en src/assets/levels.json');
+                    } else {
+                        // Fallback: descargar el archivo
+                        const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const anchor = document.createElement('a');
+                        anchor.href = url;
+                        anchor.download = 'levels.json';
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        document.body.removeChild(anchor);
+                        URL.revokeObjectURL(url);
+                        const { showNotification } = await import('./ui');
+                        showNotification(store, `💾 Nivel actualizado`, 'Archivo levels.json descargado. Reemplaza src/assets/levels.json con el archivo descargado.');
+                    }
+                } catch (apiError) {
+                    // Fallback: descargar el archivo
+                    const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = 'levels.json';
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    document.body.removeChild(anchor);
+                    URL.revokeObjectURL(url);
+                    const { showNotification } = await import('./ui');
+                    showNotification(store, `💾 Nivel actualizado`, 'Archivo levels.json descargado. Reemplaza src/assets/levels.json con el archivo descargado.');
+                }
             } else {
                 // Para otras campañas o cuando se agrega un nivel nuevo, solo sincronizar
                 syncCampaignsToServer(store).catch(() => {

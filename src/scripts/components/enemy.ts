@@ -77,6 +77,7 @@ export const updateEnemies = (store: GameStore) => {
         switch (enemy.type) {
             case 'bat': {
                 const initialX = enemy.initialX ?? enemy.x;
+                const initialY = enemy.initialY ?? enemy.y;
                 const maxRange = TILE_SIZE * 3; // Rango máximo de 3 tiles a cada lado
                 
                 // IMPORTANTE: Asegurar que siempre se mueva (nunca vx = 0)
@@ -84,13 +85,35 @@ export const updateEnemies = (store: GameStore) => {
                     enemy.vx = Math.random() > 0.5 ? 1.5 : -1.5;
                 }
                 
-                // Movimiento vertical (ondulatorio) - siempre activo
+                // Movimiento vertical (ondulatorio) - siempre activo, basado en initialY
                 enemy.movementTick = (enemy.movementTick ?? 0) + 0.05;
-                enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(enemy.movementTick) * TILE_SIZE * 0.5;
+                enemy.y = initialY + Math.sin(enemy.movementTick) * TILE_SIZE * 0.5;
+                
+                // Verificar rango máximo ANTES de calcular nextX para evitar movimientos erráticos
+                const currentDistanceFromInitial = Math.abs(enemy.x - initialX);
+                if (currentDistanceFromInitial >= maxRange) {
+                    // Si ya está en el límite, invertir dirección y ajustar posición
+                    if (enemy.x > initialX) {
+                        enemy.x = initialX + maxRange;
+                        enemy.vx = -Math.abs(enemy.vx); // Asegurar dirección negativa
+                    } else {
+                        enemy.x = initialX - maxRange;
+                        enemy.vx = Math.abs(enemy.vx); // Asegurar dirección positiva
+                    }
+                }
                 
                 // Calcular posición futura
                 const nextX = enemy.x + enemy.vx;
                 const nextY = enemy.y;
+                
+                // Verificar límites del nivel
+                const canvas = store.dom.canvas;
+                const canvasWidth = canvas ? canvas.width : 1440;
+                const willHitBoundary = nextX < 0 || nextX + enemy.width > canvasWidth;
+                
+                // Verificar rango máximo con nextX
+                const nextDistanceFromInitial = Math.abs(nextX - initialX);
+                const willExceedRange = nextDistanceFromInitial > maxRange;
                 
                 // Crear un rectángulo para la posición futura
                 const futureRect = {
@@ -101,38 +124,89 @@ export const updateEnemies = (store: GameStore) => {
                 };
                 
                 // Buscar colisiones con paredes sólidas
-                // Verificar todas las paredes sólidas, no solo las del mismo Y
-                let willCollide = false;
+                let willCollideWithWall = false;
+                let collidingWall: typeof store.walls[0] | null = null;
+                
                 for (const wall of store.walls) {
                     // Solo considerar paredes sólidas (no agua, lava, etc.)
-                    // Excluir tipos no sólidos como 'water', 'lava', 'crushing'
                     if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v') {
                         if (checkCollision(futureRect, wall)) {
-                            willCollide = true;
+                            willCollideWithWall = true;
+                            collidingWall = wall;
                             break;
                         }
                     }
                 }
                 
-                // Verificar límites del nivel
-                const canvas = store.dom.canvas;
-                const canvasWidth = canvas ? canvas.width : 1440;
-                if (nextX < 0 || nextX + enemy.width > canvasWidth) {
-                    willCollide = true;
-                }
-                
-                // Verificar rango máximo de 3 tiles
-                const distanceFromInitial = Math.abs(nextX - initialX);
-                if (distanceFromInitial > maxRange) {
-                    willCollide = true;
-                }
-                
-                // Si va a colisionar, rebotar SIN mover
-                if (willCollide) {
+                // Si va a colisionar o exceder límites, rebotar y ajustar posición
+                if (willCollideWithWall || willHitBoundary || willExceedRange) {
+                    // Revertir dirección
                     enemy.vx *= -1;
+                    
                     // Asegurar que después del rebote siga moviéndose
-                    if (enemy.vx === 0) {
-                        enemy.vx = Math.random() > 0.5 ? 1.5 : -1.5;
+                    if (Math.abs(enemy.vx) < 0.5) {
+                        enemy.vx = enemy.vx > 0 ? 1.5 : -1.5;
+                    }
+                    
+                    // Ajustar posición según el tipo de colisión
+                    if (collidingWall) {
+                        // Determinar en qué lado de la pared está el murciélago
+                        const batCenterX = enemy.x + enemy.width / 2;
+                        const wallCenterX = collidingWall.x + collidingWall.width / 2;
+                        
+                        if (batCenterX < wallCenterX) {
+                            // Murciélago está a la izquierda de la pared, empujarlo más a la izquierda
+                            enemy.x = Math.min(enemy.x, collidingWall.x - enemy.width - 2);
+                        } else {
+                            // Murciélago está a la derecha de la pared, empujarlo más a la derecha
+                            enemy.x = Math.max(enemy.x, collidingWall.x + collidingWall.width + 2);
+                        }
+                    } else if (willHitBoundary) {
+                        // Límites del nivel
+                        if (nextX < 0) {
+                            enemy.x = 2;
+                            enemy.vx = Math.abs(enemy.vx); // Asegurar dirección positiva
+                        } else if (nextX + enemy.width > canvasWidth) {
+                            enemy.x = canvasWidth - enemy.width - 2;
+                            enemy.vx = -Math.abs(enemy.vx); // Asegurar dirección negativa
+                        }
+                    } else if (willExceedRange) {
+                        // Límite de rango máximo
+                        if (nextX > initialX) {
+                            enemy.x = initialX + maxRange;
+                            enemy.vx = -Math.abs(enemy.vx); // Asegurar dirección negativa
+                        } else {
+                            enemy.x = initialX - maxRange;
+                            enemy.vx = Math.abs(enemy.vx); // Asegurar dirección positiva
+                        }
+                    }
+                    
+                    // Verificar que después del ajuste, realmente puede moverse en la dirección opuesta
+                    const checkRect = {
+                        x: enemy.x,
+                        y: enemy.y,
+                        width: enemy.width,
+                        height: enemy.height
+                    };
+                    
+                    // Verificar colisión con la posición ajustada
+                    for (const wall of store.walls) {
+                        if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v') {
+                            if (checkCollision(checkRect, wall)) {
+                                // Aún está colisionando, empujarlo más lejos según la dirección
+                                const batCenterX = enemy.x + enemy.width / 2;
+                                const wallCenterX = wall.x + wall.width / 2;
+                                
+                                if (batCenterX < wallCenterX) {
+                                    // Empujar a la izquierda
+                                    enemy.x = wall.x - enemy.width - 3;
+                                } else {
+                                    // Empujar a la derecha
+                                    enemy.x = wall.x + wall.width + 3;
+                                }
+                                break;
+                            }
+                        }
                     }
                 } else {
                     // No hay colisión, mover normalmente

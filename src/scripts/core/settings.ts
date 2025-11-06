@@ -183,15 +183,14 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
     // Aplicar brightness, contrast y blur al canvas
     // OPTIMIZACIÓN: Combinar todos los efectos en una sola operación CSS cuando están activos
     const filterParts: string[] = [];
-    
     if (settings.brightness) {
-        filterParts.push('brightness(1.4)');
+        filterParts.push('brightness(1.9)');
     }
     if (settings.contrast) {
-        filterParts.push('contrast(1.1)');
+        filterParts.push('contrast(0.9)');
     }
     if (settings.blur && settings.blur > 0) {
-        filterParts.push(`blur(${settings.blur}px)`);
+        filterParts.push(`blur(1px)`);
     }
     
     if (filterParts.length > 0) {

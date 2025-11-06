@@ -627,42 +627,128 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     }, 1000);
 };
 
+// Verificar si una posición es segura para respawn
+const isSafeRespawnPosition = (store: GameStore, tileX: number, tileY: number): boolean => {
+    const level = store.levelDesigns[store.currentLevelIndex];
+    const rows = level.length;
+    const cols = level[0]?.length ?? 0;
+    
+    // Verificar límites
+    if (tileX < 0 || tileX >= cols || tileY < 0 || tileY >= rows) return false;
+    
+    const isEmpty = (t: string | undefined) => (t ?? '0') === '0';
+    const isSolid = (t: string | undefined) => !!t && t !== '0' && t !== '2' && t !== '3' && t !== 'K';
+    const isDangerous = (t: string | undefined) => t === '2' || t === '3' || t === 'K'; // Agua, lava, columna lava
+    const isCrushingWall = (t: string | undefined) => t === 'H' || t === 'J'; // Paredes aplastantes
+    
+    // 1. El tile debe estar vacío
+    const here = level[tileY]?.[tileX];
+    if (!isEmpty(here)) return false;
+    
+    // 2. Debe tener suelo sólido debajo (no lava, agua, o vacío)
+    const below = level[tileY + 1]?.[tileX];
+    if (!isSolid(below)) return false;
+    
+    // 3. Verificar que no esté tocando lava, agua o columnas de lava en tiles adyacentes
+    const adjacentTiles = [
+        { x: tileX - 1, y: tileY },     // Izquierda
+        { x: tileX + 1, y: tileY },     // Derecha
+        { x: tileX, y: tileY - 1 },     // Arriba
+        { x: tileX, y: tileY + 1 },     // Abajo
+        { x: tileX - 1, y: tileY - 1 }, // Diagonal superior izquierda
+        { x: tileX + 1, y: tileY - 1 }, // Diagonal superior derecha
+        { x: tileX - 1, y: tileY + 1 }, // Diagonal inferior izquierda
+        { x: tileX + 1, y: tileY + 1 }, // Diagonal inferior derecha
+    ];
+    
+    for (const adj of adjacentTiles) {
+        if (adj.x >= 0 && adj.x < cols && adj.y >= 0 && adj.y < rows) {
+            const adjTile = level[adj.y]?.[adj.x];
+            if (isDangerous(adjTile)) return false;
+        }
+    }
+    
+    // 4. Verificar que no esté entre paredes aplastantes (H y J en la misma fila)
+    const leftTile = tileX > 0 ? level[tileY]?.[tileX - 1] : undefined;
+    const rightTile = tileX < cols - 1 ? level[tileY]?.[tileX + 1] : undefined;
+    if (leftTile === 'H' && rightTile === 'J') return false; // Entre paredes aplastantes
+    
+    // 5. Verificar colisión con enemigos en esa posición
+    const playerWidth = TILE_SIZE;
+    const playerHeight = TILE_SIZE * 2;
+    const testX = tileX * TILE_SIZE;
+    const testY = tileY * TILE_SIZE;
+    const testHitbox = {
+        x: testX + playerWidth / 4,
+        y: testY,
+        width: playerWidth / 2,
+        height: playerHeight,
+    };
+    
+    // Verificar colisión con enemigos
+    for (const enemy of store.enemies) {
+        if (!enemy.isDead && !enemy.isHidden) {
+            if (checkCollision(testHitbox, enemy)) {
+                return false;
+            }
+        }
+    }
+    
+    // 6. Verificar colisión con paredes aplastantes
+    for (const wall of store.walls) {
+        if (wall.type === 'crushing') {
+            if (checkCollision(testHitbox, wall)) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+};
+
 // Buscar un tile seguro para respawn: vacío con suelo sólido (no lava ni agua) debajo
+// y sin peligros adyacentes (paredes aplastantes, enemigos, lava, etc.)
 const findSafeRespawnTile = (store: GameStore, desiredX: number, desiredY: number): { x: number; y: number } => {
     const level = store.levelDesigns[store.currentLevelIndex];
     const rows = level.length;
     const cols = level[0]?.length ?? 0;
-    const isSolid = (t: string | undefined) => !!t && t !== '0' && t !== '2' && t !== '3' && t !== 'K';
-    const isEmpty = (t: string | undefined) => (t ?? '0') === '0';
-    const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && y < rows && x < cols;
+    
     // Primero probar el deseado y hacia arriba algunas filas
     for (let dy = 0; dy <= 5; dy++) {
         const y = Math.max(0, desiredY - dy);
         const x = desiredX;
-        if (!inBounds(x, y)) continue;
-        const here = level[y][x];
-        const below = level[y + 1]?.[x];
-        if (isEmpty(here) && isSolid(below)) {
+        if (isSafeRespawnPosition(store, x, y)) {
             return { x, y };
         }
     }
-    // Explorar vecindario alrededor (radio 3) buscando vacío con suelo sólido
-    const radius = 3;
-    for (let r = 1; r <= radius; r++) {
-        for (let dx = -r; dx <= r; dx++) {
-            for (let dy = -r; dy <= r; dy++) {
+    
+    // Explorar vecindario alrededor (radio creciente) buscando posición segura
+    for (let radius = 1; radius <= 5; radius++) {
+        // Priorizar búsqueda horizontal primero, luego vertical
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                // Saltar si está fuera del radio actual
+                if (Math.abs(dx) < radius && Math.abs(dy) < radius) continue;
+                
                 const x = desiredX + dx;
                 const y = Math.max(0, desiredY + dy);
-                if (!inBounds(x, y)) continue;
-                const here = level[y][x];
-                const below = level[y + 1]?.[x];
-                if (isEmpty(here) && isSolid(below)) {
+                if (isSafeRespawnPosition(store, x, y)) {
                     return { x, y };
                 }
             }
         }
     }
-    // Fallback: clamp dentro del nivel y usar fila superior disponible
+    
+    // Fallback: buscar cualquier posición segura en el nivel
+    for (let y = 0; y < rows - 1; y++) {
+        for (let x = 0; x < cols; x++) {
+            if (isSafeRespawnPosition(store, x, y)) {
+                return { x, y };
+            }
+        }
+    }
+    
+    // Último fallback: clamp dentro del nivel
     return { x: Math.max(0, Math.min(desiredX, cols - 1)), y: Math.max(0, Math.min(desiredY, rows - 2)) };
 };
 
