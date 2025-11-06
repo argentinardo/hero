@@ -40,6 +40,7 @@
 import { ANIMATION_DATA } from '../core/assets';
 import { TILE_SIZE } from '../core/constants';
 import type { GameStore } from '../core/types';
+import { checkCollision } from '../core/collision';
 import { loadLevel } from './level';
 import { awardExtraLifeByScore } from './ui';
 import { playEnergyDrainSound, stopEnergyDrainSound, playBombBoomSound, stopBombSound, playSuccessLevelSound, onSuccessLevelEnded, playLaserSound, playTentacleSound } from './audio';
@@ -78,34 +79,66 @@ export const updateEnemies = (store: GameStore) => {
                 const initialX = enemy.initialX ?? enemy.x;
                 const maxRange = TILE_SIZE * 3; // Rango máximo de 3 tiles a cada lado
                 
-                // Actualizar posición horizontal
-                enemy.x += enemy.vx;
-                
-                // Limitar rango a 3 tiles a cada lado de la posición inicial
-                if (enemy.x < initialX - maxRange) {
-                    enemy.x = initialX - maxRange;
-                    enemy.vx *= -1; // Revertir dirección
-                } else if (enemy.x > initialX + maxRange) {
-                    enemy.x = initialX + maxRange;
-                    enemy.vx *= -1; // Revertir dirección
+                // IMPORTANTE: Asegurar que siempre se mueva (nunca vx = 0)
+                if (enemy.vx === 0) {
+                    enemy.vx = Math.random() > 0.5 ? 1.5 : -1.5;
                 }
                 
-                // Movimiento vertical (ondulatorio)
+                // Movimiento vertical (ondulatorio) - siempre activo
                 enemy.movementTick = (enemy.movementTick ?? 0) + 0.05;
                 enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(enemy.movementTick) * TILE_SIZE * 0.5;
-
-                // Verificar colisiones con paredes como respaldo
-                const gridX = Math.floor(enemy.x / TILE_SIZE);
-                const gridY = Math.floor(enemy.y / TILE_SIZE);
-                const gridXRight = Math.floor((enemy.x + enemy.width) / TILE_SIZE);
-                const wallLeft = store.walls.find(w => w.x === gridX * TILE_SIZE && w.y === gridY * TILE_SIZE);
-                const wallRight = store.walls.find(w => w.x === gridXRight * TILE_SIZE && w.y === gridY * TILE_SIZE);
-                if (enemy.vx < 0 && (wallLeft || enemy.x < 0)) {
-                    enemy.vx *= -1;
+                
+                // Calcular posición futura
+                const nextX = enemy.x + enemy.vx;
+                const nextY = enemy.y;
+                
+                // Crear un rectángulo para la posición futura
+                const futureRect = {
+                    x: nextX,
+                    y: nextY,
+                    width: enemy.width,
+                    height: enemy.height
+                };
+                
+                // Buscar colisiones con paredes sólidas
+                // Verificar todas las paredes sólidas, no solo las del mismo Y
+                let willCollide = false;
+                for (const wall of store.walls) {
+                    // Solo considerar paredes sólidas (no agua, lava, etc.)
+                    // Excluir tipos no sólidos como 'water', 'lava', 'crushing'
+                    if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v') {
+                        if (checkCollision(futureRect, wall)) {
+                            willCollide = true;
+                            break;
+                        }
+                    }
                 }
-                if (enemy.vx > 0 && (wallRight || enemy.x + enemy.width > canvasWidth)) {
-                    enemy.vx *= -1;
+                
+                // Verificar límites del nivel
+                const canvas = store.dom.canvas;
+                const canvasWidth = canvas ? canvas.width : 1440;
+                if (nextX < 0 || nextX + enemy.width > canvasWidth) {
+                    willCollide = true;
                 }
+                
+                // Verificar rango máximo de 3 tiles
+                const distanceFromInitial = Math.abs(nextX - initialX);
+                if (distanceFromInitial > maxRange) {
+                    willCollide = true;
+                }
+                
+                // Si va a colisionar, rebotar SIN mover
+                if (willCollide) {
+                    enemy.vx *= -1;
+                    // Asegurar que después del rebote siga moviéndose
+                    if (enemy.vx === 0) {
+                        enemy.vx = Math.random() > 0.5 ? 1.5 : -1.5;
+                    }
+                } else {
+                    // No hay colisión, mover normalmente
+                    enemy.x = nextX;
+                }
+                
                 break;
             }
             case 'spider': {
