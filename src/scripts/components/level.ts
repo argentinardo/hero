@@ -100,6 +100,7 @@ const createEnemy = (tile: string, x: number, y: number, map: string[]): Enemy |
                 vy: 0,
                 type: 'bat',
                 tile,
+                initialX: x, // Guardar posición inicial para limitar rango
                 initialY: y,
                 spriteTick: 0,
                 movementTick: Math.random() * 100,

@@ -75,10 +75,26 @@ export const updateEnemies = (store: GameStore) => {
 
         switch (enemy.type) {
             case 'bat': {
+                const initialX = enemy.initialX ?? enemy.x;
+                const maxRange = TILE_SIZE * 3; // Rango máximo de 3 tiles a cada lado
+                
+                // Actualizar posición horizontal
                 enemy.x += enemy.vx;
+                
+                // Limitar rango a 3 tiles a cada lado de la posición inicial
+                if (enemy.x < initialX - maxRange) {
+                    enemy.x = initialX - maxRange;
+                    enemy.vx *= -1; // Revertir dirección
+                } else if (enemy.x > initialX + maxRange) {
+                    enemy.x = initialX + maxRange;
+                    enemy.vx *= -1; // Revertir dirección
+                }
+                
+                // Movimiento vertical (ondulatorio)
                 enemy.movementTick = (enemy.movementTick ?? 0) + 0.05;
                 enemy.y = (enemy.initialY ?? enemy.y) + Math.sin(enemy.movementTick) * TILE_SIZE * 0.5;
 
+                // Verificar colisiones con paredes como respaldo
                 const gridX = Math.floor(enemy.x / TILE_SIZE);
                 const gridY = Math.floor(enemy.y / TILE_SIZE);
                 const gridXRight = Math.floor((enemy.x + enemy.width) / TILE_SIZE);
