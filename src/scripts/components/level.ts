@@ -608,9 +608,16 @@ export const loadLevel = (store: GameStore) => {
     if (store.currentLevelIndex >= store.levelDesigns.length) {
         store.gameState = 'win';
         const { messageOverlay, messageText, messageTitle } = store.dom.ui;
-        if (messageOverlay && messageText && messageTitle) {
-            messageTitle.textContent = '¡HAS GANADO!';
-            messageText.textContent = `Puntuación final: ${store.score}. Presiona ENTER para volver al inicio.`;
+        // Guardar el score antes de mostrar el mensaje
+        const finalScore = store.score;
+        if (messageOverlay && messageText) {
+            // Si messageTitle existe, usarlo; si no, incluir el título en el texto
+            if (messageTitle) {
+                messageTitle.textContent = '¡HAS GANADO!';
+                messageText.textContent = `Puntuación final: ${finalScore}. Presiona ENTER para volver al inicio.`;
+            } else {
+                messageText.innerHTML = `<strong>¡HAS GANADO!</strong><br>Puntuación final: ${finalScore}.<br>Presiona ENTER para volver al inicio.`;
+            }
             messageOverlay.style.display = 'flex';
         }
         return;

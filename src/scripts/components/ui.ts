@@ -600,6 +600,16 @@ export const showMenu = (store: GameStore) => {
     if (store.dom.ui.gameoverModal) {
         store.dom.ui.gameoverModal.classList.add('hidden');
     }
+    
+    // Resetear zoom y pan del canvas al volver al menú
+    const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+    if (canvasWrapper) {
+        canvasWrapper.style.transform = 'scale(1)';
+    }
+    if (store.dom.zoomScale) {
+        store.dom.zoomScale = 1;
+    }
+    
     store.appState = 'menu';
     store.gameState = 'start';
     setBodyClass('menu');
@@ -1296,6 +1306,12 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
     setupEditorState(store);
     bindEditorCanvas(store);
+    
+    // Inicializar zoom al entrar al editor (resetear a 1.0)
+    if (!store.dom.zoomScale || store.dom.zoomScale !== 1) {
+        store.dom.zoomScale = 1;
+    }
+    // No aplicar transform al canvas wrapper - el zoom se aplica a los tiles directamente
     
     // IMPORTANTE: La campaña Legacy NO usa base de datos
     // Verificar si la campaña actual es Legacy

@@ -149,8 +149,11 @@ export const bindEditorCanvas = (store: GameStore) => {
         // sumar cameraX y cameraY para obtener las coordenadas correctas del mundo
         const worldX = store.mouse.x + store.cameraX;
         const worldY = store.mouse.y + store.cameraY;
-        store.mouse.gridX = Math.floor(worldX / TILE_SIZE);
-        store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+        // Usar tamaño escalado para calcular la posición del grid
+        const zoomScale = store.dom.zoomScale ?? 1.0;
+        const scaledTileSize = TILE_SIZE * zoomScale;
+        store.mouse.gridX = Math.floor(worldX / scaledTileSize);
+        store.mouse.gridY = Math.floor(worldY / scaledTileSize);
 
         // Debug adicional para verificar el cálculo de grid
         console.log(`World calc: mouse.x=${store.mouse.x}, mouse.y=${store.mouse.y}, cameraX=${store.cameraX}, cameraY=${store.cameraY}, worldX=${worldX}, worldY=${worldY}, gridX=${store.mouse.gridX}, gridY=${store.mouse.gridY}`);
@@ -238,6 +241,29 @@ export const bindEditorCanvas = (store: GameStore) => {
         }
         event.preventDefault();
         
+        // Zoom con Ctrl + rueda del mouse (cambia tamaño de tiles, no del canvas)
+        if (event.ctrlKey || event.metaKey) {
+            // Inicializar zoomScale si no existe
+            if (!store.dom.zoomScale) {
+                store.dom.zoomScale = 1;
+            }
+            
+            // Calcular factor de zoom (hacia arriba = zoom in, hacia abajo = zoom out)
+            // Usar una función exponencial para un zoom más natural
+            const zoomFactor = Math.pow(1.1, -event.deltaY / 100); // Zoom suave y exponencial
+            const newZoom = store.dom.zoomScale * zoomFactor;
+            
+            // Limitar zoom entre 0.25x y 2x (para permitir ver más área del mapa)
+            const minZoom = 0.25;
+            const maxZoom = 2.0;
+            store.dom.zoomScale = Math.max(minZoom, Math.min(maxZoom, newZoom));
+            
+            // No escalar el canvas wrapper, solo actualizar zoomScale
+            // El zoom se aplicará en drawEditor al renderizar los tiles
+            
+            return; // No hacer scroll cuando se hace zoom
+        }
+        
         // Scroll horizontal con Shift + rueda del mouse o deltaX
         if (event.shiftKey || event.deltaX !== 0) {
             const deltaX = event.shiftKey ? event.deltaY : event.deltaX;
@@ -245,8 +271,11 @@ export const bindEditorCanvas = (store: GameStore) => {
             store.cameraX += deltaX;
             
             if (store.editorLevel.length > 0 && store.editorLevel[0]) {
+                const zoomScale = store.dom.zoomScale ?? 1.0;
+                const scaledTileSize = TILE_SIZE * zoomScale;
+                
                 // Expandir horizontalmente a la izquierda si es necesario
-                if (store.cameraX < TILE_SIZE * 2) {
+                if (store.cameraX < scaledTileSize * 2) {
                     const colsToAdd = 5; // Agregar 5 columnas a la izquierda
                     
                     // Agregar columnas al inicio de cada fila
@@ -257,14 +286,14 @@ export const bindEditorCanvas = (store: GameStore) => {
                     }
                     
                     // Ajustar la posición de la cámara para compensar las nuevas columnas
-                    store.cameraX += colsToAdd * TILE_SIZE;
+                    store.cameraX += colsToAdd * scaledTileSize;
                 }
                 
-                const levelWidth = store.editorLevel[0].length * TILE_SIZE;
+                const levelWidth = store.editorLevel[0].length * scaledTileSize;
                 
                 // Expandir horizontalmente a la derecha si es necesario
-                if (store.cameraX + canvas.width > levelWidth - TILE_SIZE) {
-                    const minCols = Math.ceil((store.cameraX + canvas.width + TILE_SIZE * 5) / TILE_SIZE);
+                if (store.cameraX + canvas.width > levelWidth - scaledTileSize) {
+                    const minCols = Math.ceil((store.cameraX + canvas.width + scaledTileSize * 5) / scaledTileSize);
                     
                     // Agregar columnas al final de todas las filas
                     for (let row of store.editorLevel) {
@@ -274,7 +303,8 @@ export const bindEditorCanvas = (store: GameStore) => {
                     }
                 }
                 
-                const maxCameraX = Math.max(0, store.editorLevel[0].length * TILE_SIZE - canvas.width);
+                // Calcular límites de cámara considerando el zoom
+                const maxCameraX = Math.max(0, store.editorLevel[0].length * scaledTileSize - canvas.width);
                 store.cameraX = Math.max(0, Math.min(store.cameraX, maxCameraX));
             }
         } else {
@@ -282,8 +312,11 @@ export const bindEditorCanvas = (store: GameStore) => {
             const prevCameraY = store.cameraY;
             store.cameraY += event.deltaY;
             if (store.editorLevel.length > 0) {
+                const zoomScale = store.dom.zoomScale ?? 1.0;
+                const scaledTileSize = TILE_SIZE * zoomScale;
+                
                 // Expandir verticalmente hacia arriba si es necesario
-                if (store.cameraY < TILE_SIZE * 2) {
+                if (store.cameraY < scaledTileSize * 2) {
                     const rowsToAdd = 5; // Agregar 5 filas arriba
                     const rowWidth = store.editorLevel[0]?.length ?? 0;
                     
@@ -293,18 +326,19 @@ export const bindEditorCanvas = (store: GameStore) => {
                     }
                     
                     // Ajustar la posición de la cámara para compensar las nuevas filas
-                    store.cameraY += rowsToAdd * TILE_SIZE;
+                    store.cameraY += rowsToAdd * scaledTileSize;
                 }
                 
-                const levelHeight = store.editorLevel.length * TILE_SIZE;
+                const levelHeight = store.editorLevel.length * scaledTileSize;
                 
                 // Expandir verticalmente hacia abajo si es necesario
-                if (store.cameraY + (canvas.height ?? 0) > levelHeight - TILE_SIZE) {
-                    const minRows = Math.ceil((store.cameraY + canvas.height + TILE_SIZE * 5) / TILE_SIZE);
+                if (store.cameraY + (canvas.height ?? 0) > levelHeight - scaledTileSize) {
+                    const minRows = Math.ceil((store.cameraY + canvas.height + scaledTileSize * 5) / scaledTileSize);
                     ensureLevelHeight(store.editorLevel, minRows);
                 }
                 
-                const maxCameraY = Math.max(0, store.editorLevel.length * TILE_SIZE - (canvas.height ?? 0));
+                // Calcular límites de cámara considerando el zoom
+                const maxCameraY = Math.max(0, store.editorLevel.length * scaledTileSize - (canvas.height ?? 0));
                 store.cameraY = Math.max(0, Math.min(store.cameraY, maxCameraY));
             }
         }
@@ -496,8 +530,11 @@ export const bindEditorCanvas = (store: GameStore) => {
         // sumar cameraX y cameraY para obtener las coordenadas correctas del mundo
         const worldX = store.mouse.x + store.cameraX;
         const worldY = store.mouse.y + store.cameraY;
-        store.mouse.gridX = Math.floor(worldX / TILE_SIZE);
-        store.mouse.gridY = Math.floor(worldY / TILE_SIZE);
+        // Usar tamaño escalado para calcular la posición del grid
+        const zoomScale = store.dom.zoomScale ?? 1.0;
+        const scaledTileSize = TILE_SIZE * zoomScale;
+        store.mouse.gridX = Math.floor(worldX / scaledTileSize);
+        store.mouse.gridY = Math.floor(worldY / scaledTileSize);
 
         // Debug adicional para verificar el cálculo de grid
         console.log(`Touchstart world calc: mouse.x=${store.mouse.x}, mouse.y=${store.mouse.y}, cameraX=${store.cameraX}, cameraY=${store.cameraY}, worldX=${worldX}, worldY=${worldY}, gridX=${store.mouse.gridX}, gridY=${store.mouse.gridY}`);
@@ -561,6 +598,8 @@ export const bindEditorCanvas = (store: GameStore) => {
     const updateEditorScroll = () => {
         if (store.appState !== 'editing') return;
         
+        const zoomScale = store.dom.zoomScale ?? 1.0;
+        const scaledTileSize = TILE_SIZE * zoomScale;
         const scrollSpeed = 10; // Píxeles por frame
         
         // Scroll horizontal (A/D o flechas izquierda/derecha)
@@ -569,7 +608,7 @@ export const bindEditorCanvas = (store: GameStore) => {
             store.cameraX = Math.max(0, store.cameraX - scrollSpeed);
             
             // Expandir horizontalmente a la izquierda si es necesario
-            if (store.cameraX < TILE_SIZE * 2 && store.editorLevel.length > 0) {
+            if (store.cameraX < scaledTileSize * 2 && store.editorLevel.length > 0) {
                 const colsToAdd = 5; // Agregar 5 columnas a la izquierda
                 
                 // Agregar columnas al inicio de cada fila
@@ -580,17 +619,17 @@ export const bindEditorCanvas = (store: GameStore) => {
                 }
                 
                 // Ajustar la posición de la cámara para compensar las nuevas columnas
-                store.cameraX += colsToAdd * TILE_SIZE;
+                store.cameraX += colsToAdd * scaledTileSize;
             }
         }
         if (editorKeys['d'] || editorKeys['D'] || editorKeys['ArrowRight']) {
             if (store.editorLevel.length > 0 && store.editorLevel[0]) {
-                const levelWidth = store.editorLevel[0].length * TILE_SIZE;
+                const levelWidth = store.editorLevel[0].length * scaledTileSize;
                 const maxCameraX = Math.max(0, levelWidth - canvas.width);
                 
                 // Si estamos cerca del borde derecho, expandir el nivel
-                if (store.cameraX + canvas.width > levelWidth - TILE_SIZE * 2) {
-                    const minCols = Math.ceil((store.cameraX + canvas.width + TILE_SIZE * 5) / TILE_SIZE);
+                if (store.cameraX + canvas.width > levelWidth - scaledTileSize * 2) {
+                    const minCols = Math.ceil((store.cameraX + canvas.width + scaledTileSize * 5) / scaledTileSize);
                     ensureLevelWidth(store.editorLevel, minCols);
                 }
                 
@@ -604,7 +643,7 @@ export const bindEditorCanvas = (store: GameStore) => {
             store.cameraY = Math.max(0, store.cameraY - scrollSpeed);
             
             // Expandir verticalmente hacia arriba si es necesario
-            if (store.cameraY < TILE_SIZE * 2 && store.editorLevel.length > 0) {
+            if (store.cameraY < scaledTileSize * 2 && store.editorLevel.length > 0) {
                 const rowsToAdd = 5; // Agregar 5 filas arriba
                 const rowWidth = store.editorLevel[0]?.length ?? 0;
                 
@@ -614,17 +653,17 @@ export const bindEditorCanvas = (store: GameStore) => {
                 }
                 
                 // Ajustar la posición de la cámara para compensar las nuevas filas
-                store.cameraY += rowsToAdd * TILE_SIZE;
+                store.cameraY += rowsToAdd * scaledTileSize;
             }
         }
         if (editorKeys['s'] || editorKeys['S'] || editorKeys['ArrowDown']) {
             if (store.editorLevel.length > 0) {
-                const levelHeight = store.editorLevel.length * TILE_SIZE;
+                const levelHeight = store.editorLevel.length * scaledTileSize;
                 const maxCameraY = Math.max(0, levelHeight - canvas.height);
                 
                 // Expandir verticalmente hacia abajo si es necesario
-                if (store.cameraY + canvas.height > levelHeight - TILE_SIZE * 2) {
-                    const minRows = Math.ceil((store.cameraY + canvas.height + TILE_SIZE * 5) / TILE_SIZE);
+                if (store.cameraY + canvas.height > levelHeight - scaledTileSize * 2) {
+                    const minRows = Math.ceil((store.cameraY + canvas.height + scaledTileSize * 5) / scaledTileSize);
                     ensureLevelHeight(store.editorLevel, minRows);
                 }
                 
@@ -665,6 +704,10 @@ export const drawEditor = (store: GameStore) => {
         return;
     }
 
+    // Obtener factor de zoom (por defecto 1.0)
+    const zoomScale = store.dom.zoomScale ?? 1.0;
+    const scaledTileSize = TILE_SIZE * zoomScale;
+
     // Dibujar fondo con background tiles y efecto parallax
     const backgroundSprite = store.sprites.background;
     if (backgroundSprite) {
@@ -673,21 +716,21 @@ export const drawEditor = (store: GameStore) => {
         const parallaxCameraX = store.cameraX * parallaxFactor;
         const parallaxCameraY = store.cameraY * parallaxFactor;
         
-        const startY = Math.floor(parallaxCameraY / TILE_SIZE) * TILE_SIZE;
+        const startY = Math.floor(parallaxCameraY / scaledTileSize) * scaledTileSize;
         const endY = parallaxCameraY + canvas.height;
-        const startX = Math.floor(parallaxCameraX / TILE_SIZE) * TILE_SIZE;
+        const startX = Math.floor(parallaxCameraX / scaledTileSize) * scaledTileSize;
         const endX = parallaxCameraX + canvas.width;
-        const numTilesX = Math.ceil((endX - startX) / TILE_SIZE) + 1;
-        const numTilesY = Math.ceil((endY - startY) / TILE_SIZE) + 1;
+        const numTilesX = Math.ceil((endX - startX) / scaledTileSize) + 1;
+        const numTilesY = Math.ceil((endY - startY) / scaledTileSize) + 1;
         
         ctx.save();
         ctx.translate(-parallaxCameraX, -parallaxCameraY);
         
         for (let y = 0; y < numTilesY; y++) {
             for (let x = 0; x < numTilesX; x++) {
-                const tileX = startX + x * TILE_SIZE;
-                const tileY = startY + y * TILE_SIZE;
-                ctx.drawImage(backgroundSprite, tileX, tileY, TILE_SIZE, TILE_SIZE);
+                const tileX = startX + x * scaledTileSize;
+                const tileY = startY + y * scaledTileSize;
+                ctx.drawImage(backgroundSprite, tileX, tileY, scaledTileSize, scaledTileSize);
             }
         }
         
@@ -704,11 +747,11 @@ export const drawEditor = (store: GameStore) => {
     const timestamp = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const msPerTick = 1000 / 60;
 
-    // Calcular ventana visible en tiles
-    const startCol = Math.max(0, Math.floor(store.cameraX / TILE_SIZE));
-    const endCol = Math.min((store.editorLevel[0]?.length ?? 0) - 1, Math.ceil((store.cameraX + canvas.width) / TILE_SIZE));
-    const startRow = Math.max(0, Math.floor(store.cameraY / TILE_SIZE));
-    const endRow = Math.min(store.editorLevel.length - 1, Math.ceil((store.cameraY + canvas.height) / TILE_SIZE));
+    // Calcular ventana visible en tiles (usando tamaño escalado)
+    const startCol = Math.max(0, Math.floor(store.cameraX / scaledTileSize));
+    const endCol = Math.min((store.editorLevel[0]?.length ?? 0) - 1, Math.ceil((store.cameraX + canvas.width) / scaledTileSize));
+    const startRow = Math.max(0, Math.floor(store.cameraY / scaledTileSize));
+    const endRow = Math.min(store.editorLevel.length - 1, Math.ceil((store.cameraY + canvas.height) / scaledTileSize));
 
     // Primera pasada: dibujar tiles normales y tiles especiales de 1x1 solo en viewport
     for (let rowIndex = startRow; rowIndex <= endRow; rowIndex++) {
@@ -724,15 +767,17 @@ export const drawEditor = (store: GameStore) => {
             if (tile === 'A') {
                 // Plataforma: usar sprite base.png 60x15 apoyado al fondo del tile
                 const baseSprite = store.sprites.base;
-                const px = colIndex * TILE_SIZE + (TILE_SIZE - 60) / 2;
-                const py = rowIndex * TILE_SIZE + TILE_SIZE - 15; // 15px de altura
+                const scaledPlatformWidth = 60 * zoomScale;
+                const scaledPlatformHeight = 15 * zoomScale;
+                const px = colIndex * scaledTileSize + (scaledTileSize - scaledPlatformWidth) / 2;
+                const py = rowIndex * scaledTileSize + scaledTileSize - scaledPlatformHeight;
                 
                 if (baseSprite) {
-                    ctx.drawImage(baseSprite, px, py, 60, 15);
+                    ctx.drawImage(baseSprite, px, py, scaledPlatformWidth, scaledPlatformHeight);
                 } else {
                     // Fallback al rectángulo amarillo si no se ha cargado el sprite
                     ctx.fillStyle = '#ffff00';
-                    ctx.fillRect(px, py, 60, 15);
+                    ctx.fillRect(px, py, scaledPlatformWidth, scaledPlatformHeight);
                 }
                 continue;
             }
@@ -748,16 +793,16 @@ export const drawEditor = (store: GameStore) => {
                         0,
                         frameWidth,
                         lightSprite.height,
-                        colIndex * TILE_SIZE,
-                        rowIndex * TILE_SIZE,
-                        TILE_SIZE,
-                        TILE_SIZE
+                        colIndex * scaledTileSize,
+                        rowIndex * scaledTileSize,
+                        scaledTileSize,
+                        scaledTileSize
                     );
                 } else {
                     // Fallback: círculo amarillo
-                    const centerX = colIndex * TILE_SIZE + TILE_SIZE / 2;
-                    const centerY = rowIndex * TILE_SIZE + TILE_SIZE / 2;
-                    const radius = TILE_SIZE / 3;
+                    const centerX = colIndex * scaledTileSize + scaledTileSize / 2;
+                    const centerY = rowIndex * scaledTileSize + scaledTileSize / 2;
+                    const radius = scaledTileSize / 3;
                     ctx.fillStyle = '#ffff00';
                     ctx.beginPath();
                     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -773,10 +818,10 @@ export const drawEditor = (store: GameStore) => {
                         0,
                         backgroundSprite.width,
                         backgroundSprite.height,
-                        colIndex * TILE_SIZE,
-                        rowIndex * TILE_SIZE,
-                        TILE_SIZE,
-                        TILE_SIZE
+                        colIndex * scaledTileSize,
+                        rowIndex * scaledTileSize,
+                        scaledTileSize,
+                        scaledTileSize
                     );
                 }
                 // Si no hay sprite de fondo, no dibujar nada (mantener transparente)
@@ -792,17 +837,17 @@ export const drawEditor = (store: GameStore) => {
                 
                 // Tint eléctrico con gradiente
                 const gradient = ctx.createLinearGradient(
-                    colIndex * TILE_SIZE, 
-                    rowIndex * TILE_SIZE, 
-                    (colIndex + 1) * TILE_SIZE, 
-                    (rowIndex + 1) * TILE_SIZE
+                    colIndex * scaledTileSize, 
+                    rowIndex * scaledTileSize, 
+                    (colIndex + 1) * scaledTileSize, 
+                    (rowIndex + 1) * scaledTileSize
                 );
                 gradient.addColorStop(0, config.color);
                 gradient.addColorStop(0.5, '#ff4444'); // Rojo más brillante en el centro
                 gradient.addColorStop(1, config.color);
                 
                 ctx.fillStyle = gradient;
-                ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                ctx.fillRect(colIndex * scaledTileSize, rowIndex * scaledTileSize, scaledTileSize, scaledTileSize);
                 
                 // Efecto de parpadeo eléctrico
                 const time = Date.now() * 0.01;
@@ -810,28 +855,29 @@ export const drawEditor = (store: GameStore) => {
                 
                 ctx.globalAlpha = flickerIntensity;
                 ctx.fillStyle = '#ffffff';
+                const borderOffset = 2 * zoomScale;
                 ctx.fillRect(
-                    colIndex * TILE_SIZE + 2, 
-                    rowIndex * TILE_SIZE + 2, 
-                    TILE_SIZE - 4, 
-                    TILE_SIZE - 4
+                    colIndex * scaledTileSize + borderOffset, 
+                    rowIndex * scaledTileSize + borderOffset, 
+                    scaledTileSize - borderOffset * 2, 
+                    scaledTileSize - borderOffset * 2
                 );
                 
                 // Efecto de arco eléctrico en los bordes
                 ctx.strokeStyle = '#00ffff';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 1 * zoomScale;
                 ctx.globalAlpha = flickerIntensity * 0.8;
                 
                 // Dibujar líneas eléctricas en los bordes
                 ctx.beginPath();
-                ctx.moveTo(colIndex * TILE_SIZE, rowIndex * TILE_SIZE);
-                ctx.lineTo((colIndex + 1) * TILE_SIZE, rowIndex * TILE_SIZE);
-                ctx.moveTo(colIndex * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
-                ctx.lineTo((colIndex + 1) * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
-                ctx.moveTo(colIndex * TILE_SIZE, rowIndex * TILE_SIZE);
-                ctx.lineTo(colIndex * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
-                ctx.moveTo((colIndex + 1) * TILE_SIZE, rowIndex * TILE_SIZE);
-                ctx.lineTo((colIndex + 1) * TILE_SIZE, (rowIndex + 1) * TILE_SIZE);
+                ctx.moveTo(colIndex * scaledTileSize, rowIndex * scaledTileSize);
+                ctx.lineTo((colIndex + 1) * scaledTileSize, rowIndex * scaledTileSize);
+                ctx.moveTo(colIndex * scaledTileSize, (rowIndex + 1) * scaledTileSize);
+                ctx.lineTo((colIndex + 1) * scaledTileSize, (rowIndex + 1) * scaledTileSize);
+                ctx.moveTo(colIndex * scaledTileSize, rowIndex * scaledTileSize);
+                ctx.lineTo(colIndex * scaledTileSize, (rowIndex + 1) * scaledTileSize);
+                ctx.moveTo((colIndex + 1) * scaledTileSize, rowIndex * scaledTileSize);
+                ctx.lineTo((colIndex + 1) * scaledTileSize, (rowIndex + 1) * scaledTileSize);
                 ctx.stroke();
                 
                 // Resetear efectos
@@ -853,13 +899,13 @@ export const drawEditor = (store: GameStore) => {
                             0,
                             frameWidth,
                             sprite.height,
-                            colIndex * TILE_SIZE,
-                            rowIndex * TILE_SIZE,
-                            TILE_SIZE,
-                            TILE_SIZE,
+                            colIndex * scaledTileSize,
+                            rowIndex * scaledTileSize,
+                            scaledTileSize,
+                            scaledTileSize,
                         );
                     } else {
-                        ctx.drawImage(sprite, colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        ctx.drawImage(sprite, colIndex * scaledTileSize, rowIndex * scaledTileSize, scaledTileSize, scaledTileSize);
                     }
                 }
             }
@@ -887,15 +933,15 @@ export const drawEditor = (store: GameStore) => {
                         0,
                         playerSprite.width,
                         playerSprite.height,
-                        colIndex * TILE_SIZE,
-                        rowIndex * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                        TILE_SIZE,
-                        TILE_SIZE * 2
+                        colIndex * scaledTileSize,
+                        rowIndex * scaledTileSize - scaledTileSize, // Empezar un tile arriba para ocupar 2 tiles
+                        scaledTileSize,
+                        scaledTileSize * 2
                     );
                 } else {
                     // Fallback: rectángulo rojo ocupando 2 tiles
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+                    ctx.fillRect(colIndex * scaledTileSize, rowIndex * scaledTileSize - scaledTileSize, scaledTileSize, scaledTileSize * 2);
                 }
             } else if (tile === '9') {
                 // Dibujar miner con sprite miner_small.png - ocupando 2 tiles de ancho (120px) pero mostrando imagen a 78px
@@ -918,15 +964,15 @@ export const drawEditor = (store: GameStore) => {
                         const frameDuration = Math.max(1, anim.speed) * msPerTick;
                         const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
                         const frameWidth = minerSprite.width / totalFrames; // 468 / 6 = 78px
-                        const naturalWidth = 78; // Ancho natural de cada frame del miner
-                        const naturalHeight = minerSprite.height;
-                        // Centrar el sprite de 78px dentro del espacio de 120px (2 tiles)
-                        const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                        const naturalWidth = 78 * zoomScale; // Ancho natural escalado
+                        const naturalHeight = minerSprite.height * zoomScale;
+                        // Centrar el sprite dentro del espacio de 2 tiles
+                        const offsetX = (scaledTileSize * 2 - naturalWidth) / 2;
                         
                         ctx.save();
                         if (shouldFlip) {
                             // Reflejar horizontalmente
-                            ctx.translate(colIndex * TILE_SIZE + TILE_SIZE * 2, rowIndex * TILE_SIZE);
+                            ctx.translate(colIndex * scaledTileSize + scaledTileSize * 2, rowIndex * scaledTileSize);
                             ctx.scale(-1, 1);
                             ctx.drawImage(
                                 minerSprite,
@@ -946,21 +992,21 @@ export const drawEditor = (store: GameStore) => {
                                 0,
                                 frameWidth,
                                 minerSprite.height,
-                                colIndex * TILE_SIZE + offsetX,
-                                rowIndex * TILE_SIZE,
+                                colIndex * scaledTileSize + offsetX,
+                                rowIndex * scaledTileSize,
                                 naturalWidth,
                                 naturalHeight
                             );
                         }
                         ctx.restore();
                     } else {
-                        const naturalWidth = 78;
-                        const naturalHeight = minerSprite.height;
-                        const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                        const naturalWidth = 78 * zoomScale;
+                        const naturalHeight = minerSprite.height * zoomScale;
+                        const offsetX = (scaledTileSize * 2 - naturalWidth) / 2;
                         
                         ctx.save();
                         if (shouldFlip) {
-                            ctx.translate(colIndex * TILE_SIZE + TILE_SIZE * 2, rowIndex * TILE_SIZE);
+                            ctx.translate(colIndex * scaledTileSize + scaledTileSize * 2, rowIndex * scaledTileSize);
                             ctx.scale(-1, 1);
                             ctx.drawImage(
                                 minerSprite,
@@ -980,8 +1026,8 @@ export const drawEditor = (store: GameStore) => {
                                 0,
                                 78,
                                 minerSprite.height,
-                                colIndex * TILE_SIZE + offsetX,
-                                rowIndex * TILE_SIZE,
+                                colIndex * scaledTileSize + offsetX,
+                                rowIndex * scaledTileSize,
                                 naturalWidth,
                                 naturalHeight
                             );
@@ -991,7 +1037,7 @@ export const drawEditor = (store: GameStore) => {
                 } else {
                     // Fallback: rectángulo azul ocupando 2 tiles de ancho
                     ctx.fillStyle = 'rgba(0, 0, 255, 0.8)';
-                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
+                    ctx.fillRect(colIndex * scaledTileSize, rowIndex * scaledTileSize, scaledTileSize * 2, scaledTileSize);
                 }
             } else if (tile === 'T') {
                 // Dibujar tentáculo vertical con sprite tentaculo.png - tamaño 64x128 (dos tiles)
@@ -1014,15 +1060,15 @@ export const drawEditor = (store: GameStore) => {
                     ctx.drawImage(
                         tentacleSprite,
                         sourceX, sourceY, frameWidth, frameHeight,
-                        colIndex * TILE_SIZE,
-                        (rowIndex - 1) * TILE_SIZE, // Un tile arriba para ser vertical
-                        TILE_SIZE, // Ancho del sprite
-                        TILE_SIZE * 2  // Alto del sprite (dos tiles)
+                        colIndex * scaledTileSize,
+                        (rowIndex - 1) * scaledTileSize, // Un tile arriba para ser vertical
+                        scaledTileSize, // Ancho del sprite
+                        scaledTileSize * 2  // Alto del sprite (dos tiles)
                     );
                 } else {
                     // Fallback: rectángulo verde
                     ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
-                    ctx.fillRect(colIndex * TILE_SIZE, rowIndex * TILE_SIZE, 60, 120);
+                    ctx.fillRect(colIndex * scaledTileSize, rowIndex * scaledTileSize, 60 * zoomScale, 120 * zoomScale);
                 }
             }
         }
@@ -1030,21 +1076,21 @@ export const drawEditor = (store: GameStore) => {
 
     // Grid fina (cada tile) solo en viewport
     ctx.strokeStyle = '#444';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = Math.max(0.5, 1 * zoomScale); // Ajustar grosor de línea según zoom
     const levelWidth = store.editorLevel[0]?.length ?? 0;
     const levelHeight = store.editorLevel.length;
-    const gridStartX = startCol * TILE_SIZE;
-    const gridEndX = Math.min(levelWidth * TILE_SIZE, (endCol + 1) * TILE_SIZE);
-    const gridStartY = startRow * TILE_SIZE;
-    const gridEndY = Math.min(levelHeight * TILE_SIZE, (endRow + 1) * TILE_SIZE);
+    const gridStartX = startCol * scaledTileSize;
+    const gridEndX = Math.min(levelWidth * scaledTileSize, (endCol + 1) * scaledTileSize);
+    const gridStartY = startRow * scaledTileSize;
+    const gridEndY = Math.min(levelHeight * scaledTileSize, (endRow + 1) * scaledTileSize);
 
-    for (let x = gridStartX; x <= gridEndX; x += TILE_SIZE) {
+    for (let x = gridStartX; x <= gridEndX; x += scaledTileSize) {
         ctx.beginPath();
         ctx.moveTo(x, gridStartY);
         ctx.lineTo(x, gridEndY);
         ctx.stroke();
     }
-    for (let y = gridStartY; y <= gridEndY; y += TILE_SIZE) {
+    for (let y = gridStartY; y <= gridEndY; y += scaledTileSize) {
         ctx.beginPath();
         ctx.moveTo(gridStartX, y);
         ctx.lineTo(gridEndX, y);
@@ -1054,7 +1100,7 @@ export const drawEditor = (store: GameStore) => {
     // Grid gruesa (cada 20x18 tiles = tamaño de viewport 1200x1080)
     // Origen definido por la posición del jugador: 2 tiles a la izquierda y 3 arriba
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1, 2 * zoomScale); // Ajustar grosor según zoom
     const majorCols = 20;
     const majorRows = 18;
 
@@ -1079,7 +1125,7 @@ export const drawEditor = (store: GameStore) => {
     const firstKx = Math.ceil((viewportStartTilesX - originTileX) / majorCols);
     let tileX = originTileX + firstKx * majorCols;
     while (tileX <= viewportEndTilesX) {
-        const gx = tileX * TILE_SIZE;
+        const gx = tileX * scaledTileSize;
         ctx.beginPath();
         ctx.moveTo(gx, gridStartY);
         ctx.lineTo(gx, gridEndY);
@@ -1092,7 +1138,7 @@ export const drawEditor = (store: GameStore) => {
     const firstKy = Math.ceil((viewportStartTilesY - originTileY) / majorRows);
     let tileY = originTileY + firstKy * majorRows;
     while (tileY <= viewportEndTilesY) {
-        const gy = tileY * TILE_SIZE;
+        const gy = tileY * scaledTileSize;
         ctx.beginPath();
         ctx.moveTo(gridStartX, gy);
         ctx.lineTo(gridEndX, gy);
@@ -1107,10 +1153,10 @@ export const drawEditor = (store: GameStore) => {
         // Para tile vacío (borrar), mostrar una X roja semitransparente
         ctx.globalAlpha = 0.5;
         ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 3;
-        const centerX = store.mouse.gridX * TILE_SIZE + TILE_SIZE / 2;
-        const centerY = store.mouse.gridY * TILE_SIZE + TILE_SIZE / 2;
-        const crossSize = TILE_SIZE / 3;
+        ctx.lineWidth = Math.max(1, 3 * zoomScale);
+        const centerX = store.mouse.gridX * scaledTileSize + scaledTileSize / 2;
+        const centerY = store.mouse.gridY * scaledTileSize + scaledTileSize / 2;
+        const crossSize = scaledTileSize / 3;
         
         ctx.beginPath();
         ctx.moveTo(centerX - crossSize, centerY - crossSize);
@@ -1134,13 +1180,13 @@ export const drawEditor = (store: GameStore) => {
                     0,
                     frameWidth,
                     sprite.height,
-                    store.mouse.gridX * TILE_SIZE,
-                    store.mouse.gridY * TILE_SIZE,
-                    TILE_SIZE,
-                    TILE_SIZE,
+                    store.mouse.gridX * scaledTileSize,
+                    store.mouse.gridY * scaledTileSize,
+                    scaledTileSize,
+                    scaledTileSize,
                 );
             } else {
-                ctx.drawImage(sprite, store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                ctx.drawImage(sprite, store.mouse.gridX * scaledTileSize, store.mouse.gridY * scaledTileSize, scaledTileSize, scaledTileSize);
             }
             ctx.globalAlpha = 1;
         }
@@ -1155,17 +1201,17 @@ export const drawEditor = (store: GameStore) => {
                 0,
                 playerSprite.width,
                 playerSprite.height,
-                store.mouse.gridX * TILE_SIZE,
-                store.mouse.gridY * TILE_SIZE - TILE_SIZE, // Empezar un tile arriba para ocupar 2 tiles
-                TILE_SIZE,
-                TILE_SIZE * 2
+                store.mouse.gridX * scaledTileSize,
+                store.mouse.gridY * scaledTileSize - scaledTileSize, // Empezar un tile arriba para ocupar 2 tiles
+                scaledTileSize,
+                scaledTileSize * 2
             );
             ctx.globalAlpha = 1;
         } else {
             // Fallback: rectángulo rojo ocupando 2 tiles
             ctx.globalAlpha = 0.5;
             ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE - TILE_SIZE, TILE_SIZE, TILE_SIZE * 2);
+            ctx.fillRect(store.mouse.gridX * scaledTileSize, store.mouse.gridY * scaledTileSize - scaledTileSize, scaledTileSize, scaledTileSize * 2);
             ctx.globalAlpha = 1;
         }
     } else if (store.selectedTile === '9') {
@@ -1178,32 +1224,32 @@ export const drawEditor = (store: GameStore) => {
                 const frameDuration = Math.max(1, anim.speed) * msPerTick;
                 const frameIndex = Math.floor(timestamp / frameDuration) % effectiveFrames;
                 const frameWidth = minerSprite.width / totalFrames; // 468 / 6 = 78px
-                const naturalWidth = 78;
-                const naturalHeight = minerSprite.height;
-                const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                const naturalWidth = 78 * zoomScale;
+                const naturalHeight = minerSprite.height * zoomScale;
+                const offsetX = (scaledTileSize * 2 - naturalWidth) / 2;
                 ctx.drawImage(
                     minerSprite,
                     frameIndex * frameWidth,
                     0,
                     frameWidth,
                     minerSprite.height,
-                    store.mouse.gridX * TILE_SIZE + offsetX,
-                    store.mouse.gridY * TILE_SIZE,
+                    store.mouse.gridX * scaledTileSize + offsetX,
+                    store.mouse.gridY * scaledTileSize,
                     naturalWidth,
                     naturalHeight
                 );
             } else {
-                const naturalWidth = 78;
-                const naturalHeight = minerSprite.height;
-                const offsetX = (TILE_SIZE * 2 - naturalWidth) / 2;
+                const naturalWidth = 78 * zoomScale;
+                const naturalHeight = minerSprite.height * zoomScale;
+                const offsetX = (scaledTileSize * 2 - naturalWidth) / 2;
                 ctx.drawImage(
                     minerSprite,
                     0,
                     0,
                     78,
                     minerSprite.height,
-                    store.mouse.gridX * TILE_SIZE + offsetX,
-                    store.mouse.gridY * TILE_SIZE,
+                    store.mouse.gridX * scaledTileSize + offsetX,
+                    store.mouse.gridY * scaledTileSize,
                     naturalWidth,
                     naturalHeight
                 );
@@ -1213,7 +1259,7 @@ export const drawEditor = (store: GameStore) => {
             // Fallback: rectángulo azul ocupando 2 tiles de ancho
             ctx.globalAlpha = 0.5;
             ctx.fillStyle = 'rgba(0, 0, 255, 0.8)';
-            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE);
+            ctx.fillRect(store.mouse.gridX * scaledTileSize, store.mouse.gridY * scaledTileSize, scaledTileSize * 2, scaledTileSize);
             ctx.globalAlpha = 1;
         }
     }
@@ -1241,10 +1287,10 @@ export const drawEditor = (store: GameStore) => {
                 ctx.drawImage(
                     tentacleSprite,
                     sourceX, sourceY, frameWidth, frameHeight,
-                    store.mouse.gridX * TILE_SIZE,
-                    store.mouse.gridY * TILE_SIZE,
-                    60, // Ancho del sprite
-                    120  // Alto del sprite
+                    store.mouse.gridX * scaledTileSize,
+                    (store.mouse.gridY - 1) * scaledTileSize,
+                    scaledTileSize, // Ancho del sprite
+                    scaledTileSize * 2  // Alto del sprite
                 );
             } else {
                 ctx.drawImage(
@@ -1253,10 +1299,10 @@ export const drawEditor = (store: GameStore) => {
                     0,
                     tentacleSprite.width,
                     tentacleSprite.height,
-                    store.mouse.gridX * TILE_SIZE,
-                    store.mouse.gridY * TILE_SIZE,
-                    60,
-                    120
+                    store.mouse.gridX * scaledTileSize,
+                    (store.mouse.gridY - 1) * scaledTileSize,
+                    scaledTileSize,
+                    scaledTileSize * 2
                 );
             }
             ctx.globalAlpha = 1;
@@ -1264,7 +1310,7 @@ export const drawEditor = (store: GameStore) => {
             // Fallback: rectángulo verde
             ctx.globalAlpha = 0.5;
             ctx.fillStyle = 'rgba(34, 139, 34, 0.8)';
-            ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, 60, 120);
+            ctx.fillRect(store.mouse.gridX * scaledTileSize, (store.mouse.gridY - 1) * scaledTileSize, scaledTileSize, scaledTileSize * 2);
             ctx.globalAlpha = 1;
         }
     }
@@ -1280,18 +1326,18 @@ export const drawEditor = (store: GameStore) => {
                 0,
                 frameWidth,
                 lightSprite.height,
-                store.mouse.gridX * TILE_SIZE,
-                store.mouse.gridY * TILE_SIZE,
-                TILE_SIZE,
-                TILE_SIZE
+                store.mouse.gridX * scaledTileSize,
+                store.mouse.gridY * scaledTileSize,
+                scaledTileSize,
+                scaledTileSize
             );
             ctx.globalAlpha = 1;
         } else {
             // Fallback: círculo amarillo
             ctx.globalAlpha = 0.5;
-            const centerX = store.mouse.gridX * TILE_SIZE + TILE_SIZE / 2;
-            const centerY = store.mouse.gridY * TILE_SIZE + TILE_SIZE / 2;
-            const radius = TILE_SIZE / 3;
+            const centerX = store.mouse.gridX * scaledTileSize + scaledTileSize / 2;
+            const centerY = store.mouse.gridY * scaledTileSize + scaledTileSize / 2;
+            const radius = scaledTileSize / 3;
             ctx.fillStyle = '#ffff00';
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -1302,16 +1348,18 @@ export const drawEditor = (store: GameStore) => {
         // Preview de plataforma: 60x10 al fondo del tile
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = '#ffff00';
-        const px = store.mouse.gridX * TILE_SIZE + (TILE_SIZE - 60) / 2;
-        const py = store.mouse.gridY * TILE_SIZE + TILE_SIZE - 10;
-        ctx.fillRect(px, py, 60, 10);
+        const scaledPlatformWidth = 60 * zoomScale;
+        const scaledPlatformHeight = 10 * zoomScale;
+        const px = store.mouse.gridX * scaledTileSize + (scaledTileSize - scaledPlatformWidth) / 2;
+        const py = store.mouse.gridY * scaledTileSize + scaledTileSize - scaledPlatformHeight;
+        ctx.fillRect(px, py, scaledPlatformWidth, scaledPlatformHeight);
         ctx.globalAlpha = 1;
     } else if (store.selectedTile === 'H' || store.selectedTile === 'J') {
         // Preview de pared aplastante con color configurado
         ctx.globalAlpha = 0.5;
         const config = store.crushingWallConfig || { speed: 1.5, color: '#cc0000' };
         ctx.fillStyle = config.color;
-        ctx.fillRect(store.mouse.gridX * TILE_SIZE, store.mouse.gridY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(store.mouse.gridX * scaledTileSize, store.mouse.gridY * scaledTileSize, scaledTileSize, scaledTileSize);
         ctx.globalAlpha = 1;
     }
 
@@ -1327,12 +1375,12 @@ export const drawEditor = (store: GameStore) => {
         // Dibujar rectángulo de selección
         ctx.globalAlpha = 0.3;
         ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = Math.max(1, 2 * zoomScale);
         ctx.strokeRect(
-            startX * TILE_SIZE,
-            startY * TILE_SIZE,
-            (endX - startX + 1) * TILE_SIZE,
-            (endY - startY + 1) * TILE_SIZE
+            startX * scaledTileSize,
+            startY * scaledTileSize,
+            (endX - startX + 1) * scaledTileSize,
+            (endY - startY + 1) * scaledTileSize
         );
         
         // Si no es tile vacío, mostrar preview de todos los tiles del área
