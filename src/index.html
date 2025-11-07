@@ -254,28 +254,14 @@
                     <button id="logout-btn" class="nes-btn is-error w-full text-xs">Cerrar sesión</button>
                 </div>
                 
-                <!-- Botón Jugar Nivel (oculto en mobile) -->
-                <button id="play-test-btn" class="play-test-desktop nes-btn is-success w-full mb-4 text-xs">Probar Nivel</button>
-                
-                <div id="tile-palette" class="flex flex-col gap-4">
-                    <!-- Tiles se agregarán dinámicamente aquí -->
-                </div>
-
-                <!-- Sección Edición (colapsable) -->
-                <div class="mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="edit-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
-                        <span>Edición</span>
-                        <span id="edit-section-arrow">▼</span>
+                <!-- Sección Campaña (colapsable) - Oculto en mobile -->
+                <div id="campaign-section-desktop" class="campaign-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                    <button id="campaign-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+                        <span>Campaña</span>
+                        <span id="campaign-section-arrow">▼</span>
                     </button>
-                    <div id="edit-section-content" class="mt-2">
-                        <div class="grid grid-cols-2 gap-2">
-                            <button id="undo-btn" class="nes-btn w-full text-xs">Deshacer</button>
-                            <button id="redo-btn" class="nes-btn w-full text-xs">Rehacer</button>
-                        </div>
-                        <div class="mt-2">
-                            <button id="duplicate-row-btn" class="nes-btn is-primary w-full text-xs">Duplicar Fila</button>
-                            <button id="delete-row-btn" class="nes-btn is-error w-full text-xs mt-1">Borrar Fila</button>
-                        </div>
+                    <div id="campaign-section-content" class="mt-2">
+                        <button id="campaign-title-btn" class="nes-btn is-primary w-full text-xs mb-2">Legacy</button>
                     </div>
                 </div>
 
@@ -287,15 +273,58 @@
                     </button>
                     <div id="levels-section-content" class="mt-2">
                         <select id="level-selector" class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
-                        <button id="add-level-btn" class="nes-btn is-primary w-full text-xs">➕ Nuevo Nivel</button>
-                        <button id="generate-level-btn" class="nes-btn is-success w-full text-xs">Generar Nivel</button>
-                        <button id="save-all-btn" class="nes-btn is-error w-full mt-2 text-xs">Guardar en Archivo</button>
-                        <button id="share-level-btn" class="nes-btn is-primary w-full mt-2 text-xs">📤 Compartir Nivel</button>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <button id="add-level-btn" class="nes-btn is-primary w-full text-xs">➕ Nuevo</button>
+                            <button id="generate-level-btn" class="nes-btn is-success w-full text-xs">🎲 Generar</button>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Botón Volver al Menú (oculto en mobile) -->
-                <button id="back-to-menu-btn" class="back-to-menu-desktop nes-btn w-full mt-4 text-xs">Volver al Menú</button>
+
+                <!-- Sección Guardar (colapsable) - Oculto en mobile -->
+                <div id="save-section-desktop" class="save-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                    <button id="save-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+                        <span>Guardar</span>
+                        <span id="save-section-arrow">▼</span>
+                    </button>
+                    <div id="save-section-content" class="mt-2">
+                        <button id="save-all-btn" class="nes-btn is-error w-full text-xs mb-2">💾 Guardar Nivel</button>
+                        <button id="share-level-btn" class="nes-btn is-primary w-full text-xs">📤 Compartir</button>
+                    </div>
+                </div>
+
+                <!-- Sección Edición (colapsable) -->
+                <div class="mt-4 border-t-2 border-gray-500 pt-4">
+                    <button id="edit-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+                        <span>Edición</span>
+                        <span id="edit-section-arrow">▼</span>
+                    </button>
+                    <div id="edit-section-content" class="mt-2">
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <button id="undo-btn" class="nes-btn w-full text-xs">↶ Deshacer</button>
+                            <button id="redo-btn" class="nes-btn w-full text-xs">↷ Rehacer</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="duplicate-row-btn" class="nes-btn is-primary w-full text-xs">📋 Duplicar</button>
+                            <button id="delete-row-btn" class="nes-btn is-error w-full text-xs">🗑️ Borrar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tile-palette" class="flex flex-col gap-4 mt-4">
+                    <!-- Tiles se agregarán dinámicamente aquí -->
+                </div>
+
+                <!-- Sección Acciones (colapsable) - Oculto en mobile -->
+                <div id="actions-section-desktop" class="actions-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                    <button id="actions-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+                        <span>Acciones</span>
+                        <span id="actions-section-arrow">▼</span>
+                    </button>
+                    <div id="actions-section-content" class="mt-2">
+                        <button id="play-test-btn" class="play-test-desktop nes-btn is-success w-full text-xs mb-2">▶️ Probar Nivel</button>
+                        <button id="back-to-menu-btn" class="back-to-menu-desktop nes-btn w-full text-xs">🏠 Menú</button>
+                    </div>
+                </div>
             </div>
         </div>
 

@@ -1576,6 +1576,11 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             });
         };
         bindSectionToggle('edit-section-toggle', 'edit-section-arrow', 'edit-section-content');
+        bindSectionToggle('save-section-toggle', 'save-section-arrow', 'save-section-content');
+        bindSectionToggle('actions-section-toggle', 'actions-section-arrow', 'actions-section-content');
+        
+        // Para la sección de campaña, solo toggle normal (el botón interno abre el modal)
+        bindSectionToggle('campaign-section-toggle', 'campaign-section-arrow', 'campaign-section-content');
         
         // Para la sección de niveles, hacer que el botón abra el modal de campañas
         const levelsSectionToggle = document.getElementById('levels-section-toggle') as HTMLButtonElement | null;
@@ -1602,7 +1607,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             });
         }
         
-        // También para mobile - botón de campaña
+        // Botón de campaña (dentro de la sección de campaña)
         const campaignTitleBtn = document.getElementById('campaign-title-btn') as HTMLButtonElement | null;
         if (campaignTitleBtn) {
             campaignTitleBtn.addEventListener('click', () => {
@@ -3004,7 +3009,8 @@ export const updateEditorTexts = (store: GameStore) => {
     const campaignsSectionLabel = document.getElementById('campaigns-section-label');
     if (campaignsSectionLabel) campaignsSectionLabel.textContent = `${t('campaigns.title')}:`;
     
-    // Sección Niveles - Mostrar nombre de la campaña actual
+    // Sección Campaña y Niveles - Mostrar nombre de la campaña actual
+    const campaignSectionToggle = document.querySelector('#campaign-section-toggle span:first-child');
     const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
     const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center');
     const campaignTitleBtn = document.getElementById('campaign-title-btn');
@@ -3016,11 +3022,13 @@ export const updateEditorTexts = (store: GameStore) => {
             ? (campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name)
             : t('editor.levels');
         
-        if (levelsSectionToggle) levelsSectionToggle.textContent = campaignName;
+        if (campaignSectionToggle) campaignSectionToggle.textContent = t('campaigns.title');
+        if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
         if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = campaignName.toUpperCase();
         if (campaignTitleBtn) campaignTitleBtn.textContent = campaignName.toUpperCase();
     }).catch(() => {
         // Fallback si hay error
+        if (campaignSectionToggle) campaignSectionToggle.textContent = t('campaigns.title');
         if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
         if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = t('editor.levels').toUpperCase();
         if (campaignTitleBtn) campaignTitleBtn.textContent = t('editor.levels').toUpperCase();
@@ -4936,14 +4944,8 @@ const setupLevelData = (store: GameStore) => {
         // Cargar el nuevo nivel en el editor
         store.editorLevel = JSON.parse(JSON.stringify(newLevel));
         
-        // Actualizar el selector de niveles
-        syncLevelSelector(store);
-        
         // Seleccionar el nuevo nivel
         const newIndex = store.levelDataStore.length - 1;
-        if (store.dom.ui.levelSelectorEl) {
-            store.dom.ui.levelSelectorEl.value = newIndex.toString();
-        }
         
         // Centrar la cámara en el jugador
         const playerCol = Math.floor(levelWidth / 2);
@@ -4959,6 +4961,33 @@ const setupLevelData = (store: GameStore) => {
         
         // Reinicializar el editor avanzado
         initializeAdvancedEditor(store);
+        
+        // Agregar automáticamente el nuevo nivel a la campaña actual (no a legacy)
+        // Y luego actualizar el selector para mostrar solo los niveles de la campaña actual
+        import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign }) => {
+            const currentCampaign = getCurrentCampaign(store);
+            if (currentCampaign && !currentCampaign.isDefault) {
+                // Solo agregar a campañas que no sean Legacy (Legacy es de solo lectura)
+                addLevelToCampaign(store, currentCampaign.id, newIndex);
+                
+                // Actualizar el selector para mostrar solo los niveles de la campaña actual
+                import('./campaigns-ui').then(({ syncLevelSelectorForCampaign }) => {
+                    syncLevelSelectorForCampaign(store);
+                    // Seleccionar el nuevo nivel después de sincronizar
+                    if (store.dom.ui.levelSelectorEl) {
+                        store.dom.ui.levelSelectorEl.value = newIndex.toString();
+                        // Cargar el nivel seleccionado
+                        loadLevelFromStore();
+                    }
+                });
+            } else {
+                // Si es Legacy o no hay campaña, usar el selector normal
+                syncLevelSelector(store);
+                if (store.dom.ui.levelSelectorEl) {
+                    store.dom.ui.levelSelectorEl.value = newIndex.toString();
+                }
+            }
+        });
         
         showNotification(store, `➕ ${t('editor.newLevel')}`, t('messages.newLevelCreated').replace('{n}', `${newIndex + 1}`));
     });
@@ -5035,6 +5064,33 @@ const setupLevelData = (store: GameStore) => {
             
             // Reinicializar el editor avanzado
             initializeAdvancedEditor(store);
+            
+            // Agregar automáticamente el nivel generado a la campaña actual (no a legacy)
+            // Y luego actualizar el selector para mostrar solo los niveles de la campaña actual
+            import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign }) => {
+                const currentCampaign = getCurrentCampaign(store);
+                if (currentCampaign && !currentCampaign.isDefault) {
+                    // Solo agregar a campañas que no sean Legacy (Legacy es de solo lectura)
+                    addLevelToCampaign(store, currentCampaign.id, index);
+                    
+                    // Actualizar el selector para mostrar solo los niveles de la campaña actual
+                    import('./campaigns-ui').then(({ syncLevelSelectorForCampaign }) => {
+                        syncLevelSelectorForCampaign(store);
+                        // Seleccionar el nivel generado después de sincronizar
+                        if (store.dom.ui.levelSelectorEl) {
+                            store.dom.ui.levelSelectorEl.value = index.toString();
+                            // Cargar el nivel seleccionado
+                            loadLevelFromStore();
+                        }
+                    });
+                } else {
+                    // Si es Legacy o no hay campaña, usar el selector normal
+                    syncLevelSelector(store);
+                    if (store.dom.ui.levelSelectorEl) {
+                        store.dom.ui.levelSelectorEl.value = index.toString();
+                    }
+                }
+            });
             
             showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${index + 1}, ${t('editor.difficulty')}: ${difficulty})`);
             
