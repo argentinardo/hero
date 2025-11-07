@@ -621,60 +621,71 @@
                     <h3 id="settings-graphics-title" class="text-xl mb-4 border-b-2 border-gray-600 pb-2">Gráficos</h3>
                     <p id="settings-graphics-desc" class="text-xs text-gray-400 mb-4">Desactiva efectos para mejorar el rendimiento en dispositivos móviles antiguos</p>
                     
-                    <!-- Scanline -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="scanline-toggle" class="text-sm cursor-pointer flex-1">Scanline (efecto CRT):</label>
-                        <input type="checkbox" id="scanline-toggle" checked 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                    <div class="mb-4">
+                        <label id="settings-graphics-style-label" for="graphics-style-selector" class="block text-sm mb-2">Estilo visual:</label>
+                        <select id="graphics-style-selector" class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
+                            <option value="modern">Moderno</option>
+                            <option value="retro">Retro</option>
+                            <option value="custom">Custom</option>
+                        </select>
                     </div>
-                    
-                    <!-- Glow -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="glow-toggle" class="text-sm cursor-pointer flex-1">Efectos de Glow (brillo):</label>
-                        <input type="checkbox" id="glow-toggle" checked 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
-                    </div>
-                    
-                    <!-- Brightness -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="brightness-toggle" class="text-sm cursor-pointer flex-1">Brillo del Canvas:</label>
-                        <input type="checkbox" id="brightness-toggle" checked 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
-                    </div>
-                    
-                    <!-- Contrast -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="contrast-toggle" class="text-sm cursor-pointer flex-1">Contraste del Canvas:</label>
-                        <input type="checkbox" id="contrast-toggle" checked 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
-                    </div>
-                    
-                    <!-- Vignette -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="vignette-toggle" class="text-sm cursor-pointer flex-1">Vignette (oscurecimiento bordes):</label>
-                        <input type="checkbox" id="vignette-toggle" checked 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
-                    </div>
-                    
-                    <!-- Blur -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="blur-toggle" class="text-sm cursor-pointer flex-1">Blur (desenfoque):</label>
-                        <input type="checkbox" id="blur-toggle" checked 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
-                    </div>
-                    
-                    <!-- Show FPS -->
-                    <div class="mb-3 flex items-center justify-between">
-                        <label for="fps-toggle" class="text-sm cursor-pointer flex-1">Mostrar Contador FPS:</label>
-                        <input type="checkbox" id="fps-toggle" 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
-                    </div>
-                    
-                    <!-- Mobile Full Width (solo visible en mobile) -->
-                    <div id="mobile-fullwidth-option" class="mb-3 flex items-center justify-between hidden">
-                        <label for="mobile-fullwidth-toggle" class="text-sm cursor-pointer flex-1">Ancho Completo (Mobile):</label>
-                        <input type="checkbox" id="mobile-fullwidth-toggle" 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+
+                    <div id="graphics-custom-options">
+                        <!-- Scanline -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="scanline-toggle" class="text-sm cursor-pointer flex-1">Scanline (efecto CRT):</label>
+                            <input type="checkbox" id="scanline-toggle" checked 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Glow -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="glow-toggle" class="text-sm cursor-pointer flex-1">Efectos de Glow (brillo):</label>
+                            <input type="checkbox" id="glow-toggle" checked 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Brightness -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="brightness-toggle" class="text-sm cursor-pointer flex-1">Brillo del Canvas:</label>
+                            <input type="checkbox" id="brightness-toggle" checked 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Contrast -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="contrast-toggle" class="text-sm cursor-pointer flex-1">Contraste del Canvas:</label>
+                            <input type="checkbox" id="contrast-toggle" checked 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Vignette -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="vignette-toggle" class="text-sm cursor-pointer flex-1">Vignette (oscurecimiento bordes):</label>
+                            <input type="checkbox" id="vignette-toggle" checked 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Blur -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="blur-toggle" class="text-sm cursor-pointer flex-1">Blur (desenfoque):</label>
+                            <input type="checkbox" id="blur-toggle" checked 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Show FPS -->
+                        <div class="mb-3 flex items-center justify-between">
+                            <label for="fps-toggle" class="text-sm cursor-pointer flex-1">Mostrar Contador FPS:</label>
+                            <input type="checkbox" id="fps-toggle" 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
+                        
+                        <!-- Mobile Full Width (solo visible en mobile) -->
+                        <div id="mobile-fullwidth-option" class="mb-3 flex items-center justify-between hidden">
+                            <label for="mobile-fullwidth-toggle" class="text-sm cursor-pointer flex-1">Ancho Completo (Mobile):</label>
+                            <input type="checkbox" id="mobile-fullwidth-toggle" 
+                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        </div>
                     </div>
                 </div>
                 

@@ -411,6 +411,7 @@ export const handlePlayerInput = (store: GameStore) => {
             fuse: BOMB_FUSE,
             animationTick: 0,
             currentFrame: 0,
+            finalFrameProgress: 0,
             attachedPlatform,
         });
         

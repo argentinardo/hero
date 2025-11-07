@@ -3,6 +3,7 @@ export type GameState = 'start' | 'playing' | 'respawning' | 'floating' | 'gameo
 
 // Importar tipos de nipplejs
 import type { JoystickManager } from 'nipplejs';
+import type { GraphicsStyle } from './settings';
 
 export interface AnimationData {
     frames: number;
@@ -128,6 +129,7 @@ export interface Bomb extends GameObject {
     animationTick: number;
     currentFrame: number;
     attachedPlatform?: Platform;
+    finalFrameProgress?: number;
 }
 
 export interface Explosion extends GameObject {
@@ -384,6 +386,7 @@ export interface GameStore {
             blur: number;
             showFps: boolean;
             mobileFullWidth: boolean;
+            style: GraphicsStyle;
         };
         controls: {
             mobileMode: 'hybrid' | 'onehand' | 'virtual' | 'fixed';

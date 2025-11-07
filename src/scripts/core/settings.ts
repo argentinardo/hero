@@ -9,6 +9,8 @@
 
 import { getCurrentLanguage, type Language } from '../utils/i18n';
 
+export type GraphicsStyle = 'modern' | 'retro' | 'custom';
+
 export type ControlMode = 'hybrid' | 'onehand' | 'virtual' | 'fixed';
 
 export interface GameSettings {
@@ -25,6 +27,7 @@ export interface GameSettings {
         blur: number;             // Efecto de blur en píxeles (0 = desactivado)
         showFps: boolean;          // Mostrar contador de FPS
         mobileFullWidth: boolean;  // En mobile: ocupar todo el ancho ignorando max-width de relación de aspecto
+        style: GraphicsStyle;
     };
     controls: {
         mobileMode: ControlMode;   // Modo de control móvil: 'hybrid', 'onehand', 'virtual'
@@ -55,6 +58,7 @@ const DEFAULT_SETTINGS: GameSettings = {
         blur: 1.5,                 // Blur por defecto de 1.5px
         showFps: false, // Por defecto oculto
         mobileFullWidth: false,    // No aplica en desktop
+        style: 'retro',
     },
     controls: {
         mobileMode: 'hybrid',      // Por defecto modo híbrido
@@ -77,6 +81,7 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
         blur: 0.7,       // Blur por defecto de 0.7px en móvil (menor que desktop para mejor rendimiento)
         showFps: false,   // Por defecto oculto en mobile
         mobileFullWidth: false,   // Por defecto respeta relación de aspecto en mobile
+        style: 'retro',
     },
     controls: {
         mobileMode: 'hybrid',      // Por defecto modo híbrido en móvil
@@ -101,7 +106,7 @@ export const loadSettings = (): GameSettings => {
             // Si hay configuración guardada, usarla (respetar preferencias del usuario)
             const defaults = isMobileDevice() ? DEFAULT_MOBILE_SETTINGS : DEFAULT_SETTINGS;
             // Merge con defaults para asegurar que todas las propiedades existen
-            return {
+            const merged: GameSettings = {
                 audio: {
                     ...defaults.audio,
                     ...parsed.audio,
@@ -116,6 +121,8 @@ export const loadSettings = (): GameSettings => {
                 },
                 language: parsed.language || getCurrentLanguage() || defaults.language,
             };
+            merged.graphics.style = (parsed.graphics?.style ?? defaults.graphics.style) as GraphicsStyle;
+            return merged;
         }
     } catch (error) {
         console.warn('Error cargando configuración:', error);

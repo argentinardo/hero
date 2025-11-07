@@ -231,9 +231,23 @@ export const updateBombs = (store: GameStore) => {
         const bomb = store.bombs[i];
         bomb.fuse -= 1;
         const anim = ANIMATION_DATA.bomb;
-        bomb.animationTick = (bomb.animationTick + 1) % anim.speed;
-        if (bomb.animationTick === 0) {
-            bomb.currentFrame = (bomb.currentFrame + 1) % anim.frames;
+        bomb.animationTick += 1;
+        if (bomb.animationTick >= anim.speed) {
+            bomb.animationTick = 0;
+            if (bomb.currentFrame < anim.frames - 1) {
+                bomb.currentFrame += 1;
+                if (bomb.currentFrame === anim.frames - 1) {
+                    bomb.finalFrameProgress = 0;
+                }
+            }
+        }
+        
+        if (bomb.currentFrame === anim.frames - 1) {
+            const FINAL_FRAME_SCALE_DURATION = 20;
+            const increment = 1 / FINAL_FRAME_SCALE_DURATION;
+            bomb.finalFrameProgress = Math.min(1, (bomb.finalFrameProgress ?? 0) + increment);
+        } else {
+            bomb.finalFrameProgress = 0;
         }
         
         // Si la bomba está sobre una plataforma, seguir su movimiento

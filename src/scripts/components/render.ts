@@ -560,6 +560,21 @@ const drawLasers = (store: GameStore) => {
     const lasers = store.lasers;
     const lasersLength = lasers.length;
     
+    if (store.isDark && lasersLength > 0) {
+        const canvas = store.dom.canvas;
+        if (canvas) {
+            const viewWidth = canvas.width / scale;
+            const viewHeight = canvas.height / scale;
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.35;
+            ctx.fillStyle = 'rgba(255, 200, 200, 1)';
+            ctx.fillRect(store.cameraX, store.cameraY, viewWidth, viewHeight);
+            ctx.restore();
+        }
+    }
+
     // Usar loop for en lugar de forEach para mejor rendimiento
     for (let i = 0; i < lasersLength; i++) {
         const laser = lasers[i];
@@ -609,7 +624,44 @@ const drawBombs = (store: GameStore) => {
     // Loop for es más rápido que forEach
     for (let i = 0; i < bombsLength; i++) {
         const bomb = bombs[i];
-        ctx.drawImage(sprite, bomb.currentFrame * frameWidth, 0, frameWidth, sprite.height, bomb.x, bomb.y, bomb.width, bomb.height);
+        if (bomb.currentFrame === anim.frames - 1) {
+            const progress = Math.min(1, bomb.finalFrameProgress ?? 0);
+            const PHASE_SPLIT = 0.75;
+            const TARGET_SCALE_X = 0.9;
+            const TARGET_SCALE_Y = 1.1;
+            const COMPRESSED_SCALE_Y = 0.8;
+            
+            let scaleX = 1;
+            let scaleY = 1;
+            
+            if (progress <= PHASE_SPLIT) {
+                const phase = progress / Math.max(PHASE_SPLIT, 0.0001);
+                scaleY = 1 + (COMPRESSED_SCALE_Y - 1) * phase;
+            } else {
+                const phase = (progress - PHASE_SPLIT) / Math.max(1 - PHASE_SPLIT, 0.0001);
+                const easedPhase = 1 - Math.pow(1 - phase, 3); // ease-out cúbico para "crecer de golpe"
+                scaleX = 1 + (TARGET_SCALE_X - 1) * easedPhase;
+                scaleY = COMPRESSED_SCALE_Y + (TARGET_SCALE_Y - COMPRESSED_SCALE_Y) * easedPhase;
+            }
+            
+            const scaledWidth = bomb.width * scaleX;
+            const scaledHeight = bomb.height * scaleY;
+            const offsetX = (scaledWidth - bomb.width) / 2;
+            const offsetY = bomb.height - scaledHeight;
+            ctx.drawImage(
+                sprite,
+                bomb.currentFrame * frameWidth,
+                0,
+                frameWidth,
+                sprite.height,
+                bomb.x - offsetX,
+                bomb.y + offsetY,
+                scaledWidth,
+                scaledHeight
+            );
+        } else {
+            ctx.drawImage(sprite, bomb.currentFrame * frameWidth, 0, frameWidth, sprite.height, bomb.x, bomb.y, bomb.width, bomb.height);
+        }
     }
 };
 
@@ -1005,7 +1057,7 @@ const drawGameWorld = (store: GameStore) => {
     if (store.isDark) {
         // Modo oscuro: paredes y personajes afectados en gris, no afectados en color normal
         // OPTIMIZACIÓN: Usar loops for en lugar de múltiples filter() para mejor rendimiento
-        
+
         const walls = store.walls;
         const wallsLength = walls.length;
         const affectedWalls: typeof walls = [];

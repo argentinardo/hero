@@ -8,6 +8,7 @@ import {
     updateUndoRedoButtons,
     initializeAdvancedEditor
 } from './advancedEditor';
+import { isLegacyPasswordOverrideActive, isLegacySuperUser, requestLegacyUnlock } from '../utils/legacyAccess';
 
 const ensurePlayerUnique = (level: string[][], tile: string, x: number, y: number) => {
     if (tile !== 'P') {
@@ -53,8 +54,9 @@ const applyMousePaint = (store: GameStore) => {
     const currentCampaign = getCurrentCampaign(store);
     const isLegacyCampaign = currentCampaign?.isDefault === true;
     
-    // Legacy es de solo lectura - no se puede modificar
-    if (isLegacyCampaign) {
+    // Legacy requiere permisos especiales
+    if (isLegacyCampaign && !isLegacySuperUser() && !isLegacyPasswordOverrideActive()) {
+        requestLegacyUnlock(store).catch(() => {});
         return;
     }
     
@@ -573,20 +575,18 @@ export const bindEditorCanvas = (store: GameStore) => {
         }, 100);
     });
 
-    // Soporte para teclas WASD y flechas para scroll en el editor
+    // Soporte para teclas de flecha para scroll en el editor
     const editorKeys: Record<string, boolean> = {};
     
     window.addEventListener('keydown', (event) => {
         if (store.appState !== 'editing') return;
-        
-        // Marcar tecla como presionada
+        if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
         editorKeys[event.key] = true;
     });
     
     window.addEventListener('keyup', (event) => {
         if (store.appState !== 'editing') return;
-        
-        // Marcar tecla como no presionada
+        if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
         editorKeys[event.key] = false;
     });
     
@@ -614,7 +614,7 @@ export const bindEditorCanvas = (store: GameStore) => {
         const scrollSpeed = 10; // Píxeles por frame
         
         // Scroll horizontal (A/D o flechas izquierda/derecha)
-        if (editorKeys['a'] || editorKeys['A'] || editorKeys['ArrowLeft']) {
+        if (editorKeys['ArrowLeft']) {
             const prevCameraX = store.cameraX;
             store.cameraX = Math.max(0, store.cameraX - scrollSpeed);
             
@@ -633,7 +633,7 @@ export const bindEditorCanvas = (store: GameStore) => {
                 store.cameraX += colsToAdd * scaledTileSize;
             }
         }
-        if (editorKeys['d'] || editorKeys['D'] || editorKeys['ArrowRight']) {
+        if (editorKeys['ArrowRight']) {
             if (store.editorLevel.length > 0 && store.editorLevel[0]) {
                 const levelWidth = store.editorLevel[0].length * scaledTileSize;
                 const maxCameraX = Math.max(0, levelWidth - canvas.width);
@@ -649,7 +649,7 @@ export const bindEditorCanvas = (store: GameStore) => {
         }
         
         // Scroll vertical (W/S o flechas arriba/abajo)
-        if (editorKeys['w'] || editorKeys['W'] || editorKeys['ArrowUp']) {
+        if (editorKeys['ArrowUp']) {
             const prevCameraY = store.cameraY;
             store.cameraY = Math.max(0, store.cameraY - scrollSpeed);
             
@@ -667,7 +667,7 @@ export const bindEditorCanvas = (store: GameStore) => {
                 store.cameraY += rowsToAdd * scaledTileSize;
             }
         }
-        if (editorKeys['s'] || editorKeys['S'] || editorKeys['ArrowDown']) {
+        if (editorKeys['ArrowDown']) {
             if (store.editorLevel.length > 0) {
                 const levelHeight = store.editorLevel.length * scaledTileSize;
                 const maxCameraY = Math.max(0, levelHeight - canvas.height);

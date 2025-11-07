@@ -73,7 +73,7 @@ export const updateEnemies = (store: GameStore) => {
         }
 
         // No actualizar enemigos muertos u ocultos
-        if (enemy.isDead || enemy.isHidden) {
+        if (enemy.isDead) {
             return;
         }
         

@@ -9,7 +9,7 @@ import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
 import { playBackgroundMusic, pauseBackgroundMusic, toggleMute, getAudioState, setMusicVolume, setSFXVolume, isBackgroundMusicPlaying } from './audio';
-import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings, type ControlMode } from '../core/settings';
+import { loadSettings, saveSettings, updateSettings, applyGraphicsSettings, type ControlMode, type GraphicsStyle } from '../core/settings';
 import { applyControlMode } from './mobile-controls';
 import { t, setLanguage, getCurrentLanguage, type Language } from '../utils/i18n';
 
@@ -26,6 +26,35 @@ import {
 } from './advancedEditor';
 import { activateDuplicateRowMode, activateDeleteRowMode } from './editor';
 import { setupGallery } from './gallery';
+import { 
+    LEGACY_SUPERUSER_EMAIL,
+    LEGACY_SUPERUSER_PASSWORD,
+    activateLegacyPasswordOverride,
+    clearLegacyPasswordOverride,
+    isLegacyPasswordOverrideActive,
+    isLegacySuperUser,
+    registerLegacyUnlockHandler
+} from '../utils/legacyAccess';
+
+const requestLegacyPasswordUnlock = async (store: GameStore): Promise<boolean> => {
+    const password = await showPromptModal(
+        store,
+        'Introduce la contraseña para editar la campaña Legacy:'
+    );
+    if (!password) {
+        showNotification(store, '❌ Operación cancelada', 'No se ingresó ninguna contraseña.');
+        return false;
+    }
+    if (password.trim().toLowerCase() === LEGACY_SUPERUSER_PASSWORD) {
+        activateLegacyPasswordOverride();
+        showNotification(store, '✅ Acceso otorgado', 'Ahora puedes guardar cambios en la campaña Legacy durante esta sesión.');
+        return true;
+    }
+    showNotification(store, '❌ Contraseña incorrecta', 'No tienes permisos para editar la campaña Legacy.');
+    return false;
+};
+
+registerLegacyUnlockHandler(requestLegacyPasswordUnlock);
 
 // Función para ajustar el ancho de las barras UI al tamaño real del canvas
 export const adjustUIBars = () => {
@@ -2314,18 +2343,22 @@ export const setupUI = (store: GameStore) => {
             // Verificar si ya hay un usuario logueado al cargar
             const currentUser = ni.currentUser();
             if (currentUser && currentUser.email) {
-                const username = currentUser.email.split('@')[0];
+                const email = currentUser.email.toLowerCase();
+                const username = email.split('@')[0];
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('username', username);
+                localStorage.setItem('userEmail', email);
                 // Cargar niveles del usuario si ya está logueado
                 tryLoadUserLevels(store);
             }
             
             const afterAuth = async (user: any) => {
                 if (user && user.email) {
-                    const username = user.email.split('@')[0];
+                    const email = user.email.toLowerCase();
+                    const username = email.split('@')[0];
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
+                    localStorage.setItem('userEmail', email);
                     // Actualizar botones y área de usuario
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                     if (levelEditorBtn) {
@@ -2346,6 +2379,8 @@ export const setupUI = (store: GameStore) => {
             ni.on('logout', () => {
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('username');
+                localStorage.removeItem('userEmail');
+                clearLegacyPasswordOverride();
                 const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                 if (levelEditorBtn) {
                     levelEditorBtn.textContent = t('menu.login');
@@ -2547,6 +2582,8 @@ const setupSettingsModal = (store: GameStore) => {
     const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     const mobileFullWidthToggle = document.getElementById('mobile-fullwidth-toggle') as HTMLInputElement | null;
     const mobileFullWidthOption = document.getElementById('mobile-fullwidth-option') as HTMLElement | null;
+    const graphicsStyleSelector = document.getElementById('graphics-style-selector') as HTMLSelectElement | null;
+    const graphicsCustomOptions = document.getElementById('graphics-custom-options') as HTMLElement | null;
     const mobileControlsSettings = document.getElementById('mobile-controls-settings') as HTMLElement | null;
     const controlModeSelector = document.getElementById('control-mode-selector') as HTMLSelectElement | null;
     const languageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
@@ -2559,6 +2596,74 @@ const setupSettingsModal = (store: GameStore) => {
     }
     if (mobileControlsSettings) {
         mobileControlsSettings.style.display = isMobile ? 'block' : 'none';
+    }
+
+    const toggleElements: (HTMLInputElement | null)[] = [
+        scanlineToggle,
+        glowToggle,
+        brightnessToggle,
+        contrastToggle,
+        vignetteToggle,
+        blurToggle,
+        fpsToggle,
+        mobileFullWidthToggle,
+    ];
+
+    const updateCustomOptionsState = (style: GraphicsStyle) => {
+        const isCustomStyle = style === 'custom';
+        toggleElements.forEach(toggle => {
+            if (toggle) toggle.disabled = !isCustomStyle;
+        });
+        if (graphicsCustomOptions) {
+            graphicsCustomOptions.classList.toggle('hidden', !isCustomStyle);
+        }
+    };
+
+    const applyGraphicsPreset = (style: GraphicsStyle) => {
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                               (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+
+        if (style === 'modern') {
+            store.settings.graphics.scanline = false;
+            store.settings.graphics.glow = true;
+            store.settings.graphics.brightness = false;
+            store.settings.graphics.contrast = false;
+            store.settings.graphics.vignette = false;
+            store.settings.graphics.blur = 0;
+            store.settings.graphics.showFps = false;
+        } else if (style === 'retro') {
+            store.settings.graphics.scanline = true;
+            store.settings.graphics.glow = true;
+            store.settings.graphics.brightness = true;
+            store.settings.graphics.contrast = true;
+            store.settings.graphics.vignette = true;
+            store.settings.graphics.blur = isMobileDevice ? 0.7 : 1.5;
+            store.settings.graphics.showFps = false;
+        }
+
+        store.settings.graphics.style = style;
+        if (graphicsStyleSelector) graphicsStyleSelector.value = style;
+        updateCustomOptionsState(style);
+        applyGraphicsSettings({
+            ...store.settings.graphics,
+            showFps: store.settings.graphics.showFps ?? false,
+        });
+        saveSettingsWithLanguage(store.settings);
+        updateSettingsUI(store);
+    };
+
+    const ensureCustomStyle = () => {
+        if (store.settings.graphics.style !== 'custom') {
+            store.settings.graphics.style = 'custom';
+            if (graphicsStyleSelector) graphicsStyleSelector.value = 'custom';
+            updateCustomOptionsState('custom');
+        }
+    };
+
+    const initialStyle = (store.settings.graphics.style as GraphicsStyle) ?? 'custom';
+    updateCustomOptionsState(initialStyle);
+    if (graphicsStyleSelector) {
+        graphicsStyleSelector.value = initialStyle;
     }
     
     if (!settingsModal) return;
@@ -2646,7 +2751,25 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     // Toggles de gráficos
+    graphicsStyleSelector?.addEventListener('change', (e) => {
+        const preset = (e.target as HTMLSelectElement).value as GraphicsStyle;
+        if (preset === 'custom') {
+            store.settings.graphics.style = 'custom';
+            updateCustomOptionsState('custom');
+            applyGraphicsSettings({
+                ...store.settings.graphics,
+                showFps: store.settings.graphics.showFps ?? false,
+            });
+            saveSettingsWithLanguage(store.settings);
+            updateSettingsUI(store);
+        } else {
+            applyGraphicsPreset(preset);
+        }
+    });
+    
+    // Toggles de gráficos
     scanlineToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.scanline = enabled;
         applyGraphicsSettings({ 
@@ -2657,6 +2780,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     glowToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.glow = enabled;
         applyGraphicsSettings({ 
@@ -2667,6 +2791,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     brightnessToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.brightness = enabled;
         applyGraphicsSettings({ 
@@ -2677,6 +2802,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     contrastToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.contrast = enabled;
         applyGraphicsSettings({ 
@@ -2687,6 +2813,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     vignetteToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.vignette = enabled;
         applyGraphicsSettings({ 
@@ -2697,6 +2824,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     blurToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         // Detectar si es mobile para usar el valor apropiado
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -2711,6 +2839,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     fpsToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.showFps = enabled;
         applyGraphicsSettings({ 
@@ -2721,6 +2850,7 @@ const setupSettingsModal = (store: GameStore) => {
     });
     
     mobileFullWidthToggle?.addEventListener('change', (e) => {
+        ensureCustomStyle();
         const enabled = (e.target as HTMLInputElement).checked;
         store.settings.graphics.mobileFullWidth = enabled;
         applyGraphicsSettings({ 
@@ -2752,6 +2882,8 @@ const updateSettingsUI = (store: GameStore) => {
     const fpsToggle = document.getElementById('fps-toggle') as HTMLInputElement | null;
     const mobileFullWidthToggle = document.getElementById('mobile-fullwidth-toggle') as HTMLInputElement | null;
     const mobileFullWidthOption = document.getElementById('mobile-fullwidth-option') as HTMLElement | null;
+    const graphicsStyleSelector = document.getElementById('graphics-style-selector') as HTMLSelectElement | null;
+    const graphicsCustomOptions = document.getElementById('graphics-custom-options') as HTMLElement | null;
     
     // Mostrar/ocultar opción de fullwidth solo en mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
@@ -2789,6 +2921,28 @@ const updateSettingsUI = (store: GameStore) => {
     if (blurToggle) blurToggle.checked = store.settings.graphics.blur > 0;
     if (fpsToggle) fpsToggle.checked = store.settings.graphics.showFps;
     if (mobileFullWidthToggle) mobileFullWidthToggle.checked = store.settings.graphics.mobileFullWidth ?? false;
+    
+    const currentStyle = (store.settings.graphics.style as GraphicsStyle) ?? 'custom';
+    if (graphicsStyleSelector) {
+        graphicsStyleSelector.value = currentStyle;
+    }
+    const isCustomStyle = currentStyle === 'custom';
+    const toggleElements: (HTMLInputElement | null)[] = [
+        scanlineToggle,
+        glowToggle,
+        brightnessToggle,
+        contrastToggle,
+        vignetteToggle,
+        blurToggle,
+        fpsToggle,
+        mobileFullWidthToggle,
+    ];
+    toggleElements.forEach(toggle => {
+        if (toggle) toggle.disabled = !isCustomStyle;
+    });
+    if (graphicsCustomOptions) {
+        graphicsCustomOptions.classList.toggle('hidden', !isCustomStyle);
+    }
     
     // Actualizar selector de idioma
     const languageSelector = document.getElementById('language-selector') as HTMLSelectElement | null;
@@ -3952,9 +4106,11 @@ const setupMenuButtons = (store: GameStore) => {
             // que maneja el login, así que esto es redundante pero seguro
             const handleGoogleLogin = (user: any) => {
                 if (user && user.email) {
-                    const username = user.email.split('@')[0];
+                    const email = user.email.toLowerCase();
+                    const username = email.split('@')[0];
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
+                    localStorage.setItem('userEmail', email);
                     updateEditorButton();
                     updateUserArea();
                     startEditor(store);
@@ -3980,9 +4136,11 @@ const setupMenuButtons = (store: GameStore) => {
             // Escuchar cuando se complete el login
             ni.on('login', (user: any) => {
                 if (user && user.email) {
-                    const username = user.email.split('@')[0]; // Usar parte antes del @ como username
+                    const email = user.email.toLowerCase();
+                    const username = email.split('@')[0]; // Usar parte antes del @ como username
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
+                    localStorage.setItem('userEmail', email);
                     updateEditorButton();
                     updateUserArea();
                     startEditor(store);
@@ -3994,6 +4152,7 @@ const setupMenuButtons = (store: GameStore) => {
                 if (username) {
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
+                    localStorage.removeItem('userEmail');
                     updateEditorButton();
                     updateUserArea();
                     closeAuthModal();
@@ -4014,9 +4173,11 @@ const setupMenuButtons = (store: GameStore) => {
             // Escuchar cuando se complete el registro
             ni.on('signup', (user: any) => {
                 if (user && user.email) {
-                    const username = user.email.split('@')[0];
+                    const email = user.email.toLowerCase();
+                    const username = email.split('@')[0];
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
+                    localStorage.setItem('userEmail', email);
                     updateEditorButton();
                     updateUserArea();
                     startEditor(store);
@@ -4028,6 +4189,7 @@ const setupMenuButtons = (store: GameStore) => {
                 if (username) {
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
+                    localStorage.removeItem('userEmail');
                     updateEditorButton();
                     updateUserArea();
                     closeAuthModal();
@@ -4049,6 +4211,8 @@ const setupMenuButtons = (store: GameStore) => {
             // Limpiar localStorage
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('username');
+            localStorage.removeItem('userEmail');
+            clearLegacyPasswordOverride();
             updateEditorButton();
             updateUserArea();
             showMenu(store);
@@ -4964,11 +5128,16 @@ const setupLevelData = (store: GameStore) => {
         
         // Agregar automáticamente el nuevo nivel a la campaña actual (no a legacy)
         // Y luego actualizar el selector para mostrar solo los niveles de la campaña actual
-        import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign }) => {
+        import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign, getCampaignLevelIndices }) => {
             const currentCampaign = getCurrentCampaign(store);
             if (currentCampaign && !currentCampaign.isDefault) {
                 // Solo agregar a campañas que no sean Legacy (Legacy es de solo lectura)
                 addLevelToCampaign(store, currentCampaign.id, newIndex);
+                
+                // Obtener la posición del nivel en la campaña (order + 1 para mostrar)
+                const levelIndices = getCampaignLevelIndices(store, currentCampaign.id);
+                const positionInCampaign = levelIndices.findIndex(idx => idx === newIndex);
+                const levelNumber = positionInCampaign >= 0 ? positionInCampaign + 1 : newIndex + 1;
                 
                 // Actualizar el selector para mostrar solo los niveles de la campaña actual
                 import('./campaigns-ui').then(({ syncLevelSelectorForCampaign }) => {
@@ -4980,16 +5149,19 @@ const setupLevelData = (store: GameStore) => {
                         loadLevelFromStore();
                     }
                 });
+                
+                // Mostrar notificación con el número correcto del nivel en la campaña
+                showNotification(store, `➕ ${t('editor.newLevel')}`, t('messages.newLevelCreated').replace('{n}', `${levelNumber}`));
             } else {
                 // Si es Legacy o no hay campaña, usar el selector normal
                 syncLevelSelector(store);
                 if (store.dom.ui.levelSelectorEl) {
                     store.dom.ui.levelSelectorEl.value = newIndex.toString();
                 }
+                // Mostrar notificación con el índice global
+                showNotification(store, `➕ ${t('editor.newLevel')}`, t('messages.newLevelCreated').replace('{n}', `${newIndex + 1}`));
             }
         });
-        
-        showNotification(store, `➕ ${t('editor.newLevel')}`, t('messages.newLevelCreated').replace('{n}', `${newIndex + 1}`));
     });
 
     generateLevelBtn?.addEventListener('click', () => {
@@ -5067,11 +5239,16 @@ const setupLevelData = (store: GameStore) => {
             
             // Agregar automáticamente el nivel generado a la campaña actual (no a legacy)
             // Y luego actualizar el selector para mostrar solo los niveles de la campaña actual
-            import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign }) => {
+            import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign, getCampaignLevelIndices }) => {
                 const currentCampaign = getCurrentCampaign(store);
                 if (currentCampaign && !currentCampaign.isDefault) {
                     // Solo agregar a campañas que no sean Legacy (Legacy es de solo lectura)
                     addLevelToCampaign(store, currentCampaign.id, index);
+                    
+                    // Obtener la posición del nivel en la campaña (order + 1 para mostrar)
+                    const levelIndices = getCampaignLevelIndices(store, currentCampaign.id);
+                    const positionInCampaign = levelIndices.findIndex(idx => idx === index);
+                    const levelNumber = positionInCampaign >= 0 ? positionInCampaign + 1 : index + 1;
                     
                     // Actualizar el selector para mostrar solo los niveles de la campaña actual
                     import('./campaigns-ui').then(({ syncLevelSelectorForCampaign }) => {
@@ -5083,16 +5260,19 @@ const setupLevelData = (store: GameStore) => {
                             loadLevelFromStore();
                         }
                     });
+                    
+                    // Mostrar notificación con el número correcto del nivel en la campaña
+                    showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${levelNumber}, ${t('editor.difficulty')}: ${difficulty})`);
                 } else {
                     // Si es Legacy o no hay campaña, usar el selector normal
                     syncLevelSelector(store);
                     if (store.dom.ui.levelSelectorEl) {
                         store.dom.ui.levelSelectorEl.value = index.toString();
                     }
+                    // Mostrar notificación con el índice global
+                    showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${index + 1}, ${t('editor.difficulty')}: ${difficulty})`);
                 }
             });
-            
-            showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${index + 1}, ${t('editor.difficulty')}: ${difficulty})`);
             
             exitModalEl.classList.add('hidden');
             exitConfirmBtn.removeEventListener('click', confirmHandler);
@@ -5164,6 +5344,13 @@ const setupLevelData = (store: GameStore) => {
         // Se sirve únicamente de assets/levels.json
         // Si se modifica, se guarda en localStorage y en el archivo del proyecto (si está en desarrollo)
         if (isLegacyCampaign) {
+            if (!isLegacySuperUser() && !isLegacyPasswordOverrideActive()) {
+                const unlocked = await requestLegacyPasswordUnlock(store);
+                if (!unlocked) {
+                    ensureEditorVisible(store);
+                    return;
+                }
+            }
             // Payload completo para Legacy (todos los niveles de levels.json)
             const fullPayload = buildChunkedFile20x18(levelsAsStrings);
             
@@ -5406,12 +5593,19 @@ const setupLevelData = (store: GameStore) => {
         // Guardar automáticamente en la campaña actual
         const { getCurrentCampaign } = await import('../utils/campaigns');
         const { addLevelToCampaign, syncCampaignsToServer } = await import('../utils/campaigns');
-        const { buildChunkedFile20x18 } = await import('../utils/levels');
         
         const currentCampaign = getCurrentCampaign(store);
         if (!currentCampaign) {
             showNotification(store, `❌ Error`, 'No hay campaña seleccionada');
             return;
+        }
+        const legacyCampaignSelected = currentCampaign.isDefault === true;
+        if (legacyCampaignSelected && !isLegacySuperUser() && !isLegacyPasswordOverrideActive()) {
+            const unlocked = await requestLegacyPasswordUnlock(store);
+            if (!unlocked) {
+                ensureEditorVisible(store);
+                return;
+            }
         }
         
         const levelIndex = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
@@ -5429,8 +5623,11 @@ const setupLevelData = (store: GameStore) => {
             const isLegacyCampaign = currentCampaign.isDefault === true;
             
             if (isLegacyCampaign) {
-                // Legacy es de solo lectura - no se puede guardar
-                showNotification(store, `🔒 Solo lectura`, 'La campaña Legacy es de solo lectura. Crea una nueva campaña para guardar cambios.');
+                await saveAllLevelsToFile();
+                const message = result.alreadyExists
+                    ? 'Nivel actualizado en la campaña Legacy'
+                    : 'Nivel agregado a la campaña Legacy';
+                showNotification(store, `💾 ${message}`, 'Archivo levels.json actualizado para Legacy (via descarga o endpoint local).');
                 ensureEditorVisible(store);
                 return;
             }
@@ -5601,6 +5798,8 @@ const setupLevelData = (store: GameStore) => {
             // Limpiar localStorage
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('username');
+            localStorage.removeItem('userEmail');
+            clearLegacyPasswordOverride();
             const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
             if (levelEditorBtn) {
                 levelEditorBtn.textContent = 'INGRESAR';
