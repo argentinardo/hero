@@ -47,6 +47,17 @@ export const setupEditorState = (store: GameStore) => {
 };
 
 const applyMousePaint = (store: GameStore) => {
+    // Verificar si es Legacy (solo lectura)
+    // Usar require para acceso síncrono ya que esta función se llama frecuentemente
+    const { getCurrentCampaign } = require('../utils/campaigns');
+    const currentCampaign = getCurrentCampaign(store);
+    const isLegacyCampaign = currentCampaign?.isDefault === true;
+    
+    // Legacy es de solo lectura - no se puede modificar
+    if (isLegacyCampaign) {
+        return;
+    }
+    
     const level = store.editorLevel;
     const { gridX, gridY } = store.mouse;
     if (!level[gridY] || level[gridY][gridX] === undefined) {

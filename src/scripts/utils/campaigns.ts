@@ -194,8 +194,7 @@ export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIn
 
 /**
  * Elimina un nivel de una campaña
- * NOTA: Ahora se permite editar la campaña original
- * Para Legacy: también elimina físicamente el nivel del levelDataStore
+ * NOTA: Legacy es de solo lectura - no se permite eliminar niveles
  */
 export const removeLevelFromCampaign = (store: GameStore, campaignId: string, levelIndex: number): boolean => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
@@ -203,67 +202,24 @@ export const removeLevelFromCampaign = (store: GameStore, campaignId: string, le
         return false;
     }
     
-    // Si es Legacy, eliminar físicamente el nivel del levelDataStore
+    // Legacy es de solo lectura - no se puede modificar
     if (campaign.isDefault) {
-        // Verificar que el nivel existe
-        if (levelIndex < 0 || levelIndex >= store.levelDataStore.length) {
-            return false;
-        }
-        
-        // No permitir eliminar si solo queda un nivel
-        if (store.levelDataStore.length <= 1) {
-            return false;
-        }
-        
-        // Eliminar el nivel del levelDataStore
-        store.levelDataStore.splice(levelIndex, 1);
-        
-        // Eliminar el nivel de initialLevels también
-        if (levelIndex < store.initialLevels.length) {
-            store.initialLevels.splice(levelIndex, 1);
-        }
-        
-        // Actualizar levelDesigns
-        if (levelIndex < store.levelDesigns.length) {
-            store.levelDesigns.splice(levelIndex, 1);
-        }
-        
-        // Actualizar todos los levelIndex en la campaña Legacy que sean mayores al eliminado
-        // Reducirlos en 1
-        campaign.levels.forEach(level => {
-            if (level.levelIndex > levelIndex) {
-                level.levelIndex -= 1;
-            }
-        });
-        
-        // Eliminar la entrada que apunta al nivel eliminado
-        campaign.levels = campaign.levels.filter(l => l.levelIndex !== levelIndex);
-        
-        // Reordenar los niveles restantes
-        campaign.levels.sort((a, b) => a.order - b.order);
-        campaign.levels.forEach((level, index) => {
-            level.order = index;
-        });
-        
-        campaign.updatedAt = Date.now();
-        saveCampaigns(store.campaigns);
-        
-        return true;
-    } else {
-        // Para campañas no-Legacy, solo eliminar de la lista de la campaña
-        campaign.levels = campaign.levels.filter(l => l.levelIndex !== levelIndex);
-        
-        // Reordenar los niveles restantes
-        campaign.levels.sort((a, b) => a.order - b.order);
-        campaign.levels.forEach((level, index) => {
-            level.order = index;
-        });
-        
-        campaign.updatedAt = Date.now();
-        saveCampaigns(store.campaigns);
-        
-        return true;
+        return false;
     }
+    
+    // Para campañas no-Legacy, eliminar de la lista de la campaña
+    campaign.levels = campaign.levels.filter(l => l.levelIndex !== levelIndex);
+    
+    // Reordenar los niveles restantes
+    campaign.levels.sort((a, b) => a.order - b.order);
+    campaign.levels.forEach((level, index) => {
+        level.order = index;
+    });
+    
+    campaign.updatedAt = Date.now();
+    saveCampaigns(store.campaigns);
+    
+    return true;
 };
 
 /**

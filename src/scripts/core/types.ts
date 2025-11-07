@@ -160,6 +160,7 @@ export interface FallingEntity extends GameObject {
     // Propiedades específicas del tentáculo muerto
     tentacleFrame?: number;
     tentacleState?: 'dying';
+    direction?: number; // Dirección del tentáculo para el reflejo (1 = derecha, -1 = izquierda)
 }
 
 export interface Particle {

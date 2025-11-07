@@ -139,18 +139,24 @@ export const updateLasers = (store: GameStore) => {
                     const minHealth = Math.min(...colWalls.map(w => w.health ?? 40));
         if (minHealth <= 0) {
             applyColumnCutOrRemove(store, baseGridX, 'remove', side);
-            // Generar puntos por destruir columna completa (75 puntos total, no por tile)
+            // Generar puntos por destruir columna completa
+            // Columnas de lava (K): 100 puntos, columnas normales (C): 75 puntos
             const colWalls = store.walls.filter(w => w.type === 'destructible_v' && Math.floor(w.x / TILE_SIZE) === baseGridX);
             if (colWalls.length > 0) {
                 const centerWall = colWalls[Math.floor(colWalls.length / 2)]; // Punto central de la columna
+                // Verificar si es columna de lava (K) o columna normal (C)
+                const isLavaColumn = centerWall.tile === 'K';
+                const points = isLavaColumn ? 100 : 75;
+                const text = `+${points}`;
+                
                 store.floatingScores.push({ 
                     x: centerWall.x + centerWall.width / 2, 
                     y: centerWall.y + centerWall.height / 2, 
-                    text: '+75', 
+                    text, 
                     life: 60, 
                     opacity: 1 
                 });
-                store.score += 75; // Solo 75 puntos por toda la columna
+                store.score += points;
                 awardExtraLifeByScore(store);
             }
         } else if (minHealth <= 20) {
@@ -208,26 +214,40 @@ export const updateLasers = (store: GameStore) => {
             store.lasers.splice(i, 1);
             
             // Caso especial para el tentáculo: animación de muerte dramática
+            // Comportarse igual que otros enemigos: agregar a fallingEntities inmediatamente y eliminar de la lista
             if (enemy.type === 'tentacle') {
-                enemy.tentacleState = 'dying';
-                enemy.tentacleFrame = 27; // Frame de muerte (fila 5, columna 3 en numeración 1-based = fila 4, columna 2 en 0-based = frame 27)
-                enemy.isDead = true;
-                enemy.deathTimer = 30; // Mostrar frame de muerte por 30 frames (medio segundo)
-                // Hacer que el tentáculo salte hacia arriba
-                enemy.vy = -8; // Velocidad hacia arriba para el salto
-                enemy.vx = 0; // Sin movimiento horizontal
-                // No eliminar inmediatamente, dejar que se muestre el frame de muerte y caiga
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                                  (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
                 const particleCount = isMobile ? 5 : 15;
                 emitParticles(store, enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, particleCount, 'white');
+                
+                // Agregar inmediatamente a fallingEntities con propiedades del tentáculo muerto
+                store.fallingEntities.push({
+                    x: enemy.x,
+                    y: enemy.y,
+                    width: enemy.width,
+                    height: enemy.height,
+                    vy: -8, // Velocidad hacia arriba para el salto (igual que antes)
+                    vx: 0, // Sin movimiento horizontal
+                    tile: enemy.tile,
+                    rotation: 0,
+                    rotationSpeed: 0, // Sin rotación
+                    // Propiedades específicas para el tentáculo muerto
+                    tentacleFrame: 26, // Frame de muerte fijo
+                    tentacleState: 'dying',
+                    direction: enemy.direction ?? 1, // Guardar la dirección para el reflejo
+                });
+                
                 // Puntos por matar tentáculo
-                const points = 100;
+                const points = 200;
                 const text = `+${points}`;
                 store.floatingScores.push({ x: enemy.x, y: enemy.y, text, life: 60, opacity: 1 });
                 store.score += points;
                 awardExtraLifeByScore(store);
                 playEnemyKillSound();
+                
+                // CRÍTICO: Eliminar inmediatamente de la lista de enemigos (igual que otros enemigos)
+                store.enemies.splice(j, 1);
                 break;
             }
             

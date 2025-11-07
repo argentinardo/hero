@@ -313,6 +313,7 @@ const drawWall = (store: GameStore, wall: Wall) => {
 
 const drawEnemy = (store: GameStore, enemy: Enemy) => {
     const { ctx, scale } = getRenderContext(store);
+    // No renderizar enemigos ocultos o muertos (igual que otros enemigos)
     if (!ctx || enemy.isHidden || enemy.isDead) return;
 
     const sprite = store.sprites[enemy.tile];
@@ -419,13 +420,21 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
     if (entity.rotation) {
         ctx.rotate(entity.rotation);
     }
-    if (entity.vx < 0) {
+    
+    // Para el tentáculo muerto, usar la dirección guardada; para otros, usar vx
+    const isTentacleDeath = entity.tile === 'T' && entity.tentacleState === 'dying';
+    if (isTentacleDeath && entity.direction !== undefined) {
+        // Tentáculo: reflejar según la dirección guardada (-1 = izquierda, necesita flip)
+        if (entity.direction === -1) {
+            ctx.scale(-1, 1);
+        }
+    } else if (entity.vx < 0) {
+        // Otros enemigos: usar vx para el reflejo
         ctx.scale(-1, 1);
     }
 
     // Si es una víbora muerta, no usar animación (es una imagen estática)
     const isViperDeath = entity.tile === 'V';
-    const isTentacleDeath = entity.tile === 'T' && entity.tentacleState === 'dying';
     const anim = !isViperDeath && !isTentacleDeath ? ANIMATION_DATA[entity.tile as keyof typeof ANIMATION_DATA] : null;
     
     // Reducir el tamaño de la serpiente muerta a 3/4
@@ -688,21 +697,43 @@ const drawFloatingScores = (store: GameStore) => {
     const scores = store.floatingScores;
     const scoresLength = scores.length;
     
-    // Configurar font una sola vez (es costoso cambiarlo repetidamente)
-    ctx.font = "bold 20px 'Press Start 2P'";
-    
     // Loop for es más rápido que forEach
     for (let i = 0; i < scoresLength; i++) {
         const score = scores[i];
         ctx.save();
         ctx.globalAlpha = score.opacity;
         
-        // Texto con sombra para mejor visibilidad
-        ctx.fillStyle = '#000000';
-        ctx.fillText(score.text, score.x + 2, score.y + 2); // Sombra
+        // Verificar si es el texto "+1up" para hacerlo más grande y llamativo
+        const isOneUp = score.text === '+1up';
         
-        ctx.fillStyle = '#ffff00'; // Amarillo brillante
-        ctx.fillText(score.text, score.x, score.y);
+        if (isOneUp) {
+            // Texto "+1up" más grande y llamativo
+            ctx.font = "bold 32px 'Press Start 2P'"; // Más grande (32px vs 20px)
+            
+            // Múltiples capas de sombra para efecto más dramático
+            ctx.fillStyle = '#000000';
+            ctx.fillText(score.text, score.x + 3, score.y + 3); // Sombra principal
+            ctx.fillText(score.text, score.x + 2, score.y + 2); // Sombra secundaria
+            
+            // Color verde brillante para "+1up" (más llamativo que amarillo)
+            ctx.fillStyle = '#00ff00'; // Verde brillante
+            ctx.fillText(score.text, score.x, score.y);
+            
+            // Borde blanco adicional para más contraste
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeText(score.text, score.x, score.y);
+        } else {
+            // Texto normal para puntos de enemigos
+            ctx.font = "bold 20px 'Press Start 2P'";
+            
+            // Texto con sombra para mejor visibilidad
+            ctx.fillStyle = '#000000';
+            ctx.fillText(score.text, score.x + 2, score.y + 2); // Sombra
+            
+            ctx.fillStyle = '#ffff00'; // Amarillo brillante
+            ctx.fillText(score.text, score.x, score.y);
+        }
         
         ctx.restore();
     }

@@ -62,20 +62,18 @@ export const updateEnemies = (store: GameStore) => {
     const player = store.player;
     
     store.enemies.forEach(enemy => {
-        // No procesar animación para tentáculo muerto
-        if (!(enemy.type === 'tentacle' && enemy.tentacleState === 'dying')) {
-            const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
-            if (anim) {
-                enemy.spriteTick += 1;
-                if (enemy.spriteTick >= anim.speed) {
-                    enemy.spriteTick = 0;
-                    enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;
-                }
+        // Procesar animación para todos los enemigos vivos
+        const anim = ANIMATION_DATA[enemy.tile as keyof typeof ANIMATION_DATA];
+        if (anim) {
+            enemy.spriteTick += 1;
+            if (enemy.spriteTick >= anim.speed) {
+                enemy.spriteTick = 0;
+                enemy.currentFrame = (enemy.currentFrame + 1) % anim.frames;
             }
         }
 
-        // No actualizar enemigos muertos u ocultos (excepto tentáculos que tienen animación de muerte)
-        if (enemy.isDead && enemy.type !== 'tentacle') {
+        // No actualizar enemigos muertos u ocultos
+        if (enemy.isDead || enemy.isHidden) {
             return;
         }
         
@@ -120,6 +118,21 @@ export const updateEnemies = (store: GameStore) => {
                 const nextDistanceFromInitial = Math.abs(nextX - initialX);
                 const willExceedRange = nextDistanceFromInitial > maxRange;
                 
+                // Verificar colisiones con tiles peligrosos (lava '2', paredes, etc.)
+                let willCollideWithDangerousTile = false;
+                const nextGridX = Math.floor(nextX / TILE_SIZE);
+                const nextGridY = Math.floor(nextY / TILE_SIZE);
+                
+                if (nextGridY >= 0 && nextGridY < store.levelDesigns[store.currentLevelIndex].length &&
+                    nextGridX >= 0 && nextGridX < store.levelDesigns[store.currentLevelIndex][nextGridY].length) {
+                    const tileAtNextPos = store.levelDesigns[store.currentLevelIndex][nextGridY][nextGridX];
+                    // Evitar lava ('2'), paredes sólidas ('1', '3'), columnas destructibles ('C', 'K')
+                    if (tileAtNextPos === '2' || tileAtNextPos === '1' || tileAtNextPos === '3' || 
+                        tileAtNextPos === 'C' || tileAtNextPos === 'K') {
+                        willCollideWithDangerousTile = true;
+                    }
+                }
+                
                 // Crear un rectángulo para la posición futura
                 const futureRect = {
                     x: nextX,
@@ -143,8 +156,8 @@ export const updateEnemies = (store: GameStore) => {
                     }
                 }
                 
-                // Si va a colisionar o exceder límites, rebotar y ajustar posición
-                if (willCollideWithWall || willHitBoundary || willExceedRange) {
+                // Si va a colisionar, exceder límites o entrar en lava, rebotar y ajustar posición
+                if (willCollideWithWall || willHitBoundary || willExceedRange || willCollideWithDangerousTile) {
                     // Revertir dirección
                     enemy.vx *= -1;
                     
@@ -329,6 +342,11 @@ export const updateEnemies = (store: GameStore) => {
                     const waterRange = findWaterRangeInRow(tentacleBottomRow);
                     
                     if (waterRange) {
+                        // Verificar que no haya obstáculos encima del tentáculo
+                        // El tentáculo ocupa 2 tiles de altura, verificar el tile encima de su parte superior
+                        const tentacleTopRow = Math.floor(enemy.y / TILE_SIZE);
+                        const tentacleGridX = Math.floor(enemy.x / TILE_SIZE);
+                        
                         const waterStartX = waterRange.start * TILE_SIZE;
                         const waterEndX = (waterRange.end + 1) * TILE_SIZE;
                         
@@ -348,14 +366,110 @@ export const updateEnemies = (store: GameStore) => {
                             }
                         }
                         
-                        // Moverse hacia la posición objetivo
-                        const moveDx = targetX - enemy.x;
-                        if (Math.abs(moveDx) > 2) {
-                            const moveDirection = moveDx > 0 ? 1 : -1;
-                            enemy.x += moveDirection * followSpeed;
+                        // Función para verificar colisión con paredes (walls)
+                        const checkWallCollision = (x: number, y: number, width: number, height: number): boolean => {
+                            const tentacleRect = { x, y, width, height };
+                            for (const wall of store.walls) {
+                                // Considerar paredes sólidas, destructibles y lava (no agua)
+                                if (wall.type === 'solid' || wall.type === 'destructible' || wall.type === 'destructible_v' || wall.type === 'lava') {
+                                    if (tentacleRect.x < wall.x + TILE_SIZE &&
+                                        tentacleRect.x + tentacleRect.width > wall.x &&
+                                        tentacleRect.y < wall.y + TILE_SIZE &&
+                                        tentacleRect.y + tentacleRect.height > wall.y) {
+                                        return true; // Hay colisión
+                                    }
+                                }
+                            }
+                            return false; // No hay colisión
+                        };
+                        
+                        // Verificar si hay obstáculos en la posición objetivo (tanto tiles como walls)
+                        const newTentacleGridX = Math.floor(targetX / TILE_SIZE);
+                        let canMoveToTarget = true;
+                        
+                        // Verificar colisión con tiles del nivel
+                        if (tentacleTopRow > 0 && newTentacleGridX >= 0 && newTentacleGridX < store.levelDesigns[store.currentLevelIndex][tentacleTopRow - 1]?.length) {
+                            const tileAboveNewPos = store.levelDesigns[store.currentLevelIndex][tentacleTopRow - 1]?.[newTentacleGridX];
+                            // Si hay algo que no sea '0' (vacío) o '2' (agua), hay un obstáculo
+                            if (tileAboveNewPos && tileAboveNewPos !== '0' && tileAboveNewPos !== '2') {
+                                canMoveToTarget = false;
+                            }
+                        }
+                        
+                        // Verificar colisión con walls en la posición objetivo
+                        if (canMoveToTarget) {
+                            const tentacleTopY = enemy.y;
+                            const tentacleHeight = enemy.height;
+                            if (checkWallCollision(targetX, tentacleTopY, enemy.width, tentacleHeight)) {
+                                canMoveToTarget = false;
+                            }
+                        }
+                        
+                        // Si no puede moverse hacia el objetivo, intentar moverse en la dirección opuesta
+                        if (!canMoveToTarget) {
+                            // Cambiar de dirección: si el objetivo está a la derecha, intentar ir a la izquierda y viceversa
+                            const currentGridX = Math.floor(enemy.x / TILE_SIZE);
+                            const targetDirection = targetX > enemy.x ? 1 : -1;
                             
-                            // Asegurar que se mantenga dentro del agua
-                            enemy.x = Math.max(waterStartX, Math.min(waterEndX - enemy.width, enemy.x));
+                            // Intentar moverse en la dirección opuesta
+                            let alternativeX = enemy.x;
+                            let foundAlternative = false;
+                            
+                            // Buscar una posición libre en la dirección opuesta
+                            for (let offset = 1; offset <= 5; offset++) {
+                                const checkGridX = currentGridX + (-targetDirection * offset);
+                                if (checkGridX >= waterRange.start && checkGridX <= waterRange.end) {
+                                    const checkX = checkGridX * TILE_SIZE;
+                                    
+                                    // Verificar tiles del nivel
+                                    let tileIsFree = true;
+                                    if (tentacleTopRow > 0 && checkGridX >= 0 && checkGridX < store.levelDesigns[store.currentLevelIndex][tentacleTopRow - 1]?.length) {
+                                        const tileAboveCheck = store.levelDesigns[store.currentLevelIndex][tentacleTopRow - 1]?.[checkGridX];
+                                        if (tileAboveCheck && tileAboveCheck !== '0' && tileAboveCheck !== '2') {
+                                            tileIsFree = false;
+                                        }
+                                    }
+                                    
+                                    // Verificar colisión con walls
+                                    if (tileIsFree) {
+                                        const tentacleTopY = enemy.y;
+                                        const tentacleHeight = enemy.height;
+                                        if (!checkWallCollision(checkX, tentacleTopY, enemy.width, tentacleHeight)) {
+                                            // Encontramos una posición libre
+                                            alternativeX = checkX;
+                                            foundAlternative = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (foundAlternative) {
+                                targetX = alternativeX;
+                                canMoveToTarget = true;
+                            } else {
+                                // Si no hay alternativa, no moverse
+                                canMoveToTarget = false;
+                            }
+                        }
+                        
+                        // Moverse hacia la posición objetivo solo si puede moverse
+                        if (canMoveToTarget) {
+                            const moveDx = targetX - enemy.x;
+                            if (Math.abs(moveDx) > 2) {
+                                const moveDirection = moveDx > 0 ? 1 : -1;
+                                const newX = enemy.x + moveDirection * followSpeed;
+                                
+                                // Verificar colisión con walls en la nueva posición antes de mover
+                                const tentacleTopY = enemy.y;
+                                const tentacleHeight = enemy.height;
+                                if (!checkWallCollision(newX, tentacleTopY, enemy.width, tentacleHeight)) {
+                                    enemy.x = newX;
+                                    
+                                    // Asegurar que se mantenga dentro del agua
+                                    enemy.x = Math.max(waterStartX, Math.min(waterEndX - enemy.width, enemy.x));
+                                }
+                            }
                         }
                     }
                 }
@@ -395,43 +509,15 @@ export const updateEnemies = (store: GameStore) => {
 
                         // Cuando termine la animación de latigazo (hasta el frame 26), volver a standby
                         // La animación SIEMPRE debe llegar hasta el frame 26, sin importar el contacto
-                        if (enemy.tentacleFrame > 26) {
+                        if (enemy.tentacleFrame > 25) {
                             enemy.tentacleState = 'standby';
                             enemy.tentacleFrame = 0;
                         }
                     }
-                } else if (enemy.tentacleState === 'dying') {
-                    // Estado de muerte: mantener el frame 27 y aplicar física de salto/caída
-                    enemy.tentacleFrame = 26;
-                    
-                    // Aplicar gravedad al tentáculo moribundo
-                    enemy.vy += 0.5; // Gravedad
-                    enemy.y += enemy.vy; // Aplicar movimiento vertical
-                    
-                    // Decrementar temporizador de muerte
-                    if (enemy.deathTimer !== undefined) {
-                        enemy.deathTimer--;
-                        if (enemy.deathTimer <= 0) {
-                            // Después de mostrar el frame de muerte por medio segundo, hacer que el tentáculo caiga como entidad
-                            store.fallingEntities.push({
-                                x: enemy.x,
-                                y: enemy.y,
-                                width: enemy.width,
-                                height: enemy.height,
-                                vy: enemy.vy, // Usar la velocidad actual del tentáculo
-                                vx: 0, // Sin movimiento horizontal
-                                tile: enemy.tile,
-                                rotation: 0,
-                                rotationSpeed: 0, // Sin rotación
-                                // Propiedades específicas para el tentáculo muerto
-                                tentacleFrame: 26, // Frame de muerte fijo
-                                tentacleState: 'dying',
-                            });
-                            // Eliminar el tentáculo de la lista de enemigos
-                            enemy.isHidden = true;
-                        }
-                    }
                 }
+                // NOTA: El estado 'dying' ya no se maneja aquí porque el tentáculo se elimina
+                // inmediatamente de la lista de enemigos cuando muere (igual que otros enemigos)
+                // La animación de muerte se maneja en fallingEntities
                 
                 break;
             }

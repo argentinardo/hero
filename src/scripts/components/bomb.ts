@@ -112,7 +112,8 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
         awardExtraLifeByScore(store);
     });
     
-    // Procesar columnas (75 puntos por columna completa)
+    // Procesar columnas
+    // Columnas de lava (K): 100 puntos, columnas normales (C): 75 puntos
     columnGroups.forEach(columnWalls => {
         columnWalls.forEach(wall => {
             addFallingChunks(store, wall);
@@ -122,14 +123,19 @@ const destroyWallsInRadius = (store: GameStore, centerX: number, centerY: number
         // Solo generar puntos una vez por columna
         if (columnWalls.length > 0) {
             const centerWall = columnWalls[Math.floor(columnWalls.length / 2)];
+            // Verificar si es columna de lava (K) o columna normal (C)
+            const isLavaColumn = centerWall.tile === 'K';
+            const points = isLavaColumn ? 100 : 75;
+            const text = `+${points}`;
+            
             store.floatingScores.push({ 
                 x: centerWall.x + centerWall.width / 2, 
                 y: centerWall.y + centerWall.height / 2, 
-                text: '+75', 
+                text, 
                 life: 60, 
                 opacity: 1 
             });
-            store.score += 75; // Solo 75 puntos por toda la columna
+            store.score += points;
             awardExtraLifeByScore(store);
         }
     });

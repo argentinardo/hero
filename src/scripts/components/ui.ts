@@ -1298,6 +1298,18 @@ export const awardExtraLifeByScore = (store: GameStore) => {
         import('./audio').then(({ playOneUpSound }) => {
             playOneUpSound();
         });
+        
+        // Mostrar texto "+1up" arriba del héroe (más grande y llamativo)
+        const { player } = store;
+        if (player) {
+            store.floatingScores.push({
+                x: player.x + player.width / 2 - 35, // Centrar el texto (ajustado para texto más grande)
+                y: player.y - 40, // Arriba del héroe
+                text: '+1up',
+                life: 90, // Duración similar a otros textos flotantes
+                opacity: 1,
+            });
+        }
     }
 };
 
@@ -1326,35 +1338,8 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         if (isLoggedIn) {
             await tryLoadUserLevels(store);
         }
-    } else {
-        // Para Legacy, solo cargar cambios desde localStorage si existen
-        // pero nunca desde la BD
-        const savedLevels = localStorage.getItem('userLevels');
-        if (savedLevels) {
-            try {
-                const data = JSON.parse(savedLevels);
-                if (data && data.levels && Array.isArray(data.levels)) {
-                    // Si hay niveles guardados en localStorage, aplicar los cambios
-                    // pero solo si son del mismo tamaño que los originales (Legacy)
-                    const { expandChunkedLevels } = await import('../utils/levels');
-                    const expandedLevels = data.format === 'chunks20x18' 
-                        ? expandChunkedLevels(data)
-                        : data.levels;
-                    
-                    if (expandedLevels.length === store.initialLevels.length) {
-                        // Los niveles de Legacy guardados en localStorage
-                        store.levelDataStore = expandedLevels.map((lvl: string[]) => 
-                            typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : (lvl as any)
-                        ) as string[][][];
-                        store.levelDesigns = JSON.parse(JSON.stringify(expandedLevels));
-                        console.log('Cambios de Legacy cargados desde localStorage');
-                    }
-                }
-            } catch (e) {
-                console.error('Error cargando cambios de Legacy desde localStorage:', e);
-            }
-        }
     }
+    // Legacy: NO cargar cambios desde localStorage - siempre usar niveles originales de assets/levels.json
     
     // Actualizar el selector de niveles
     // Si hay una campaña seleccionada, mostrar solo los niveles de esa campaña
@@ -4979,58 +4964,93 @@ const setupLevelData = (store: GameStore) => {
     });
 
     generateLevelBtn?.addEventListener('click', () => {
-        const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        const canvas = store.dom.canvas;
-        if (!canvas) return;
+        // Mostrar modal de advertencia sobre función experimental
+        const exitModalEl = document.getElementById('exit-modal');
+        const exitTitleEl = document.getElementById('exit-title');
+        const exitTextEl = document.getElementById('exit-text');
+        const exitConfirmBtn = document.getElementById('exit-confirm-btn');
+        const exitCancelBtn = document.getElementById('exit-cancel-btn');
         
-        // Calcular dimensiones del nivel basado en el canvas
-        // Usar exactamente el ancho del canvas para evitar columnas vacías
-        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1600 / 72 = ~22 tiles
-        // Los niveles son largos: 90-180 tiles de altura (generar aleatoriamente en ese rango)
-        const levelHeight = 90 + Math.floor(Math.random() * 91); // 90-180 tiles
-        
-        // Generar nivel con dificultad basada en el índice
-        const difficulty = Math.min(index + 1, 10);
-        const generatedLevel = generateLevel({
-            width: levelWidth,
-            height: levelHeight,
-            difficulty: difficulty
-        });
-        
-        // Convertir a formato del editor (array de arrays)
-        store.editorLevel = generatedLevel.map((row: string) => row.split(''));
-        
-        // Centrar la cámara en el jugador si existe
-        if (store.editorLevel.length > 0) {
-            let playerCol = 0;
-            let playerRow = 0;
-            outerCenterGen: for (let r = 0; r < store.editorLevel.length; r++) {
-                const c = store.editorLevel[r]?.indexOf('P') ?? -1;
-                if (c !== -1) {
-                    playerRow = r;
-                    playerCol = c;
-                    break outerCenterGen;
-                }
-            }
-            const levelCols = store.editorLevel[0]?.length ?? 0;
-            const levelRows = store.editorLevel.length;
-            const levelWidth = levelCols * TILE_SIZE;
-            const levelHeight = levelRows * TILE_SIZE;
-            const desiredX = playerCol * TILE_SIZE - (canvas?.width ?? 0) / 2;
-            const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
-            const maxCamX = Math.max(0, levelWidth - (canvas?.width ?? 0));
-            const maxCamY = Math.max(0, levelHeight - (canvas?.height ?? 0));
-            store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
-            store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
-        } else {
-            store.cameraX = 0;
-            store.cameraY = 0;
+        if (!exitModalEl || !exitTitleEl || !exitTextEl || !exitConfirmBtn || !exitCancelBtn) {
+            return;
         }
         
-        // Reinicializar el editor avanzado
-        initializeAdvancedEditor(store);
+        exitTitleEl.textContent = '⚠️ Función Experimental';
+        exitTextEl.textContent = 'El generador de niveles es una función experimental. Esto sobrescribirá el contenido actual del nivel. ¿Deseas continuar?';
+        exitModalEl.classList.remove('hidden');
         
-        showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${index + 1}, ${t('editor.difficulty')}: ${difficulty})`);
+        const confirmHandler = () => {
+            const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
+            const canvas = store.dom.canvas;
+            if (!canvas) {
+                exitModalEl.classList.add('hidden');
+                exitConfirmBtn.removeEventListener('click', confirmHandler);
+                exitCancelBtn.removeEventListener('click', cancelHandler);
+                return;
+            }
+            
+            // Calcular dimensiones del nivel basado en el canvas
+            // Usar exactamente el ancho del canvas para evitar columnas vacías
+            const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1600 / 72 = ~22 tiles
+            // Los niveles son largos: 90-180 tiles de altura (generar aleatoriamente en ese rango)
+            const levelHeight = 90 + Math.floor(Math.random() * 91); // 90-180 tiles
+            
+            // Generar nivel con dificultad basada en el índice
+            const difficulty = Math.min(index + 1, 10);
+            const generatedLevel = generateLevel({
+                width: levelWidth,
+                height: levelHeight,
+                difficulty: difficulty
+            });
+            
+            // Convertir a formato del editor (array de arrays)
+            store.editorLevel = generatedLevel.map((row: string) => row.split(''));
+            
+            // Centrar la cámara en el jugador si existe
+            if (store.editorLevel.length > 0) {
+                let playerCol = 0;
+                let playerRow = 0;
+                outerCenterGen: for (let r = 0; r < store.editorLevel.length; r++) {
+                    const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+                    if (c !== -1) {
+                        playerRow = r;
+                        playerCol = c;
+                        break outerCenterGen;
+                    }
+                }
+                const levelCols = store.editorLevel[0]?.length ?? 0;
+                const levelRows = store.editorLevel.length;
+                const levelWidthPx = levelCols * TILE_SIZE;
+                const levelHeightPx = levelRows * TILE_SIZE;
+                const desiredX = playerCol * TILE_SIZE - (canvas?.width ?? 0) / 2;
+                const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
+                const maxCamX = Math.max(0, levelWidthPx - (canvas?.width ?? 0));
+                const maxCamY = Math.max(0, levelHeightPx - (canvas?.height ?? 0));
+                store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+                store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
+            } else {
+                store.cameraX = 0;
+                store.cameraY = 0;
+            }
+            
+            // Reinicializar el editor avanzado
+            initializeAdvancedEditor(store);
+            
+            showNotification(store, `🎲 ${t('editor.generateLevel')}`, `${t('messages.levelGenerated')} (${t('editor.levelNumber')} ${index + 1}, ${t('editor.difficulty')}: ${difficulty})`);
+            
+            exitModalEl.classList.add('hidden');
+            exitConfirmBtn.removeEventListener('click', confirmHandler);
+            exitCancelBtn.removeEventListener('click', cancelHandler);
+        };
+        
+        const cancelHandler = () => {
+            exitModalEl.classList.add('hidden');
+            exitConfirmBtn.removeEventListener('click', confirmHandler);
+            exitCancelBtn.removeEventListener('click', cancelHandler);
+        };
+        
+        exitConfirmBtn.addEventListener('click', confirmHandler);
+        exitCancelBtn.addEventListener('click', cancelHandler);
     });
 
     playTestBtn?.addEventListener('click', () => {
@@ -5353,60 +5373,19 @@ const setupLevelData = (store: GameStore) => {
             const isLegacyCampaign = currentCampaign.isDefault === true;
             
             if (isLegacyCampaign) {
-                // Para Legacy: guardar en el archivo levels.json
-                const levelsAsStrings = store.levelDataStore.map((level: string[][]) => 
-                    level.map((row: string[]) => row.join(''))
-                );
-                const fullPayload = buildChunkedFile20x18(levelsAsStrings);
-                
-                // Guardar en localStorage
-                try {
-                    localStorage.setItem('userLevels', JSON.stringify(fullPayload));
-                    console.log('Cambios de campaña Legacy guardados en localStorage');
-                } catch (localError) {
-                    console.error('Error guardando en localStorage:', localError);
-                }
-                
-                // Intentar guardar directamente en el archivo del proyecto (solo en desarrollo)
-                try {
-                    const response = await fetch('/api/save-levels', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(fullPayload),
-                    });
-                    
-                    if (response.ok) {
-                        console.log('Archivo levels.json guardado exitosamente en src/assets/levels.json');
-                        showNotification(store, `💾 Nivel guardado`, 'Nivel guardado en Legacy. Archivo levels.json actualizado en src/assets/levels.json');
-                        return;
-                    }
-                } catch (apiError) {
-                    console.warn('Endpoint /api/save-levels no disponible, descargando archivo...', apiError);
-                }
-                
-                // Fallback: descargar el archivo
-                const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const anchor = document.createElement('a');
-                anchor.href = url;
-                anchor.download = 'levels.json';
-                document.body.appendChild(anchor);
-                anchor.click();
-                document.body.removeChild(anchor);
-                URL.revokeObjectURL(url);
-                
-                showNotification(store, `💾 Nivel guardado`, 'Nivel guardado en Legacy. Archivo levels.json descargado. Reemplaza src/assets/levels.json con el archivo descargado.');
-            } else {
-                // Para otras campañas: sincronizar con el servidor
-                await syncCampaignsToServer(store);
-                
-                const message = result.alreadyExists 
-                    ? 'Nivel actualizado en la campaña'
-                    : 'Nivel agregado a la campaña';
-                showNotification(store, `💾 ${message}`, `${message}: ${currentCampaign.name}`);
+                // Legacy es de solo lectura - no se puede guardar
+                showNotification(store, `🔒 Solo lectura`, 'La campaña Legacy es de solo lectura. Crea una nueva campaña para guardar cambios.');
+                ensureEditorVisible(store);
+                return;
             }
+            
+            // Para otras campañas: sincronizar con el servidor
+            await syncCampaignsToServer(store);
+            
+            const message = result.alreadyExists 
+                ? 'Nivel actualizado en la campaña'
+                : 'Nivel agregado a la campaña';
+            showNotification(store, `💾 ${message}`, `${message}: ${currentCampaign.name}`);
         } else {
             showNotification(store, `❌ Error`, 'No se pudo guardar el nivel');
         }
