@@ -610,13 +610,14 @@ export const loadLevel = (store: GameStore) => {
         const { messageOverlay, messageText, messageTitle } = store.dom.ui;
         // Guardar el score antes de mostrar el mensaje
         const finalScore = store.score;
+        store.lastRunScore = finalScore;
         if (messageOverlay && messageText) {
             // Si messageTitle existe, usarlo; si no, incluir el título en el texto
             if (messageTitle) {
                 messageTitle.textContent = '¡HAS GANADO!';
-                messageText.textContent = `Puntuación final: ${finalScore}. Presiona ENTER para volver al inicio.`;
+                messageText.textContent = `Puntuación final: ${store.lastRunScore}. Presiona ENTER para volver al inicio.`;
             } else {
-                messageText.innerHTML = `<strong>¡HAS GANADO!</strong><br>Puntuación final: ${finalScore}.<br>Presiona ENTER para volver al inicio.`;
+                messageText.innerHTML = `<strong>¡HAS GANADO!</strong><br>Puntuación final: ${store.lastRunScore}.<br>Presiona ENTER para volver al inicio.`;
             }
             messageOverlay.style.display = 'flex';
         }

@@ -78,7 +78,7 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
         brightness: true, // Activado en móvil
         contrast: true,   // Activado en móvil
         vignette: true,   // Activado en móvil
-        blur: 0.7,       // Blur por defecto de 0.7px en móvil (menor que desktop para mejor rendimiento)
+        blur: 0,         // Evitar blur en mobile para compatibilidad
         showFps: false,   // Por defecto oculto en mobile
         mobileFullWidth: false,   // Por defecto respeta relación de aspecto en mobile
         style: 'retro',

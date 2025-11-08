@@ -641,6 +641,11 @@ export const showMenu = (store: GameStore) => {
     
     store.appState = 'menu';
     store.gameState = 'start';
+    activePauseReasons.clear();
+    store.isPaused = false;
+    if (store.player) {
+        store.player.isFrozen = false;
+    }
     setBodyClass('menu');
     
     // Mostrar selector de idioma (banderas) cuando esté en el menú
@@ -2020,6 +2025,38 @@ const drawAvatar = (store: GameStore, avatarCode: string, canvas: HTMLCanvasElem
 // Canvas de avatares para animación
 const avatarCanvases: Array<{ code: string; canvas: HTMLCanvasElement }> = [];
 
+const activePauseReasons = new Set<string>();
+
+const pauseGame = (store: GameStore, reason: string, options?: { freezePlayer?: boolean }) => {
+    const wasEmpty = activePauseReasons.size === 0;
+    activePauseReasons.add(reason);
+    if (wasEmpty) {
+        store.isPaused = true;
+        if (options?.freezePlayer !== false && store.player) {
+            store.player.isFrozen = true;
+        }
+        pauseBackgroundMusic();
+    } else if (options?.freezePlayer && store.player) {
+        store.player.isFrozen = true;
+    }
+};
+
+const resumeGame = (store: GameStore, reason: string, options?: { unfreezePlayer?: boolean }) => {
+    if (!activePauseReasons.has(reason)) {
+        return;
+    }
+    activePauseReasons.delete(reason);
+    if (activePauseReasons.size === 0) {
+        store.isPaused = false;
+        if (options?.unfreezePlayer !== false && store.player) {
+            store.player.isFrozen = false;
+        }
+        if (store.appState === 'playing' && store.gameState === 'playing') {
+            playBackgroundMusic().catch(() => {});
+        }
+    }
+};
+
 const startPaletteAnimation = (store: GameStore) => {
     const animate = (timestamp: number) => {
         paletteEntries.forEach(entry => drawPaletteEntry(store, entry.tile, entry.canvas, timestamp));
@@ -2560,7 +2597,6 @@ export const tryLoadUserLevels = async (store: GameStore) => {
  */
 const setupSettingsModal = (store: GameStore) => {
     const settingsModal = document.getElementById('settings-modal');
-    const settingsCloseBtn = document.getElementById('settings-close-btn') as HTMLButtonElement | null;
     
     // Sliders de volumen
     const musicVolumeSlider = document.getElementById('music-volume-slider') as HTMLInputElement | null;
@@ -2698,12 +2734,8 @@ const setupSettingsModal = (store: GameStore) => {
         });
     }
     
-    // Cerrar modal
-    const closeModal = () => {
-        settingsModal.classList.add('hidden');
-    };
-    
-    settingsCloseBtn?.addEventListener('click', closeModal);
+    // Cerrar I/O modal
+    const closeModal = () => closeSettingsModal(store);
     
     // Cerrar al hacer click fuera del modal
     settingsModal.addEventListener('click', (e) => {
@@ -3027,8 +3059,9 @@ const updateAllTexts = (store: GameStore) => {
     
     if (gameoverTitle) gameoverTitle.textContent = t('game.gameOver');
     if (gameoverScore) {
-        const scoreValue = document.getElementById('gameover-score-value')?.textContent || '0';
+        const scoreValue = typeof store.lastRunScore === 'number' ? store.lastRunScore : 0;
         gameoverScore.innerHTML = `${t('game.finalScore')}: <span id="gameover-score-value" class="text-yellow-400">${scoreValue}</span>`;
+        store.dom.ui.gameoverScoreValue = document.getElementById('gameover-score-value') as HTMLSpanElement | null;
     }
     if (gameoverRetryBtn) gameoverRetryBtn.textContent = t('game.retry');
     if (gameoverMenuBtn) gameoverMenuBtn.textContent = t('game.mainMenu');
@@ -3037,12 +3070,9 @@ const updateAllTexts = (store: GameStore) => {
     const settingsTitle = document.querySelector('#settings-modal .title');
     const settingsLanguageTitle = document.getElementById('settings-language-title');
     const settingsLanguageLabel = document.getElementById('settings-language-label');
-    const settingsCloseBtn = document.getElementById('settings-close-btn');
-    
     if (settingsTitle) settingsTitle.textContent = t('settings.title');
     if (settingsLanguageTitle) settingsLanguageTitle.textContent = t('settings.language');
     if (settingsLanguageLabel) settingsLanguageLabel.textContent = `${t('settings.language')}:`;
-    if (settingsCloseBtn) settingsCloseBtn.textContent = t('modals.close');
     
     // Actualizar labels de configuración
     updateSettingsLabels();
@@ -3363,6 +3393,15 @@ const updateAuthModalTexts = () => {
     if (authCancelBtn) authCancelBtn.textContent = t('modals.cancel');
 };
 
+const closeSettingsModal = (store: GameStore) => {
+    const settingsModal = document.getElementById('settings-modal');
+    if (!settingsModal || settingsModal.classList.contains('hidden')) return;
+    settingsModal.classList.add('hidden');
+    if (store.appState === 'playing') {
+        resumeGame(store, 'settings');
+    }
+};
+
 /**
  * Abre el modal de configuración y carga los valores actuales
  */
@@ -3377,6 +3416,10 @@ const openSettingsModal = (store: GameStore) => {
     
     const settingsModal = document.getElementById('settings-modal');
     if (!settingsModal) return;
+    
+    if (store.appState === 'playing') {
+        pauseGame(store, 'settings');
+    }
     
     // Actualizar UI con valores actuales
     updateSettingsUI(store);
@@ -3407,201 +3450,29 @@ const setupHamburgerMenu = (
     store: GameStore,
     hamburgerBtn: HTMLButtonElement | null,
     hamburgerBtnMobile: HTMLButtonElement | null,
-    hamburgerMenu: HTMLElement | null,
-    pauseResumeBtn: HTMLButtonElement | null,
-    restartGameBtn: HTMLButtonElement | null,
-    backToMenuBtnGame: HTMLButtonElement | null,
-    resumeEditorBtnMenu: HTMLButtonElement | null,
-    creditsBtnHamburger: HTMLButtonElement | null
+    _hamburgerMenu: HTMLElement | null,
+    _pauseResumeBtn: HTMLButtonElement | null,
+    _restartGameBtn: HTMLButtonElement | null,
+    _backToMenuBtnGame: HTMLButtonElement | null,
+    _resumeEditorBtnMenu: HTMLButtonElement | null,
+    _creditsBtnHamburger: HTMLButtonElement | null
 ) => {
-    let isMenuOpen = false;
-    
-    // Función para toggle del menú
-    const toggleMenu = () => {
-        if (!hamburgerMenu) return;
-        
-        isMenuOpen = !isMenuOpen;
-        
-        if (isMenuOpen) {
-            hamburgerMenu.classList.remove('hidden');
-            hamburgerBtn?.classList.add('active');
-            hamburgerBtnMobile?.classList.add('active');
-        } else {
-            hamburgerMenu.classList.add('hidden');
-            hamburgerBtn?.classList.remove('active');
-            hamburgerBtnMobile?.classList.remove('active');
-        }
+    const showPauseMenu = () => {
+        const pauseMenu = document.getElementById('pause-menu-modal');
+        if (!pauseMenu) return;
+        pauseGame(store, 'pause-menu');
+        pauseMenu.classList.remove('hidden');
     };
     
-    // Función para cerrar el menú
-    const closeMenu = () => {
-        if (!hamburgerMenu) return;
-        isMenuOpen = false;
-        hamburgerMenu.classList.add('hidden');
-        hamburgerBtn?.classList.remove('active');
-        hamburgerBtnMobile?.classList.remove('active');
-    };
-    
-    // Listeners para los botones hamburguesa
     hamburgerBtn?.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Abrir el modal de pausa (pause-menu-modal) en lugar del menú hamburguesa
-        const pauseMenu = document.getElementById('pause-menu-modal');
-        if (pauseMenu) {
-            pauseMenu.classList.remove('hidden');
-        }
+        showPauseMenu();
     });
     
     hamburgerBtnMobile?.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Abrir el modal de pausa (pause-menu-modal) en lugar del menú hamburguesa
-        const pauseMenu = document.getElementById('pause-menu-modal');
-        if (pauseMenu) {
-            pauseMenu.classList.remove('hidden');
-        }
+        showPauseMenu();
     });
-    
-    // Cerrar menú al hacer click fuera
-    document.addEventListener('click', (e) => {
-        if (isMenuOpen && hamburgerMenu && !hamburgerMenu.contains(e.target as Node)) {
-            closeMenu();
-        }
-    });
-    
-    // Botón de pausa/reanudar
-    pauseResumeBtn?.addEventListener('click', () => {
-        store.isPaused = !store.isPaused;
-        
-        if (store.isPaused) {
-            pauseBackgroundMusic();
-            pauseResumeBtn.textContent = t('game.resume');
-            // Congelar el juego
-            store.player.isFrozen = true;
-        } else {
-            playBackgroundMusic().catch(() => {});
-            pauseResumeBtn.textContent = t('game.pause');
-            // Descongelar el juego
-            store.player.isFrozen = false;
-        }
-        
-        closeMenu();
-    });
-    
-    // Botón de reiniciar
-    restartGameBtn?.addEventListener('click', () => {
-        closeMenu();
-        const exitModalEl = store.dom.ui.exitModalEl;
-        const exitTitleEl = store.dom.ui.exitTitleEl;
-        const exitTextEl = store.dom.ui.exitTextEl;
-        const exitConfirmBtn = store.dom.ui.exitConfirmBtn;
-        const exitCancelBtn = store.dom.ui.exitCancelBtn;
-        
-        if (!exitModalEl) return;
-        if (exitTitleEl) exitTitleEl.textContent = t('messages.restartLevelTitle');
-        if (exitTextEl) exitTextEl.textContent = t('messages.restartLevelMessage');
-        exitModalEl.classList.remove('hidden');
-        
-        const confirmHandler = () => {
-            // Despausar si estaba pausado
-            if (store.isPaused) {
-                store.isPaused = false;
-                store.player.isFrozen = false;
-                if (pauseResumeBtn) pauseResumeBtn.textContent = `⏸️ ${t('game.pause')}`;
-            }
-            startGame(store, null, store.currentLevelIndex, true);
-            exitModalEl.classList.add('hidden');
-            exitConfirmBtn?.removeEventListener('click', confirmHandler);
-            exitCancelBtn?.removeEventListener('click', cancelHandler);
-        };
-        
-        const cancelHandler = () => {
-            exitModalEl.classList.add('hidden');
-            exitConfirmBtn?.removeEventListener('click', confirmHandler);
-            exitCancelBtn?.removeEventListener('click', cancelHandler);
-        };
-        
-        exitConfirmBtn?.addEventListener('click', confirmHandler);
-        exitCancelBtn?.addEventListener('click', cancelHandler);
-    });
-    
-    // Botón de configuración
-    const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement | null;
-    settingsBtn?.addEventListener('click', () => {
-        closeMenu();
-        openSettingsModal(store);
-    });
-    
-    // Botón de volver al menú
-    backToMenuBtnGame?.addEventListener('click', () => {
-        closeMenu();
-        const exitModalEl = store.dom.ui.exitModalEl;
-        const exitTitleEl = store.dom.ui.exitTitleEl;
-        const exitTextEl = store.dom.ui.exitTextEl;
-        const exitConfirmBtn = store.dom.ui.exitConfirmBtn;
-        const exitCancelBtn = store.dom.ui.exitCancelBtn;
-        
-        if (!exitModalEl) return;
-        if (exitTitleEl) exitTitleEl.textContent = t('modals.backToMainMenuTitle');
-        if (exitTextEl) exitTextEl.textContent = t('modals.backToMainMenuMessage');
-        exitModalEl.classList.remove('hidden');
-        
-        const confirmHandler = () => {
-            // Despausar si estaba pausado
-            if (store.isPaused) {
-                store.isPaused = false;
-                store.player.isFrozen = false;
-                if (pauseResumeBtn) pauseResumeBtn.textContent = t('game.pause');
-            }
-            showMenu(store);
-            exitModalEl.classList.add('hidden');
-            exitConfirmBtn?.removeEventListener('click', confirmHandler);
-            exitCancelBtn?.removeEventListener('click', cancelHandler);
-        };
-        
-        const cancelHandler = () => {
-            exitModalEl.classList.add('hidden');
-            exitConfirmBtn?.removeEventListener('click', confirmHandler);
-            exitCancelBtn?.removeEventListener('click', cancelHandler);
-        };
-        
-        exitConfirmBtn?.addEventListener('click', confirmHandler);
-        exitCancelBtn?.addEventListener('click', cancelHandler);
-    });
-    
-    // Botón de volver al editor (solo visible cuando se está probando un nivel)
-    resumeEditorBtnMenu?.addEventListener('click', () => {
-        closeMenu();
-        // Despausar si estaba pausado
-        if (store.isPaused) {
-            store.isPaused = false;
-            store.player.isFrozen = false;
-            if (pauseResumeBtn) pauseResumeBtn.textContent = t('game.pause');
-        }
-        
-        // Conservar el nivel actual antes de volver al editor
-        const index = store.currentLevelIndex;
-        const levelRows = store.levelDesigns[index] ?? [];
-        store.editorLevel = levelRows.map(row => row.split(''));
-        
-        startEditor(store, true);
-    });
-    
-    // Botón de créditos en menú hamburguesa
-    creditsBtnHamburger?.addEventListener('click', () => {
-        closeMenu();
-        const creditsModal = document.getElementById('credits-modal');
-        if (creditsModal) {
-            creditsModal.classList.remove('hidden');
-            // Remover clase de activación al abrir para resetear animaciones
-            creditsModal.classList.remove('paolo-activated');
-            // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
-        }
-    });
-    
-    // Actualizar visibilidad del botón "Volver al Editor" cuando sea necesario
-    const updateResumeEditorVisibility = () => {
-        // Este se actualizará desde startGame cuando sea necesario
-    };
 };
 
 // Variables globales para partículas de créditos
@@ -4401,8 +4272,27 @@ const setupMenuButtons = (store: GameStore) => {
     };
 
     // Abrir menú flotante
-    const openPauseMenu = () => pauseMenu?.classList.remove('hidden');
-    const closePauseMenu = () => pauseMenu?.classList.add('hidden');
+    const openPauseMenu = () => {
+        if (pauseMenu) {
+            pauseGame(store, 'pause-menu');
+            pauseMenu.classList.remove('hidden');
+        }
+    };
+    const closePauseMenu = (releaseLock: boolean = true) => {
+        if (pauseMenu) {
+            pauseMenu.classList.add('hidden');
+        }
+        if (releaseLock) {
+            resumeGame(store, 'pause-menu');
+        }
+    };
+    if (pauseMenu) {
+        pauseMenu.addEventListener('click', (event) => {
+            if (event.target === pauseMenu) {
+                closePauseMenu();
+            }
+        });
+    }
     menuBtn?.addEventListener('click', openPauseMenu);
 
     restartBtn?.addEventListener('click', () => {
@@ -4416,11 +4306,6 @@ const setupMenuButtons = (store: GameStore) => {
     // Acciones del menú flotante
     pauseResumeBtn?.addEventListener('click', () => {
         closePauseMenu();
-        // Si está pausado, reanudar
-        if (store.isPaused) {
-            store.isPaused = false;
-            store.player.isFrozen = false;
-        }
     });
     pauseRestartBtn?.addEventListener('click', () => {
         closePauseMenu();
@@ -4441,11 +4326,12 @@ const setupMenuButtons = (store: GameStore) => {
     // Botón de configuración en el menú de pausa
     const pauseSettingsBtn = document.getElementById('pause-settings-btn') as HTMLButtonElement | null;
     pauseSettingsBtn?.addEventListener('click', () => {
-        closePauseMenu();
         openSettingsModal(store);
+        closePauseMenu(false);
+        resumeGame(store, 'pause-menu');
     });
     
-    pauseCancelBtn?.addEventListener('click', closePauseMenu);
+    pauseCancelBtn?.addEventListener('click', () => closePauseMenu());
 
     restartBtnDesktop?.addEventListener('click', () => {
         openExitModal(t('messages.restartLevelTitle'), t('messages.restartLevelMessage'), () => {

@@ -540,12 +540,15 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     if (store.lives <= 0) {
         window.setTimeout(() => {
             store.gameState = 'gameover';
-            const { gameoverModal, gameoverScoreValue } = store.dom.ui;
+            store.lastRunScore = store.score;
+            const { gameoverModal } = store.dom.ui;
             
             // Mostrar modal de Game Over con puntuación
             if (gameoverModal) {
-                if (gameoverScoreValue) {
-                    gameoverScoreValue.textContent = store.score.toString();
+                const scoreEl = store.dom.ui.gameoverScoreValue ?? document.getElementById('gameover-score-value');
+                if (scoreEl) {
+                    scoreEl.textContent = store.lastRunScore.toString();
+                    store.dom.ui.gameoverScoreValue = scoreEl as HTMLSpanElement;
                 }
                 gameoverModal.classList.remove('hidden');
             }
@@ -1005,6 +1008,12 @@ const updatePlayerAnimation = (store: GameStore) => {
 
 export const updatePlayer = (store: GameStore) => {
     const { player } = store;
+    
+    if (store.isPaused) {
+        stopJetpackSound();
+        stopStepsSound();
+        return;
+    }
     
     // Si está flotando, aplicar movimiento horizontal y descenso hacia posición objetivo
     if (player.isFloating && store.gameState === 'floating') {

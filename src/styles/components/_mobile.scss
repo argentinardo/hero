@@ -586,60 +586,66 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         height: 18vh;
         @include directional-button;
         position: relative;
-        font-size: 2rem;
+        font-size: 0; /* ocultar caracteres unicode originales */
         font-weight: bold;
-        color: rgba(220, 220, 220, 0.9);
+        color: transparent;
         display: flex;
         align-items: center;
         justify-content: center;
-        
+        --arrow-color: rgba(220, 220, 220, 0.6);
+        --arrow-rotation: 0deg;
+
+        &::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: min(8vh, 58%);
+            height: min(8vh, 58%);
+            background-color: var(--arrow-color);
+            clip-path: polygon(50% 0%, 100% 60%, 70% 60%, 70% 100%, 30% 100%, 30% 60%, 0% 60%);
+            transform: translate(-50%, -50%) rotate(var(--arrow-rotation));
+            transform-origin: 50% 55%;
+            transition: background-color 0.2s ease, transform 0.15s ease;
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.2));
+        }
+
         /* Botones superiores (primera fila) rectangulares */
         .button-row:first-child & {
             width: 12vh;
             height: 15vh;
-            font-size: 2.5rem;
-            
-            &::after {
-                width: 12vh;
-                height: 15vh;
-            }
-            
-            &::before {
-                width: 12vh;
-                height: 15vh;
-            }
         }
         
         /* Botones de la segunda fila ocupan 50% de ancho y son cuadrados */
         .button-row:last-child & {
             width: 18.4vh;
             height: 100%;
-            font-size: 2rem;
-            
-            &::after {
-                width: 18.4vh;
-                height: 100%;
-            }
-            
-            &::before {
-                width: 18.4vh;
-                height: 100%;
-            }
         }
         
         /* Hover y active */
         &:hover {
-            color: rgba(240, 240, 240, 1);
+            --arrow-color: rgba(240, 240, 240, 1);
         }
         
         &:active {
-            color: rgba(200, 200, 200, 0.9);
+            --arrow-color: rgba(200, 200, 200, 0.9);
         }
         
         &.active {
-            color: rgba(255, 255, 255, 1);
+            --arrow-color: rgba(255, 255, 255, 1);
+        }
+
+        &:active::after,
+        &.active::after {
+            transform: translate(-50%, -50%) rotate(var(--arrow-rotation)) scale(0.92);
         }
     }
+
+    #btn-up::after { --arrow-rotation: 0deg; }
+    #btn-right::after { --arrow-rotation: 90deg; }
+    #btn-left::after { --arrow-rotation: -90deg; }
+    #btn-up-right::after { --arrow-rotation: 45deg; }
+    #btn-up-left::after { --arrow-rotation: -45deg; }
 
     /* Área de botones de acción - lado derecho */
     #action-zone {

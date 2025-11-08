@@ -43,6 +43,7 @@ export const createInitialStore = (): GameStore => ({
     lives: 0,
     score: 0,
     scoreLifeMilestone: 0,
+    lastRunScore: 0,
     energy: 0,
     energyDecrementRate: 0.1,
     bombsRemaining: 5,

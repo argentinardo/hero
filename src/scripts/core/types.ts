@@ -309,6 +309,7 @@ export interface GameStore {
     score: number;
     // Número de hitos de 20k puntos ya convertidos en vidas extra
     scoreLifeMilestone: number;
+    lastRunScore: number;
     energy: number;
     energyDecrementRate: number;
     bombsRemaining: number;

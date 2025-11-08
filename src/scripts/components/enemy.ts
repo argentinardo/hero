@@ -655,10 +655,11 @@ const handleLevelEndSequence = (store: GameStore) => {
                     } else {
                         // Fin de campaña
                         store.gameState = 'win';
+                        store.lastRunScore = store.score;
                         const { messageOverlay, messageText, messageTitle } = store.dom.ui;
                         if (messageOverlay && messageText && messageTitle) {
                             messageTitle.textContent = '¡HAS GANADO!';
-                            messageText.textContent = `Puntuación final: ${store.score}. Presiona ENTER para volver al inicio.`;
+                            messageText.textContent = `Puntuación final: ${store.lastRunScore}. Presiona ENTER para volver al inicio.`;
                             messageOverlay.style.display = 'flex';
                         }
                         return;

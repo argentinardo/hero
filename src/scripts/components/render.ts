@@ -560,21 +560,6 @@ const drawLasers = (store: GameStore) => {
     const lasers = store.lasers;
     const lasersLength = lasers.length;
     
-    if (store.isDark && lasersLength > 0) {
-        const canvas = store.dom.canvas;
-        if (canvas) {
-            const viewWidth = canvas.width / scale;
-            const viewHeight = canvas.height / scale;
-
-            ctx.save();
-            ctx.globalCompositeOperation = 'screen';
-            ctx.globalAlpha = 0.35;
-            ctx.fillStyle = 'rgba(255, 200, 200, 1)';
-            ctx.fillRect(store.cameraX, store.cameraY, viewWidth, viewHeight);
-            ctx.restore();
-        }
-    }
-
     // Usar loop for en lugar de forEach para mejor rendimiento
     for (let i = 0; i < lasersLength; i++) {
         const laser = lasers[i];
