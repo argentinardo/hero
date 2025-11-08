@@ -534,7 +534,8 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     player.animationTick = 0;
     // Reducir pausa de muerte para respawn más rápido
     player.deathTimer = 60; // Reducido de 90 para respawn más rápido
-    store.lives -= 1;
+    store.lives = 1;
+    // store.lives -= 1;
     store.gameState = 'respawning';
 
     if (store.lives <= 0) {
@@ -584,15 +585,11 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         if (player.respawnTileX !== undefined && player.respawnTileY !== undefined) {
             // Buscar un tile seguro cercano al deseado
             const safe = findSafeRespawnTile(store, player.respawnTileX, player.respawnTileY);
-            const baseXCenter = safe.x * TILE_SIZE + TILE_SIZE / 2;
-            const rxCenter = baseXCenter + (player.respawnOffsetX ?? 0);
-            const rx = rxCenter - player.width / 2;
-            const ryBottom = (safe.y + 1) * TILE_SIZE + (player.respawnOffsetY ?? 0);
-            const ry = ryBottom - player.height;
-            const levelWidthTiles2 = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
-            const levelWidthPx2 = levelWidthTiles2 * TILE_SIZE;
-            player.respawnX = Math.max(0, Math.min(rx, levelWidthPx2 - player.width));
-            player.respawnY = Math.max(0, ry);
+            player.respawnTileX = safe.x;
+            player.respawnTileY = safe.y;
+            const respawnPos = computeRespawnWorldPosition(store, safe.x, safe.y);
+            player.respawnX = respawnPos.x;
+            player.respawnY = respawnPos.y;
         }
         
         // Alinear cámara horizontalmente al bloque del respawn para evitar "saltar" en niveles anchos
@@ -754,6 +751,21 @@ const findSafeRespawnTile = (store: GameStore, desiredX: number, desiredY: numbe
     
     // Último fallback: clamp dentro del nivel
     return { x: Math.max(0, Math.min(desiredX, cols - 1)), y: Math.max(0, Math.min(desiredY, rows - 2)) };
+};
+
+const computeRespawnWorldPosition = (store: GameStore, tileX: number, tileY: number): { x: number; y: number } => {
+    const { player } = store;
+    const baseXCenter = tileX * TILE_SIZE + TILE_SIZE / 2;
+    const offsetX = player.respawnOffsetX ?? 0;
+    const rxCenter = baseXCenter + offsetX;
+    const levelWidthTiles = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+    const levelWidthPx = levelWidthTiles * TILE_SIZE;
+    const maxX = Math.max(levelWidthPx - player.width, 0);
+    const respawnX = Math.max(0, Math.min(rxCenter - player.width / 2, maxX));
+    const offsetY = player.respawnOffsetY ?? 0;
+    const ryBottom = (tileY + 1) * TILE_SIZE + offsetY;
+    const respawnY = Math.max(0, ryBottom - player.height);
+    return { x: respawnX, y: respawnY };
 };
 
 const updateFlightState = (store: GameStore) => {
@@ -1033,6 +1045,39 @@ export const updatePlayer = (store: GameStore) => {
             // Ha llegado a la posición objetivo: flotar quieto y permitir despertar
             player.y = player.respawnY;
             player.vy = 0;
+            
+            const footTileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
+            const footTileY = Math.floor((player.y + player.height - 1) / TILE_SIZE);
+            const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
+            
+            if (!isSafeRespawnPosition(store, footTileX, footTileY)) {
+                let searchY = footTileY + 1;
+                let foundSafe = false;
+                
+                while (searchY < levelRows - 1) {
+                    if (isSafeRespawnPosition(store, footTileX, searchY)) {
+                        foundSafe = true;
+                        break;
+                    }
+                    searchY++;
+                }
+                
+                if (foundSafe) {
+                    const respawnPos = computeRespawnWorldPosition(store, footTileX, searchY);
+                    player.respawnTileX = footTileX;
+                    player.respawnTileY = searchY;
+                    player.respawnX = respawnPos.x;
+                    player.respawnY = respawnPos.y;
+                    player.x = respawnPos.x;
+                    player.y = Math.max(0, respawnPos.y - TILE_SIZE);
+                    player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
+                    player.hitbox.y = player.y;
+                    player.vy = Math.max(player.vy, 6);
+                    player.canWake = false;
+                    return;
+                }
+            }
+            
             player.canWake = true;
         }
         

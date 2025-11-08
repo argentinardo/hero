@@ -58,7 +58,9 @@ export const updateEnemies = (store: GameStore) => {
     // Si está pausado, no actualizar enemigos
     if (store.isPaused) return;
     
-    const canvasWidth = store.dom.canvas?.width ?? 0;
+    const currentLevel = store.levelDesigns[store.currentLevelIndex] ?? [];
+    const levelColumnCount = currentLevel.length > 0 ? currentLevel[0].length : 0;
+    const levelWidthPx = levelColumnCount * TILE_SIZE;
     const player = store.player;
     
     store.enemies.forEach(enemy => {
@@ -109,10 +111,9 @@ export const updateEnemies = (store: GameStore) => {
                 const nextX = enemy.x + enemy.vx;
                 const nextY = enemy.y;
                 
-                // Verificar límites del nivel
-                const canvas = store.dom.canvas;
-                const canvasWidth = canvas ? canvas.width : 1440;
-                const willHitBoundary = nextX < 0 || nextX + enemy.width > canvasWidth;
+                // Verificar límites del nivel real (no solo el ancho visible del canvas)
+                const effectiveLevelWidth = levelWidthPx > 0 ? levelWidthPx : (store.dom.canvas?.width ?? 1440);
+                const willHitBoundary = nextX < 0 || nextX + enemy.width > effectiveLevelWidth;
                 
                 // Verificar rango máximo con nextX
                 const nextDistanceFromInitial = Math.abs(nextX - initialX);
@@ -189,8 +190,8 @@ export const updateEnemies = (store: GameStore) => {
                         if (nextX < 0) {
                             enemy.x = 2;
                             enemy.vx = Math.abs(enemy.vx); // Asegurar dirección positiva
-                        } else if (nextX + enemy.width > canvasWidth) {
-                            enemy.x = canvasWidth - enemy.width - 2;
+                        } else if (nextX + enemy.width > effectiveLevelWidth) {
+                            enemy.x = effectiveLevelWidth - enemy.width - 2;
                             enemy.vx = -Math.abs(enemy.vx); // Asegurar dirección negativa
                         }
                     } else if (willExceedRange) {
