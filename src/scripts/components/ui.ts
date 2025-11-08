@@ -2026,6 +2026,7 @@ const drawAvatar = (store: GameStore, avatarCode: string, canvas: HTMLCanvasElem
 const avatarCanvases: Array<{ code: string; canvas: HTMLCanvasElement }> = [];
 
 const activePauseReasons = new Set<string>();
+const TV_FIRE_KEYS = new Set(['Enter', 'NumpadEnter']);
 
 const pauseGame = (store: GameStore, reason: string, options?: { freezePlayer?: boolean }) => {
     const wasEmpty = activePauseReasons.size === 0;
@@ -4240,6 +4241,10 @@ const setupMenuButtons = (store: GameStore) => {
     
     window.addEventListener('keydown', event => {
         store.keys[event.code] = true;
+        if (TV_FIRE_KEYS.has(event.code) && store.appState === 'playing') {
+            store.keys.Space = true;
+            event.preventDefault();
+        }
         if (event.code === 'Enter' && store.appState === 'menu') {
             startGame(store);
         } else if (event.code === 'Enter' && (store.gameState === 'gameover' || store.gameState === 'win')) {
@@ -4248,6 +4253,9 @@ const setupMenuButtons = (store: GameStore) => {
     });
     window.addEventListener('keyup', event => {
         store.keys[event.code] = false;
+        if (TV_FIRE_KEYS.has(event.code)) {
+            store.keys.Space = false;
+        }
     });
 
     // Confirmación de acciones (Menú y Reiniciar)
