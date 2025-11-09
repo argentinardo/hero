@@ -623,8 +623,26 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         
         store.gameState = 'floating'; // En este estado es inmortal hasta que presione una tecla
         
-        // Objetivo: posición de respawn un tile más arriba
-        player.respawnY = player.respawnY - TILE_SIZE;
+        // Ajustar la altura objetivo solo si hay despeje suficiente por encima
+        if (player.respawnTileX !== undefined && player.respawnTileY !== undefined) {
+            const level = store.levelDesigns[store.currentLevelIndex];
+            const tilesNeeded = Math.ceil(player.height / TILE_SIZE);
+            if (level) {
+                let verticalClearance = 0;
+                for (let ty = player.respawnTileY; ty >= 0; ty--) {
+                    const tile = level[ty]?.[player.respawnTileX];
+                    if ((tile ?? '0') === '0') {
+                        verticalClearance += 1;
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (verticalClearance > tilesNeeded) {
+                    player.respawnY = player.respawnY - TILE_SIZE;
+                }
+            }
+        }
     }, 1000);
 };
 
@@ -640,11 +658,14 @@ const isSafeRespawnPosition = (store: GameStore, tileX: number, tileY: number): 
     const isEmpty = (t: string | undefined) => (t ?? '0') === '0';
     const isSolid = (t: string | undefined) => !!t && t !== '0' && t !== '2' && t !== '3' && t !== 'K';
     const isDangerous = (t: string | undefined) => t === '2' || t === '3' || t === 'K'; // Agua, lava, columna lava
-    const isCrushingWall = (t: string | undefined) => t === 'H' || t === 'J'; // Paredes aplastantes
     
     // 1. El tile debe estar vacío
     const here = level[tileY]?.[tileX];
     if (!isEmpty(here)) return false;
+    
+    // 1b. Debe haber espacio libre para la altura del jugador (tile superior)
+    const above = tileY > 0 ? level[tileY - 1]?.[tileX] : undefined;
+    if (!isEmpty(above)) return false;
     
     // 2. Debe tener suelo sólido debajo (no lava, agua, o vacío)
     const below = level[tileY + 1]?.[tileX];
