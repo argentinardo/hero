@@ -730,7 +730,28 @@ const initializeTvMenuNavigation = (store: GameStore) => {
     tvMenuKeyHandler = handleKeyDown;
     window.addEventListener('keydown', tvMenuKeyHandler, true);
 
-    setTvMenuFocus(0);
+    const applyInitialFocus = () => {
+        setTvMenuFocus(0);
+        const target = tvMenuButtons[0];
+        if (target && document.activeElement !== target) {
+            try {
+                (target as any).focus({ preventScroll: true });
+            } catch {
+                target.focus();
+            }
+        }
+    };
+
+    // Asegurar que el DOM haya actualizado estilos antes de enfocar
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => applyInitialFocus());
+    } else {
+        applyInitialFocus();
+    }
+
+    // Refuerzo adicional después de un breve retraso (algunos navegadores TV ignoran el focus inmediato)
+    const fallbackTimer = setTimeout(applyInitialFocus, 100);
+    tvMenuCleanupFns.push(() => clearTimeout(fallbackTimer));
 };
 
 export const showMenu = (store: GameStore) => {
@@ -4082,10 +4103,11 @@ const setupMenuButtons = (store: GameStore) => {
                         ni.open('login');
                     } else {
                         // Método alternativo: usar la API directamente
-                        const identityUrl = ni.settings?.api_url || 'https://newhero.netlify.app/.netlify/identity';
-                        const currentUrl = window.location.href;
-                        // Usar el endpoint correcto de GoTrue para providers externos
-                        const googleAuthUrl = `${identityUrl}/authorize?provider=google&redirect_uri=${encodeURIComponent(currentUrl)}`;
+                        const identityUrl = (ni.settings?.api_url || 'https://newhero.netlify.app/.netlify/identity').replace(/\/$/, '');
+                        const redirectUri = `${identityUrl}/callback`;
+                        const stateParam = window.location.href;
+                        // Usar el endpoint correcto de GoTrue para providers externos, asegurando que coincida con la URI registrada en Google
+                        const googleAuthUrl = `${identityUrl}/authorize?provider=google&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateParam)}`;
                         window.location.href = googleAuthUrl;
                     }
                 } catch (error) {
