@@ -22,8 +22,8 @@ module.exports = {
         throw new Error('webpack-dev-server is not defined');
       }
 
-      // Middleware to parse JSON bodies
-      devServer.app.use(express.json());
+      // Middleware to parse JSON bodies (niveles pueden exceder el límite por defecto de 100kb)
+      devServer.app.use(express.json({ limit: '5mb' }));
 
       devServer.app.post('/api/save-levels', (req, res) => {
         const levelsData = req.body;
