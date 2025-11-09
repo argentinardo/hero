@@ -10,6 +10,7 @@ import type { GameStore } from '../core/types';
 import type { ControlMode } from '../core/settings';
 import nipplejs from 'nipplejs';
 import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nipplejs';
+import { isTvMode } from '../utils/device';
 
 /**
  * Restaura la posición por defecto de action-zone
@@ -34,8 +35,8 @@ const resetActionZonePosition = () => {
  * Aplica el modo de control configurado
  */
 export const applyControlMode = (store: GameStore, mode: ControlMode) => {
-    // Solo aplicar si estamos en un dispositivo táctil
-    if (!('ontouchstart' in window)) {
+    // Solo aplicar si estamos en un dispositivo táctil y no en modo TV
+    if (!('ontouchstart' in window) || isTvMode()) {
         return;
     }
     

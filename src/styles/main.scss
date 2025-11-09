@@ -26,3 +26,10 @@
         transform: scale(1.05);
     }
 }
+
+.tv-focused {
+    outline: 4px solid #ffcc00;
+    outline-offset: 4px;
+    box-shadow: 0 0 16px rgba(255, 204, 0, 0.6);
+    border-radius: 6px;
+}

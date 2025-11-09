@@ -10,6 +10,27 @@ export const vibrate = (pattern: number | number[]) => {
 };
 
 /**
+ * Detecta si la aplicación se está ejecutando en un entorno similar a una TV.
+ * Se considera TV cuando no hay soporte táctil y la pantalla es de gran tamaño (>= 1280px).
+ */
+export const isTvMode = (): boolean => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+        return false;
+    }
+
+    const hasTouch =
+        ('ontouchstart' in window) ||
+        (typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 0) ||
+        (typeof (navigator as any).msMaxTouchPoints === 'number' && (navigator as any).msMaxTouchPoints > 0);
+
+    const screenWidth = window.screen?.width ?? window.innerWidth ?? 0;
+    const screenHeight = window.screen?.height ?? window.innerHeight ?? 0;
+    const largestDimension = Math.max(screenWidth, screenHeight);
+
+    return !hasTouch && largestDimension >= 1280;
+};
+
+/**
  * Obtiene la URL base para las funciones de Netlify según el entorno.
  * En web usa URL relativa o la URL del sitio actual si es Netlify, en Android/Capacitor usa URL completa.
  */

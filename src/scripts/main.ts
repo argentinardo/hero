@@ -87,6 +87,7 @@ import { renderGame, renderEditor, animateSplash } from './components/render';
 import { initAudio, playBackgroundMusic, loadAdditionalSFX } from './components/audio';
 import { applyGraphicsSettings } from './core/settings';
 import { initGamepadSupport, updateGamepadState } from './utils/gamepad';
+import { isTvMode } from './utils/device';
 
 // Inicializar estado global del juego
 // DECISIÓN ARQUITECTÓNICA: Estado global centralizado facilita comunicación entre componentes
@@ -717,6 +718,17 @@ const bootstrap = async (): Promise<void> => {
     
     setupUI(store);
     initAudio();
+    
+    const mobileControlsEl = store.dom.ui.mobileControlsEl;
+    if (mobileControlsEl) {
+        if (isTvMode()) {
+            mobileControlsEl.dataset.active = 'false';
+            mobileControlsEl.style.display = 'none';
+            console.log('[UI] Modo TV detectado: ocultando controles táctiles.');
+        } else {
+            mobileControlsEl.style.removeProperty('display');
+        }
+    }
     
     // Inicializar soporte de gamepad
     initGamepadSupport();

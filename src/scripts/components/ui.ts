@@ -4,7 +4,7 @@ import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nippl
 import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA, SPRITE_SOURCES } from '../core/assets';
 import { buildChunkedFile20x18 } from '../utils/levels';
-import { getNetlifyBaseUrl } from '../utils/device';
+import { getNetlifyBaseUrl, isTvMode } from '../utils/device';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
@@ -624,6 +624,115 @@ const setBodyClass = (state: string) => {
     document.body.className = `state-${state}`;
 };
 
+let tvMenuKeyHandler: ((event: KeyboardEvent) => void) | null = null;
+let tvMenuButtons: HTMLButtonElement[] = [];
+let tvMenuFocusIndex = 0;
+let tvMenuCleanupFns: Array<() => void> = [];
+
+const teardownTvMenuNavigation = () => {
+    if (tvMenuKeyHandler) {
+        window.removeEventListener('keydown', tvMenuKeyHandler, true);
+        tvMenuKeyHandler = null;
+    }
+    tvMenuCleanupFns.forEach(cleanup => cleanup());
+    tvMenuCleanupFns = [];
+    tvMenuButtons.forEach(btn => btn.classList.remove('tv-focused'));
+    tvMenuButtons = [];
+    tvMenuFocusIndex = 0;
+};
+
+const setTvMenuFocus = (index: number, options: { programmatic?: boolean } = {}) => {
+    if (!tvMenuButtons.length) {
+        return;
+    }
+    const programmatic = options.programmatic ?? true;
+    const normalizedIndex = ((index % tvMenuButtons.length) + tvMenuButtons.length) % tvMenuButtons.length;
+    tvMenuFocusIndex = normalizedIndex;
+
+    tvMenuButtons.forEach((btn, idx) => {
+        if (idx === normalizedIndex) {
+            btn.classList.add('tv-focused');
+            if (programmatic && document.activeElement !== btn) {
+                try {
+                    (btn as any).focus({ preventScroll: true });
+                } catch {
+                    btn.focus();
+                }
+            }
+        } else {
+            btn.classList.remove('tv-focused');
+        }
+    });
+};
+
+const initializeTvMenuNavigation = (store: GameStore) => {
+    teardownTvMenuNavigation();
+
+    if (!isTvMode()) {
+        return;
+    }
+
+    const startGameBtn = store.dom.ui.startGameBtn ?? (document.getElementById('start-game-btn') as HTMLButtonElement | null);
+    const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
+    const levelEditorBtn = store.dom.ui.levelEditorBtn ?? (document.getElementById('level-editor-btn') as HTMLButtonElement | null);
+    const creditsBtn = document.getElementById('credits-btn') as HTMLButtonElement | null;
+
+    tvMenuButtons = [startGameBtn, galleryBtn, levelEditorBtn, creditsBtn].filter(Boolean) as HTMLButtonElement[];
+
+    if (!tvMenuButtons.length) {
+        return;
+    }
+
+    tvMenuButtons.forEach((btn, index) => {
+        btn.setAttribute('tabindex', '0');
+        const handleFocus = () => {
+            setTvMenuFocus(index, { programmatic: false });
+        };
+        btn.addEventListener('focus', handleFocus);
+        tvMenuCleanupFns.push(() => btn.removeEventListener('focus', handleFocus));
+    });
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+        if (store.appState !== 'menu') {
+            return;
+        }
+
+        const activeElement = document.activeElement as HTMLElement | null;
+        const isTargetMenuButton = tvMenuButtons.includes(activeElement as HTMLButtonElement);
+        const isNavigableKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'NumpadEnter'].includes(event.code);
+
+        if (!isNavigableKey) {
+            return;
+        }
+
+        if (!isTargetMenuButton && activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)) {
+            return;
+        }
+
+        if (event.code === 'ArrowLeft' || event.code === 'ArrowUp') {
+            event.preventDefault();
+            setTvMenuFocus(tvMenuFocusIndex - 1);
+            return;
+        }
+
+        if (event.code === 'ArrowRight' || event.code === 'ArrowDown') {
+            event.preventDefault();
+            setTvMenuFocus(tvMenuFocusIndex + 1);
+            return;
+        }
+
+        if ((event.code === 'Enter' || event.code === 'NumpadEnter') && tvMenuButtons[tvMenuFocusIndex]) {
+            event.preventDefault();
+            tvMenuButtons[tvMenuFocusIndex].click();
+        }
+    };
+
+    tvMenuKeyHandler = handleKeyDown;
+    window.addEventListener('keydown', tvMenuKeyHandler, true);
+
+    setTvMenuFocus(0);
+};
+
 export const showMenu = (store: GameStore) => {
     // Ocultar modal de game over si está visible
     if (store.dom.ui.gameoverModal) {
@@ -724,13 +833,21 @@ export const showMenu = (store: GameStore) => {
         retryBtn.classList.add('hidden');
     }
 
-    if ('ontouchstart' in window && mobileControlsEl) {
-        mobileControlsEl.dataset.active = 'false';
+    if (mobileControlsEl) {
+        if (isTvMode()) {
+            mobileControlsEl.dataset.active = 'false';
+            mobileControlsEl.style.display = 'none';
+        } else if ('ontouchstart' in window) {
+            mobileControlsEl.dataset.active = 'false';
+            mobileControlsEl.style.removeProperty('display');
+        }
     }
     if (store.joystickManager) {
         store.joystickManager.destroy();
         store.joystickManager = null;
     }
+
+    initializeTvMenuNavigation(store);
 
     // Actualizar botón de editor según estado de login
     const updateEditorButton = () => {
@@ -769,7 +886,7 @@ const getTouchCenter = (touch1: Touch, touch2: Touch): { x: number; y: number } 
 const setupPinchZoom = (store: GameStore) => {
     const canvas = store.dom.canvas;
     const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
-    if (!canvas || !canvasWrapper || !('ontouchstart' in window)) {
+    if (!canvas || !canvasWrapper || !('ontouchstart' in window) || isTvMode()) {
         return;
     }
     
@@ -911,7 +1028,7 @@ const setupPinchZoom = (store: GameStore) => {
 };
 
 const startJoystick = (store: GameStore) => {
-    if (!('ontouchstart' in window)) {
+    if (!('ontouchstart' in window) || isTvMode()) {
         return;
     }
     const { mobileControlsEl, joystickZoneEl, actionZoneEl } = store.dom.ui;
@@ -1161,6 +1278,8 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.gameState = 'playing';
     setBodyClass('playing');
     
+    teardownTvMenuNavigation();
+    
     // Ocultar selector de idioma (banderas) cuando esté en juego
     const languageSelectorContainer = document.getElementById('language-selector-container');
     if (languageSelectorContainer) {
@@ -1352,6 +1471,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
     setupEditorState(store);
     bindEditorCanvas(store);
+    teardownTvMenuNavigation();
     
     // Inicializar zoom al entrar al editor (resetear a 1.0)
     if (!store.dom.zoomScale || store.dom.zoomScale !== 1) {
@@ -4245,8 +4365,29 @@ const setupMenuButtons = (store: GameStore) => {
             store.keys.Space = true;
             event.preventDefault();
         }
+
         if (event.code === 'Enter' && store.appState === 'menu') {
-            startGame(store);
+            const startButton = store.dom.ui.startGameBtn ?? (document.getElementById('start-game-btn') as HTMLButtonElement | null);
+            const activeElement = document.activeElement as HTMLElement | null;
+            const isTv = isTvMode();
+
+            const shouldTriggerStart = (() => {
+                if (!startButton) {
+                    return false;
+                }
+                if (isTv) {
+                    if (!tvMenuButtons.length) {
+                        return true;
+                    }
+                    return activeElement === startButton;
+                }
+                return !activeElement || activeElement === document.body || activeElement === startButton;
+            })();
+
+            if (shouldTriggerStart && startButton) {
+                event.preventDefault();
+                startButton.click();
+            }
         } else if (event.code === 'Enter' && (store.gameState === 'gameover' || store.gameState === 'win')) {
             showMenu(store);
         }
