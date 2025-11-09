@@ -31,16 +31,13 @@ const gamepadState: GamepadMapping = {
  */
 const getButtonMapping = (buttonIndex: number): string | null => {
     const mapping: Record<number, string> = {
-        0: 'Space',        // Botón A (Disparar)
-        1: 'ArrowDown',    // Botón B (Bomba) - alternativa
-        6: 'ArrowDown',    // L1 (Bomba)
-        7: 'ArrowDown',    // R1 (Bomba) - alternativa
-        8: 'ArrowDown',    // L2 (Bomba) - alternativa
-        9: 'ArrowDown',    // R2 (Bomba) - alternativa
+        0: 'Enter',        // Botón principal -> disparo en juego / confirmar en menús
         10: 'Escape',      // Select (Pausa/Menú)
         11: 'Enter',       // Start (Confirmar/Entrar)
+        16: 'Enter',       // Botón central en algunos mandos de TV
+        23: 'Enter'        // Botón OK en ciertos mandos Android TV
     };
-    return mapping[buttonIndex] || null;
+    return mapping[buttonIndex] ?? null;
 };
 
 /**
@@ -109,6 +106,9 @@ const processGamepadButtons = (gamepad: Gamepad, store: GameStore) => {
             const keyCode = getButtonMapping(index);
             if (keyCode) {
                 store.keys[keyCode] = isPressed;
+                if (keyCode === 'Enter' && store.appState === 'playing') {
+                    store.keys.Space = isPressed;
+                }
             }
         }
     });

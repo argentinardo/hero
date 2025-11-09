@@ -628,6 +628,7 @@ let tvMenuKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 let tvMenuButtons: HTMLButtonElement[] = [];
 let tvMenuFocusIndex = 0;
 let tvMenuCleanupFns: Array<() => void> = [];
+let openPauseMenu: (() => void) | null = null;
 
 const teardownTvMenuNavigation = () => {
     if (tvMenuKeyHandler) {
@@ -652,6 +653,7 @@ const setTvMenuFocus = (index: number, options: { programmatic?: boolean } = {})
     tvMenuButtons.forEach((btn, idx) => {
         if (idx === normalizedIndex) {
             btn.classList.add('tv-focused');
+            btn.classList.add('highlighted');
             if (programmatic && document.activeElement !== btn) {
                 try {
                     (btn as any).focus({ preventScroll: true });
@@ -661,6 +663,7 @@ const setTvMenuFocus = (index: number, options: { programmatic?: boolean } = {})
             }
         } else {
             btn.classList.remove('tv-focused');
+            btn.classList.remove('highlighted');
         }
     });
 };
@@ -685,6 +688,9 @@ const initializeTvMenuNavigation = (store: GameStore) => {
 
     tvMenuButtons.forEach((btn, index) => {
         btn.setAttribute('tabindex', '0');
+        if (!btn.classList.contains('menu-item')) {
+            btn.classList.add('menu-item');
+        }
         const handleFocus = () => {
             setTvMenuFocus(index, { programmatic: false });
         };
@@ -699,7 +705,8 @@ const initializeTvMenuNavigation = (store: GameStore) => {
 
         const activeElement = document.activeElement as HTMLElement | null;
         const isTargetMenuButton = tvMenuButtons.includes(activeElement as HTMLButtonElement);
-        const isNavigableKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'NumpadEnter'].includes(event.code);
+        const normalizedCode = normalizeTvKeyCode(event);
+        const isNavigableKey = normalizedCode !== 'Unidentified' && TV_NAVIGATION_KEYS.has(normalizedCode);
 
         if (!isNavigableKey) {
             return;
@@ -709,19 +716,19 @@ const initializeTvMenuNavigation = (store: GameStore) => {
             return;
         }
 
-        if (event.code === 'ArrowLeft' || event.code === 'ArrowUp') {
+        if (normalizedCode === 'ArrowLeft' || normalizedCode === 'ArrowUp') {
             event.preventDefault();
             setTvMenuFocus(tvMenuFocusIndex - 1);
             return;
         }
 
-        if (event.code === 'ArrowRight' || event.code === 'ArrowDown') {
+        if (normalizedCode === 'ArrowRight' || normalizedCode === 'ArrowDown') {
             event.preventDefault();
             setTvMenuFocus(tvMenuFocusIndex + 1);
             return;
         }
 
-        if ((event.code === 'Enter' || event.code === 'NumpadEnter') && tvMenuButtons[tvMenuFocusIndex]) {
+        if (normalizedCode === 'Enter' && tvMenuButtons[tvMenuFocusIndex]) {
             event.preventDefault();
             tvMenuButtons[tvMenuFocusIndex].click();
         }
@@ -1332,6 +1339,19 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
             rightUiEl.style.display = 'flex';
         } else {
             rightUiEl.style.display = 'none';
+        }
+    }
+    if (store.dom.ui.mobileControlsEl) {
+        const mobileControlsEl = store.dom.ui.mobileControlsEl;
+        if (isTvMode()) {
+            mobileControlsEl.dataset.active = 'false';
+            mobileControlsEl.style.display = 'none';
+            store.isLaserSticky = false;
+            store.keys.Space = false;
+            store.keys.ArrowDown = false;
+        } else if ('ontouchstart' in window) {
+            mobileControlsEl.dataset.active = 'false';
+            mobileControlsEl.style.removeProperty('display');
         }
     }
     
@@ -2167,7 +2187,303 @@ const drawAvatar = (store: GameStore, avatarCode: string, canvas: HTMLCanvasElem
 const avatarCanvases: Array<{ code: string; canvas: HTMLCanvasElement }> = [];
 
 const activePauseReasons = new Set<string>();
-const TV_FIRE_KEYS = new Set(['Enter', 'NumpadEnter']);
+
+const TV_KEY_CODE_ALIASES: Record<string, string> = {
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    Enter: 'Enter',
+    NumpadEnter: 'Enter',
+    NumpadCenter: 'Enter',
+    Numpad5: 'Enter',
+    Select: 'Enter',
+    Numpad8: 'ArrowUp',
+    Numpad2: 'ArrowDown',
+    Numpad4: 'ArrowLeft',
+    Numpad6: 'ArrowRight',
+    Space: 'Space',
+    Spacebar: 'Space',
+    MediaPlayPause: 'Space',
+    GamepadButton0: 'Space',
+    GamepadButton1: 'Space',
+    GamepadButton2: 'Enter',
+    GamepadButton3: 'Escape',
+    Backspace: 'Escape',
+    Escape: 'Escape',
+    BrowserBack: 'Escape'
+};
+
+const TV_KEY_VALUE_ALIASES: Record<string, string> = {
+    Up: 'ArrowUp',
+    Down: 'ArrowDown',
+    Left: 'ArrowLeft',
+    Right: 'ArrowRight',
+    Enter: 'Enter',
+    Return: 'Enter',
+    Confirm: 'Enter',
+    Execute: 'Enter',
+    Go: 'Enter',
+    Accept: 'Enter',
+    OK: 'Enter',
+    Ok: 'Enter',
+    Select: 'Enter',
+    Center: 'Enter',
+    ' ': 'Space',
+    Spacebar: 'Space',
+    Play: 'Space',
+    Pause: 'Space',
+    'Play/Pause': 'Space',
+    MediaPlayPause: 'Space',
+    Back: 'Escape'
+};
+
+const TV_LEGACY_KEYCODE_ALIASES: Record<number, string> = {
+    19: 'ArrowUp',
+    20: 'ArrowDown',
+    21: 'ArrowLeft',
+    22: 'ArrowRight',
+    13: 'Enter',
+    23: 'Enter',
+    32: 'Space',
+    37: 'ArrowLeft',
+    38: 'ArrowUp',
+    39: 'ArrowRight',
+    40: 'ArrowDown',
+    66: 'Enter',
+    67: 'Escape',
+    85: 'Space',
+    96: 'Enter',
+    461: 'Escape',
+    8: 'Escape'
+};
+
+const resolveLegacyTvCode = (event: KeyboardEvent): string | null => {
+    const legacyCode = (event as KeyboardEvent & { keyCode?: number; which?: number }).keyCode
+        ?? (event as KeyboardEvent & { keyCode?: number; which?: number }).which;
+    if (typeof legacyCode === 'number') {
+        return TV_LEGACY_KEYCODE_ALIASES[legacyCode] ?? null;
+    }
+    return null;
+};
+
+const normalizeTvKeyCode = (event: KeyboardEvent): string => {
+    const code = event.code;
+    const key = event.key;
+    const legacyMatch = resolveLegacyTvCode(event);
+    const directionalKeys = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+
+    const normalizedFromCode = (() => {
+        if (code && code !== 'Unidentified') {
+            return TV_KEY_CODE_ALIASES[code] ?? code;
+        }
+        return null;
+    })();
+
+    const normalizedFromKey = (() => {
+        if (key && key !== 'Unidentified') {
+            return TV_KEY_VALUE_ALIASES[key] ?? key;
+        }
+        return null;
+    })();
+
+    if (legacyMatch && directionalKeys.has(legacyMatch)) {
+        if (!normalizedFromCode || normalizedFromCode === 'Enter' || normalizedFromCode === 'Space' || normalizedFromCode === normalizedFromKey) {
+            return legacyMatch;
+        }
+    }
+
+    if (normalizedFromCode && normalizedFromCode !== 'Unidentified') {
+        return normalizedFromCode;
+    }
+
+    if (normalizedFromKey && normalizedFromKey !== 'Unidentified') {
+        return normalizedFromKey;
+    }
+
+    if (legacyMatch) {
+        return legacyMatch;
+    }
+
+    return code && code !== 'Unidentified'
+        ? code
+        : key && key !== 'Unidentified'
+            ? key
+            : 'Unidentified';
+};
+
+type TvInputAction = 'up' | 'down' | 'left' | 'right' | 'select' | 'fire' | 'back' | 'unknown';
+
+const TV_ACTION_FROM_KEY_NAME: Record<string, TvInputAction> = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    Enter: 'select',
+    NumpadEnter: 'select',
+    Select: 'select',
+    Center: 'select',
+    OK: 'select',
+    Ok: 'select',
+    Space: 'fire',
+    Spacebar: 'fire',
+    MediaPlayPause: 'fire',
+    Play: 'fire',
+    Pause: 'fire',
+    'Play/Pause': 'fire',
+    Escape: 'back',
+    BrowserBack: 'back',
+    Backspace: 'back',
+    Back: 'back'
+};
+
+const TV_ACTION_FROM_KEYCODE: Record<number, TvInputAction> = {
+    19: 'up',
+    38: 'up',
+    20: 'down',
+    40: 'down',
+    21: 'left',
+    37: 'left',
+    22: 'right',
+    39: 'right',
+    23: 'select',
+    13: 'select',
+    96: 'select',
+    66: 'select',
+    86: 'fire',
+    85: 'fire',
+    160: 'fire',
+    164: 'fire',
+    32: 'fire',
+    8: 'back',
+    461: 'back',
+    27: 'back',
+    111: 'back'
+};
+
+const getEventKeyCode = (event: KeyboardEvent): number | null => {
+    const keyCode = (event as KeyboardEvent & { keyCode?: number; which?: number }).keyCode
+        ?? (event as KeyboardEvent & { keyCode?: number; which?: number }).which;
+    return typeof keyCode === 'number' ? keyCode : null;
+};
+
+const resolveTvInputAction = (event: KeyboardEvent): TvInputAction => {
+    const code = event.code && event.code !== 'Unidentified'
+        ? TV_KEY_CODE_ALIASES[event.code] ?? event.code
+        : null;
+    if (code) {
+        const actionFromCode = TV_ACTION_FROM_KEY_NAME[code];
+        if (actionFromCode) {
+            return actionFromCode;
+        }
+    }
+
+    const key = event.key && event.key !== 'Unidentified'
+        ? TV_KEY_VALUE_ALIASES[event.key] ?? event.key
+        : null;
+    if (key) {
+        const actionFromKey = TV_ACTION_FROM_KEY_NAME[key];
+        if (actionFromKey) {
+            return actionFromKey;
+        }
+    }
+
+    const legacyCode = getEventKeyCode(event);
+    if (legacyCode !== null) {
+        const actionFromLegacy = TV_ACTION_FROM_KEYCODE[legacyCode];
+        if (actionFromLegacy) {
+            return actionFromLegacy;
+        }
+    }
+
+    return 'unknown';
+};
+
+const handleTvMenuControls = (store: GameStore, action: TvInputAction, isPressed = true): boolean => {
+    if (!tvMenuButtons.length) {
+        initializeTvMenuNavigation(store);
+    }
+    if (!tvMenuButtons.length || action === 'unknown' || action === 'fire') {
+        return action !== 'unknown';
+    }
+
+    if (!isPressed) {
+        return action === 'select' || action === 'back';
+    }
+
+    if (action === 'down' || action === 'right') {
+        setTvMenuFocus(tvMenuFocusIndex + 1);
+        return true;
+    }
+    if (action === 'up' || action === 'left') {
+        setTvMenuFocus(tvMenuFocusIndex - 1);
+        return true;
+    }
+    if (action === 'select') {
+        const current = tvMenuButtons[tvMenuFocusIndex];
+        if (current) {
+            current.click();
+            return true;
+        }
+    }
+    if (action === 'back') {
+        showMenu(store);
+        return true;
+    }
+    return false;
+};
+
+const handleTvGameplayControls = (store: GameStore, action: TvInputAction, isPressed: boolean): boolean => {
+    switch (action) {
+        case 'up':
+            store.keys.ArrowUp = isPressed;
+            if (isPressed) {
+                store.keys.ArrowDown = false;
+            }
+            return true;
+        case 'down':
+            store.keys.ArrowDown = isPressed;
+            if (isPressed) {
+                store.keys.ArrowUp = false;
+            }
+            return true;
+        case 'left':
+            if (isPressed) {
+                store.keys.ArrowLeft = true;
+                store.keys.ArrowRight = false;
+            } else {
+                store.keys.ArrowLeft = false;
+            }
+            return true;
+        case 'right':
+            if (isPressed) {
+                store.keys.ArrowRight = true;
+                store.keys.ArrowLeft = false;
+            } else {
+                store.keys.ArrowRight = false;
+            }
+            return true;
+        case 'select':
+        case 'fire':
+            // En modo TV, el botón OK/Select controla el láser
+            store.keys.Space = isPressed;
+            return true;
+        case 'back':
+            if (isPressed) {
+                if (store.appState === 'playing') {
+                    openPauseMenu?.();
+                } else {
+                    showMenu(store);
+                }
+            }
+            return true;
+        default:
+            return false;
+    }
+};
+
+const TV_NAVIGATION_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter']);
+const TV_FIRE_KEYS = new Set(['Enter', 'Space']);
 
 const pauseGame = (store: GameStore, reason: string, options?: { freezePlayer?: boolean }) => {
     const wasEmpty = activePauseReasons.size === 0;
@@ -4104,8 +4420,31 @@ const setupMenuButtons = (store: GameStore) => {
                     } else {
                         // Método alternativo: usar la API directamente
                         const identityUrl = (ni.settings?.api_url || 'https://newhero.netlify.app/.netlify/identity').replace(/\/$/, '');
-                        const redirectUri = `${identityUrl}/callback`;
-                        const stateParam = window.location.href;
+                        const currentUrl = window.location.href.split('#')[0];
+                        const identityOrigin = (() => {
+                            try {
+                                const identityLocation = new URL(identityUrl);
+                                return `${identityLocation.protocol}//${identityLocation.host}`;
+                            } catch {
+                                return 'https://newhero.netlify.app';
+                            }
+                        })();
+                        const currentOrigin = (() => {
+                            try {
+                                const parsed = new URL(currentUrl);
+                                return `${parsed.protocol}//${parsed.host}`;
+                            } catch {
+                                return '';
+                            }
+                        })();
+                        const isHybridEnvironment = typeof (window as any).Capacitor !== 'undefined' ||
+                            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                            (navigator as any).standalone === true;
+                        const redirectUri = currentOrigin && currentOrigin === identityOrigin && (isHybridEnvironment || currentUrl.includes('.netlify.app'))
+                            ? currentUrl
+                            : `${identityUrl}/callback`;
+                        const stateParam = currentUrl;
+                        localStorage.setItem('hero:last-auth-return', stateParam);
                         // Usar el endpoint correcto de GoTrue para providers externos, asegurando que coincida con la URI registrada en Google
                         const googleAuthUrl = `${identityUrl}/authorize?provider=google&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateParam)}`;
                         window.location.href = googleAuthUrl;
@@ -4125,6 +4464,19 @@ const setupMenuButtons = (store: GameStore) => {
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
+                    const pendingReturn = localStorage.getItem('hero:last-auth-return');
+                    if (pendingReturn) {
+                        localStorage.removeItem('hero:last-auth-return');
+                        if (pendingReturn && pendingReturn !== window.location.href) {
+                            try {
+                                window.location.replace(pendingReturn);
+                                return;
+                            } catch {
+                                window.location.href = pendingReturn;
+                                return;
+                            }
+                        }
+                    }
                     updateEditorButton();
                     updateUserArea();
                     startEditor(store);
@@ -4382,13 +4734,44 @@ const setupMenuButtons = (store: GameStore) => {
     });
     
     window.addEventListener('keydown', event => {
-        store.keys[event.code] = true;
-        if (TV_FIRE_KEYS.has(event.code) && store.appState === 'playing') {
+        const tvModeActive = isTvMode();
+        if (tvModeActive) {
+            const keyCodeValue = getEventKeyCode(event);
+            console.log(`MANDO PRESIONADO -> Key: '${event.key}', KeyCode: '${keyCodeValue ?? 'unknown'}'`);
+            const tvAction = resolveTvInputAction(event);
+            if (tvAction !== 'unknown') {
+                event.preventDefault();
+                const handled =
+                    store.appState === 'menu'
+                        ? handleTvMenuControls(store, tvAction, true)
+                        : (store.appState === 'playing' || store.gameState === 'playing' || store.gameState === 'floating')
+                            ? handleTvGameplayControls(store, tvAction, true)
+                            : false;
+                if (handled) {
+                    return;
+                }
+            }
+        }
+
+        const normalizedCode = normalizeTvKeyCode(event);
+        const legacyCode = resolveLegacyTvCode(event);
+
+        if (event.code && event.code !== 'Unidentified') {
+            store.keys[event.code] = true;
+        }
+        if (normalizedCode && normalizedCode !== 'Unidentified') {
+            store.keys[normalizedCode] = true;
+        } else if (legacyCode) {
+            store.keys[legacyCode] = true;
+        }
+
+        const fireKey = normalizedCode !== 'Unidentified' ? normalizedCode : event.code;
+        if (fireKey && TV_FIRE_KEYS.has(fireKey) && store.appState === 'playing') {
             store.keys.Space = true;
             event.preventDefault();
         }
 
-        if (event.code === 'Enter' && store.appState === 'menu') {
+        if (normalizedCode === 'Enter' && store.appState === 'menu') {
             const startButton = store.dom.ui.startGameBtn ?? (document.getElementById('start-game-btn') as HTMLButtonElement | null);
             const activeElement = document.activeElement as HTMLElement | null;
             const isTv = isTvMode();
@@ -4410,14 +4793,49 @@ const setupMenuButtons = (store: GameStore) => {
                 event.preventDefault();
                 startButton.click();
             }
-        } else if (event.code === 'Enter' && (store.gameState === 'gameover' || store.gameState === 'win')) {
+        } else if (normalizedCode === 'Enter' && (store.gameState === 'gameover' || store.gameState === 'win')) {
             showMenu(store);
         }
     });
     window.addEventListener('keyup', event => {
-        store.keys[event.code] = false;
-        if (TV_FIRE_KEYS.has(event.code)) {
+        const tvModeActive = isTvMode();
+        if (tvModeActive) {
+            const tvAction = resolveTvInputAction(event);
+            if (tvAction !== 'unknown') {
+                event.preventDefault();
+                const handled =
+                    store.appState === 'menu'
+                        ? handleTvMenuControls(store, tvAction, false)
+                        : (store.appState === 'playing' || store.gameState === 'playing' || store.gameState === 'floating')
+                            ? handleTvGameplayControls(store, tvAction, false)
+                            : false;
+                if (handled) {
+                    return;
+                }
+            }
+        }
+
+        const normalizedCode = normalizeTvKeyCode(event);
+        const legacyCode = resolveLegacyTvCode(event);
+
+        if (event.code && event.code !== 'Unidentified') {
+            store.keys[event.code] = false;
+        }
+        if (normalizedCode && normalizedCode !== 'Unidentified') {
+            store.keys[normalizedCode] = false;
+        } else if (legacyCode) {
+            store.keys[legacyCode] = false;
+        }
+
+        if (normalizedCode && TV_FIRE_KEYS.has(normalizedCode)) {
             store.keys.Space = false;
+        }
+        if (normalizedCode === 'Escape' || event.code === 'Escape') {
+            if (store.appState === 'playing') {
+                resumeGame(store, 'pause-menu', { unfreezePlayer: true });
+            } else {
+                showMenu(store);
+            }
         }
     });
 
@@ -4443,7 +4861,7 @@ const setupMenuButtons = (store: GameStore) => {
     };
 
     // Abrir menú flotante
-    const openPauseMenu = () => {
+    openPauseMenu = () => {
         if (pauseMenu) {
             pauseGame(store, 'pause-menu');
             pauseMenu.classList.remove('hidden');

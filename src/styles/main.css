@@ -318,4 +318,5 @@ body::after{ content:"Por favor gire su dispositivo para jugar al juego"; positi
 .tile-selector.selected{ border:3px solid lime; background-color:rgba(0,255,0,.1) }
 .tile-thumb{ transition:all .2s ease }
 .tile-thumb:hover{ transform:scale(1.05) }
-.tv-focused{ outline:4px solid #fc0; outline-offset:4px; box-shadow:0 0 16px rgba(255,204,0,.6); border-radius:6px }
+.tv-focused,.highlighted{ position:relative; outline:4px solid #fc0; outline-offset:4px; box-shadow:0 0 18px rgba(255,204,0,.75),0 0 6px rgba(0,0,0,.6); border-radius:10px; background:linear-gradient(135deg,rgba(255,221,0,0.85),rgba(255,149,0,0.9)); color:#0b0b0b !important; transform:scale(1.05); transition:transform .12s ease,box-shadow .12s ease }
+.tv-focused::after{ content:""; position:absolute; inset:-6px; border-radius:14px; border:2px solid hsla(0,0%,100%,.65); box-shadow:0 0 24px hsla(0,0%,100%,.35); pointer-events:none }

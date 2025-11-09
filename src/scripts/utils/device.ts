@@ -18,6 +18,30 @@ export const isTvMode = (): boolean => {
         return false;
     }
 
+    const ua = navigator.userAgent || '';
+    const uaLower = ua.toLowerCase();
+    const tvKeywords = [
+        'smart-tv',
+        'smarttv',
+        'appletv',
+        'googletv',
+        'androidtv',
+        'bravia',
+        'hbbtv',
+        'netcast',
+        'webos',
+        'tizen',
+        'hisense',
+        'firetv',
+        'viera',
+        'crystal',
+        'roku',
+        'aquos'
+    ];
+    if (tvKeywords.some(keyword => uaLower.includes(keyword))) {
+        return true;
+    }
+
     const hasTouch =
         ('ontouchstart' in window) ||
         (typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 0) ||

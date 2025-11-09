@@ -27,9 +27,25 @@
     }
 }
 
-.tv-focused {
+.tv-focused,
+.highlighted {
+    position: relative;
     outline: 4px solid #ffcc00;
     outline-offset: 4px;
-    box-shadow: 0 0 16px rgba(255, 204, 0, 0.6);
-    border-radius: 6px;
+    box-shadow: 0 0 18px rgba(255, 204, 0, 0.75), 0 0 6px rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255, 221, 0, 0.85), rgba(255, 149, 0, 0.9));
+    color: #0b0b0b !important;
+    transform: scale(1.05);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tv-focused::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
+    pointer-events: none;
 }
