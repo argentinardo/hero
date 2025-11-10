@@ -3191,20 +3191,55 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         // Intentar cargar niveles personalizados adicionales de la BD
         // Usar URL completa en Android/Capacitor, relativa en web
         const baseUrl = getNetlifyBaseUrl();
-        const res = await fetch(`${baseUrl}/.netlify/functions/levels`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-        });
+        let data: any = null;
+        let loadedFromDB = false;
         
-        if (!res.ok) {
-            console.log('No hay niveles personalizados en la base de datos o error al cargar');
-            return;
+        try {
+            const res = await fetch(`${baseUrl}/.netlify/functions/levels`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+            });
+            
+            if (res.ok) {
+                data = await res.json();
+                loadedFromDB = true;
+                console.log('Datos recibidos de la base de datos:', data);
+            } else {
+                console.log('No hay niveles personalizados en la base de datos o error al cargar');
+                // Intentar cargar desde localStorage como respaldo
+                const { getUserStorage } = await import('../utils/storage');
+                const savedLevels = getUserStorage('levels');
+                if (savedLevels) {
+                    try {
+                        data = JSON.parse(savedLevels);
+                        console.log('Niveles cargados desde localStorage como respaldo');
+                    } catch (e) {
+                        console.error('Error parseando niveles desde localStorage:', e);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando niveles desde la BD:', error);
+            // Intentar cargar desde localStorage como respaldo
+            const { getUserStorage } = await import('../utils/storage');
+            const savedLevels = getUserStorage('levels');
+            if (savedLevels) {
+                try {
+                    data = JSON.parse(savedLevels);
+                    console.log('Niveles cargados desde localStorage como respaldo (error de conexión)');
+                } catch (e) {
+                    console.error('Error parseando niveles desde localStorage:', e);
+                }
+            }
         }
         
-        const data = await res.json();
-        console.log('Datos recibidos de la base de datos:', data);
+        // Si no hay datos ni de la BD ni de localStorage, salir
+        if (!data) {
+            console.log('No hay niveles disponibles ni en la BD ni en localStorage');
+            return;
+        }
         
         // El payload guardado puede tener formato chunked o legacy
         let levelsToLoad: string[][] = [];
@@ -3234,6 +3269,20 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         // IMPORTANTE: Los niveles originales ya están en store desde levels.json
         // Solo agregar niveles personalizados adicionales que estén después de los originales
         const originalCount = store.initialLevels.length;
+        
+        // Guardar los niveles cargados desde la BD en localStorage con namespace
+        // Esto permite que estén disponibles la próxima vez sin necesidad de cargar desde la BD
+        // Solo guardar si se cargaron desde la BD (no desde localStorage)
+        if (loadedFromDB && data && (data.format === 'chunks20x18' || data.levels)) {
+            try {
+                const { setUserStorage } = await import('../utils/storage');
+                setUserStorage('levels', JSON.stringify(data));
+                console.log('Niveles guardados en localStorage con namespace del usuario');
+            } catch (error) {
+                console.error('Error guardando niveles en localStorage:', error);
+            }
+        }
+        
         if (levelsToLoad.length > originalCount) {
             const customLevels = levelsToLoad.slice(originalCount);
             
@@ -3249,6 +3298,40 @@ export const tryLoadUserLevels = async (store: GameStore) => {
             
             syncLevelSelector(store);
             console.log('Niveles personalizados cargados desde la cuenta del usuario:', customLevels.length);
+        } else if (levelsToLoad.length > 0) {
+            // Si hay niveles pero no más que los originales, puede que sean todos los niveles
+            // Incluyendo los originales editados. Guardar todos en localStorage
+            const { buildChunkedFile20x18 } = await import('../utils/levels');
+            const levelsAsStrings = levelsToLoad.map((lvl: string[]) => 
+                typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+            );
+            const fullPayload = buildChunkedFile20x18(levelsAsStrings);
+            
+            try {
+                const { setUserStorage } = await import('../utils/storage');
+                setUserStorage('levels', JSON.stringify(fullPayload));
+                console.log('Todos los niveles guardados en localStorage con namespace del usuario');
+            } catch (error) {
+                console.error('Error guardando niveles en localStorage:', error);
+            }
+            
+            // Si los niveles cargados incluyen los originales editados, actualizar el store
+            if (levelsToLoad.length === originalCount) {
+                // Reemplazar los niveles originales con los editados
+                const levelDataStore = levelsToLoad.map((lvl: string[]) => 
+                    typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : (lvl as any)
+                ) as string[][][];
+                const levelDesigns = levelsToLoad.map((lvl: string[]) => 
+                    typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+                );
+                
+                store.levelDataStore = levelDataStore;
+                store.levelDesigns = levelDesigns;
+                store.initialLevels = levelDesigns;
+                
+                syncLevelSelector(store);
+                console.log('Niveles originales editados cargados desde la base de datos');
+            }
         } else {
             console.log('No hay niveles personalizados adicionales en la base de datos');
         }
