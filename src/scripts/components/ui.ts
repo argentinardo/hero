@@ -2865,6 +2865,132 @@ const syncLevelSelector = (store: GameStore) => {
     }
 };
 
+/**
+ * Configura el manejo de deep links de autenticación para la app móvil.
+ * Cuando la app recibe un callback de autenticación (hero://auth-callback?...),
+ * procesa el token y completa el login.
+ */
+const setupAuthDeepLink = (store: GameStore) => {
+    // Detectar si estamos en Capacitor
+    const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
+    if (!isCapacitor) {
+        return; // Solo funciona en app móvil
+    }
+
+    // Función para procesar el callback de autenticación
+    const handleAuthCallback = async (url: string) => {
+        try {
+            const urlObj = new URL(url);
+            if (urlObj.protocol !== 'hero:') {
+                return; // No es nuestro esquema
+            }
+
+            const pathname = urlObj.pathname;
+            if (pathname !== '/auth-callback') {
+                return; // No es nuestro callback
+            }
+
+            const params = new URLSearchParams(urlObj.search);
+            const accessToken = params.get('access_token');
+            const error = params.get('error');
+
+            if (error) {
+                console.error('Error en autenticación:', error);
+                // Mostrar error al usuario
+                const notificationModal = document.getElementById('notification-modal');
+                const notificationMessage = document.getElementById('notification-message');
+                if (notificationModal && notificationMessage) {
+                    notificationMessage.textContent = `Error de autenticación: ${error}`;
+                    notificationModal.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (!accessToken) {
+                console.error('No se recibió el token de autenticación');
+                return;
+            }
+
+            // Procesar el token con Netlify Identity
+            const ni: any = (window as any).netlifyIdentity;
+            if (!ni) {
+                console.error('Netlify Identity no está disponible');
+                return;
+            }
+
+            // Usar el token para autenticar al usuario
+            try {
+                // Netlify Identity necesita que el token se establezca de una manera específica
+                // Primero, intentamos usar el método store() si está disponible
+                if (ni.store) {
+                    ni.store({ token: accessToken });
+                }
+
+                // Obtener el usuario actual
+                const user = ni.currentUser();
+                if (user && user.email) {
+                    const email = user.email.toLowerCase();
+                    const username = email.split('@')[0];
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', username);
+                    localStorage.setItem('userEmail', email);
+                    
+                    // Actualizar UI
+                    const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+                    if (levelEditorBtn) {
+                        levelEditorBtn.textContent = t('menu.editor');
+                    }
+                    updateHamburgerButtonLabel(store);
+                    
+                    // Cargar niveles del usuario
+                    await tryLoadUserLevels(store);
+                    
+                    // Si estamos en el menú, iniciar el editor
+                    if (store.appState === 'menu') {
+                        startEditor(store);
+                    }
+                    
+                    console.log('Autenticación exitosa desde deep link');
+                } else {
+                    console.error('No se pudo obtener el usuario después de la autenticación');
+                }
+            } catch (error) {
+                console.error('Error procesando el token de autenticación:', error);
+            }
+        } catch (error) {
+            console.error('Error procesando callback de autenticación:', error);
+        }
+    };
+
+    // Escuchar eventos de deep link de Capacitor
+    try {
+        const App = (window as any).Capacitor?.Plugins?.App;
+        if (App) {
+            // Escuchar cuando la app se abre desde un deep link
+            App.addListener('appUrlOpen', (data: { url: string }) => {
+                console.log('Deep link recibido:', data.url);
+                handleAuthCallback(data.url);
+            });
+
+            // También verificar si la app se abrió desde un deep link al iniciar
+            App.getLaunchUrl().then((result: { url: string } | null) => {
+                if (result && result.url) {
+                    console.log('URL de lanzamiento:', result.url);
+                    handleAuthCallback(result.url);
+                }
+            }).catch(() => {
+                // No hay URL de lanzamiento, es normal
+            });
+        }
+    } catch (error) {
+        console.warn('No se pudo configurar el listener de deep links:', error);
+    }
+
+    // También verificar la URL actual en caso de que la app se haya abierto desde un deep link
+    if (window.location.href.startsWith('hero://')) {
+        handleAuthCallback(window.location.href);
+    }
+};
 
 export const setupUI = (store: GameStore) => {
     attachDomReferences(store);
@@ -2877,6 +3003,10 @@ export const setupUI = (store: GameStore) => {
     
     // Configurar zoom con pinch en mobile
     setupPinchZoom(store);
+    
+    // Manejar deep links de autenticación (app móvil)
+    setupAuthDeepLink(store);
+    
     // Netlify Identity: cerrar modal y continuar a editor tras login
     try {
         const ni: any = (window as any).netlifyIdentity;
@@ -2900,6 +3030,26 @@ export const setupUI = (store: GameStore) => {
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
+                    
+                    // Crear/actualizar usuario en la base de datos
+                    try {
+                        const token = await user.jwt();
+                        if (token) {
+                            const { getNetlifyBaseUrl } = await import('../utils/device');
+                            const baseUrl = getNetlifyBaseUrl();
+                            await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            console.log('Usuario creado/actualizado en la base de datos');
+                        }
+                    } catch (error) {
+                        console.error('Error creando usuario en la BD:', error);
+                    }
+                    
                     // Actualizar botones y área de usuario
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
                     if (levelEditorBtn) {
@@ -4465,13 +4615,33 @@ const setupMenuButtons = (store: GameStore) => {
                 ni.open('login');
             }, 100);
             // Escuchar cuando se complete el login
-            ni.on('login', (user: any) => {
+            ni.on('login', async (user: any) => {
                 if (user && user.email) {
                     const email = user.email.toLowerCase();
                     const username = email.split('@')[0]; // Usar parte antes del @ como username
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
+                    
+                    // Crear/actualizar usuario en la base de datos
+                    try {
+                        const token = await user.jwt();
+                        if (token) {
+                            const { getNetlifyBaseUrl } = await import('../utils/device');
+                            const baseUrl = getNetlifyBaseUrl();
+                            await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            console.log('Usuario creado/actualizado en la base de datos');
+                        }
+                    } catch (error) {
+                        console.error('Error creando usuario en la BD:', error);
+                    }
+                    
                     updateEditorButton();
                     updateUserArea();
                     startEditor(store);
@@ -4502,13 +4672,33 @@ const setupMenuButtons = (store: GameStore) => {
                 ni.open('signup');
             }, 100);
             // Escuchar cuando se complete el registro
-            ni.on('signup', (user: any) => {
+            ni.on('signup', async (user: any) => {
                 if (user && user.email) {
                     const email = user.email.toLowerCase();
                     const username = email.split('@')[0];
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
+                    
+                    // Crear/actualizar usuario en la base de datos
+                    try {
+                        const token = await user.jwt();
+                        if (token) {
+                            const { getNetlifyBaseUrl } = await import('../utils/device');
+                            const baseUrl = getNetlifyBaseUrl();
+                            await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            console.log('Usuario creado/actualizado en la base de datos');
+                        }
+                    } catch (error) {
+                        console.error('Error creando usuario en la BD:', error);
+                    }
+                    
                     updateEditorButton();
                     updateUserArea();
                     startEditor(store);
@@ -4647,7 +4837,43 @@ const setupMenuButtons = (store: GameStore) => {
             }
             // Actualizar área de usuario
             updateUserArea();
-            // Aquí podrías guardar en la BD también
+            
+            // Guardar nickname en la base de datos
+            try {
+                const ni: any = (window as any).netlifyIdentity;
+                const user = ni?.currentUser?.();
+                if (user) {
+                    const token = await user.jwt();
+                    if (token) {
+                        const { getNetlifyBaseUrl } = await import('../utils/device');
+                        const baseUrl = getNetlifyBaseUrl();
+                        const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
+                        const avatar = localStorage.getItem('avatar') || 'P';
+                        const avatarUrl = profileAvatarPreview ? profileAvatarPreview.toDataURL('image/png') : null;
+                        
+                        const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                nickname: newNickname,
+                                avatar_url: avatarUrl
+                            })
+                        });
+                        
+                        if (res.ok) {
+                            console.log('Nickname guardado en la base de datos');
+                        } else {
+                            console.error('Error guardando nickname en la BD:', await res.text());
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error guardando nickname en la BD:', error);
+            }
+            
             showNotification(store, t('modals.errors.nicknameSaved'), t('modals.errors.nicknameSaved'));
         }
         profileModal?.classList.add('hidden');
@@ -5591,11 +5817,11 @@ const setupLevelData = (store: GameStore) => {
         
         // Agregar automáticamente el nuevo nivel a la campaña actual (no a legacy)
         // Y luego actualizar el selector para mostrar solo los niveles de la campaña actual
-        import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign, getCampaignLevelIndices }) => {
+        import('../utils/campaigns').then(async ({ getCurrentCampaign, addLevelToCampaign, getCampaignLevelIndices }) => {
             const currentCampaign = getCurrentCampaign(store);
             if (currentCampaign && !currentCampaign.isDefault) {
                 // Solo agregar a campañas que no sean Legacy (Legacy es de solo lectura)
-                addLevelToCampaign(store, currentCampaign.id, newIndex);
+                await addLevelToCampaign(store, currentCampaign.id, newIndex);
                 
                 // Obtener la posición del nivel en la campaña (order + 1 para mostrar)
                 const levelIndices = getCampaignLevelIndices(store, currentCampaign.id);
@@ -5702,11 +5928,11 @@ const setupLevelData = (store: GameStore) => {
             
             // Agregar automáticamente el nivel generado a la campaña actual (no a legacy)
             // Y luego actualizar el selector para mostrar solo los niveles de la campaña actual
-            import('../utils/campaigns').then(({ getCurrentCampaign, addLevelToCampaign, getCampaignLevelIndices }) => {
+            import('../utils/campaigns').then(async ({ getCurrentCampaign, addLevelToCampaign, getCampaignLevelIndices }) => {
                 const currentCampaign = getCurrentCampaign(store);
                 if (currentCampaign && !currentCampaign.isDefault) {
                     // Solo agregar a campañas que no sean Legacy (Legacy es de solo lectura)
-                    addLevelToCampaign(store, currentCampaign.id, index);
+                    await addLevelToCampaign(store, currentCampaign.id, index);
                     
                     // Obtener la posición del nivel en la campaña (order + 1 para mostrar)
                     const levelIndices = getCampaignLevelIndices(store, currentCampaign.id);
@@ -6080,7 +6306,7 @@ const setupLevelData = (store: GameStore) => {
         store.editorLevel = cleanedLevel;
         
         // Agregar el nivel a la campaña actual (o actualizar si ya existe)
-        const result = addLevelToCampaign(store, currentCampaign.id, levelIndex);
+        const result = await addLevelToCampaign(store, currentCampaign.id, levelIndex);
         
         if (result.success) {
             const isLegacyCampaign = currentCampaign.isDefault === true;

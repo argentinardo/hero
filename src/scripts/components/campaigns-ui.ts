@@ -259,8 +259,8 @@ const updateCampaignsList = (store: GameStore) => {
             exitTextEl.textContent = `¿Seguro que deseas eliminar la campaña "${campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name}"?`;
             exitModalEl.classList.remove('hidden');
             
-            const confirmHandler = () => {
-                deleteCampaign(store, campaign.id);
+            const confirmHandler = async () => {
+                await deleteCampaign(store, campaign.id);
                 updateCampaignsModal(store);
                 exitModalEl.classList.add('hidden');
                 exitConfirmBtn.removeEventListener('click', confirmHandler);
@@ -418,8 +418,8 @@ const updateCampaignsList = (store: GameStore) => {
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'nes-btn is-error text-xs';
                     removeBtn.textContent = t('campaigns.remove');
-                    removeBtn.addEventListener('click', () => {
-                        removeLevelFromCampaign(store, campaign.id, level.levelIndex);
+                    removeBtn.addEventListener('click', async () => {
+                        await removeLevelFromCampaign(store, campaign.id, level.levelIndex);
                         updateCampaignsModal(store);
                     });
                     
@@ -469,17 +469,14 @@ export const setupCampaignsModal = (store: GameStore) => {
         hideCampaignsModal();
     });
     
-    createBtn?.addEventListener('click', () => {
+    createBtn?.addEventListener('click', async () => {
         if (!newCampaignNameInput || !newCampaignNameInput.value.trim()) {
             return;
         }
         
-        createCampaign(store, newCampaignNameInput.value.trim());
+        await createCampaign(store, newCampaignNameInput.value.trim());
         newCampaignNameInput.value = '';
         updateCampaignsModal(store);
-        syncCampaignsToServer(store).catch(() => {
-            // Ignorar errores de sincronización
-        });
     });
     
     // Modal: Agregar nivel a campaña
@@ -497,7 +494,7 @@ export const setupCampaignsModal = (store: GameStore) => {
     });
     
     // Botón para crear nueva campaña y agregar el nivel
-    createCampaignAndAddBtn?.addEventListener('click', () => {
+    createCampaignAndAddBtn?.addEventListener('click', async () => {
         if (!newCampaignNameInputAdd || !newCampaignNameInputAdd.value.trim()) {
             return;
         }
@@ -506,10 +503,10 @@ export const setupCampaignsModal = (store: GameStore) => {
         const levelIndex = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         
         // Crear la nueva campaña
-        const newCampaign = createCampaign(store, campaignName);
+        const newCampaign = await createCampaign(store, campaignName);
         
         // Agregar el nivel a la nueva campaña
-        const result = addLevelToCampaign(store, newCampaign.id, levelIndex);
+        const result = await addLevelToCampaign(store, newCampaign.id, levelIndex);
         if (result.success) {
             import('./ui').then(({ showNotification }) => {
                 if (result.alreadyExists) {
@@ -552,7 +549,7 @@ export const setupCampaignsModal = (store: GameStore) => {
             store.levelDataStore[levelIndex] = JSON.parse(JSON.stringify(store.editorLevel));
         }
         
-        const result = addLevelToCampaign(store, campaignId, levelIndex);
+        const result = await addLevelToCampaign(store, campaignId, levelIndex);
         if (result.success) {
             const { getCurrentCampaign } = await import('../utils/campaigns');
             const currentCampaign = getCurrentCampaign(store);

@@ -43,6 +43,11 @@
                     return;
                 }
                 
+                // Detectar si estamos en la app móvil (Capacitor)
+                var isCapacitor = typeof window.Capacitor !== 'undefined';
+                var isAndroid = /Android/i.test(navigator.userAgent);
+                var isMobileApp = isCapacitor || (isAndroid && window.location.protocol === 'capacitor:');
+                
                 // Prioridad: 1) Variable global, 2) Meta tag, 3) localStorage, 4) Detección automática
                 var configured = window.IDENTITY_URL || 
                                  document.querySelector('meta[name="netlify-identity-url"]')?.getAttribute('content') ||
@@ -64,12 +69,25 @@
                 }
                 
                 try { 
-                    // Inicializar con la URL fija y configurar para que no pida URL al user
-                    ni.init({ 
+                    // Configurar callback personalizado para app móvil
+                    var initOptions = { 
                         APIUrl: apiUrl,
                         locale: 'es' // Configurar idioma español si está disponible
-                    }); 
+                    };
+                    
+                    // Si estamos en la app móvil, configurar el callback personalizado
+                    if (isMobileApp) {
+                        // El callback personalizado está en /auth-callback.html
+                        // Netlify Identity redirigirá a esta URL después de la autenticación
+                        initOptions.redirectUrl = window.location.origin + '/auth-callback.html';
+                    }
+                    
+                    // Inicializar con la URL fija y configurar para que no pida URL al user
+                    ni.init(initOptions); 
                     console.log('Netlify Identity inicializado con URL:', apiUrl);
+                    if (isMobileApp) {
+                        console.log('Callback personalizado configurado para app móvil:', initOptions.redirectUrl);
+                    }
                     
                     // Observador para cerrar cualquier modal de configuración que aparezca
                     var observer = new MutationObserver(function(mutations) {

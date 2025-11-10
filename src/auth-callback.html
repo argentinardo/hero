@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticación - NEW H.E.R.O.</title>
+    <style>
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: #1f2937;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            padding: 2rem;
+        }
+        .message {
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="message">Procesando autenticación...</div>
+    </div>
+    <script>
+        (function() {
+            // Detectar si viene de la app móvil (Capacitor)
+            const isCapacitor = typeof window.Capacitor !== 'undefined';
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isMobileApp = isCapacitor || (isAndroid && window.location.protocol === 'capacitor:');
+            
+            // Obtener los parámetros de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const accessToken = urlParams.get('access_token');
+            const tokenType = urlParams.get('token_type') || 'Bearer';
+            const expiresIn = urlParams.get('expires_in');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            
+            // Si hay un error, mostrarlo
+            if (error) {
+                document.querySelector('.message').textContent = 'Error: ' + (errorDescription || error);
+                setTimeout(() => {
+                    if (isMobileApp) {
+                        // Intentar cerrar el WebView y volver a la app
+                        window.location.href = 'hero://auth-callback?error=' + encodeURIComponent(error);
+                    } else {
+                        window.close();
+                    }
+                }, 3000);
+                return;
+            }
+            
+            // Si hay un token, procesarlo
+            if (accessToken) {
+                // Si viene de la app móvil, redirigir usando el esquema personalizado
+                if (isMobileApp) {
+                    // Construir la URL de callback con el token
+                    const callbackUrl = 'hero://auth-callback?' + 
+                        'access_token=' + encodeURIComponent(accessToken) +
+                        '&token_type=' + encodeURIComponent(tokenType) +
+                        (expiresIn ? '&expires_in=' + encodeURIComponent(expiresIn) : '');
+                    
+                    // Redirigir a la app
+                    window.location.href = callbackUrl;
+                } else {
+                    // Si es web, cerrar la ventana y notificar al padre
+                    if (window.opener) {
+                        // Enviar el token al padre
+                        window.opener.postMessage({
+                            type: 'netlify-auth-callback',
+                            access_token: accessToken,
+                            token_type: tokenType,
+                            expires_in: expiresIn
+                        }, window.location.origin);
+                        window.close();
+                    } else {
+                        // Si no hay opener, intentar guardar en localStorage y redirigir
+                        localStorage.setItem('netlify-auth-token', accessToken);
+                        localStorage.setItem('netlify-auth-token-type', tokenType);
+                        if (expiresIn) {
+                            localStorage.setItem('netlify-auth-expires-in', expiresIn);
+                        }
+                        window.location.href = '/';
+                    }
+                }
+            } else {
+                // No hay token, mostrar error
+                document.querySelector('.message').textContent = 'Error: No se recibió el token de autenticación';
+                setTimeout(() => {
+                    if (isMobileApp) {
+                        window.location.href = 'hero://auth-callback?error=no_token';
+                    } else {
+                        window.close();
+                    }
+                }, 3000);
+            }
+        })();
+    </script>
+</body>
+</html>
+

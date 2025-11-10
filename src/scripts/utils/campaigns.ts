@@ -119,7 +119,7 @@ export const initializeCampaigns = (store: GameStore, totalLevels: number): void
 /**
  * Crea una nueva campaña
  */
-export const createCampaign = (store: GameStore, name: string): Campaign => {
+export const createCampaign = async (store: GameStore, name: string): Promise<Campaign> => {
     const newCampaign: Campaign = {
         id: `campaign_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name,
@@ -132,13 +132,18 @@ export const createCampaign = (store: GameStore, name: string): Campaign => {
     store.campaigns.push(newCampaign);
     saveCampaigns(store.campaigns);
     
+    // Sincronizar con el servidor
+    await syncCampaignsToServer(store).catch((error) => {
+        console.error('Error sincronizando campaña nueva:', error);
+    });
+    
     return newCampaign;
 };
 
 /**
  * Elimina una campaña (no permite eliminar la por defecto)
  */
-export const deleteCampaign = (store: GameStore, campaignId: string): boolean => {
+export const deleteCampaign = async (store: GameStore, campaignId: string): Promise<boolean> => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
     if (!campaign || campaign.isDefault) {
         return false;
@@ -153,6 +158,12 @@ export const deleteCampaign = (store: GameStore, campaignId: string): boolean =>
     }
     
     saveCampaigns(store.campaigns);
+    
+    // Sincronizar con el servidor
+    await syncCampaignsToServer(store).catch((error) => {
+        console.error('Error sincronizando después de eliminar campaña:', error);
+    });
+    
     return true;
 };
 
@@ -161,7 +172,7 @@ export const deleteCampaign = (store: GameStore, campaignId: string): boolean =>
  * NOTA: Ahora se permite editar la campaña original
  * Si el nivel ya existe, retorna true (el nivel ya está en la campaña)
  */
-export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIndex: number): { success: boolean; alreadyExists: boolean } => {
+export const addLevelToCampaign = async (store: GameStore, campaignId: string, levelIndex: number): Promise<{ success: boolean; alreadyExists: boolean }> => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
     if (!campaign) {
         return { success: false, alreadyExists: false };
@@ -173,6 +184,12 @@ export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIn
         // El nivel ya existe, actualizar la fecha de modificación
         campaign.updatedAt = Date.now();
         saveCampaigns(store.campaigns);
+        
+        // Sincronizar con el servidor
+        await syncCampaignsToServer(store).catch((error) => {
+            console.error('Error sincronizando después de actualizar campaña:', error);
+        });
+        
         return { success: true, alreadyExists: true };
     }
     
@@ -189,6 +206,11 @@ export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIn
     campaign.updatedAt = Date.now();
     saveCampaigns(store.campaigns);
     
+    // Sincronizar con el servidor
+    await syncCampaignsToServer(store).catch((error) => {
+        console.error('Error sincronizando después de agregar nivel a campaña:', error);
+    });
+    
     return { success: true, alreadyExists: false };
 };
 
@@ -196,7 +218,7 @@ export const addLevelToCampaign = (store: GameStore, campaignId: string, levelIn
  * Elimina un nivel de una campaña
  * NOTA: Legacy es de solo lectura - no se permite eliminar niveles
  */
-export const removeLevelFromCampaign = (store: GameStore, campaignId: string, levelIndex: number): boolean => {
+export const removeLevelFromCampaign = async (store: GameStore, campaignId: string, levelIndex: number): Promise<boolean> => {
     const campaign = store.campaigns.find(c => c.id === campaignId);
     if (!campaign) {
         return false;
@@ -218,6 +240,11 @@ export const removeLevelFromCampaign = (store: GameStore, campaignId: string, le
     
     campaign.updatedAt = Date.now();
     saveCampaigns(store.campaigns);
+    
+    // Sincronizar con el servidor
+    await syncCampaignsToServer(store).catch((error) => {
+        console.error('Error sincronizando después de eliminar nivel de campaña:', error);
+    });
     
     return true;
 };

@@ -52,11 +52,12 @@ module.exports = {
     new webpack.IgnorePlugin({
       resourceRegExp: /^@capacitor\/status-bar$/,
     }),
-    // Copiar Service Worker a dist
+    // Copiar Service Worker y archivos estáticos a dist
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/sw.js', to: 'sw.js' },
-        { from: 'manifest.json', to: 'manifest.json' }
+        { from: 'manifest.json', to: 'manifest.json' },
+        { from: 'src/auth-callback.html', to: 'auth-callback.html' }
       ],
     }),
   ],

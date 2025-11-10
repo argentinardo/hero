@@ -16,6 +16,9 @@
       "style": "dark",
       "backgroundColor": "#000000",
       "overlaysWebView": true
+    },
+    "App": {
+      "launchUrl": "hero://"
     }
   }
 }
