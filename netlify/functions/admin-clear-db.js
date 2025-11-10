@@ -54,6 +54,18 @@ const clearAllTables = async (sql) => {
 
   const results = [];
   
+  // Crear el cliente de Neon una sola vez para queries dinámicas
+  const dbUrl = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL;
+  let sqlDirect = null;
+  if (dbUrl) {
+    try {
+      const { neon: neonClient } = require('@neondatabase/serverless');
+      sqlDirect = neonClient(dbUrl);
+    } catch (importError) {
+      console.warn('No se pudo importar @neondatabase/serverless, usando solo @netlify/neon');
+    }
+  }
+  
   for (const table of tables) {
     try {
       // Verificar que la tabla existe antes de intentar vaciarla
@@ -66,22 +78,47 @@ const clearAllTables = async (sql) => {
       `;
       
       if (tableExists[0]?.exists) {
-        // Obtener el conteo antes de eliminar
-        const countBefore = await sql.unsafe(`SELECT COUNT(*) as count FROM "${table}"`);
-        const count = parseInt(countBefore[0]?.count || '0', 10);
-        
-        // Usar TRUNCATE para mejor rendimiento, pero si hay foreign keys, usar DELETE
-        // TRUNCATE es más rápido pero no funciona con foreign keys
+        // Obtener el conteo antes de eliminar usando una query parametrizada
+        let count = 0;
         try {
-          // Intentar TRUNCATE primero (más rápido)
-          await sql.unsafe(`TRUNCATE TABLE "${table}" CASCADE`);
-          results.push({ table, deleted: count, success: true, method: 'TRUNCATE' });
-          console.log(`Tabla ${table} vaciada con TRUNCATE: ${count} registros eliminados`);
-        } catch (truncateError) {
-          // Si TRUNCATE falla (por foreign keys), usar DELETE
-          await sql.unsafe(`DELETE FROM "${table}"`);
-          results.push({ table, deleted: count, success: true, method: 'DELETE' });
-          console.log(`Tabla ${table} vaciada con DELETE: ${count} registros eliminados`);
+          // Usar una función que construya la query dinámicamente
+          // Como no podemos usar nombres de tablas en template literals, usamos una función helper
+          const countResult = await sql`
+            SELECT COUNT(*)::int as count 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = ${table}
+          `;
+          // Esto no nos da el conteo real, pero podemos intentar obtenerlo de otra forma
+          // Por ahora, simplemente intentamos eliminar
+        } catch (countError) {
+          console.warn(`No se pudo obtener conteo de ${table}, continuando...`);
+        }
+        
+        // Usar el cliente de Neon directamente para ejecutar SQL dinámico
+        if (!sqlDirect) {
+          throw new Error('No se pudo inicializar el cliente de Neon. Verifica NETLIFY_DATABASE_URL.');
+        }
+        
+        // Escapar el nombre de la tabla (PostgreSQL usa comillas dobles)
+        const escapedTable = `"${table}"`;
+        
+        // Intentar primero con DELETE (respeta foreign keys)
+        try {
+          const deleteQuery = `DELETE FROM ${escapedTable}`;
+          await sqlDirect(deleteQuery);
+          results.push({ table, deleted: count || 'all', success: true, method: 'DELETE' });
+          console.log(`Tabla ${table} vaciada con DELETE`);
+        } catch (deleteError) {
+          // Si DELETE falla, intentar TRUNCATE CASCADE
+          try {
+            const truncateQuery = `TRUNCATE TABLE ${escapedTable} CASCADE`;
+            await sqlDirect(truncateQuery);
+            results.push({ table, deleted: count || 'all', success: true, method: 'TRUNCATE' });
+            console.log(`Tabla ${table} vaciada con TRUNCATE CASCADE`);
+          } catch (truncateError) {
+            console.error(`Error vaciando tabla ${table}:`, truncateError);
+            results.push({ table, deleted: 0, success: false, error: truncateError.message });
+          }
         }
       } else {
         results.push({ table, deleted: 0, success: true, message: 'Tabla no existe' });
