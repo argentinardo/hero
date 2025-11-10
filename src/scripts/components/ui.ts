@@ -56,6 +56,47 @@ const requestLegacyPasswordUnlock = async (store: GameStore): Promise<boolean> =
 
 registerLegacyUnlockHandler(requestLegacyPasswordUnlock);
 
+type PrimaryUserAction = 'login' | 'logout' | 'editor';
+
+const resolvePrimaryAction = (store: GameStore): { action: PrimaryUserAction; label: string } => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (!isLoggedIn) {
+        return {
+            action: 'login',
+            label: t('menu.loginAction') ?? t('menu.login'),
+        };
+    }
+    if (store.appState === 'playing') {
+        return {
+            action: 'editor',
+            label: t('menu.editAction') ?? t('menu.editor'),
+        };
+    }
+    return {
+        action: 'logout',
+        label: t('menu.logoutAction') ?? t('user.logout'),
+    };
+};
+
+const applyHamburgerLabel = (label: string) => {
+    const buttonIds = ['hamburger-btn', 'hamburger-btn-mobile'];
+    for (const id of buttonIds) {
+        const btn = document.getElementById(id) as HTMLButtonElement | null;
+        if (!btn) continue;
+        const labelEl = btn.querySelector('.hamburger-label') as HTMLElement | null;
+        if (labelEl) {
+            labelEl.textContent = label;
+        } else {
+            btn.textContent = label;
+        }
+        btn.setAttribute('aria-label', label);
+    }
+};
+
+const updateHamburgerButtonLabel = (_store: GameStore) => {
+    applyHamburgerLabel('menu');
+};
+
 // Función para ajustar el ancho de las barras UI al tamaño real del canvas
 export const adjustUIBars = () => {
     const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
@@ -784,6 +825,7 @@ export const showMenu = (store: GameStore) => {
         store.player.isFrozen = false;
     }
     setBodyClass('menu');
+    updateHamburgerButtonLabel(store);
     
     // Mostrar selector de idioma (banderas) cuando esté en el menú
     const languageSelectorContainer = document.getElementById('language-selector-container');
@@ -884,6 +926,7 @@ export const showMenu = (store: GameStore) => {
         if (levelEditorBtn) {
             levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
         }
+        updateHamburgerButtonLabel(store);
     };
     updateEditorButton();
 };
@@ -1305,6 +1348,7 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     store.appState = 'playing';
     store.gameState = 'playing';
     setBodyClass('playing');
+    updateHamburgerButtonLabel(store);
     
     teardownTvMenuNavigation();
     
@@ -1552,6 +1596,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     
     store.appState = 'editing';
     setBodyClass('editing');
+    updateHamburgerButtonLabel(store);
     
     // Ocultar selector de idioma (banderas) cuando esté en editor
     const languageSelectorContainer = document.getElementById('language-selector-container');
@@ -2823,6 +2868,7 @@ const syncLevelSelector = (store: GameStore) => {
 
 export const setupUI = (store: GameStore) => {
     attachDomReferences(store);
+    updateHamburgerButtonLabel(store);
     syncLevelSelector(store);
     setupLevelData(store);
     setupMenuButtons(store);
@@ -2859,6 +2905,7 @@ export const setupUI = (store: GameStore) => {
                     if (levelEditorBtn) {
                         levelEditorBtn.textContent = t('menu.editor');
                     }
+                    updateHamburgerButtonLabel(store);
                     // Cargar niveles del usuario después de iniciar sesión
                     await tryLoadUserLevels(store);
                     if (store.appState === 'menu') {
@@ -2880,6 +2927,7 @@ export const setupUI = (store: GameStore) => {
                 if (levelEditorBtn) {
                     levelEditorBtn.textContent = t('menu.login');
                 }
+                updateHamburgerButtonLabel(store);
             });
         }
     } catch {}
@@ -3549,13 +3597,15 @@ const updateAllTexts = (store: GameStore) => {
     updateModalsTexts();
     
     // Modal de pausa
-    updatePauseMenuTexts();
+    updatePauseMenuTexts(store);
     
     // Modal de autenticación
     updateAuthModalTexts();
     
     // Créditos
     updateCreditsTexts();
+    
+    updateHamburgerButtonLabel(store);
 };
 
 /**
@@ -3803,22 +3853,23 @@ const updateModalsTexts = () => {
 /**
  * Actualiza los textos del modal de pausa
  */
-const updatePauseMenuTexts = () => {
+const updatePauseMenuTexts = (store: GameStore) => {
     const pauseMenuTitle = document.querySelector('#pause-menu-modal .title');
     const pauseResumeBtn = document.getElementById('pause-resume-btn');
-    const pauseRestartBtn = document.getElementById('pause-restart-btn');
     const pauseMainMenuBtn = document.getElementById('pause-mainmenu-btn');
     const pauseSettingsBtn = document.getElementById('pause-settings-btn');
     const pauseCreditsBtn = document.getElementById('pause-credits-btn');
-    const pauseCancelBtn = document.getElementById('pause-cancel-btn');
+    const pauseDynamicBtn = document.getElementById('pause-dynamic-btn');
     
     if (pauseMenuTitle) pauseMenuTitle.textContent = t('modals.menuTitle');
     if (pauseResumeBtn) pauseResumeBtn.textContent = t('game.resume');
-    if (pauseRestartBtn) pauseRestartBtn.textContent = t('game.restart');
     if (pauseMainMenuBtn) pauseMainMenuBtn.textContent = t('modals.backToMainMenuTitle');
     if (pauseSettingsBtn) pauseSettingsBtn.textContent = t('game.settings');
     if (pauseCreditsBtn) pauseCreditsBtn.textContent = t('menu.credits');
-    if (pauseCancelBtn) pauseCancelBtn.textContent = t('modals.close');
+    if (pauseDynamicBtn) {
+        const { label } = resolvePrimaryAction(store);
+        pauseDynamicBtn.textContent = label;
+    }
 };
 
 /**
@@ -3838,14 +3889,12 @@ const updateCreditsTexts = () => {
 const updateAuthModalTexts = () => {
     const authModalTitle = document.querySelector('#auth-choice-modal .title');
     const authModalMessage = document.querySelector('#auth-choice-modal p.mb-6');
-    const authGoogleBtnText = document.getElementById('auth-google-btn-text');
     const authLoginBtn = document.getElementById('auth-login-btn');
     const authSignupBtn = document.getElementById('auth-signup-btn');
     const authCancelBtn = document.getElementById('auth-cancel-btn');
     
     if (authModalTitle) authModalTitle.textContent = t('auth.authentication');
     if (authModalMessage) authModalMessage.textContent = t('auth.loginMessage');
-    if (authGoogleBtnText) authGoogleBtnText.textContent = t('auth.continueWithGoogle');
     if (authLoginBtn) authLoginBtn.textContent = t('auth.login');
     if (authSignupBtn) authSignupBtn.textContent = t('auth.createAccount');
     if (authCancelBtn) authCancelBtn.textContent = t('modals.cancel');
@@ -4109,10 +4158,10 @@ const setupMenuButtons = (store: GameStore) => {
     // Modal de menú (pausa)
     const pauseMenu = document.getElementById('pause-menu-modal');
     const pauseResumeBtn = document.getElementById('pause-resume-btn') as HTMLButtonElement | null;
-    const pauseRestartBtn = document.getElementById('pause-restart-btn') as HTMLButtonElement | null;
+    const pauseSettingsBtn = document.getElementById('pause-settings-btn') as HTMLButtonElement | null;
     const pauseMainMenuBtn = document.getElementById('pause-mainmenu-btn') as HTMLButtonElement | null;
+    const pauseDynamicBtn = document.getElementById('pause-dynamic-btn') as HTMLButtonElement | null;
     const pauseCreditsBtn = document.getElementById('pause-credits-btn') as HTMLButtonElement | null;
-    const pauseCancelBtn = document.getElementById('pause-cancel-btn') as HTMLButtonElement | null;
     // Función para verificar si el usuario está logueado
     const checkLoginStatus = (): { isLoggedIn: boolean; username: string | null } => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -4122,11 +4171,19 @@ const setupMenuButtons = (store: GameStore) => {
     };
 
     // Función para actualizar el botón de editor según el estado de login
+    const refreshPauseDynamicButton = () => {
+        if (!pauseDynamicBtn) return;
+        const { label } = resolvePrimaryAction(store);
+        pauseDynamicBtn.textContent = label;
+    };
+
     const updateEditorButton = () => {
         const { isLoggedIn } = checkLoginStatus();
         if (levelEditorBtn) {
             levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
         }
+        updateHamburgerButtonLabel(store);
+        refreshPauseDynamicButton();
     };
 
     // Función para actualizar el área de usuario en el editor (desktop y mobile)
@@ -4392,103 +4449,11 @@ const setupMenuButtons = (store: GameStore) => {
 
     // Modal autenticación: handlers
     const authModal = document.getElementById('auth-choice-modal');
-    const authGoogleBtn = document.getElementById('auth-google-btn') as HTMLButtonElement | null;
     const authLoginBtn = document.getElementById('auth-login-btn') as HTMLButtonElement | null;
     const authSignupBtn = document.getElementById('auth-signup-btn') as HTMLButtonElement | null;
     const authCancelBtn = document.getElementById('auth-cancel-btn') as HTMLButtonElement | null;
     const closeAuthModal = () => authModal?.classList.add('hidden');
     authCancelBtn?.addEventListener('click', closeAuthModal);
-    
-    // Handler del botón de Google
-    authGoogleBtn?.addEventListener('click', () => {
-        const ni: any = (window as any).netlifyIdentity;
-        if (ni) {
-            // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
-            closeAuthModal();
-            // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
-            setTimeout(() => {
-                // Usar el método correcto de Netlify Identity para providers externos
-                // El widget de Netlify Identity maneja automáticamente los providers externos
-                // si están configurados en el dashboard
-                try {
-                    // Método 1: Intentar usar el método open con provider específico
-                    // Si el widget soporta esto, lo usará
-                    if (typeof ni.open === 'function') {
-                        // Netlify Identity widget automáticamente mostrará el botón de Google
-                        // si está habilitado en la configuración del sitio
-                        ni.open('login');
-                    } else {
-                        // Método alternativo: usar la API directamente
-                        const identityUrl = (ni.settings?.api_url || 'https://newhero.netlify.app/.netlify/identity').replace(/\/$/, '');
-                        const currentUrl = window.location.href.split('#')[0];
-                        const identityOrigin = (() => {
-                            try {
-                                const identityLocation = new URL(identityUrl);
-                                return `${identityLocation.protocol}//${identityLocation.host}`;
-                            } catch {
-                                return 'https://newhero.netlify.app';
-                            }
-                        })();
-                        const currentOrigin = (() => {
-                            try {
-                                const parsed = new URL(currentUrl);
-                                return `${parsed.protocol}//${parsed.host}`;
-                            } catch {
-                                return '';
-                            }
-                        })();
-                        const isHybridEnvironment = typeof (window as any).Capacitor !== 'undefined' ||
-                            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-                            (navigator as any).standalone === true;
-                        const redirectUri = currentOrigin && currentOrigin === identityOrigin && (isHybridEnvironment || currentUrl.includes('.netlify.app'))
-                            ? currentUrl
-                            : `${identityUrl}/callback`;
-                        const stateParam = currentUrl;
-                        localStorage.setItem('hero:last-auth-return', stateParam);
-                        // Usar el endpoint correcto de GoTrue para providers externos, asegurando que coincida con la URI registrada en Google
-                        const googleAuthUrl = `${identityUrl}/authorize?provider=google&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateParam)}`;
-                        window.location.href = googleAuthUrl;
-                    }
-                } catch (error) {
-                    console.error('Error iniciando login con Google:', error);
-                    showNotification(store, '❌ Error', 'Error al iniciar sesión con Google. Asegúrate de que Google OAuth esté configurado en Netlify Identity.');
-                }
-            }, 100);
-            // Escuchar cuando se complete el login
-            // Nota: Este listener se puede duplicar, pero el setupUI ya tiene uno
-            // que maneja el login, así que esto es redundante pero seguro
-            const handleGoogleLogin = (user: any) => {
-                if (user && user.email) {
-                    const email = user.email.toLowerCase();
-                    const username = email.split('@')[0];
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('userEmail', email);
-                    const pendingReturn = localStorage.getItem('hero:last-auth-return');
-                    if (pendingReturn) {
-                        localStorage.removeItem('hero:last-auth-return');
-                        if (pendingReturn && pendingReturn !== window.location.href) {
-                            try {
-                                window.location.replace(pendingReturn);
-                                return;
-                            } catch {
-                                window.location.href = pendingReturn;
-                                return;
-                            }
-                        }
-                    }
-                    updateEditorButton();
-                    updateUserArea();
-                    startEditor(store);
-                    // Remover el listener después de usarlo para evitar duplicados
-                    ni.off('login', handleGoogleLogin);
-                }
-            };
-            ni.on('login', handleGoogleLogin);
-        } else {
-            showNotification(store, '❌ Error', 'Netlify Identity no está disponible. Por favor, configura el servicio en el dashboard de Netlify.');
-        }
-    });
     
     authLoginBtn?.addEventListener('click', () => {
         const ni: any = (window as any).netlifyIdentity;
@@ -4840,7 +4805,7 @@ const setupMenuButtons = (store: GameStore) => {
     });
 
     // Confirmación de acciones (Menú y Reiniciar)
-    const openExitModal = (title: string, text: string, onConfirm: () => void) => {
+    const openExitModal = (title: string, text: string, onConfirm: () => void, onCancel?: () => void) => {
         if (!exitModalEl) return;
         if (exitTitleEl) exitTitleEl.textContent = title;
         if (exitTextEl) exitTextEl.textContent = text;
@@ -4855,6 +4820,7 @@ const setupMenuButtons = (store: GameStore) => {
             exitModalEl.classList.add('hidden');
             exitConfirmBtn?.removeEventListener('click', confirmHandler);
             exitCancelBtn?.removeEventListener('click', cancelHandler);
+            if (onCancel) onCancel();
         };
         exitConfirmBtn?.addEventListener('click', confirmHandler);
         exitCancelBtn?.addEventListener('click', cancelHandler);
@@ -4896,31 +4862,53 @@ const setupMenuButtons = (store: GameStore) => {
     pauseResumeBtn?.addEventListener('click', () => {
         closePauseMenu();
     });
-    pauseRestartBtn?.addEventListener('click', () => {
-        closePauseMenu();
-        startGame(store, null, store.currentLevelIndex, true);
-    });
     pauseMainMenuBtn?.addEventListener('click', () => {
         closePauseMenu();
         showMenu(store);
     });
-        pauseCreditsBtn?.addEventListener('click', () => {
+    pauseDynamicBtn?.addEventListener('click', () => {
+        const primary = resolvePrimaryAction(store);
+        if (primary.action === 'login') {
             closePauseMenu();
-            creditsModal?.classList.remove('hidden');
-            // Remover clase de activación al abrir para resetear animaciones
-            creditsModal?.classList.remove('paolo-activated');
-            // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
-        });
+            const authModal = document.getElementById('auth-choice-modal');
+            authModal?.classList.remove('hidden');
+        } else if (primary.action === 'editor') {
+            closePauseMenu();
+            startEditor(store, true);
+        } else {
+            closePauseMenu(false);
+            openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), () => {
+                const ni: any = (window as any).netlifyIdentity;
+                if (ni && ni.currentUser()) {
+                    ni.logout();
+                }
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('username');
+                localStorage.removeItem('userEmail');
+                clearLegacyPasswordOverride();
+                updateEditorButton();
+                updateUserArea();
+                showMenu(store);
+                resumeGame(store, 'pause-menu');
+            }, () => {
+                resumeGame(store, 'pause-menu');
+            });
+        }
+    });
+    pauseCreditsBtn?.addEventListener('click', () => {
+        closePauseMenu();
+        creditsModal?.classList.remove('hidden');
+        // Remover clase de activación al abrir para resetear animaciones
+        creditsModal?.classList.remove('paolo-activated');
+        // NO iniciar partículas automáticamente - solo cuando se hace click en Paolo
+    });
     
     // Botón de configuración en el menú de pausa
-    const pauseSettingsBtn = document.getElementById('pause-settings-btn') as HTMLButtonElement | null;
     pauseSettingsBtn?.addEventListener('click', () => {
         openSettingsModal(store);
         closePauseMenu(false);
         resumeGame(store, 'pause-menu');
     });
-    
-    pauseCancelBtn?.addEventListener('click', () => closePauseMenu());
 
     restartBtnDesktop?.addEventListener('click', () => {
         openExitModal(t('messages.restartLevelTitle'), t('messages.restartLevelMessage'), () => {
@@ -6277,8 +6265,9 @@ const setupLevelData = (store: GameStore) => {
             clearLegacyPasswordOverride();
             const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
             if (levelEditorBtn) {
-                levelEditorBtn.textContent = 'INGRESAR';
+                levelEditorBtn.textContent = t('menu.login');
             }
+            updateHamburgerButtonLabel(store);
             const updateUserArea = () => {
                 const userAreaMobile = document.getElementById('user-area-mobile');
                 if (userAreaMobile) {

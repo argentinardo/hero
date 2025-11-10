@@ -37,6 +37,10 @@ import { checkCollision, isInHeightBlock, isTopBlock } from '../core/collision';
 import { playJetpackSound, stopJetpackSound, playLaserSound, playLifedownSound, playStepsSound, stopStepsSound, playBombFireSound, stopAllSfxExceptLifedown, onLifedownEnded, playBackgroundMusic, pauseBackgroundMusic } from './audio';
 import { vibrate } from '../utils/device';
 
+const SHOOT_ANIMATION_DURATION_FRAMES = 12;
+const FLOAT_ENTRY_OFFSET_TILES = 4;
+const FLOAT_ENTRY_SPEED = 8;
+
 const handleWaterCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
     
@@ -282,7 +286,16 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
         deathTimer: 0,
         isFrozen: false,
         floatWaveTime: 0,
+        fireAnimationTimer: 0,
     });
+    
+    // Establecer referencias de respawn coherentes con la posición inicial global
+    player.respawnX = startX;
+    player.respawnY = startY;
+    player.respawnTileX = Math.floor((startX + player.width / 2) / TILE_SIZE);
+    player.respawnTileY = Math.floor((startY + player.height) / TILE_SIZE) - 1;
+    player.respawnOffsetX = (player.x + player.width / 2) - (player.respawnTileX * TILE_SIZE + TILE_SIZE / 2);
+    player.respawnOffsetY = (player.y + player.height) - ((player.respawnTileY + 1) * TILE_SIZE);
     
     // Siempre empezar con energía máxima visual
     store.energy = MAX_ENERGY;
@@ -299,32 +312,29 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
 // Función para iniciar el estado floating al comenzar el juego/nivel
 const startFloatingEntry = (store: GameStore, targetX: number, targetY: number) => {
     const { player } = store;
-    const canvas = store.dom.canvas;
     
-    if (!canvas) return;
+    const floatTargetY = Math.max(0, targetY - TILE_SIZE);
+    const entryOffset = FLOAT_ENTRY_OFFSET_TILES * TILE_SIZE;
+    const entryStartY = Math.max(0, floatTargetY - entryOffset);
     
-    // Guardar la posición objetivo (donde debe aterrizar)
     player.respawnX = targetX;
-    player.respawnY = targetY;
+    player.respawnY = floatTargetY;
     
-    // Posicionar al jugador desde arriba del viewport (trayecto más corto)
     player.x = targetX;
-    player.y = store.cameraY - TILE_SIZE * 0.5; // Desde arriba del viewport (trayecto más corto)
+    player.y = entryStartY;
     player.hitbox.x = player.x + TILE_SIZE / 4;
     player.hitbox.y = player.y;
     
-    // Configurar estado de floating
     player.isFloating = true;
     player.isGrounded = false;
-    player.vy = 8; // Aumentado de 6 para descenso más rápido
     player.vx = 0;
+    player.vy = FLOAT_ENTRY_SPEED;
     player.animationState = 'fly';
     player.animationTick = 0;
-    player.currentFrame = 0;
+    player.currentFrame = ANIMATION_DATA.P_fly.frames - 1;
     player.floatWaveTime = 0;
     player.canWake = false;
     
-    // Cambiar el estado del juego a floating
     store.gameState = 'floating';
 };
 
@@ -376,6 +386,16 @@ export const handlePlayerInput = (store: GameStore) => {
             startX: laserX - 20,
         });
         player.shootCooldown = 4; // Reducido de 6 a 4 para disparos más rápidos
+
+        const isStandingStillOnGround = player.isGrounded && Math.abs(player.vx) < 0.01 && !player.isFloating;
+        if (isStandingStillOnGround) {
+            player.animationState = 'fire';
+            player.currentFrame = 0;
+            player.animationTick = 0;
+            player.fireAnimationTimer = Math.max(player.fireAnimationTimer, SHOOT_ANIMATION_DURATION_FRAMES);
+        } else {
+            player.fireAnimationTimer = 0;
+        }
         
         // Reproducir sonido de láser
         playLaserSound();
@@ -458,6 +478,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     }
 
     const { player } = store;
+    player.fireAnimationTimer = 0;
     
     // Reproducir sonido de perder vida y silenciar el resto
     stopAllSfxExceptLifedown();
@@ -984,6 +1005,26 @@ const updatePlayerAnimation = (store: GameStore) => {
         return; // No cambiar frame ni estado
     }
     
+    if (player.fireAnimationTimer > 0) {
+        const canHoldFire = player.isGrounded && Math.abs(player.vx) < 0.01 && !player.isFloating;
+        if (!canHoldFire) {
+            player.fireAnimationTimer = 0;
+        } else {
+            if (player.animationState !== 'fire') {
+                player.animationState = 'fire';
+                player.currentFrame = 0;
+                player.animationTick = 0;
+            }
+            const fireAnim = ANIMATION_DATA.P_fire;
+            player.animationTick++;
+            if (player.animationTick >= fireAnim.speed) {
+                player.animationTick = 0;
+                player.currentFrame = (player.currentFrame + 1) % fireAnim.frames;
+            }
+            return;
+        }
+    }
+    
     let newState = player.animationState;
     if (player.isGrounded) {
         newState = player.isChargingFly ? 'jump' : player.vx === 0 ? 'stand' : 'walk';
@@ -1137,6 +1178,9 @@ export const updatePlayer = (store: GameStore) => {
 
     if (player.shootCooldown > 0) {
         player.shootCooldown--;
+    }
+    if (player.fireAnimationTimer > 0) {
+        player.fireAnimationTimer--;
     }
 
     // Decrementar energía automáticamente como temporizador con velocidad variable

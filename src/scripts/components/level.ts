@@ -418,8 +418,13 @@ export const parseLevel = (store: GameStore, map: string[]) => {
     // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
     const canvasInternalWidth = 1440; // 20 tiles * 72px
     const canvasInternalHeight = store.dom.canvas?.height ?? 0;
-    store.cameraY = store.player.y - canvasInternalHeight / 2;
-    store.cameraX = store.player.x - canvasInternalWidth / 2;
+    const levelHeightPx = map.length * TILE_SIZE;
+    const maxCameraY = Math.max(0, levelHeightPx - canvasInternalHeight);
+    const desiredCameraY = store.player.respawnY - canvasInternalHeight / 2;
+    store.cameraY = Math.max(0, Math.min(desiredCameraY, maxCameraY));
+    const maxCameraX = Math.max(0, levelPixelWidth - canvasInternalWidth);
+    const desiredCameraX = store.player.respawnX - canvasInternalWidth / 2;
+    store.cameraX = Math.max(0, Math.min(desiredCameraX, maxCameraX));
     
     // Rellenar bombas al comenzar el nivel
     store.bombsRemaining = 5;

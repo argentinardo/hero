@@ -22,7 +22,7 @@ export interface GameObject {
     height: number;
 }
 
-export type PlayerAnimationState = 'stand' | 'walk' | 'jump' | 'fly' | 'die' | 'success';
+export type PlayerAnimationState = 'stand' | 'walk' | 'jump' | 'fly' | 'fire' | 'die' | 'success';
 
 export interface Player extends GameObject {
     hitbox: GameObject;
@@ -44,6 +44,7 @@ export interface Player extends GameObject {
     respawnX: number;
     respawnY: number;
     floatWaveTime: number;
+    fireAnimationTimer: number;
     respawnSettledFrames?: number;
     wantsToWake?: boolean;
     canWake?: boolean; // Puede tomar control tras finalizar descenso de respawn

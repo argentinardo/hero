@@ -2,6 +2,7 @@ import playerWalkSrc from '../../assets/sprites/hero_walk.png';
 import playerStandSrc from '../../assets/sprites/hero_stand.png';
 import playerJumpSrc from '../../assets/sprites/hero_jump.png';
 import playerFlySrc from '../../assets/sprites/hero_fly.png';
+import playerFireSrc from '../../assets/sprites/fire.png';
 import playerDieSrc from '../../assets/sprites/hero-die.png';
 import playerSuccessSrc from '../../assets/sprites/hero-success.png';
 import batSrc from '../../assets/sprites/bat_small.png';
@@ -30,6 +31,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     P_stand: playerStandSrc,
     P_jump: playerJumpSrc,
     P_fly: playerFlySrc,
+    P_fire: playerFireSrc,
     P_die: playerDieSrc,
     P_success: playerSuccessSrc,
     '8': batSrc,
@@ -57,6 +59,7 @@ export const ANIMATION_DATA: AnimationMap = {
     P_stand: { frames: 4, speed: 15, sprite: 'P_stand' }, // Acelerado de 20 a 15
     P_jump: { frames: 4, speed: 3, sprite: 'P_jump', loop: false }, // Mucho más rápido para activación inmediata del jetpack
     P_fly: { frames: 5, speed: 8, sprite: 'P_fly' }, // Acelerado de 10 a 8
+    P_fire: { frames: 2, speed: 3, sprite: 'P_fire' }, // 20 FPS para animación de disparo
     P_die: { frames: 1, speed: 1, sprite: 'P_die', loop: false },
     P_success: { frames: 1, speed: 1, sprite: 'P_success', loop: false },
     '8': { frames: 6, speed: 2, sprite: '8' },
@@ -120,7 +123,7 @@ export const loadSpritesLazy = async (store: GameStore, spriteKeys: string[] = [
 
 // Función para cargar sprites críticos primero
 export const preloadCriticalAssets = (store: GameStore, callback: () => void) => {
-    const criticalSprites = ['P_stand', 'P_walk', '1', '2', 'background', 'splash', 'base'];
+    const criticalSprites = ['P_stand', 'P_walk', 'P_fire', '1', '2', 'background', 'splash', 'base'];
     
     loadSpritesLazy(store, criticalSprites)
         .then(() => {

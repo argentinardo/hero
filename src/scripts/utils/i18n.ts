@@ -15,6 +15,9 @@ export interface Translations {
         credits: string;
         editor: string;
         login: string;
+        loginAction: string;
+        logoutAction: string;
+        editAction: string;
         installPWA: string;
         playStore: string;
         playStoreComingSoon: string;
@@ -248,6 +251,9 @@ const translations: Record<Language, Translations> = {
             credits: 'CRÉDITOS',
             editor: 'EDITOR',
             login: 'INGRESAR',
+            loginAction: 'Iniciar sesión',
+            logoutAction: 'Cerrar sesión',
+            editAction: 'Editar',
             installPWA: 'Instalar App',
             playStore: 'Play Store',
             playStoreComingSoon: 'Próximamente',
@@ -469,6 +475,9 @@ const translations: Record<Language, Translations> = {
             credits: 'CREDITS',
             editor: 'EDITOR',
             login: 'LOGIN',
+            loginAction: 'Log in',
+            logoutAction: 'Log out',
+            editAction: 'Edit',
             installPWA: 'Install App',
             playStore: 'Play Store',
             playStoreComingSoon: 'Coming Soon',
@@ -690,6 +699,9 @@ const translations: Record<Language, Translations> = {
             credits: 'CRÈDITS',
             editor: 'EDITOR',
             login: 'INGRESSAR',
+            loginAction: 'Iniciar sessió',
+            logoutAction: 'Tancar sessió',
+            editAction: 'Editar',
             installPWA: 'Instal·lar App',
             playStore: 'Play Store',
             playStoreComingSoon: 'Pròximament',
