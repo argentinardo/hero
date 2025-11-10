@@ -1650,7 +1650,8 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
         
         // Actualizar título con nickname del usuario (priorizar nickname sobre username)
-        const nickname = localStorage.getItem('nickname') || localStorage.getItem('username') || 'Usuario';
+        const { getUserStorage } = await import('../utils/storage');
+        const nickname = getUserStorage('nickname') || localStorage.getItem('username') || 'Usuario';
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         
         // Restaurar elementos que podrían estar ocultos
@@ -1674,7 +1675,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         }
         
         // Actualizar avatar si está guardado (default: Player)
-        const savedAvatar = localStorage.getItem('avatar') || 'P';
+        const savedAvatar = getUserStorage('avatar') || 'P';
         const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
         if (userPanelAvatarCanvas) {
             drawAvatar(store, savedAvatar, userPanelAvatarCanvas, performance.now());
@@ -1703,7 +1704,8 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         editorPanelEl.style.display = 'flex';
         // Actualizar área de usuario (desktop) - usar nickname si está disponible
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        const nickname = localStorage.getItem('nickname') || localStorage.getItem('username');
+        const { getUserStorage } = await import('../utils/storage');
+        const nickname = getUserStorage('nickname') || localStorage.getItem('username');
         const userArea = document.getElementById('user-area');
         const usernameDisplay = document.getElementById('username-display');
         if (userArea && usernameDisplay) {
@@ -3027,9 +3029,18 @@ export const setupUI = (store: GameStore) => {
                 if (user && user.email) {
                     const email = user.email.toLowerCase();
                     const username = email.split('@')[0];
+                    
+                    // Limpiar datos del usuario anterior antes de cambiar
+                    const { clearPreviousUserData, migrateLegacyData } = await import('../utils/storage');
+                    clearPreviousUserData();
+                    
+                    // Guardar información del nuevo usuario (sin namespace, para identificación)
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
+                    
+                    // Migrar datos legacy si existen
+                    migrateLegacyData();
                     
                     // Crear/actualizar usuario en la base de datos
                     try {
@@ -3068,7 +3079,11 @@ export const setupUI = (store: GameStore) => {
             ni.on('signup', afterAuth);
             
             // Escuchar cuando se cierre sesión
-            ni.on('logout', () => {
+            ni.on('logout', async () => {
+                // Limpiar datos del usuario que se desloguea
+                const { clearUserStorage } = await import('../utils/storage');
+                clearUserStorage();
+                
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('username');
                 localStorage.removeItem('userEmail');
@@ -3106,7 +3121,8 @@ export const tryLoadUserLevels = async (store: GameStore) => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (!isLoggedIn) {
         // Intentar cargar desde localStorage como respaldo (solo niveles personalizados)
-        const savedLevels = localStorage.getItem('userLevels');
+        const { getUserStorage } = await import('../utils/storage');
+        const savedLevels = getUserStorage('levels');
         if (savedLevels) {
             try {
                 const data = JSON.parse(savedLevels);
@@ -4313,11 +4329,19 @@ const setupMenuButtons = (store: GameStore) => {
     const pauseDynamicBtn = document.getElementById('pause-dynamic-btn') as HTMLButtonElement | null;
     const pauseCreditsBtn = document.getElementById('pause-credits-btn') as HTMLButtonElement | null;
     // Función para verificar si el usuario está logueado
-    const checkLoginStatus = (): { isLoggedIn: boolean; username: string | null } => {
+    const checkLoginStatus = async (): Promise<{ isLoggedIn: boolean; username: string | null }> => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        // Priorizar nickname sobre username
-        const username = localStorage.getItem('nickname') || localStorage.getItem('username');
-        return { isLoggedIn, username: username || null };
+        // Priorizar nickname sobre username (con namespace)
+        try {
+            const { getUserStorage } = await import('../utils/storage');
+            const nickname = getUserStorage('nickname');
+            const username = nickname || localStorage.getItem('username');
+            return { isLoggedIn, username: username || null };
+        } catch {
+            // Fallback si hay error
+            const username = localStorage.getItem('username');
+            return { isLoggedIn, username: username || null };
+        }
     };
 
     // Función para actualizar el botón de editor según el estado de login
@@ -4327,8 +4351,8 @@ const setupMenuButtons = (store: GameStore) => {
         pauseDynamicBtn.textContent = label;
     };
 
-    const updateEditorButton = () => {
-        const { isLoggedIn } = checkLoginStatus();
+    const updateEditorButton = async () => {
+        const { isLoggedIn } = await checkLoginStatus();
         if (levelEditorBtn) {
             levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
         }
@@ -4337,10 +4361,11 @@ const setupMenuButtons = (store: GameStore) => {
     };
 
     // Función para actualizar el área de usuario en el editor (desktop y mobile)
-    const updateUserArea = () => {
-        const { isLoggedIn, username } = checkLoginStatus();
-        // Asegurar que usamos nickname si está disponible
-        const displayName = localStorage.getItem('nickname') || username;
+    const updateUserArea = async () => {
+        const { isLoggedIn, username } = await checkLoginStatus();
+        // Asegurar que usamos nickname si está disponible (con namespace)
+        const { getUserStorage } = await import('../utils/storage');
+        const displayName = getUserStorage('nickname') || username;
         
         // Actualizar panel desktop
         const userArea = document.getElementById('user-area');
@@ -4367,7 +4392,7 @@ const setupMenuButtons = (store: GameStore) => {
                     userPanelNickname.textContent = displayName.toUpperCase();
                 }
                 // Actualizar avatar si está guardado (default: Player)
-                const savedAvatar = localStorage.getItem('avatar') || 'P';
+                const savedAvatar = getUserStorage('avatar') || 'P';
                 const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
                 if (userPanelAvatarCanvas) {
                     drawAvatar(store, savedAvatar, userPanelAvatarCanvas, performance.now());
@@ -4424,8 +4449,8 @@ const setupMenuButtons = (store: GameStore) => {
             showCampaignsModal(store, true);
         }
     });
-    levelEditorBtn?.addEventListener('click', () => {
-        const { isLoggedIn } = checkLoginStatus();
+    levelEditorBtn?.addEventListener('click', async () => {
+        const { isLoggedIn } = await checkLoginStatus();
         if (!isLoggedIn) {
             // Mostrar modal de elección
             const modal = document.getElementById('auth-choice-modal');
@@ -4749,7 +4774,7 @@ const setupMenuButtons = (store: GameStore) => {
     const profileNicknameInput = document.getElementById('profile-nickname-input') as HTMLInputElement | null;
     const profileEmailDisplay = document.getElementById('profile-email-display') as HTMLInputElement | null;
     
-    profileBtn?.addEventListener('click', () => {
+    profileBtn?.addEventListener('click', async () => {
         profileModal?.classList.remove('hidden');
         // Cargar datos del usuario
         const ni: any = (window as any).netlifyIdentity;
@@ -4757,13 +4782,15 @@ const setupMenuButtons = (store: GameStore) => {
         if (user && profileEmailDisplay) {
             profileEmailDisplay.value = user.email || '';
         }
-        const currentNickname = localStorage.getItem('nickname');
+        // Cargar datos del usuario con namespace
+        const { getUserStorage } = await import('../utils/storage');
+        const currentNickname = getUserStorage('nickname');
         if (profileNicknameInput) {
             profileNicknameInput.value = currentNickname || '';
         }
         // Cargar avatar actual (default: Player)
         const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
-        const savedAvatar = localStorage.getItem('avatar') || 'P';
+        const savedAvatar = getUserStorage('avatar') || 'P';
         if (profileAvatarPreview) {
             drawAvatar(store, savedAvatar, profileAvatarPreview, performance.now());
             // Registrar para animación continua
@@ -4778,17 +4805,18 @@ const setupMenuButtons = (store: GameStore) => {
     
     // Handler del botón Cambiar Avatar
     const profileAvatarBtn = document.getElementById('profile-avatar-btn') as HTMLButtonElement | null;
-    profileAvatarBtn?.addEventListener('click', () => {
+    profileAvatarBtn?.addEventListener('click', async () => {
         // Lista de avatares disponibles (códigos de personajes del juego)
         // Player, Murciélago, Araña, Víbora, Tentáculo, Minero
         const avatares = ['P', '8', 'S', 'V', 'T', '9'];
-        const currentAvatar = localStorage.getItem('avatar') || 'P';
+        const { getUserStorage, setUserStorage } = await import('../utils/storage');
+        const currentAvatar = getUserStorage('avatar') || 'P';
         const currentIndex = avatares.indexOf(currentAvatar);
         const nextIndex = (currentIndex + 1) % avatares.length;
         const newAvatar = avatares[nextIndex];
         
-        // Guardar nuevo avatar
-        localStorage.setItem('avatar', newAvatar);
+        // Guardar nuevo avatar con namespace
+        setUserStorage('avatar', newAvatar);
         
         // Actualizar preview en el modal (canvas)
         const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
@@ -4829,7 +4857,8 @@ const setupMenuButtons = (store: GameStore) => {
         if (!profileNicknameInput) return;
         const newNickname = profileNicknameInput.value.trim();
         if (newNickname) {
-            localStorage.setItem('nickname', newNickname);
+            const { setUserStorage } = await import('../utils/storage');
+            setUserStorage('nickname', newNickname);
             // Actualizar nickname del panel mobile
             const userPanelNickname = document.getElementById('user-panel-nickname');
             if (userPanelNickname) {
@@ -4848,7 +4877,8 @@ const setupMenuButtons = (store: GameStore) => {
                         const { getNetlifyBaseUrl } = await import('../utils/device');
                         const baseUrl = getNetlifyBaseUrl();
                         const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
-                        const avatar = localStorage.getItem('avatar') || 'P';
+                        const { getUserStorage } = await import('../utils/storage');
+                        const avatar = getUserStorage('avatar') || 'P';
                         const avatarUrl = profileAvatarPreview ? profileAvatarPreview.toDataURL('image/png') : null;
                         
                         const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
@@ -6043,7 +6073,7 @@ const setupLevelData = (store: GameStore) => {
             // Payload completo para Legacy (todos los niveles de levels.json)
             const fullPayload = buildChunkedFile20x18(levelsAsStrings);
             
-            // Guardar en localStorage
+            // Guardar en localStorage (Legacy no usa namespace, es global)
             try {
                 localStorage.setItem('userLevels', JSON.stringify(fullPayload));
                 console.log('Cambios de campaña Legacy guardados en localStorage');
@@ -6163,16 +6193,18 @@ const setupLevelData = (store: GameStore) => {
             if (!user) {
                 showNotification(store, `❌ ${t('modals.errors.notAuthenticated')}`, t('modals.errors.notAuthenticated'));
                 // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados)
-                localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+                const { setUserStorage } = await import('../utils/storage');
+                setUserStorage('levels', JSON.stringify(fullPayload));
             } else {
                 showNotification(store, `⚠️ ${t('modals.errors.tokenExpired')}`, t('modals.errors.tokenExpired'));
                 // Continuar con el intento de guardado incluso sin token válido
             }
         }
         
-        // Guardar todos los niveles en localStorage (incluyendo originales editados)
+        // Guardar todos los niveles en localStorage (incluyendo originales editados) con namespace
         try {
-            localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+            const { setUserStorage } = await import('../utils/storage');
+            setUserStorage('levels', JSON.stringify(fullPayload));
         } catch (localError) {
             console.error('Error guardando en localStorage:', localError);
         }
@@ -6260,9 +6292,10 @@ const setupLevelData = (store: GameStore) => {
             console.error('Error guardando niveles en Netlify:', error);
             const errorMessage = error.message || String(error);
             
-            // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados)
+            // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados) con namespace
             try {
-                localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+                const { setUserStorage } = await import('../utils/storage');
+                setUserStorage('levels', JSON.stringify(fullPayload));
             } catch (localError) {
                 console.error('Error guardando en localStorage:', localError);
             }

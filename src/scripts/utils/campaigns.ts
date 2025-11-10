@@ -6,8 +6,9 @@
  */
 
 import type { Campaign, CampaignLevel, GameStore } from '../core/types';
+import { getUserStorage, setUserStorage } from './storage';
 
-const CAMPAIGNS_STORAGE_KEY = 'hero_campaigns';
+const CAMPAIGNS_STORAGE_KEY = 'campaigns'; // Ahora se usa con namespace
 const DEFAULT_CAMPAIGN_ID = 'default';
 
 /**
@@ -34,11 +35,11 @@ export const createDefaultCampaign = (totalLevels: number): Campaign => {
 };
 
 /**
- * Carga las campañas desde localStorage
+ * Carga las campañas desde localStorage (con namespace del usuario)
  */
 export const loadCampaigns = (): Campaign[] => {
     try {
-        const stored = localStorage.getItem(CAMPAIGNS_STORAGE_KEY);
+        const stored = getUserStorage(CAMPAIGNS_STORAGE_KEY);
         if (stored) {
             const campaigns = JSON.parse(stored) as Campaign[];
             // Asegurar que existe la campaña por defecto
@@ -57,11 +58,11 @@ export const loadCampaigns = (): Campaign[] => {
 };
 
 /**
- * Guarda las campañas en localStorage
+ * Guarda las campañas en localStorage (con namespace del usuario)
  */
 export const saveCampaigns = (campaigns: Campaign[]): void => {
     try {
-        localStorage.setItem(CAMPAIGNS_STORAGE_KEY, JSON.stringify(campaigns));
+        setUserStorage(CAMPAIGNS_STORAGE_KEY, JSON.stringify(campaigns));
     } catch (error) {
         console.error('Error guardando campañas:', error);
     }

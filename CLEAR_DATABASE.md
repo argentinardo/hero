@@ -148,12 +148,55 @@ Si la operación es exitosa, recibirás una respuesta como esta:
 1. Verifica que `NETLIFY_DATABASE_URL` esté configurada en Netlify
 2. Revisa los logs de la función en Netlify Dashboard → Functions → admin-clear-db → Logs
 
+## ⚠️ IMPORTANTE: Limpiar también localStorage
+
+**Las campañas también se guardan en `localStorage` del navegador.** Después de vaciar la base de datos, también necesitas limpiar el `localStorage`:
+
+### Opción 1: Desde la consola del navegador
+
+1. Abre la consola del navegador (F12)
+2. Copia y pega este código:
+
+```javascript
+// Limpiar localStorage
+const keysToRemove = [
+  'hero_campaigns',        // Campañas guardadas
+  'userLevels',            // Niveles del usuario
+  'isLoggedIn',            // Estado de login
+  'username',              // Nombre de usuario
+  'userEmail',             // Email del usuario
+  'nickname',              // Nickname
+  'avatar',                // Avatar
+];
+
+keysToRemove.forEach(key => {
+  if (localStorage.getItem(key)) {
+    localStorage.removeItem(key);
+    console.log(`✅ Eliminado: ${key}`);
+  }
+});
+
+console.log('✅ localStorage limpiado. Recarga la página.');
+```
+
+3. Presiona Enter
+4. Recarga la página (F5)
+
+### Opción 2: Limpiar todo el localStorage
+
+Si quieres limpiar TODO el localStorage (más agresivo):
+
+```javascript
+localStorage.clear();
+console.log('✅ Todo el localStorage ha sido limpiado. Recarga la página.');
+location.reload();
+```
+
 ## Verificación
 
-Después de vaciar la base de datos, puedes verificar que las tablas estén vacías:
+Después de vaciar la base de datos Y localStorage, puedes verificar:
 
-1. Conecta a tu base de datos Neon directamente
-2. Ejecuta:
+1. **Base de datos**: Conecta a tu base de datos Neon directamente y ejecuta:
    ```sql
    SELECT COUNT(*) FROM users;
    SELECT COUNT(*) FROM user_campaigns;
@@ -162,8 +205,14 @@ Después de vaciar la base de datos, puedes verificar que las tablas estén vac�
    SELECT COUNT(*) FROM level_likes;
    SELECT COUNT(*) FROM user_implemented_levels;
    ```
+   Todos deberían devolver `0`.
 
-Todos deberían devolver `0`.
+2. **localStorage**: En la consola del navegador, ejecuta:
+   ```javascript
+   console.log('Campañas:', localStorage.getItem('hero_campaigns'));
+   console.log('Usuario logueado:', localStorage.getItem('isLoggedIn'));
+   ```
+   Ambos deberían devolver `null`.
 
 ## Seguridad
 
