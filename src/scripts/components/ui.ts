@@ -5987,22 +5987,31 @@ const shareLevelToGallery = async (store: GameStore) => {
     }
 
     try {
+        console.log('=== INICIANDO COMPARTIR NIVEL ===');
+        
         const token = await user.jwt();
         const baseUrl = getNetlifyBaseUrl();
+        console.log('Token obtenido, baseUrl:', baseUrl);
         
         // Verificar que el nivel del editor existe y no está vacío
         if (!store.editorLevel || store.editorLevel.length === 0) {
             showNotification(store, `❌ Error`, 'El nivel está vacío. Por favor crea un nivel antes de compartir.');
+            console.log('Nivel vacío');
             return;
         }
+        
+        console.log('Nivel editor válido, tamaño:', store.editorLevel.length);
         
         // Obtener el nivel actual del editor
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
         const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
         
+        console.log('Nivel limpiado, tamaño:', cleanedLevel?.length);
+        
         // Verificar que el nivel limpiado no está vacío
         if (!cleanedLevel || cleanedLevel.length === 0 || (cleanedLevel[0] && cleanedLevel[0].length === 0)) {
             showNotification(store, `❌ Error`, 'El nivel está vacío después de limpiar. Por favor agrega contenido al nivel.');
+            console.log('Nivel limpiado vacío');
             return;
         }
         
@@ -6011,6 +6020,7 @@ const shareLevelToGallery = async (store: GameStore) => {
         let levelData;
         try {
             levelData = buildChunkedFile20x18(levelsAsStrings);
+            console.log('Datos convertidos exitosamente:', levelData);
         } catch (conversionError: any) {
             console.error('Error convirtiendo nivel:', conversionError);
             showNotification(store, `❌ Error`, `Error al convertir el nivel: ${conversionError.message || 'Error desconocido'}`);
@@ -6028,16 +6038,26 @@ const shareLevelToGallery = async (store: GameStore) => {
         let screenshot: string;
         try {
             screenshot = generateLevelScreenshotForShare(cleanedLevel);
+            console.log('Screenshot generado:', screenshot ? 'Sí (tamaño: ' + screenshot.length + ' chars)' : 'No');
         } catch (screenshotError: any) {
             console.error('Error generando screenshot:', screenshotError);
             screenshot = ''; // Continuar sin screenshot si falla
         }
         
         // Preguntar por nombre y descripción
+        console.log('Pidiendo nombre del nivel...');
         const name = await showPromptModal(store, t('messages.levelNamePrompt'), `${t('messages.myLevel')} ${index + 1}`);
-        if (!name) return;
+        if (!name) {
+            console.log('Usuario canceló nombre');
+            return;
+        }
         
+        console.log('Nombre:', name);
+        
+        console.log('Pidiendo descripción del nivel...');
         const description = await showPromptModal(store, t('messages.levelDescriptionPrompt'), '');
+        
+        console.log('Descripción:', description || '(vacía)');
         
         // Preparar el payload
         const payload = {
@@ -6057,6 +6077,9 @@ const shareLevelToGallery = async (store: GameStore) => {
             currentOrigin: window.location.origin
         });
         
+        console.log('Enviando fetch a:', galleryUrl);
+        console.log('Payload size:', JSON.stringify(payload).length);
+        
         const res = await fetch(galleryUrl, {
             method: 'POST',
             headers: {
@@ -6066,6 +6089,8 @@ const shareLevelToGallery = async (store: GameStore) => {
             body: JSON.stringify(payload)
         });
 
+        console.log('Respuesta status:', res.status, res.statusText);
+        
         if (!res.ok) {
             const errorText = await res.text().catch(() => 'Error desconocido');
             console.error('Error del servidor:', res.status, errorText);
@@ -6073,9 +6098,11 @@ const shareLevelToGallery = async (store: GameStore) => {
         }
 
         const result = await res.json();
+        console.log('Resultado:', result);
         
         if (result.ok) {
             showNotification(store, `✅ ${t('messages.levelShared')}`, t('messages.levelSharedSuccess'));
+            console.log('Nivel compartido exitosamente');
         } else {
             throw new Error(result.error || 'Error desconocido');
         }

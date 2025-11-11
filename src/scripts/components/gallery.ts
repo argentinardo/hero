@@ -323,7 +323,7 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
                     ${level.user_liked ? '❤️ Ya votaste' : '❤️ Me gusta'}
                 </button>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 mb-2">
                 <button class="gallery-play-btn flex-1 bg-green-600 hover:bg-green-700 p-2 border border-white text-xs" 
                         data-level-id="${level.level_id}">
                     Jugar
@@ -333,6 +333,12 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
                     Implementar
                 </button>
             </div>
+            <button class="gallery-share-btn w-full bg-purple-600 hover:bg-purple-700 p-2 border border-white text-xs" 
+                    data-level-id="${level.level_id}"
+                    data-level-name="${level.name}"
+                    data-level-creator="${level.nickname || level.user_id?.split('@')[0] || 'Anónimo'}">
+                📤 Compartir
+            </button>
         `;
 
         galleryGrid.appendChild(card);
@@ -365,6 +371,18 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
             const levelId = target.getAttribute('data-level-id');
             if (levelId) {
                 await implementLevel(store, levelId);
+            }
+        });
+    });
+
+    document.querySelectorAll('.gallery-share-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const target = e.target as HTMLElement;
+            const levelId = target.getAttribute('data-level-id');
+            const levelName = target.getAttribute('data-level-name');
+            const levelCreator = target.getAttribute('data-level-creator') || 'Anónimo';
+            if (levelId && levelName) {
+                await shareLevel(store, levelId, levelName, levelCreator);
             }
         });
     });
@@ -687,6 +705,161 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
     } catch (error) {
         console.error('Error implementando nivel:', error);
         showNotification(store, 'Error', 'Error al implementar nivel. Por favor intenta de nuevo.');
+    }
+};
+
+/**
+ * Comparte un nivel de la galería en redes sociales
+ * Genera un link y abre opciones para compartir
+ * 
+ * @param {GameStore} store - Store del juego
+ * @param {string} levelId - ID del nivel a compartir
+ * @param {string} levelName - Nombre del nivel
+ * @param {string} levelCreator - Nombre del creador
+ * @returns {Promise<void>}
+ */
+const shareLevel = async (store: GameStore, levelId: string, levelName: string, levelCreator: string): Promise<void> => {
+    try {
+        // Generar URL del nivel
+        const gameUrl = window.location.origin;
+        const shareUrl = `${gameUrl}?level=${levelId}`;
+        
+        // Crear mensaje para compartir
+        const shareText = `Juega "${levelName}" creado por ${levelCreator} en Hero Game 🎮`;
+        const fullShareText = `${shareText}\n${shareUrl}`;
+        
+        // Intentar usar Web Share API si está disponible
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Hero Game',
+                    text: shareText,
+                    url: shareUrl
+                });
+                showNotification(store, 'Éxito', '✅ Compartido exitosamente');
+                return;
+            } catch (error: any) {
+                // Si el usuario cancela la compartición, no mostrar error
+                if (error.name === 'AbortError') {
+                    return;
+                }
+                // Si falla, continuar con el método alternativo
+                console.log('Web Share API no disponible, usando método alternativo');
+            }
+        }
+        
+        // Método alternativo: mostrar opciones de compartir
+        const shareOptions = `
+            <div style="display: flex; flex-direction: column; gap: 10px; min-width: 300px;">
+                <p style="margin: 0; font-size: 14px; color: #ccc;">
+                    <strong>${levelName}</strong> de ${levelCreator}
+                </p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="share-twitter" style="flex: 1; min-width: 80px; padding: 8px; background: #1DA1F2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        𝕏 Twitter
+                    </button>
+                    <button id="share-facebook" style="flex: 1; min-width: 80px; padding: 8px; background: #1877F2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        📘 Facebook
+                    </button>
+                    <button id="share-whatsapp" style="flex: 1; min-width: 80px; padding: 8px; background: #25D366; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        💬 WhatsApp
+                    </button>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input id="share-url-input" type="text" value="${shareUrl}" readonly style="flex: 1; padding: 8px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 12px;" />
+                    <button id="share-copy" style="padding: 8px 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Copiar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Crear modal personalizado para compartir
+        const modal = document.createElement('div');
+        modal.id = 'share-level-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #222;
+            border: 2px solid #666;
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 10000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        `;
+        modal.innerHTML = `
+            ${shareOptions}
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <button id="share-close" style="flex: 1; padding: 8px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Cerrar
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Event listeners
+        const closeBtn = modal.querySelector('#share-close') as HTMLButtonElement;
+        const copyBtn = modal.querySelector('#share-copy') as HTMLButtonElement;
+        const twitterBtn = modal.querySelector('#share-twitter') as HTMLButtonElement;
+        const facebookBtn = modal.querySelector('#share-facebook') as HTMLButtonElement;
+        const whatsappBtn = modal.querySelector('#share-whatsapp') as HTMLButtonElement;
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.remove();
+            });
+        }
+        
+        if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    copyBtn.textContent = '✓ Copiado';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copiar';
+                    }, 2000);
+                } catch (error) {
+                    console.error('Error copiando URL:', error);
+                }
+            });
+        }
+        
+        if (twitterBtn) {
+            twitterBtn.addEventListener('click', () => {
+                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(fullShareText)}`;
+                window.open(twitterUrl, '_blank', 'width=600,height=400');
+            });
+        }
+        
+        if (facebookBtn) {
+            facebookBtn.addEventListener('click', () => {
+                const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+                window.open(facebookUrl, '_blank', 'width=600,height=400');
+            });
+        }
+        
+        if (whatsappBtn) {
+            whatsappBtn.addEventListener('click', () => {
+                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(fullShareText)}`;
+                window.open(whatsappUrl, '_blank');
+            });
+        }
+        
+        // Cerrar modal si se presiona Escape
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+    } catch (error) {
+        console.error('Error compartiendo nivel:', error);
+        showNotification(store, 'Error', 'Error al compartir nivel. Por favor intenta de nuevo.');
     }
 };
 
