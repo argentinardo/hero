@@ -79,7 +79,7 @@ import { createInitialStore } from './core/state';
 import { preloadCriticalAssets, loadSpritesLazy } from './core/assets';
 import { TILE_SIZE } from './core/constants';
 import type { GameStore } from './core/types';
-import { setupUI, showMenu, startGame } from './components/ui';
+import { setupUI, showMenu, startGame, handleGamepadMenuActions } from './components/ui';
 import { handlePlayerInput, updatePlayer } from './components/player';
 import { loadLevel, updateWalls } from './components/level';
 import { renderGame, renderEditor, animateSplash } from './components/render';
@@ -473,18 +473,25 @@ const gameLoop = (currentTime: number): void => {
                         editorModuleCache = { drawEditor: editorModule.drawEditor };
                     });
                 }
-                // Saltar este frame si aún se está cargando
-                if (!editorModuleCache) {
-                    requestAnimationFrame(gameLoop);
-                    return;
-                }
+                // Saltar este frame si aún se está cargando - la promesa se resolverá en el siguiente frame
+                requestAnimationFrame(gameLoop);
+                return;
             }
-            if (editorModuleCache && editorModuleCache.drawEditor) {
-                renderEditor(store, editorModuleCache.drawEditor);
+            // editorModuleCache está garantizado aquí después de la verificación anterior
+            const drawEditorFn = editorModuleCache.drawEditor;
+            if (drawEditorFn) {
+                renderEditor(store, drawEditorFn);
             }
         } else if (store.appState === 'menu') {
             // Animar splash también en mobile
-                animateSplash(store);
+            animateSplash(store);
+            
+            // Procesar gamepad para navegación en el menú (modo TV)
+            // Solo procesar una vez por frame para evitar activaciones múltiples
+            const gamepadAction = updateGamepadState(store);
+            if (gamepadAction) {
+                handleGamepadMenuActions(store, gamepadAction);
+            }
         }
     }
 

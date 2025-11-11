@@ -1,0 +1,298 @@
+================================================================================
+                    ARQUITECTURA SOLID - CÓDIGO QR
+================================================================================
+
+ESTRUCTURA DE CAPAS
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         UI COMPONENT (ui.ts)                                │
+│                                                                              │
+│  • showMenu()                                                               │
+│    └─ initializeQRCodeController()                                         │
+│                                                                              │
+│  • startGame()                                                              │
+│    └─ qrCodeController.stop()                                              │
+│                                                                              │
+│  • startEditor()                                                            │
+│    └─ qrCodeController.stop()                                              │
+│                                                                              │
+└────────────────────────────────┬────────────────────────────────────────────┘
+                                 │
+                                 │ newInstance()
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      QRCodeController                                        │
+│  ═══════════════════════════════════════════════════════════════════════   │
+│                                                                              │
+│  - Orquesta la lógica del QR                                                │
+│  - Decide cuándo mostrar/ocultar                                            │
+│  - Reacciona a cambios de dispositivo                                       │
+│  - Limpia recursos cuando termina                                           │
+│                                                                              │
+│  Métodos públicos:                                                          │
+│  • start()                    Inicia el controlador                          │
+│  • stop()                     Detiene y limpia                              │
+│  • getQRState()               Obtiene estado del QR                         │
+│  • getDeviceInfo()            Obtiene info del dispositivo                  │
+│                                                                              │
+│  Métodos privados:                                                          │
+│  • updateQRVisibility()       Actualiza visibilidad                         │
+│  • shouldShowQR(deviceInfo)   Decide si mostrar                             │
+│  • logDebug(deviceInfo)       Logs para debugging                           │
+│                                                                              │
+└────────────────────────────┬──────────────────────────┬──────────────────────┘
+                             │                          │
+                  inyecta   │                          │  inyecta
+                            │                          │
+                            ▼                          ▼
+      ┌─────────────────────────────────┐  ┌──────────────────────────────┐
+      │   QRCodeService                 │  │ DeviceDetectionService       │
+      │  ═══════════════════════════════ │  │ ═════════════════════════════│
+      │                                 │  │                              │
+      │ • Gestiona visibilidad del QR  │  │ • Detecta tipo de dispositivo│
+      │ • Carga y valida imagen         │  │ • Abstrae lógica de detection│
+      │ • Maneja estados               │  │ • Patrón Singleton           │
+      │ • Notifica cambios              │  │ • Observable para cambios    │
+      │                                 │  │                              │
+      │ Métodos públicos:               │  │ Métodos públicos:            │
+      │ • show()                        │  │ • detect()                   │
+      │ • hide()                        │  │ • isDesktop()                │
+      │ • getState()                    │  │ • isMobile()                 │
+      │ • isVisible()                   │  │ • isTablet()                 │
+      │ • isLoaded()                    │  │ • isTV()                     │
+      │ • hasError()                    │  │ • hasTouch()                 │
+      │ • destroy()                     │  │ • onDeviceChange()           │
+      │                                 │  │ • destroy()                  │
+      └─────────────────────────────────┘  └──────────────────────────────┘
+              ▲                                       ▲
+              │ usa                                   │ usa
+              │                                       │
+              └───────────────────┬───────────────────┘
+                                  │
+                                  │ lee
+                                  ▼
+                      ┌───────────────────────┐
+                      │   DOM Elements        │
+                      │ ═══════════════════   │
+                      │                       │
+                      │ • qr-code-container  │
+                      │ • qr-code-image      │
+                      │ • qr-code-title      │
+                      │ • qr-code-instructions
+                      │                       │
+                      └───────────────────────┘
+
+
+FLUJO DE DATOS
+═══════════════════════════════════════════════════════════════════════════════
+
+showMenu() Invocado
+     │
+     ├─ Configurar UI base
+     │
+     ├─ updateAllTexts()
+     │
+     ├─ initializeQRCodeController()
+     │  │
+     │  ├─ Obtener elementos del DOM
+     │  │
+     │  ├─ Obtener imageSrc de SPRITE_SOURCES.qr
+     │  │
+     │  ├─ new QRCodeController(elements, config, services)
+     │  │  │
+     │  │  ├─ this.qrService = qrService || new QRCodeService()
+     │  │  ├─ this.deviceService = deviceService || getInstance()
+     │  │  └─ this.qrService.initialize(elements, config)
+     │  │
+     │  └─ controller.start()
+     │     │
+     │     ├─ updateQRVisibility()
+     │     │  ├─ deviceService.detect()  → DeviceInfo
+     │     │  ├─ shouldShowQR(info)      → boolean
+     │     │  └─ qrService.show/hide()
+     │     │
+     │     └─ onDeviceChange(callback)   ✓ Suscrito
+     │
+     └─ Menú listo
+
+
+ESTADOS INTERNOS
+═══════════════════════════════════════════════════════════════════════════════
+
+QRCodeState {
+    isVisible: boolean  // ¿Se está mostrando?
+    isLoaded: boolean   // ¿La imagen se cargó?
+    hasError: boolean   // ¿Hay error?
+}
+
+DeviceInfo {
+    isDesktop: boolean   // ¿Es escritorio?
+    isMobile: boolean    // ¿Es móvil?
+    isTablet: boolean    // ¿Es tablet?
+    isTV: boolean        // ¿Es TV?
+    hasTouch: boolean    // ¿Tiene touch?
+    windowWidth: number  // Ancho de ventana
+    windowHeight: number // Alto de ventana
+}
+
+
+PRINCIPIOS SOLID APLICADOS
+═══════════════════════════════════════════════════════════════════════════════
+
+S - Single Responsibility
+  ├─ QRCodeService        → Solo gestiona QR
+  ├─ DeviceDetectionService → Solo detecta dispositivo
+  └─ QRCodeController     → Solo orquesta
+
+O - Open/Closed
+  └─ Extensible sin modificar (ej: shouldShowInTV)
+
+L - Liskov Substitution
+  └─ Services intercambiables con mocks
+
+I - Interface Segregation
+  ├─ QRCodeElements       → Elementos específicos
+  ├─ QRCodeConfig         → Config específica
+  ├─ QRCodeState          → Estado específico
+  └─ DeviceInfo           → Info específica
+
+D - Dependency Inversion
+  └─ Inyección de dependencias en constructor
+
+
+PATRÓN DE DISEÑO USADO
+═══════════════════════════════════════════════════════════════════════════════
+
+1. SINGLETON PATTERN (DeviceDetectionService)
+   ├─ Una sola instancia compartida
+   └─ getInstance() → siempre la misma
+
+2. STRATEGY PATTERN (QRCodeController)
+   ├─ Puede cambiar estrategia de visibilidad
+   └─ shouldShowQR() decide la estrategia
+
+3. OBSERVER PATTERN (DeviceDetectionService)
+   ├─ onDeviceChange(callback)
+   └─ Notifica cuando cambia el dispositivo
+
+4. DEPENDENCY INJECTION (QRCodeController)
+   ├─ Recibe dependencias en constructor
+   └─ Desacoplado de implementaciones
+
+
+INTERACCIONES
+═══════════════════════════════════════════════════════════════════════════════
+
+ui.ts                   controller              qrService        deviceService
+  │                         │                       │                 │
+  ├─ new QRController ────→ │                       │                 │
+  │                         │                       │                 │
+  │                         ├─ initialize ────────→ │                 │
+  │                         │                       │                 │
+  │                         ├─ start()              │                 │
+  │                         │  ├─ detect() ────────────────────────→ │
+  │                         │  │                    │                 │
+  │                         │  │ ← DeviceInfo ──────────────────────┤
+  │                         │  │                    │                 │
+  │                         │  ├─ shouldShowQR()    │                 │
+  │                         │  │  (evalúa)          │                 │
+  │                         │  │                    │                 │
+  │                         │  ├─ show() ────────→ │                 │
+  │                         │  │                    │                 │
+  │                         │  └─ onDeviceChange───────────────────→ │
+  │                         │                       │                 │
+  │                         │         ┌─────────────────────────────┐ │
+  │                         │         │ Usuario cambia orientación  │ │
+  │                         │         └─────────────────────────────┘ │
+  │                         │                       │                 │
+  │                         │ ← callback invoked ◄──────────────────── │
+  │                         │                       │                 │
+  │                         ├─ updateQRVisibility   │                 │
+  │                         │                       │                 │
+  │                         └─ stop()               │                 │
+  │                            ├─ unsubscribe      │                 │
+  │                            ├─ destroy() ───→ │                 │
+  │                            └─ deviceService.destroy()            │
+
+
+CASOS DE USO
+═══════════════════════════════════════════════════════════════════════════════
+
+1. MOSTRAR QR EN DESKTOP
+   showMenu() → controller.start() → deviceService.detect() {isDesktop: true}
+   → shouldShowQR() = true → qrService.show()
+
+2. OCULTAR QR EN MÓVIL
+   showMenu() → controller.start() → deviceService.detect() {isMobile: true}
+   → shouldShowQR() = false → qrService.hide()
+
+3. CAMBIO DE ORIENTACIÓN
+   Usuario rota pantalla → onDeviceChange() → updateQRVisibility()
+   → shouldShowQR() → qrService.show/hide()
+
+4. LIMPIAR CUANDO INICIA JUEGO
+   startGame() → controller.stop() → unsubscribe → qrService.destroy()
+
+
+FLUJO TEMPORAL COMPLETO
+═══════════════════════════════════════════════════════════════════════════════
+
+t=0ms    showMenu() invocado
+t=10ms   ├─ setupUI completo
+t=20ms   ├─ updateAllTexts() completado
+t=30ms   └─ initializeQRCodeController()
+         
+t=40ms   new QRCodeController(...)
+         ├─ new QRCodeService()
+         └─ DeviceDetectionService.getInstance()
+         
+t=50ms   controller.start()
+         ├─ updateQRVisibility()
+         │  ├─ deviceService.detect()  → 30ms de análisis
+         │  ├─ shouldShowQR()          → 1ms de lógica
+         │  └─ qrService.show()        → 5ms
+         │     ├─ setImageSource()     → 2ms
+         │     └─ updateTexts()        → 1ms
+         │
+         ├─ Image loading inicia       → async
+         │
+         └─ onDeviceChange suscrito    → ready for events
+         
+t=100ms  Image.onload ejecutado        → 2ms
+         └─ state.isLoaded = true
+         
+t=150ms  Menu completamente listo
+
+
+DEBUGGING
+═══════════════════════════════════════════════════════════════════════════════
+
+Logs en consola:
+
+[QRCodeService] QR mostrado {
+  visible: true,
+  loaded: false,
+  error: false
+}
+
+[QRCodeService] Imagen cargada exitosamente {
+  visible: true,
+  loaded: true,
+  error: false
+}
+
+[QRCodeController] Información del dispositivo: {
+  isDesktop: true,
+  isMobile: false,
+  isTablet: false,
+  isTV: false,
+  hasTouch: false,
+  resolution: 1920x1080,
+  qrState: { visible: true, loaded: true, error: false }
+}
+
+================================================================================
+                            FIN DEL DIAGRAMA
+================================================================================
+

@@ -4,7 +4,8 @@ import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nippl
 import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA, SPRITE_SOURCES } from '../core/assets';
 import { buildChunkedFile20x18 } from '../utils/levels';
-import { getNetlifyBaseUrl, isTvMode } from '../utils/device';
+import { getNetlifyBaseUrl, isTvMode, isDesktopMode } from '../utils/device';
+import { QRCodeController } from '../services';
 import { TOTAL_LEVELS, TILE_SIZE } from '../core/constants';
 import { loadLevel } from './level';
 import { generateLevel } from './levelGenerator';
@@ -24,8 +25,97 @@ import {
     updateUndoRedoButtons, 
     initializeAdvancedEditor
 } from './advancedEditor';
+
+// Variable global para el controlador del QR
+let qrCodeController: QRCodeController | null = null;
+
+/**
+ * Inicializa el controlador del código QR
+ * Responsabilidad: configurar el QR para el menú principal
+ */
+const initializeQRCodeController = (): void => {
+    try {
+        // Detener controlador anterior si existe
+        if (qrCodeController) {
+            qrCodeController.stop();
+        }
+
+        // Obtener elementos del DOM
+        const qrContainer = document.getElementById('qr-code-container') as HTMLElement | null;
+        const qrImage = document.getElementById('qr-code-image') as HTMLImageElement | null;
+        const qrTitle = document.getElementById('qr-code-title') as HTMLElement | null;
+        const qrInstructions = document.getElementById('qr-code-instructions') as HTMLElement | null;
+
+        // Validar que todos los elementos existan
+        if (!qrContainer || !qrImage) {
+            console.warn('[initializeQRCodeController] Elementos del QR no encontrados en el DOM');
+            return;
+        }
+
+        // Obtener fuente del QR desde sprites
+        const qrSrc = SPRITE_SOURCES.qr;
+        if (!qrSrc) {
+            console.warn('[initializeQRCodeController] No se encontró la fuente del QR en SPRITE_SOURCES');
+            return;
+        }
+
+        // Crear controlador con inyección de dependencias
+        qrCodeController = new QRCodeController(
+            {
+                container: qrContainer,
+                image: qrImage,
+                title: qrTitle || undefined,
+                instructions: qrInstructions || undefined
+            },
+            {
+                imageSrc: qrSrc,
+                titleText: t('menu.qrScanToPlay'),
+                instructionsText: t('menu.qrScanInstructions'),
+                shouldShowInTV: false // No mostrar en TV por ahora
+            }
+        );
+
+        // Iniciar controlador
+        qrCodeController.start();
+    } catch (error) {
+        console.error('[initializeQRCodeController] Error al inicializar QR:', error);
+    }
+};
+
 import { activateDuplicateRowMode, activateDeleteRowMode } from './editor';
 import { setupGallery } from './gallery';
+
+/**
+ * Configura el modal del QR code y botón mobile
+ */
+const setupQRCodeModal = (): void => {
+    const qrModal = document.getElementById('qr-code-modal');
+    const closeBtn = document.getElementById('close-qr-modal');
+    const mobileQrBtn = document.getElementById('mobile-qr-btn');
+    
+    if (!qrModal || !closeBtn || !mobileQrBtn) {
+        console.warn('[setupQRCodeModal] Elementos del modal QR no encontrados');
+        return;
+    }
+
+    // Cerrar modal cuando se presiona la X
+    closeBtn.addEventListener('click', () => {
+        qrModal.classList.add('hidden');
+    });
+
+    // Cerrar modal cuando se presiona fuera de él
+    qrModal.addEventListener('click', (e) => {
+        if (e.target === qrModal) {
+            qrModal.classList.add('hidden');
+        }
+    });
+
+    // Abrir modal cuando se presiona el botón mobile
+    mobileQrBtn.addEventListener('click', () => {
+        qrModal.classList.remove('hidden');
+    });
+};
+
 import { 
     LEGACY_SUPERUSER_EMAIL,
     LEGACY_SUPERUSER_PASSWORD,
@@ -683,12 +773,79 @@ const teardownTvMenuNavigation = () => {
     tvMenuFocusIndex = 0;
 };
 
-const setTvMenuFocus = (index: number, options: { programmatic?: boolean } = {}) => {
+const setTvMenuFocus = (targetIndex: number, options: { programmatic?: boolean } = {}) => {
     if (!tvMenuButtons.length) {
         return;
     }
     const programmatic = options.programmatic ?? true;
-    const normalizedIndex = ((index % tvMenuButtons.length) + tvMenuButtons.length) % tvMenuButtons.length;
+    
+    // Función helper para obtener el siguiente índice válido (saltando botones deshabilitados)
+    const getNextValidIndex = (startIndex: number, direction: number): number => {
+        let currentIndex = startIndex;
+        let attempts = 0;
+        const maxAttempts = tvMenuButtons.length; // Máximo una vuelta completa
+        
+        // Mover al siguiente índice en la dirección especificada
+        while (attempts < maxAttempts) {
+            currentIndex = ((currentIndex + direction + tvMenuButtons.length) % tvMenuButtons.length);
+            const btn = tvMenuButtons[currentIndex];
+            // Solo saltar botones que estén realmente deshabilitados (propiedad disabled)
+            // No saltar por la clase 'is-disabled' ya que se usa solo para estilos visuales
+            // (por ejemplo, en los botones de idioma donde 'is-disabled' indica que no es el idioma actual pero sigue siendo clickeable)
+            if (btn && !btn.disabled) {
+                return currentIndex;
+            }
+            attempts++;
+        }
+        
+        // Si todos están deshabilitados, devolver el índice original
+        return startIndex;
+    };
+    
+    const currentIndex = tvMenuFocusIndex;
+    
+    // Determinar la dirección de movimiento
+    // Si targetIndex es currentIndex - 1, mover hacia atrás
+    // Si targetIndex es currentIndex + 1, mover hacia adelante
+    // Si es cualquier otro valor, calcular la dirección relativa
+    let direction: number;
+    
+    if (targetIndex === currentIndex - 1 || (targetIndex < 0 && currentIndex === 0)) {
+        // Movimiento explícito hacia atrás
+        direction = -1;
+    } else if (targetIndex === currentIndex + 1 || (targetIndex >= tvMenuButtons.length && currentIndex === tvMenuButtons.length - 1)) {
+        // Movimiento explícito hacia adelante
+        direction = 1;
+    } else {
+        // Movimiento a un índice específico, calcular dirección
+        const normalizedTarget = ((targetIndex % tvMenuButtons.length) + tvMenuButtons.length) % tvMenuButtons.length;
+        if (normalizedTarget === currentIndex) {
+            direction = 0;
+        } else {
+            // Calcular la diferencia más corta
+            let diff = normalizedTarget - currentIndex;
+            if (Math.abs(diff) > tvMenuButtons.length / 2) {
+                diff = diff > 0 ? diff - tvMenuButtons.length : diff + tvMenuButtons.length;
+            }
+            direction = diff < 0 ? -1 : 1;
+        }
+    }
+    
+    // Obtener el siguiente índice válido en la dirección determinada
+    let normalizedIndex: number;
+    if (direction === 0) {
+        // Mismo índice, verificar si está deshabilitado
+        normalizedIndex = currentIndex;
+        const btn = tvMenuButtons[normalizedIndex];
+        if (btn && btn.disabled) {
+            // Si está deshabilitado, buscar el siguiente válido hacia adelante
+            normalizedIndex = getNextValidIndex(normalizedIndex, 1);
+        }
+    } else {
+        // Mover en la dirección determinada, saltando botones deshabilitados
+        normalizedIndex = getNextValidIndex(currentIndex, direction);
+    }
+    
     tvMenuFocusIndex = normalizedIndex;
 
     tvMenuButtons.forEach((btn, idx) => {
@@ -708,20 +865,28 @@ const setTvMenuFocus = (index: number, options: { programmatic?: boolean } = {})
         }
     });
 };
-
 const initializeTvMenuNavigation = (store: GameStore) => {
     teardownTvMenuNavigation();
 
-    if (!isTvMode()) {
-        return;
-    }
-
+    // Ahora la navegación funciona siempre, no solo en modo TV
     const startGameBtn = store.dom.ui.startGameBtn ?? (document.getElementById('start-game-btn') as HTMLButtonElement | null);
     const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
     const levelEditorBtn = store.dom.ui.levelEditorBtn ?? (document.getElementById('level-editor-btn') as HTMLButtonElement | null);
     const creditsBtn = document.getElementById('credits-btn') as HTMLButtonElement | null;
+    const langEsBtn = document.getElementById('lang-es-btn') as HTMLButtonElement | null;
+    const langCaBtn = document.getElementById('lang-ca-btn') as HTMLButtonElement | null;
+    const langEnBtn = document.getElementById('lang-en-btn') as HTMLButtonElement | null;
 
-    tvMenuButtons = [startGameBtn, galleryBtn, levelEditorBtn, creditsBtn].filter(Boolean) as HTMLButtonElement[];
+    // Incluir todos los botones del menú: principales y de idioma
+    tvMenuButtons = [
+        startGameBtn, 
+        galleryBtn, 
+        levelEditorBtn, 
+        creditsBtn,
+        langEsBtn,
+        langCaBtn,
+        langEnBtn
+    ].filter(Boolean) as HTMLButtonElement[];
 
     if (!tvMenuButtons.length) {
         return;
@@ -746,32 +911,55 @@ const initializeTvMenuNavigation = (store: GameStore) => {
 
         const activeElement = document.activeElement as HTMLElement | null;
         const isTargetMenuButton = tvMenuButtons.includes(activeElement as HTMLButtonElement);
+        
+        // Manejar teclas de flecha normales y también las normalizadas para TV
         const normalizedCode = normalizeTvKeyCode(event);
-        const isNavigableKey = normalizedCode !== 'Unidentified' && TV_NAVIGATION_KEYS.has(normalizedCode);
+        const key = event.key;
+        const code = event.code;
+        
+        // Detectar teclas de flecha directamente
+        const isArrowKey = key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight' ||
+                          code === 'ArrowUp' || code === 'ArrowDown' || code === 'ArrowLeft' || code === 'ArrowRight' ||
+                          normalizedCode === 'ArrowUp' || normalizedCode === 'ArrowDown' || 
+                          normalizedCode === 'ArrowLeft' || normalizedCode === 'ArrowRight';
+        const isEnterKey = key === 'Enter' || code === 'Enter' || normalizedCode === 'Enter';
+        const isNavigableKey = isArrowKey || isEnterKey;
 
         if (!isNavigableKey) {
             return;
         }
 
+        // No interceptar si el usuario está escribiendo en un input
         if (!isTargetMenuButton && activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)) {
             return;
         }
 
-        if (normalizedCode === 'ArrowLeft' || normalizedCode === 'ArrowUp') {
+        // Si no hay ningún botón del menú enfocado y se presiona una flecha, enfocar el primero
+        if (!isTargetMenuButton && isArrowKey && tvMenuButtons.length > 0) {
+            event.preventDefault();
+            setTvMenuFocus(0);
+            return;
+        }
+
+        if (key === 'ArrowLeft' || key === 'ArrowUp' || normalizedCode === 'ArrowLeft' || normalizedCode === 'ArrowUp') {
             event.preventDefault();
             setTvMenuFocus(tvMenuFocusIndex - 1);
             return;
         }
 
-        if (normalizedCode === 'ArrowRight' || normalizedCode === 'ArrowDown') {
+        if (key === 'ArrowRight' || key === 'ArrowDown' || normalizedCode === 'ArrowRight' || normalizedCode === 'ArrowDown') {
             event.preventDefault();
             setTvMenuFocus(tvMenuFocusIndex + 1);
             return;
         }
 
-        if (normalizedCode === 'Enter' && tvMenuButtons[tvMenuFocusIndex]) {
-            event.preventDefault();
-            tvMenuButtons[tvMenuFocusIndex].click();
+        if (isEnterKey && tvMenuButtons[tvMenuFocusIndex]) {
+            const targetBtn = tvMenuButtons[tvMenuFocusIndex];
+            // No hacer clic si el botón está realmente deshabilitado (solo verificar propiedad disabled)
+            if (!targetBtn.disabled) {
+                event.preventDefault();
+                targetBtn.click();
+            }
         }
     };
 
@@ -832,9 +1020,6 @@ export const showMenu = (store: GameStore) => {
     if (languageSelectorContainer) {
         languageSelectorContainer.style.display = 'block';
     }
-    
-    // Actualizar textos según idioma actual
-    updateAllTexts(store);
     
     // Pausar música de fondo al volver al menú
     pauseBackgroundMusic();
@@ -902,6 +1087,15 @@ export const showMenu = (store: GameStore) => {
     if (retryBtn) {
         retryBtn.classList.add('hidden');
     }
+    
+    // Actualizar textos según idioma actual (después de configurar los elementos básicos)
+    updateAllTexts(store);
+    
+    // Configurar controlador del código QR
+    initializeQRCodeController();
+    
+    // Configurar modal del QR code
+    setupQRCodeModal();
 
     if (mobileControlsEl) {
         if (isTvMode()) {
@@ -1330,7 +1524,6 @@ const startJoystick = (store: GameStore) => {
     }
 
 };
-
 export const startGame = (store: GameStore, levelOverride: string[] | null = null, startIndex?: number, preserveLevels?: boolean) => {
     // Resetear zoom y pan del canvas al iniciar el juego
     const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
@@ -1356,6 +1549,11 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     const languageSelectorContainer = document.getElementById('language-selector-container');
     if (languageSelectorContainer) {
         languageSelectorContainer.style.display = 'none';
+    }
+    // Ocultar QR code cuando se inicia el juego
+    if (qrCodeController) {
+        qrCodeController.stop();
+        qrCodeController = null;
     }
     const splashContainer = document.getElementById('splash-container');
     if (splashContainer) {
@@ -1602,6 +1800,11 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     const languageSelectorContainer = document.getElementById('language-selector-container');
     if (languageSelectorContainer) {
         languageSelectorContainer.style.display = 'none';
+    }
+    // Ocultar QR code cuando se inicia el editor
+    if (qrCodeController) {
+        qrCodeController.stop();
+        qrCodeController = null;
     }
     const splashContainer = document.getElementById('splash-container');
     if (splashContainer) {
@@ -1933,7 +2136,6 @@ export const updateUiBar = (store: GameStore) => {
         updateEnergyBarColor(energyBarEl, store.energy);
     }
 };
-
 const paletteEntries: Array<{ tile: string; canvas: HTMLCanvasElement }> = [];
 let paletteAnimationId: number | null = null;
 
@@ -2480,6 +2682,50 @@ const handleTvMenuControls = (store: GameStore, action: TvInputAction, isPressed
     return false;
 };
 
+/**
+ * Procesa acciones del gamepad para navegación en el menú
+ * Convierte acciones del gamepad a TvInputAction y las procesa
+ */
+export const handleGamepadMenuActions = (store: GameStore, gamepadAction: { direction: 'up' | 'down' | 'left' | 'right' | null; select: boolean; back: boolean }): boolean => {
+    if (!gamepadAction) {
+        return false;
+    }
+    
+    // Procesar dirección del D-Pad
+    if (gamepadAction.direction) {
+        let tvAction: TvInputAction;
+        switch (gamepadAction.direction) {
+            case 'up':
+                tvAction = 'up';
+                break;
+            case 'down':
+                tvAction = 'down';
+                break;
+            case 'left':
+                tvAction = 'left';
+                break;
+            case 'right':
+                tvAction = 'right';
+                break;
+            default:
+                return false;
+        }
+        return handleTvMenuControls(store, tvAction, true);
+    }
+    
+    // Procesar botón select
+    if (gamepadAction.select) {
+        return handleTvMenuControls(store, 'select', true);
+    }
+    
+    // Procesar botón back
+    if (gamepadAction.back) {
+        return handleTvMenuControls(store, 'back', true);
+    }
+    
+    return false;
+};
+
 const handleTvGameplayControls = (store: GameStore, action: TvInputAction, isPressed: boolean): boolean => {
     switch (action) {
         case 'up':
@@ -2571,7 +2817,6 @@ const startPaletteAnimation = (store: GameStore) => {
     };
     paletteAnimationId = requestAnimationFrame(animate);
 };
-
 const populatePalette = (store: GameStore) => {
     const { paletteEl } = store.dom.ui;
     if (!paletteEl) {
@@ -3302,8 +3547,8 @@ export const tryLoadUserLevels = async (store: GameStore) => {
             // Si hay niveles pero no más que los originales, puede que sean todos los niveles
             // Incluyendo los originales editados. Guardar todos en localStorage
             const { buildChunkedFile20x18 } = await import('../utils/levels');
-            const levelsAsStrings = levelsToLoad.map((lvl: string[]) => 
-                typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+            const levelsAsStrings = levelsToLoad.map((lvl: string[] | string[][]) => 
+                typeof lvl[0] === 'string' ? lvl as string[] : (lvl as string[][]).map((row: string[]) => row.join(''))
             );
             const fullPayload = buildChunkedFile20x18(levelsAsStrings);
             
@@ -3321,8 +3566,8 @@ export const tryLoadUserLevels = async (store: GameStore) => {
                 const levelDataStore = levelsToLoad.map((lvl: string[]) => 
                     typeof lvl[0] === 'string' ? lvl.map((row: string) => row.split('')) : (lvl as any)
                 ) as string[][][];
-                const levelDesigns = levelsToLoad.map((lvl: string[]) => 
-                    typeof lvl[0] === 'string' ? lvl : (lvl as string[][]).map((row: string[]) => row.join(''))
+                const levelDesigns = levelsToLoad.map((lvl: string[] | string[][]) => 
+                    typeof lvl[0] === 'string' ? lvl as string[] : (lvl as string[][]).map((row: string[]) => row.join(''))
                 );
                 
                 store.levelDataStore = levelDataStore;
@@ -3339,7 +3584,6 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         console.error('Error cargando niveles del usuario:', error);
     }
 };
-
 /**
  * Configura el modal de configuración del juego
  * 
@@ -3775,6 +4019,16 @@ const updateAllTexts = (store: GameStore) => {
     if (installPwaBtn) installPwaBtn.textContent = `📱 ${t('menu.installPWA')}`;
     if (playStoreBtn) playStoreBtn.textContent = `📲 ${t('menu.playStore')} (${t('menu.playStoreComingSoon')})`;
     
+    // Actualizar textos del QR code (solo visible en desktop)
+    const qrCodeTitle = document.getElementById('qr-code-title');
+    const qrCodeInstructions = document.getElementById('qr-code-instructions');
+    if (qrCodeTitle) {
+        qrCodeTitle.textContent = t('menu.qrScanToPlay');
+    }
+    if (qrCodeInstructions) {
+        qrCodeInstructions.textContent = t('menu.qrScanInstructions');
+    }
+    
     // Actualizar botones de idioma (banderas) - solo visible en menú
     const langEsBtn = document.getElementById('lang-es-btn');
     const langEnBtn = document.getElementById('lang-en-btn');
@@ -4131,7 +4385,6 @@ const updateCreditsTexts = () => {
     if (creditsTitle) creditsTitle.textContent = t('credits.title');
     if (creditsCloseBtn) creditsCloseBtn.textContent = t('modals.close');
 };
-
 /**
  * Actualiza los textos del modal de autenticación
  */
@@ -4931,7 +5184,6 @@ const setupMenuButtons = (store: GameStore) => {
     profileCloseBtn?.addEventListener('click', () => {
         profileModal?.classList.add('hidden');
     });
-    
     profileCancelBtn?.addEventListener('click', () => {
         profileModal?.classList.add('hidden');
     });
@@ -5724,7 +5976,6 @@ const shareLevelToGallery = async (store: GameStore) => {
         }
     }
 };
-
 /**
  * Genera una captura de pantalla de un nivel para compartir en la galería
  */
@@ -6506,7 +6757,6 @@ const setupLevelData = (store: GameStore) => {
             }
         }
     };
-    
     // Botones mobile - Conectar con funciones existentes
     const playTestBtnMobile = document.getElementById('play-test-btn-mobile') as HTMLButtonElement | null;
     const addLevelBtnMobile = document.getElementById('add-level-btn-mobile') as HTMLButtonElement | null;
@@ -6517,7 +6767,6 @@ const setupLevelData = (store: GameStore) => {
     const userProfileBtnMobile = document.getElementById('user-profile-btn-mobile') as HTMLButtonElement | null;
     const logoutBtnMobile = document.getElementById('logout-btn-mobile') as HTMLButtonElement | null;
     const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
-    
     // Sincronizar selectores cuando cambien
     store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
         syncLevelSelectors(false);
@@ -6753,4 +7002,3 @@ const setupKeyboardShortcuts = (store: GameStore) => {
         }
     });
 };
-

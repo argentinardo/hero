@@ -510,6 +510,9 @@
                 <button id="level-editor-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace;">
                 TOOLS
                 </button>
+                <button id="mobile-qr-btn" class="nes-btn is-success" style="font-family: 'Press Start 2P', monospace;">
+                MOBILE
+                </button>
                 <button id="credits-btn" class="nes-btn" style="font-family: 'Press Start 2P', monospace;">
                 CRÉDITOS
                 </button>
@@ -524,6 +527,27 @@
                     📲 PLAY STORE (PRÓXIMAMENTE)
                 </button>
             </div>
+            
+            <!-- QR Code Modal Popup -->
+            <div id="qr-code-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50">
+                <div class="bg-gray-800 border-4 border-white rounded-lg p-6" style="font-family: 'Press Start 2P', monospace;">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg">QR CODE</h2>
+                        <button id="close-qr-modal" class="text-2xl cursor-pointer text-white hover:text-red-500">✕</button>
+                    </div>
+                    
+                    <!-- QR Code Container -->
+                    <div id="qr-code-container" class="flex flex-col items-center gap-4">
+                        <p id="qr-code-title" class="text-sm opacity-75">ESCANEA PARA JUGAR EN MÓVIL</p>
+                            <img id="qr-code-image" src="" alt="QR Code">
+                        <p id="qr-code-instructions" class="text-xs opacity-50" style="max-width: 250px; text-align: center;">
+                            Abre la cámara y escanea el código
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botón Mobile (en menú hamburguesa) - se agregará dinámicamente en ui.ts -->
             
             <!-- Botón Retry (hidden por defecto) -->
             <button id="retry-btn" class="nes-btn is-warning mt-4 hidden">Volver a jugar</button>
@@ -813,5 +837,39 @@
             </div>
         </div>
     </div>
+    
+    <!-- Registrar Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registrado exitosamente:', registration);
+                        
+                        // Verificar si hay actualizaciones disponibles
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Nueva versión disponible, mostrar mensaje al usuario
+                                    console.log('[PWA] Nueva versión disponible, recargando...');
+                                    window.location.reload();
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('[PWA] Error registrando Service Worker:', error);
+                    });
+                
+                // Si hay un Service Worker esperando, activarlo
+                if (navigator.serviceWorker.controller) {
+                    console.log('[PWA] Service Worker activo');
+                }
+            });
+        } else {
+            console.warn('[PWA] Service Workers no soportados en este navegador');
+        }
+    </script>
 </body>
 </html>

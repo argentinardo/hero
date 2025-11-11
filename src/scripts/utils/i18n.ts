@@ -21,6 +21,8 @@ export interface Translations {
         installPWA: string;
         playStore: string;
         playStoreComingSoon: string;
+        qrScanToPlay: string;
+        qrScanInstructions: string;
     };
     // UI del juego
     game: {
@@ -257,6 +259,8 @@ const translations: Record<Language, Translations> = {
             installPWA: 'Instalar App',
             playStore: 'Play Store',
             playStoreComingSoon: 'Próximamente',
+            qrScanToPlay: 'ESCANEA PARA JUGAR EN MÓVIL',
+            qrScanInstructions: 'Abre la cámara y escanea el código',
         },
         game: {
             level: 'LEVEL',
@@ -481,6 +485,8 @@ const translations: Record<Language, Translations> = {
             installPWA: 'Install App',
             playStore: 'Play Store',
             playStoreComingSoon: 'Coming Soon',
+            qrScanToPlay: 'SCAN TO PLAY ON MOBILE',
+            qrScanInstructions: 'Open your camera and scan the code',
         },
         game: {
             level: 'LEVEL',
@@ -705,6 +711,8 @@ const translations: Record<Language, Translations> = {
             installPWA: 'Instal·lar App',
             playStore: 'Play Store',
             playStoreComingSoon: 'Pròximament',
+            qrScanToPlay: 'ESCANEJA PER JUGAR AL MÒBIL',
+            qrScanInstructions: 'Obre la càmera i escaneja el codi',
         },
         game: {
             level: 'LEVEL',
