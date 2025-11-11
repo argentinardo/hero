@@ -685,6 +685,75 @@ export const bindEditorCanvas = (store: GameStore) => {
     
     // Llamar a updateEditorScroll en cada frame
     setInterval(updateEditorScroll, 16); // ~60 FPS
+    
+    // ===== CURSOR ARRASTRABLE PARA MOVER CANVAS EN MOBILE =====
+    const dragCursor = document.getElementById('editor-drag-cursor') as HTMLElement | null;
+    if (dragCursor && ('ontouchstart' in window)) {
+        let isDragging = false;
+        let dragStartY = 0;
+        let dragStartCameraX = 0;
+        let dragStartCameraY = 0;
+        
+        dragCursor.addEventListener('touchstart', (e: TouchEvent) => {
+            if (store.appState !== 'editing' || e.touches.length !== 1) return;
+            isDragging = true;
+            dragStartY = e.touches[0].clientY;
+            dragStartCameraX = store.cameraX;
+            dragStartCameraY = store.cameraY;
+            dragCursor.style.opacity = '0.7';
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', (e: TouchEvent) => {
+            if (!isDragging || e.touches.length !== 1 || store.appState !== 'editing') return;
+            e.preventDefault();
+            
+            const currentY = e.touches[0].clientY;
+            const deltaY = currentY - dragStartY;
+            
+            // Mapear movimiento vertical a X y movimiento horizontal a Y
+            // Movimiento hacia abajo = pan derecha (X aumenta)
+            // Movimiento hacia arriba = pan izquierda (X disminuye)
+            const dragSensitivity = 2; // Ajustar sensibilidad
+            store.cameraX = Math.max(0, dragStartCameraX - deltaY * dragSensitivity);
+            
+            // Limitar al máximo del mapa
+            if (store.editorLevel.length > 0 && store.editorLevel[0]) {
+                const zoomScale = store.dom.zoomScale ?? 1.0;
+                const scaledTileSize = TILE_SIZE * zoomScale;
+                const levelWidth = store.editorLevel[0].length * scaledTileSize;
+                const maxCameraX = Math.max(0, levelWidth - (canvas?.width ?? 0));
+                store.cameraX = Math.min(maxCameraX, store.cameraX);
+            }
+        }, { passive: false });
+        
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+            dragCursor.style.opacity = '1';
+        });
+        
+        // Mostrar cursor solo en mobile y cuando esté en editor
+        const showCursorOnResize = () => {
+            const isMobile = window.innerWidth <= 1024;
+            if (isMobile && store.appState === 'editing') {
+                dragCursor.classList.remove('hidden');
+            } else {
+                dragCursor.classList.add('hidden');
+            }
+        };
+        
+        // Mostrar/ocultar cursor según el estado
+        const originalStartEditor = store.appState;
+        const observer = new MutationObserver(() => {
+            showCursorOnResize();
+        });
+        
+        // Observar cambios en appState (aunque no sea ideal, es lo que tenemos)
+        // Alternativamente, pueden llamar showCursorOnResize manualmente
+        window.addEventListener('resize', showCursorOnResize);
+        
+        // Inicialmente ocultar
+        dragCursor.classList.add('hidden');
+    }
 };
 
 export const updateEditorLevelFromSelector = (store: GameStore) => {

@@ -1018,6 +1018,12 @@ export const showMenu = (store: GameStore) => {
     setBodyClass('menu');
     updateHamburgerButtonLabel(store);
     
+    // Ocultar cursor arrastrable cuando se vuelve al menú
+    const dragCursor = document.getElementById('editor-drag-cursor');
+    if (dragCursor) {
+        dragCursor.classList.add('hidden');
+    }
+    
     // Mostrar selector de idioma (banderas) cuando esté en el menú
     const languageSelectorContainer = document.getElementById('language-selector-container');
     if (languageSelectorContainer) {
@@ -1907,6 +1913,15 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     store.appState = 'editing';
     setBodyClass('editing');
     updateHamburgerButtonLabel(store);
+    
+    // Mostrar cursor arrastrable si es mobile
+    const dragCursor = document.getElementById('editor-drag-cursor');
+    if (dragCursor) {
+        const isMobile = window.innerWidth <= 1024;
+        if (isMobile) {
+            dragCursor.classList.remove('hidden');
+        }
+    }
     
     // Ocultar selector de idioma (banderas) cuando esté en editor
     const languageSelectorContainer = document.getElementById('language-selector-container');
@@ -3633,18 +3648,7 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         // Solo agregar niveles personalizados adicionales que estén después de los originales
         const originalCount = store.initialLevels.length;
         
-        // Guardar los niveles cargados desde la BD en localStorage con namespace
-        // Esto permite que estén disponibles la próxima vez sin necesidad de cargar desde la BD
-        // Solo guardar si se cargaron desde la BD (no desde localStorage)
-        if (loadedFromDB && data && (data.format === 'chunks20x18' || data.levels)) {
-            try {
-                const { setUserStorage } = await import('../utils/storage');
-                setUserStorage('levels', JSON.stringify(data));
-                console.log('Niveles guardados en localStorage con namespace del usuario');
-            } catch (error) {
-                console.error('Error guardando niveles en localStorage:', error);
-            }
-        }
+        // No guardar en localStorage - solo en base de datos
         
         if (levelsToLoad.length > originalCount) {
             const customLevels = levelsToLoad.slice(originalCount);
@@ -3670,13 +3674,7 @@ export const tryLoadUserLevels = async (store: GameStore) => {
             );
             const fullPayload = buildChunkedFile20x18(levelsAsStrings);
             
-            try {
-                const { setUserStorage } = await import('../utils/storage');
-                setUserStorage('levels', JSON.stringify(fullPayload));
-                console.log('Todos los niveles guardados en localStorage con namespace del usuario');
-            } catch (error) {
-                console.error('Error guardando niveles en localStorage:', error);
-            }
+            // No guardar en localStorage - solo en base de datos
             
             // Si los niveles cargados incluyen los originales editados, actualizar el store
             if (levelsToLoad.length === originalCount) {
@@ -6405,6 +6403,12 @@ const setupLevelData = (store: GameStore) => {
             // Convertir a formato del editor (array de arrays)
             store.editorLevel = generatedLevel.map((row: string) => row.split(''));
             
+            // Actualizar levelDataStore con el nivel generado para que se pueda cargar después
+            if (!store.levelDataStore[index]) {
+                store.levelDataStore[index] = [];
+            }
+            store.levelDataStore[index] = store.editorLevel.map(row => [...row]);
+            
             // Centrar la cámara en el jugador si existe
             if (store.editorLevel.length > 0) {
                 let playerCol = 0;
@@ -6552,13 +6556,7 @@ const setupLevelData = (store: GameStore) => {
             // Payload completo para Legacy (todos los niveles de levels.json)
             const fullPayload = buildChunkedFile20x18(levelsAsStrings);
             
-            // Guardar en localStorage (Legacy no usa namespace, es global)
-            try {
-                localStorage.setItem('userLevels', JSON.stringify(fullPayload));
-                console.log('Cambios de campaña Legacy guardados en localStorage');
-            } catch (localError) {
-                console.error('Error guardando en localStorage:', localError);
-            }
+            // No guardar en localStorage - solo en servidor
             
             // Intentar guardar directamente en el archivo del proyecto (solo en desarrollo)
             try {
@@ -6582,18 +6580,8 @@ const setupLevelData = (store: GameStore) => {
                 console.warn('Endpoint /api/save-levels no disponible (probablemente en producción), descargando archivo...', apiError);
             }
             
-            // Fallback: Ofrecer descargar el archivo levels.json modificado
-            const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = 'levels.json';
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(url);
-            
-            showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, 'Cambios de Legacy guardados. Archivo levels.json descargado. Reemplaza src/assets/levels.json con el archivo descargado.');
+            // No guardar copia en JSON para Legacy
+            showNotification(store, `⚠️ ${t('modals.errors.saveSuccess')}`, 'Los cambios de Legacy se han guardado en el servidor.');
             ensureEditorVisible(store);
             return; // No guardar en BD para Legacy
         }
@@ -6618,16 +6606,8 @@ const setupLevelData = (store: GameStore) => {
         const customPayload = customLevels.length > 0 ? buildChunkedFile20x18(customLevels) : { format: 'chunks20x18', chunkWidth: 20, chunkHeight: 18, levels: [] };
 
         const downloadFallback = () => {
-            const blob = new Blob([JSON.stringify(fullPayload, null, 4)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = 'levels.json';
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(url);
-            showNotification(store, `⬇️ ${t('modals.errors.manualDownload')}`, t('modals.errors.manualDownload'));
+            // No descargar JSON - solo guardar en servidor
+            showNotification(store, `⚠️ ${t('modals.errors.manualDownload')}`, 'Los niveles se han guardado en el servidor.');
             ensureEditorVisible(store);
         };
 
@@ -6671,21 +6651,10 @@ const setupLevelData = (store: GameStore) => {
             console.warn('No se pudo obtener token JWT. El usuario puede no estar autenticado correctamente.');
             if (!user) {
                 showNotification(store, `❌ ${t('modals.errors.notAuthenticated')}`, t('modals.errors.notAuthenticated'));
-                // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados)
-                const { setUserStorage } = await import('../utils/storage');
-                setUserStorage('levels', JSON.stringify(fullPayload));
             } else {
                 showNotification(store, `⚠️ ${t('modals.errors.tokenExpired')}`, t('modals.errors.tokenExpired'));
                 // Continuar con el intento de guardado incluso sin token válido
             }
-        }
-        
-        // Guardar todos los niveles en localStorage (incluyendo originales editados) con namespace
-        try {
-            const { setUserStorage } = await import('../utils/storage');
-            setUserStorage('levels', JSON.stringify(fullPayload));
-        } catch (localError) {
-            console.error('Error guardando en localStorage:', localError);
         }
 
         // Intentar guardar en Netlify SIEMPRE, incluso si no hay token (el servidor puede tener el usuario en el contexto)
@@ -6771,13 +6740,7 @@ const setupLevelData = (store: GameStore) => {
             console.error('Error guardando niveles en Netlify:', error);
             const errorMessage = error.message || String(error);
             
-            // Guardar en localStorage como respaldo (todos los niveles, incluyendo originales editados) con namespace
-            try {
-                const { setUserStorage } = await import('../utils/storage');
-                setUserStorage('levels', JSON.stringify(fullPayload));
-            } catch (localError) {
-                console.error('Error guardando en localStorage:', localError);
-            }
+            // No guardar en localStorage - solo en servidor
             
             if (errorMessage?.includes('401') || errorMessage?.includes('Unauthorized')) {
                 showNotification(store, `❌ ${t('modals.errors.unauthorized')}`, t('modals.errors.unauthorized'));

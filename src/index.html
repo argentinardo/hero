@@ -196,6 +196,12 @@
         </button>
                 <!-- Canvas del Juego / Editor -->
                 <canvas id="gameCanvas" width="1440" height="1000"></canvas>
+                
+                <!-- Cursor Arrastrable del Editor (para mover el canvas en mobile) -->
+                <div id="editor-drag-cursor" class="hidden fixed bottom-8 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing border-2 border-purple-400 shadow-lg z-30 transition-all" style="touch-action: none;">
+                    <span class="text-white text-2xl" style="font-family: 'Press Start 2P', monospace;">⋮</span>
+                </div>
+                
                         <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
         <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2" style="top: 12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 20; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
             <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">TOOLS</span>
