@@ -560,8 +560,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     player.animationTick = 0;
     // Reducir pausa de muerte para respawn más rápido
     player.deathTimer = 60; // Reducido de 90 para respawn más rápido
-    store.lives = 1;
-    // store.lives -= 1;
+    store.lives -= 1;
     store.gameState = 'respawning';
 
     if (store.lives <= 0) {
@@ -646,6 +645,9 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         
         // Restaurar energía al 100% después de morir
         store.energy = MAX_ENERGY;
+        
+        // Restaurar TNT (bombas) al máximo después de morir
+        store.bombsRemaining = 5;
         
         store.gameState = 'floating'; // En este estado es inmortal hasta que presione una tecla
         

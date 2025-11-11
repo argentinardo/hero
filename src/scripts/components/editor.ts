@@ -690,46 +690,67 @@ export const bindEditorCanvas = (store: GameStore) => {
     const dragCursor = document.getElementById('editor-drag-cursor') as HTMLElement | null;
     if (dragCursor && ('ontouchstart' in window)) {
         let isDragging = false;
+        let dragStartX = 0;
         let dragStartY = 0;
         let dragStartCameraX = 0;
         let dragStartCameraY = 0;
         
-        dragCursor.addEventListener('touchstart', (e: TouchEvent) => {
+        const handleTouchStart = (e: TouchEvent) => {
             if (store.appState !== 'editing' || e.touches.length !== 1) return;
             isDragging = true;
+            dragStartX = e.touches[0].clientX;
             dragStartY = e.touches[0].clientY;
             dragStartCameraX = store.cameraX;
             dragStartCameraY = store.cameraY;
             dragCursor.style.opacity = '0.7';
-        }, { passive: false });
+            dragCursor.style.transform = 'scale(1.1)';
+        };
         
-        document.addEventListener('touchmove', (e: TouchEvent) => {
+        const handleTouchMove = (e: TouchEvent) => {
             if (!isDragging || e.touches.length !== 1 || store.appState !== 'editing') return;
             e.preventDefault();
             
+            const currentX = e.touches[0].clientX;
             const currentY = e.touches[0].clientY;
+            const deltaX = currentX - dragStartX;
             const deltaY = currentY - dragStartY;
             
-            // Mapear movimiento vertical a X y movimiento horizontal a Y
-            // Movimiento hacia abajo = pan derecha (X aumenta)
-            // Movimiento hacia arriba = pan izquierda (X disminuye)
-            const dragSensitivity = 2; // Ajustar sensibilidad
+            const dragSensitivity = 2;
+            
+            // Mapear movimiento:
+            // Movimiento vertical (Y) controla el pan horizontal (cameraX)
+            // Movimiento horizontal (X) controla el pan vertical (cameraY)
+            // Arriba = izquierda (X disminuye)
+            // Abajo = derecha (X aumenta)
+            // Izquierda = arriba (Y disminuye)
+            // Derecha = abajo (Y aumenta)
             store.cameraX = Math.max(0, dragStartCameraX - deltaY * dragSensitivity);
+            store.cameraY = Math.max(0, dragStartCameraY - deltaX * dragSensitivity);
             
             // Limitar al máximo del mapa
             if (store.editorLevel.length > 0 && store.editorLevel[0]) {
                 const zoomScale = store.dom.zoomScale ?? 1.0;
                 const scaledTileSize = TILE_SIZE * zoomScale;
                 const levelWidth = store.editorLevel[0].length * scaledTileSize;
+                const levelHeight = store.editorLevel.length * scaledTileSize;
+                
                 const maxCameraX = Math.max(0, levelWidth - (canvas?.width ?? 0));
-                store.cameraX = Math.min(maxCameraX, store.cameraX);
+                const maxCameraY = Math.max(0, levelHeight - (canvas?.height ?? 0));
+                
+                store.cameraX = Math.min(maxCameraX, Math.max(0, store.cameraX));
+                store.cameraY = Math.min(maxCameraY, Math.max(0, store.cameraY));
             }
-        }, { passive: false });
+        };
         
-        document.addEventListener('touchend', () => {
+        const handleTouchEnd = () => {
             isDragging = false;
             dragCursor.style.opacity = '1';
-        });
+            dragCursor.style.transform = 'scale(1)';
+        };
+        
+        dragCursor.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: true });
         
         // Mostrar cursor solo en mobile y cuando esté en editor
         const showCursorOnResize = () => {
@@ -741,14 +762,6 @@ export const bindEditorCanvas = (store: GameStore) => {
             }
         };
         
-        // Mostrar/ocultar cursor según el estado
-        const originalStartEditor = store.appState;
-        const observer = new MutationObserver(() => {
-            showCursorOnResize();
-        });
-        
-        // Observar cambios en appState (aunque no sea ideal, es lo que tenemos)
-        // Alternativamente, pueden llamar showCursorOnResize manualmente
         window.addEventListener('resize', showCursorOnResize);
         
         // Inicialmente ocultar
