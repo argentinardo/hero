@@ -991,6 +991,9 @@ const initializeTvMenuNavigation = (store: GameStore) => {
 };
 
 export const showMenu = (store: GameStore) => {
+    // Cargar nickname desde la base de datos al volver al menú
+    loadUserNicknameFromDB().catch(err => console.warn('[Nickname] Error en showMenu:', err));
+    
     // Ocultar modal de game over si está visible
     if (store.dom.ui.gameoverModal) {
         store.dom.ui.gameoverModal.classList.add('hidden');
@@ -1717,6 +1720,12 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
     // Establecer índice inicial
     store.currentLevelIndex = startIndex ?? 0;
     
+    // Asegurar que levelNames tiene el tamaño correcto
+    // Si los levelNames no coinciden con levelDesigns, generarlos
+    if (store.levelNames.length !== store.levelDesigns.length) {
+        store.levelNames = store.levelDesigns.map((_, index) => `Level ${index + 1}`);
+    }
+    
     // Marcar si estamos jugando desde el editor
     store.playingFromEditor = preserveLevels ?? false;
     loadLevel(store);
@@ -1749,7 +1758,110 @@ export const awardExtraLifeByScore = (store: GameStore) => {
     }
 };
 
+/**
+ * Actualiza los elementos UI del nickname en la página
+ */
+const refreshNicknameUI = async (): Promise<void> => {
+    try {
+        const { getUserStorage } = await import('../utils/storage');
+        const nickname = getUserStorage('nickname') || localStorage.getItem('username') || 'Usuario';
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        
+        // Actualizar panel desktop
+        const userArea = document.getElementById('user-area');
+        const usernameDisplay = document.getElementById('username-display');
+        if (userArea && usernameDisplay) {
+            if (isLoggedIn && nickname) {
+                usernameDisplay.textContent = nickname;
+                userArea.style.display = 'block';
+            } else {
+                userArea.style.display = 'none';
+            }
+        }
+        
+        // Actualizar panel mobile
+        const userAreaMobile = document.getElementById('user-area-mobile');
+        const userPanelNickname = document.getElementById('user-panel-nickname');
+        if (userAreaMobile && userPanelNickname) {
+            if (isLoggedIn && nickname) {
+                userAreaMobile.style.display = 'block';
+                userPanelNickname.textContent = nickname.toUpperCase();
+            } else {
+                userAreaMobile.style.display = 'none';
+                userPanelNickname.textContent = 'USER';
+            }
+        }
+        
+        console.log('[Nickname] UI actualizado:', nickname);
+    } catch (error) {
+        console.error('[Nickname] Error actualizando UI:', error);
+    }
+};
+
+/**
+ * Carga el nickname del usuario desde la base de datos
+ */
+const loadUserNicknameFromDB = async (): Promise<void> => {
+    try {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) {
+            console.warn('[Nickname] Usuario no logueado');
+            return;
+        }
+
+        const ni: any = (window as any).netlifyIdentity;
+        const user = ni?.currentUser?.();
+        if (!user) {
+            console.warn('[Nickname] Usuario no encontrado en Netlify Identity');
+            return;
+        }
+
+        const token = await user.jwt();
+        if (!token) {
+            console.warn('[Nickname] No se pudo obtener token JWT');
+            return;
+        }
+
+        const { getNetlifyBaseUrl } = await import('../utils/device');
+        const { setUserStorage, getUserStorage } = await import('../utils/storage');
+        const baseUrl = getNetlifyBaseUrl();
+
+        const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!res.ok) {
+            console.warn('[Nickname] Error en respuesta del servidor:', res.status);
+            return;
+        }
+
+        const profile = await res.json();
+        console.log('[Nickname] Perfil cargado:', profile);
+
+        // Si existe nickname en la BD, guardarlo en localStorage (con namespace)
+        if (profile.nickname) {
+            const currentNickname = getUserStorage('nickname');
+            if (currentNickname !== profile.nickname) {
+                console.log(`[Nickname] Actualizando nickname de "${currentNickname}" a "${profile.nickname}"`);
+                setUserStorage('nickname', profile.nickname);
+                
+                // Actualizar UI después de cambiar el nickname
+                await refreshNicknameUI();
+            }
+        }
+    } catch (error) {
+        console.error('[Nickname] Error cargando nickname de BD:', error);
+    }
+};
+
 export const startEditor = async (store: GameStore, preserveCurrentLevel: boolean = false) => {
+    // Cargar nickname desde la base de datos al entrar al editor
+    await loadUserNicknameFromDB();
+    
     // Cargar editor de forma lazy
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
     setupEditorState(store);
@@ -2127,7 +2239,13 @@ export const updateUiBar = (store: GameStore) => {
         }
     }
     if (levelCountEl) {
-        levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+        // Mostrar nombre del nivel si existe, de lo contrario mostrar número
+        const levelName = store.levelNames[store.currentLevelIndex];
+        if (levelName) {
+            levelCountEl.textContent = levelName;
+        } else {
+            levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+        }
     }
     if (scoreCountEl) {
         scoreCountEl.textContent = `${store.score}`;
@@ -6645,6 +6763,29 @@ const setupLevelData = (store: GameStore) => {
         }
     };
 
+    // Función para validar que el nivel tiene hero y minero
+    const validateLevelContent = (levelGrid: string[][]): { isValid: boolean; message: string } => {
+        let hasHero = false;
+        let hasMiner = false;
+        
+        for (let row of levelGrid) {
+            for (let cell of row) {
+                if (cell === 'P') hasHero = true;
+                if (cell === '9') hasMiner = true;
+            }
+        }
+        
+        if (!hasHero && !hasMiner) {
+            return { isValid: false, message: '⚠️ El nivel debe tener al menos un HÉROE (P) y un MINERO (9) para poder jugarse' };
+        } else if (!hasHero) {
+            return { isValid: false, message: '⚠️ El nivel necesita un HÉROE (P) para poder jugarse' };
+        } else if (!hasMiner) {
+            return { isValid: false, message: '⚠️ El nivel necesita un MINERO (9) para poder jugarse' };
+        }
+        
+        return { isValid: true, message: '' };
+    };
+
     saveAllBtn?.addEventListener('click', async () => {
         // Guardar automáticamente en la campaña actual
         const { getCurrentCampaign } = await import('../utils/campaigns');
@@ -6655,6 +6796,14 @@ const setupLevelData = (store: GameStore) => {
             showNotification(store, `❌ Error`, 'No hay campaña seleccionada');
             return;
         }
+        
+        // Validar contenido del nivel antes de guardar
+        const validation = validateLevelContent(store.editorLevel);
+        if (!validation.isValid) {
+            showNotification(store, '❌ Validación fallida', validation.message);
+            return;
+        }
+        
         const legacyCampaignSelected = currentCampaign.isDefault === true;
         if (legacyCampaignSelected && !isLegacySuperUser() && !isLegacyPasswordOverrideActive()) {
             const unlocked = await requestLegacyPasswordUnlock(store);

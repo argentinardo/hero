@@ -194,7 +194,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         left: 50% !important;
         max-width: 100vw !important;
         transform-origin: center top;
-        height: 90px; /* 10% del alto del viewport */
+        height: 120px; /* 10% del alto del viewport */
 
         
         /* Escalar proporcionalmente - usar calc() directamente sin que SCSS lo evalúe */
@@ -237,7 +237,8 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             height: auto !important;
             padding: 8px 12px !important;
             margin-left: 2rem !important;
-            font-size: 20px !important;
+            font-size: 24px !important;
+            text-transform: uppercase;
             
             .hamburger-label {
                 box-shadow: none !important;
@@ -301,12 +302,24 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             gap: 1.5rem !important;
         }
         
-        /* Ajustar tamaño de fuente si es muy pequeño */
-        @media (max-width: 600px) {
-            font-size: 0.875rem !important;
+        /* Aumentar tamaño de fuente en mobile */
+        @media (max-width: 1024px) {
+            font-size: 1rem !important;
             
             .text-lg {
-                font-size: 0.875rem !important;
+                font-size: 1.25rem !important;
+            }
+            
+            span {
+                font-size: 1.25rem !important;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            font-size: 1.125rem !important;
+            
+            .text-lg {
+                font-size: 1.375rem !important;
             }
             
             /* Reducir aún más padding y gap */

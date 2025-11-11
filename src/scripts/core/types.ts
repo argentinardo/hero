@@ -353,6 +353,7 @@ export interface GameStore {
     floatingScores: FloatingScore[];
     levelDesigns: string[][];
     levelDataStore: string[][][];
+    levelNames: string[]; // Nombres de los niveles
     editorLevel: string[][];
     campaigns: Campaign[]; // Campañas del usuario
     currentCampaignId: string | null; // ID de la campaña actual

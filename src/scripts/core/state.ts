@@ -73,6 +73,7 @@ export const createInitialStore = (): GameStore => ({
     floatingScores: [],
     levelDesigns: [],
     levelDataStore: [],
+    levelNames: [],
     editorLevel: [],
     campaigns: [],
     currentCampaignId: null,

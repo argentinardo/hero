@@ -348,8 +348,13 @@ export const handlePlayerInput = (store: GameStore) => {
 
     // Si está flotando, despertar apenas esté en su posición de respawn
     if (store.gameState === 'floating' && player.isFloating) {
-        const hasArrived = player.y >= player.respawnY && player.vy === 0;
+        // Permitir un margen de ±2px para detectar llegada (evita sobrepasos por redondeos)
+        const hasArrived = Math.abs(player.y - player.respawnY) <= 2 && player.vy === 0;
         if (hasArrived && player.canWake) {
+            // Ajustar posición exacta al respawnY si hay diferencia
+            player.y = player.respawnY;
+            player.hitbox.y = player.respawnY;
+            
             const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
             if (anyKeyPressed) {
                 player.isFloating = false;
@@ -633,7 +638,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         player.animationTick = 0;
         player.isFloating = true;
         player.isGrounded = false;
-        player.vy = 6; // Velocidad de descenso más rápida
+        player.vy = 3; // Velocidad de descenso controlada (reducida de 6 para evitar sobrepaso)
         player.vx = 0;
         player.deathTimer = 0;
         player.floatWaveTime = 0; // Resetear tiempo de onda
@@ -960,9 +965,12 @@ const handleCollisions = (store: GameStore) => {
                 const levelCenterX = (store.levelDesigns[store.currentLevelIndex][0].length * TILE_SIZE) / 2;
                 platform.vx = (platform.x + platform.width / 2) < levelCenterX ? 4 : -4; // Aumento del 25% (2 * 1.25 = 2.5)
             }
-            // Arrastrar al héroe con la plataforma
-            player.x += platform.vx;
-            player.hitbox.x = player.x + TILE_SIZE / 4;
+            // Arrastrar al héroe con la plataforma SOLO si no está en el estado de carga de vuelo
+            // Esto permite que el jugador se despegue de la plataforma cuando presiona volar
+            if (!player.isChargingFly) {
+                player.x += platform.vx;
+                player.hitbox.x = player.x + TILE_SIZE / 4;
+            }
         }
     });
 

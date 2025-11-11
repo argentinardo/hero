@@ -84,7 +84,9 @@ export const updateLights = (store: GameStore) => {
 };
 
 export const drawLight = (store: GameStore, light: Light) => {
-    const ctx = store.dom.ctx;
+    // Usar el contexto correcto (offscreen en mobile, normal en desktop)
+    const useOffscreen = store.dom.offscreenCtx && store.dom.renderScale !== undefined && store.dom.renderScale < 1.0;
+    const ctx = useOffscreen ? store.dom.offscreenCtx : store.dom.ctx;
     if (!ctx) return;
 
     const sprite = store.sprites.L;

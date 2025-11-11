@@ -99,6 +99,8 @@ store.levelDesigns = JSON.parse(JSON.stringify(expanded));
 // Inicializar levelDataStore con los niveles expandidos (formato string[][][] para editor)
 // levelDataStore: Array de niveles, cada nivel es un array de filas, cada fila es un array de caracteres
 store.levelDataStore = expanded.map(level => level.map(row => row.split('')));
+// Inicializar levelNames con nombres generados automáticamente
+store.levelNames = expanded.map((_, index) => `Level ${index + 1}`);
 // Inicializar sistema de campañas
 import('./utils/campaigns').then(({ initializeCampaigns }) => {
     initializeCampaigns(store, expanded.length);
