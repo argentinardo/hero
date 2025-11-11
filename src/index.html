@@ -13,6 +13,18 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/src/assets/icons/android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/src/assets/icons/android-chrome-512x512.png">
     <meta name="theme-color" content="#1f2937">
+    <meta name="description" content="Un juego retro de plataformas estilo arcade">
+    <meta name="keywords" content="game, retro, arcade, hero, plataforma">
+    <meta name="author" content="NEW H.E.R.O.">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HERO">
+    <meta name="msapplication-navbutton-color" content="#1f2937">
+    <meta name="msapplication-TileColor" content="#1f2937">
+    
     <!-- Manifest para PWA con orientación landscape -->
     <link rel="manifest" href="/manifest.json">
     <!-- Meta tag para Netlify Identity URL (respaldo) -->
@@ -840,36 +852,67 @@
     
     <!-- Registrar Service Worker para PWA -->
     <script>
+        console.log('[PWA] Inicializando PWA...');
+        
+        // Verificar soporte de Service Worker
         if ('serviceWorker' in navigator) {
+            console.log('[PWA] Service Workers soportados');
+            
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                console.log('[PWA] Registrando Service Worker desde: /sw.js');
+                
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then((registration) => {
-                        console.log('[PWA] Service Worker registrado exitosamente:', registration);
+                        console.log('[PWA] ✅ Service Worker registrado:', registration);
+                        console.log('[PWA] Scope:', registration.scope);
                         
                         // Verificar si hay actualizaciones disponibles
                         registration.addEventListener('updatefound', () => {
+                            console.log('[PWA] Actualizando Service Worker...');
                             const newWorker = registration.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // Nueva versión disponible, mostrar mensaje al usuario
                                     console.log('[PWA] Nueva versión disponible, recargando...');
                                     window.location.reload();
                                 }
                             });
                         });
+                        
+                        // Permitir instalación de PWA
+                        window.addEventListener('beforeinstallprompt', (e) => {
+                            console.log('[PWA] beforeinstallprompt disparado - PWA puede ser instalada');
+                            e.preventDefault();
+                            window.deferredPrompt = e;
+                        });
                     })
                     .catch((error) => {
-                        console.error('[PWA] Error registrando Service Worker:', error);
+                        console.error('[PWA] ❌ Error registrando Service Worker:', error);
+                        console.error('[PWA] URL del SW:', '/sw.js');
+                        console.error('[PWA] Scope:', '/');
                     });
                 
-                // Si hay un Service Worker esperando, activarlo
+                // Verificar si hay un Service Worker activo
+                navigator.serviceWorker.ready.then(() => {
+                    console.log('[PWA] ✅ Service Worker está listo');
+                });
+                
                 if (navigator.serviceWorker.controller) {
-                    console.log('[PWA] Service Worker activo');
+                    console.log('[PWA] ✅ Service Worker ya está activo');
                 }
             });
         } else {
-            console.warn('[PWA] Service Workers no soportados en este navegador');
+            console.warn('[PWA] ⚠️ Service Workers NO soportados en este navegador');
         }
+        
+        // Log de manifestación
+        fetch('/manifest.json')
+            .then(r => r.json())
+            .then(manifest => {
+                console.log('[PWA] ✅ Manifest cargado:', manifest);
+            })
+            .catch(e => {
+                console.error('[PWA] ❌ Error cargando manifest:', e);
+            });
     </script>
 </body>
 </html>
