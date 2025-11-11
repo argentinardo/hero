@@ -10,13 +10,13 @@
   "background_color": "#111827",
   "icons": [
     {
-      "src": "/src/assets/icons/android-chrome-192x192.png",
+      "src": "/assets/hero-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/src/assets/icons/android-chrome-512x512.png",
+      "src": "/assets/hero-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -25,9 +25,10 @@
   "categories": ["games"],
   "screenshots": [
     {
-      "src": "/src/assets/icons/android-chrome-512x512.png",
+      "src": "/assets/hero-logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ],
   "prefer_related_applications": false,
@@ -39,7 +40,7 @@
       "url": "/?action=play",
       "icons": [
         {
-          "src": "/src/assets/icons/android-chrome-192x192.png",
+          "src": "/assets/hero-logo.png",
           "sizes": "192x192",
           "type": "image/png"
         }

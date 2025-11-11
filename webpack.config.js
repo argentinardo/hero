@@ -10,7 +10,16 @@ module.exports = {
   entry: './src/scripts/main.ts',
   devtool: 'inline-source-map',
   devServer: {
-    static: './dist', // Serve files from the dist directory
+    static: [
+      {
+        directory: './dist',
+        publicPath: '/',
+      },
+      {
+        directory: './src/assets/sprites',
+        publicPath: '/assets',
+      }
+    ],
     hot: true,
     liveReload: true,
     watchFiles: ['src/**/*'],
@@ -57,7 +66,9 @@ module.exports = {
       patterns: [
         { from: 'src/sw.js', to: 'sw.js' },
         { from: 'manifest.json', to: 'manifest.json' },
-        { from: 'src/auth-callback.html', to: 'auth-callback.html' }
+        { from: 'src/auth-callback.html', to: 'auth-callback.html' },
+        { from: 'src/assets/sprites/hero-logo.png', to: 'hero-logo.png' },
+        { from: 'src/assets/sprites/qr.png', to: 'qr.png' }
       ],
     }),
   ],
