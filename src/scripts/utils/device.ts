@@ -123,6 +123,7 @@ export const isDesktopMode = (): boolean => {
 /**
  * Obtiene la URL base para las funciones de Netlify según el entorno.
  * En web usa URL relativa o la URL del sitio actual si es Netlify, en Android/Capacitor usa URL completa.
+ * En localhost, usa la URL de producción para acceder a las funciones de Netlify.
  */
 export const getNetlifyBaseUrl = (): string => {
     // Detectar si estamos en Capacitor (Android/iOS)
@@ -143,7 +144,14 @@ export const getNetlifyBaseUrl = (): string => {
         return window.location.origin;
     }
     
-    // En desarrollo local o otros entornos, usar URL relativa
+    // En desarrollo local (localhost), usar la URL de Netlify de producción
+    // Esto permite que las funciones serverless sean accesibles desde desarrollo
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isDevelopment) {
+        return 'https://newhero.netlify.app';
+    }
+    
+    // En otros entornos, usar URL relativa
     return '';
 };
 

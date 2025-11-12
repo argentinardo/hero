@@ -24,8 +24,8 @@
     
     <!-- Manifest para PWA con orientación landscape -->
     <link rel="manifest" href="/manifest.json">
-    <!-- Meta tag para Netlify Identity URL (respaldo) -->
-    <meta name="netlify-identity-url" content="https://newhero.netlify.app/.netlify/identity">
+    <!-- Meta tag para Netlify Identity URL (será actualizado por script) -->
+    <meta name="netlify-identity-url" content="" id="netlify-identity-meta">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,10 +37,36 @@
     <script src="https://cdn.jsdelivr.net/npm/midi-player-js@2.0.16/build/index.browser.min.js"></script>
         <!-- Netlify Identity Widget -->
         <script>
-            // Configurar URL fija ANTES de cargar el widget para evitar que pida URL al user
-            window.IDENTITY_URL = 'https://newhero.netlify.app/.netlify/identity';
-            // También guardar en localStorage como respaldo
-            localStorage.setItem('netlify-identity-url', 'https://newhero.netlify.app/.netlify/identity');
+            // Detectar el entorno y configurar URL de Identity apropiadamente
+            (function() {
+                const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
+                
+                let identityUrl;
+                
+                if (isNetlifyHost) {
+                    // En Netlify, usar la URL del sitio actual
+                    identityUrl = window.location.origin + '/.netlify/identity';
+                } else if (isDevelopment) {
+                    // En desarrollo local, usar la URL de Netlify (funciona via API CORS)
+                    identityUrl = 'https://newhero.netlify.app/.netlify/identity';
+                } else {
+                    // En otros entornos, usar la URL de Netlify también
+                    identityUrl = 'https://newhero.netlify.app/.netlify/identity';
+                }
+                
+                // Configurar variable global y localStorage
+                window.IDENTITY_URL = identityUrl;
+                localStorage.setItem('netlify-identity-url', identityUrl);
+                
+                // Actualizar el meta tag
+                const metaTag = document.getElementById('netlify-identity-meta');
+                if (metaTag) {
+                    metaTag.setAttribute('content', identityUrl);
+                }
+                
+                console.log('[Identity] Configurado con URL:', identityUrl, 'en host:', window.location.hostname);
+            })();
         </script>
         <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" onload="initializeNetlifyIdentity()"></script>
         <script>
@@ -63,13 +89,20 @@
                                  localStorage.getItem('netlify-identity-url') ||
                                  null;
                 
+                var isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
-                var apiUrl = configured || 
-                            (isNetlifyHost ? (window.location.origin + '/.netlify/identity') : null);
+                var apiUrl;
                 
-                // SIEMPRE usar la URL fija si está configurada, incluso en Android/Capacitor
+                // Determinar URL de identidad
                 if (configured) {
+                    // Usar URL configurada
                     apiUrl = configured;
+                } else if (isNetlifyHost) {
+                    // En Netlify, usar URL del sitio actual
+                    apiUrl = window.location.origin + '/.netlify/identity';
+                } else if (isDevelopment) {
+                    // En desarrollo local, usar la URL de Netlify (funciona via API CORS)
+                    apiUrl = 'https://newhero.netlify.app/.netlify/identity';
                 }
                 
                 if (!apiUrl) {
