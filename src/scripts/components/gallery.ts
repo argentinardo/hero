@@ -60,7 +60,6 @@ export const setupGallery = (store: GameStore) => {
     
     const sortLikesBtn = document.getElementById('gallery-sort-likes');
     const sortNewestBtn = document.getElementById('gallery-sort-newest');
-    const sortDownloadsBtn = document.getElementById('gallery-sort-downloads');
 
     // Abrir galería
     galleryBtn?.addEventListener('click', async () => {
@@ -84,10 +83,7 @@ export const setupGallery = (store: GameStore) => {
         await loadGalleryLevels(store, 'newest');
     });
 
-    sortDownloadsBtn?.addEventListener('click', async () => {
-        setActiveSortButton('downloads');
-        await loadGalleryLevels(store, 'downloads');
-    });
+
 };
 
 /**
@@ -316,7 +312,7 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
             </p>
             <div class="flex justify-between items-center mb-3">
                 <span class="text-xs text-gray-500">
-                    ❤️ ${level.likes_count} • ⬇️ ${level.downloads_count}
+                    ❤️ ${level.likes_count}
                 </span>
                 <button class="gallery-like-btn px-3 py-1 border border-white text-xs ${likeButtonClass}" 
                         data-level-id="${level.level_id}">
@@ -328,17 +324,7 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
                         data-level-id="${level.level_id}">
                     Jugar
                 </button>
-                <button class="gallery-implement-btn flex-1 bg-blue-600 hover:bg-blue-700 p-2 border border-white text-xs" 
-                        data-level-id="${level.level_id}">
-                    Implementar
-                </button>
             </div>
-            <button class="gallery-share-btn w-full bg-purple-600 hover:bg-purple-700 p-2 border border-white text-xs" 
-                    data-level-id="${level.level_id}"
-                    data-level-name="${level.name}"
-                    data-level-creator="${level.nickname || level.user_id?.split('@')[0] || 'Anónimo'}">
-                📤 Compartir
-            </button>
         `;
 
         galleryGrid.appendChild(card);
@@ -371,18 +357,6 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
             const levelId = target.getAttribute('data-level-id');
             if (levelId) {
                 await implementLevel(store, levelId);
-            }
-        });
-    });
-
-    document.querySelectorAll('.gallery-share-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const target = e.target as HTMLElement;
-            const levelId = target.getAttribute('data-level-id');
-            const levelName = target.getAttribute('data-level-name');
-            const levelCreator = target.getAttribute('data-level-creator') || 'Anónimo';
-            if (levelId && levelName) {
-                await shareLevel(store, levelId, levelName, levelCreator);
             }
         });
     });
@@ -709,15 +683,11 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
 };
 
 /**
- * Comparte un nivel de la galería en redes sociales
- * Genera un link y abre opciones para compartir
- * 
- * @param {GameStore} store - Store del juego
- * @param {string} levelId - ID del nivel a compartir
- * @param {string} levelName - Nombre del nivel
- * @param {string} levelCreator - Nombre del creador
- * @returns {Promise<void>}
+ * FUNCIÓN OBSOLETA - Ya no se usa
+ * Comparte un nivel de la galería en redes sociales (REMOVIDA)
+ * El compartir ahora se maneja desde el menú principal
  */
+/*
 const shareLevel = async (store: GameStore, levelId: string, levelName: string, levelCreator: string): Promise<void> => {
     try {
         // Generar URL del nivel
@@ -862,6 +832,7 @@ const shareLevel = async (store: GameStore, levelId: string, levelName: string, 
         showNotification(store, 'Error', 'Error al compartir nivel. Por favor intenta de nuevo.');
     }
 };
+*/
 
 // Las funciones de conversión ahora usan las importadas de levels.ts
 

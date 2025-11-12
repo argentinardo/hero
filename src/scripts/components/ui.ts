@@ -859,6 +859,7 @@ const initializeTvMenuNavigation = (store: GameStore) => {
     const startGameBtn = store.dom.ui.startGameBtn ?? (document.getElementById('start-game-btn') as HTMLButtonElement | null);
     const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
     const levelEditorBtn = store.dom.ui.levelEditorBtn ?? (document.getElementById('level-editor-btn') as HTMLButtonElement | null);
+    const shareGameBtn = document.getElementById('share-game-btn') as HTMLButtonElement | null;
     const creditsBtn = document.getElementById('credits-btn') as HTMLButtonElement | null;
     const langEsBtn = document.getElementById('lang-es-btn') as HTMLButtonElement | null;
     const langCaBtn = document.getElementById('lang-ca-btn') as HTMLButtonElement | null;
@@ -869,6 +870,7 @@ const initializeTvMenuNavigation = (store: GameStore) => {
         startGameBtn, 
         galleryBtn, 
         levelEditorBtn, 
+        shareGameBtn,
         creditsBtn,
         langEsBtn,
         langCaBtn,
@@ -1783,6 +1785,8 @@ const refreshNicknameUI = async (): Promise<void> => {
         // Actualizar panel mobile
         const userAreaMobile = document.getElementById('user-area-mobile');
         const userPanelNickname = document.getElementById('user-panel-nickname');
+        const userPanelTitle = document.getElementById('user-panel-title');
+        
         if (userAreaMobile && userPanelNickname) {
             if (isLoggedIn && nickname) {
                 userAreaMobile.style.display = 'block';
@@ -1790,6 +1794,18 @@ const refreshNicknameUI = async (): Promise<void> => {
             } else {
                 userAreaMobile.style.display = 'none';
                 userPanelNickname.textContent = 'USER';
+            }
+        }
+        
+        // Actualizar título del panel de usuario (que contiene avatar y nickname)
+        if (userPanelTitle) {
+            const nicknamSpan = userPanelTitle.querySelector('#user-panel-nickname') as HTMLElement;
+            if (nicknamSpan) {
+                if (isLoggedIn && nickname) {
+                    nicknamSpan.textContent = nickname.toUpperCase();
+                } else {
+                    nicknamSpan.textContent = 'USER';
+                }
             }
         }
         
@@ -5005,6 +5021,12 @@ const setupMenuButtons = (store: GameStore) => {
         }
     };
     
+    // Compartir Juego
+    const shareGameBtn = document.getElementById('share-game-btn') as HTMLButtonElement | null;
+    shareGameBtn?.addEventListener('click', () => {
+        shareGameOnSocialMedia();
+    });
+    
     // Créditos - NO iniciar partículas automáticamente
     creditsBtn?.addEventListener('click', () => {
         creditsModal?.classList.remove('hidden');
@@ -5955,6 +5977,100 @@ const purgeEmptyRowsAndColumns = (level: string[][]): string[][] => {
     }
     
     return cleanedLevel;
+};
+
+/**
+ * Comparte el link del juego en redes sociales y copia a portapapeles
+ * Muestra opciones para Twitter, Facebook, WhatsApp y copia directa
+ */
+const shareGameOnSocialMedia = (): void => {
+    const gameUrl = window.location.origin;
+    
+    // Crear modal de compartir
+    const modal = document.createElement('div');
+    modal.id = 'share-game-modal';
+    modal.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+    
+    const shareOptions = `
+        <div style="background: #222; border: 2px solid #fff; padding: 20px; max-width: 400px; border-radius: 8px; text-align: center;">
+            <h2 style="font-family: 'Press Start 2P'; font-size: 18px; margin-bottom: 20px; color: #fff;">COMPARTIR JUEGO</h2>
+            
+            <!-- URL de compartir -->
+            <div style="margin-bottom: 15px; display: flex; gap: 5px;">
+                <input id="share-url-input" type="text" value="${gameUrl}" readonly style="flex: 1; padding: 8px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-size: 12px; font-family: monospace;" />
+                <button id="share-copy" style="padding: 8px 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">COPIAR</button>
+            </div>
+            
+            <!-- Botones de redes sociales -->
+            <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; margin-bottom: 15px;">
+                <button id="share-twitter" style="flex: 1; min-width: 80px; padding: 10px; background: #1DA1F2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">TWITTER</button>
+                <button id="share-facebook" style="flex: 1; min-width: 80px; padding: 10px; background: #1877F2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">FACEBOOK</button>
+                <button id="share-whatsapp" style="flex: 1; min-width: 80px; padding: 10px; background: #25D366; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">WHATSAPP</button>
+            </div>
+            
+            <!-- Botón cerrar -->
+            <button id="share-close" style="width: 100%; padding: 10px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">CERRAR</button>
+        </div>
+    `;
+    
+    modal.innerHTML = shareOptions;
+    document.body.appendChild(modal);
+    
+    // Event listeners
+    const closeBtn = modal.querySelector('#share-close') as HTMLButtonElement;
+    const copyBtn = modal.querySelector('#share-copy') as HTMLButtonElement;
+    const twitterBtn = modal.querySelector('#share-twitter') as HTMLButtonElement;
+    const facebookBtn = modal.querySelector('#share-facebook') as HTMLButtonElement;
+    const whatsappBtn = modal.querySelector('#share-whatsapp') as HTMLButtonElement;
+    const urlInput = modal.querySelector('#share-url-input') as HTMLInputElement;
+    
+    // Cerrar modal
+    closeBtn.addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    // Copiar URL
+    copyBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(gameUrl);
+            copyBtn.textContent = '✓ COPIADO';
+            copyBtn.style.background = '#4CAF50';
+            setTimeout(() => {
+                copyBtn.textContent = 'COPIAR';
+            }, 2000);
+        } catch (err) {
+            console.error('Error al copiar:', err);
+            alert('No se pudo copiar. Copia manualmente desde el campo de arriba.');
+        }
+    });
+    
+    // Twitter
+    twitterBtn.addEventListener('click', () => {
+        const text = `¡Juega H.E.R.O.! Un juego de plataformas retro increíble 🎮`;
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(gameUrl)}`;
+        window.open(twitterUrl, '_blank', 'width=600,height=400');
+    });
+    
+    // Facebook
+    facebookBtn.addEventListener('click', () => {
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(gameUrl)}`;
+        window.open(facebookUrl, '_blank', 'width=600,height=400');
+    });
+    
+    // WhatsApp
+    whatsappBtn.addEventListener('click', () => {
+        const text = `¡Echa un vistazo a este increíble juego de plataformas retro! 🎮`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + gameUrl)}`;
+        window.open(whatsappUrl, '_blank');
+    });
 };
 
 /**
