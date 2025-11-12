@@ -53,7 +53,6 @@ export class QRCodeService {
      */
     public show(): void {
         if (!this.elements) {
-            console.warn('[QRCodeService] No hay elementos inicializados. Llama a initialize() primero.');
             return;
         }
 
@@ -63,9 +62,7 @@ export class QRCodeService {
             this.updateTexts();
             this.state.isVisible = true;
             this.notifyStateChange();
-            this.logDebug('QR mostrado');
         } catch (error) {
-            console.error('[QRCodeService] Error al mostrar QR:', error);
             this.state.hasError = true;
             this.notifyStateChange();
         }
@@ -76,14 +73,12 @@ export class QRCodeService {
      */
     public hide(): void {
         if (!this.elements) {
-            console.warn('[QRCodeService] No hay elementos inicializados.');
             return;
         }
 
         this.elements.container.classList.add(this.HIDDEN_CLASS);
         this.state.isVisible = false;
         this.notifyStateChange();
-        this.logDebug('QR ocultado');
     }
 
     /**
@@ -119,7 +114,6 @@ export class QRCodeService {
      */
     private setupImageHandlers(): void {
         if (!this.elements?.image) {
-            console.warn('[QRCodeService] No hay elemento de imagen.');
             return;
         }
 
@@ -127,14 +121,12 @@ export class QRCodeService {
             this.state.isLoaded = true;
             this.state.hasError = false;
             this.notifyStateChange();
-            this.logDebug('Imagen cargada exitosamente');
         };
 
         this.elements.image.onerror = () => {
             this.state.hasError = true;
             this.state.isLoaded = false;
             this.notifyStateChange();
-            console.error('[QRCodeService] Error al cargar la imagen del QR');
             this.hide();
         };
     }
@@ -144,7 +136,6 @@ export class QRCodeService {
      */
     private setImageSource(): void {
         if (!this.elements?.image || !this.config?.imageSrc) {
-            console.warn('[QRCodeService] No hay imagen o fuente configurada.');
             return;
         }
 
@@ -155,7 +146,6 @@ export class QRCodeService {
         if (this.elements.image.complete && this.elements.image.naturalHeight !== 0) {
             this.state.isLoaded = true;
             this.notifyStateChange();
-            this.logDebug('Imagen cargada desde caché');
         }
     }
 
@@ -164,7 +154,6 @@ export class QRCodeService {
      */
     private updateTexts(): void {
         if (!this.elements || !this.config) {
-            console.warn('[QRCodeService] No hay elementos o configuración.');
             return;
         }
 
@@ -186,16 +175,6 @@ export class QRCodeService {
         }
     }
 
-    /**
-     * Log de depuración
-     */
-    private logDebug(message: string): void {
-        console.log(`[QRCodeService] ${message}`, {
-            visible: this.state.isVisible,
-            loaded: this.state.isLoaded,
-            error: this.state.hasError
-        });
-    }
 
     /**
      * Limpia el servicio

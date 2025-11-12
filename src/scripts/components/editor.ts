@@ -686,87 +686,39 @@ export const bindEditorCanvas = (store: GameStore) => {
     // Llamar a updateEditorScroll en cada frame
     setInterval(updateEditorScroll, 16); // ~60 FPS
     
-    // ===== CURSOR ARRASTRABLE PARA MOVER CANVAS EN MOBILE =====
-    const dragCursor = document.getElementById('editor-drag-cursor') as HTMLElement | null;
-    if (dragCursor && ('ontouchstart' in window)) {
-        let isDragging = false;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let dragStartCameraX = 0;
-        let dragStartCameraY = 0;
+    
+    // ===== MOVER CANVAS CON BOTONES DIRECCIONALES =====
+    const moveCanvasWithArrows = () => {
+        const panSpeed = 15; // píxeles por frame
         
-        const handleTouchStart = (e: TouchEvent) => {
-            if (store.appState !== 'editing' || e.touches.length !== 1) return;
-            isDragging = true;
-            dragStartX = e.touches[0].clientX;
-            dragStartY = e.touches[0].clientY;
-            dragStartCameraX = store.cameraX;
-            dragStartCameraY = store.cameraY;
-            dragCursor.style.opacity = '0.7';
-            dragCursor.style.transform = 'scale(1.1)';
-        };
-        
-        const handleTouchMove = (e: TouchEvent) => {
-            if (!isDragging || e.touches.length !== 1 || store.appState !== 'editing') return;
-            e.preventDefault();
-            
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const deltaX = currentX - dragStartX;
-            const deltaY = currentY - dragStartY;
-            
-            const dragSensitivity = 2;
-            
-            // Mapear movimiento:
-            // Movimiento vertical (Y) controla el pan horizontal (cameraX)
-            // Movimiento horizontal (X) controla el pan vertical (cameraY)
-            // Arriba = izquierda (X disminuye)
-            // Abajo = derecha (X aumenta)
-            // Izquierda = arriba (Y disminuye)
-            // Derecha = abajo (Y aumenta)
-            store.cameraX = Math.max(0, dragStartCameraX - deltaY * dragSensitivity);
-            store.cameraY = Math.max(0, dragStartCameraY - deltaX * dragSensitivity);
-            
-            // Limitar al máximo del mapa
-            if (store.editorLevel.length > 0 && store.editorLevel[0]) {
-                const zoomScale = store.dom.zoomScale ?? 1.0;
-                const scaledTileSize = TILE_SIZE * zoomScale;
-                const levelWidth = store.editorLevel[0].length * scaledTileSize;
-                const levelHeight = store.editorLevel.length * scaledTileSize;
-                
-                const maxCameraX = Math.max(0, levelWidth - (canvas?.width ?? 0));
-                const maxCameraY = Math.max(0, levelHeight - (canvas?.height ?? 0));
-                
-                store.cameraX = Math.min(maxCameraX, Math.max(0, store.cameraX));
-                store.cameraY = Math.min(maxCameraY, Math.max(0, store.cameraY));
-            }
-        };
-        
-        const handleTouchEnd = () => {
-            isDragging = false;
-            dragCursor.style.opacity = '1';
-            dragCursor.style.transform = 'scale(1)';
-        };
-        
-        dragCursor.addEventListener('touchstart', handleTouchStart, { passive: false });
-        document.addEventListener('touchmove', handleTouchMove, { passive: false });
-        document.addEventListener('touchend', handleTouchEnd, { passive: true });
-        
-        // Mostrar cursor solo en mobile y cuando esté en editor
-        const showCursorOnResize = () => {
-            const isMobile = window.innerWidth <= 1024;
-            if (isMobile && store.appState === 'editing') {
-                dragCursor.classList.remove('hidden');
-            } else {
-                dragCursor.classList.add('hidden');
-            }
-        };
-        
-        window.addEventListener('resize', showCursorOnResize);
-        
-        // Inicialmente ocultar
-        dragCursor.classList.add('hidden');
-    }
+        if (store.keys.ArrowUp) {
+            store.cameraY = Math.max(0, store.cameraY - panSpeed);
+        }
+        if (store.keys.ArrowDown && store.editorLevel.length > 0) {
+            const zoomScale = store.dom.zoomScale ?? 1.0;
+            const scaledTileSize = TILE_SIZE * zoomScale;
+            const levelHeight = store.editorLevel.length * scaledTileSize;
+            const maxCameraY = Math.max(0, levelHeight - (canvas?.height ?? 0));
+            store.cameraY = Math.min(maxCameraY, store.cameraY + panSpeed);
+        }
+        if (store.keys.ArrowLeft) {
+            store.cameraX = Math.max(0, store.cameraX - panSpeed);
+        }
+        if (store.keys.ArrowRight && store.editorLevel.length > 0 && store.editorLevel[0]) {
+            const zoomScale = store.dom.zoomScale ?? 1.0;
+            const scaledTileSize = TILE_SIZE * zoomScale;
+            const levelWidth = store.editorLevel[0].length * scaledTileSize;
+            const maxCameraX = Math.max(0, levelWidth - (canvas?.width ?? 0));
+            store.cameraX = Math.min(maxCameraX, store.cameraX + panSpeed);
+        }
+    };
+    
+    // Intervalo para mover canvas con flechas
+    setInterval(() => {
+        if (store.appState === 'editing') {
+            moveCanvasWithArrows();
+        }
+    }, 16);
 };
 
 export const updateEditorLevelFromSelector = (store: GameStore) => {

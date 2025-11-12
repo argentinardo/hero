@@ -52,12 +52,8 @@ const initializeQRCodeController = (): void => {
             return;
         }
 
-        // Obtener fuente del QR desde sprites
-        const qrSrc = SPRITE_SOURCES.qr;
-        if (!qrSrc) {
-            console.warn('[initializeQRCodeController] No se encontró la fuente del QR en SPRITE_SOURCES');
-            return;
-        }
+        // Obtener fuente del QR - usar ruta estática en lugar de módulo de webpack
+        const qrSrc = '/qr.png';
 
         // Crear controlador con inyección de dependencias
         qrCodeController = new QRCodeController(
@@ -184,7 +180,7 @@ const applyHamburgerLabel = (label: string) => {
 };
 
 const updateHamburgerButtonLabel = (_store: GameStore) => {
-    applyHamburgerLabel('menu');
+    applyHamburgerLabel('MENU');
 };
 
 // Función para ajustar el ancho de las barras UI al tamaño real del canvas
@@ -309,15 +305,6 @@ export const attachDomReferences = (store: GameStore) => {
                 canvas.height = Math.floor(visualHeight);
             }
             
-            // Debug: verificar que las dimensiones sean correctas
-            console.log('Canvas dimensions adjusted:', {
-                internalWidth: canvas.width,
-                internalHeight: canvas.height,
-                innerHeight: window.innerHeight,
-                clientHeight: document.documentElement.clientHeight,
-                visualViewportHeight: window.visualViewport?.height,
-                boundingClientRect: canvas.getBoundingClientRect()
-            });
             
             // Actualizar offscreen canvas si existe (mobile)
             if (store.dom.offscreenCanvas && store.dom.renderScale) {
@@ -404,9 +391,9 @@ export const attachDomReferences = (store: GameStore) => {
     ui.messageText = document.getElementById('message-text');
     ui.gameUiEl = document.getElementById('game-ui');
     ui.heroLogoEl = document.getElementById('hero-logo');
-    // Establecer la URL del logo usando la ruta procesada por webpack
-    if (ui.heroLogoEl && SPRITE_SOURCES.heroLogo) {
-        (ui.heroLogoEl as HTMLImageElement).src = SPRITE_SOURCES.heroLogo;
+    // Establecer la URL del logo usando ruta estática
+    if (ui.heroLogoEl) {
+        (ui.heroLogoEl as HTMLImageElement).src = '/hero-logo.png';
     }
     ui.rightUiEl = document.getElementById('right-ui');
     ui.bottomUiEl = document.getElementById('bottom-ui');
@@ -1018,10 +1005,18 @@ export const showMenu = (store: GameStore) => {
     setBodyClass('menu');
     updateHamburgerButtonLabel(store);
     
-    // Ocultar cursor arrastrable cuando se vuelve al menú
-    const dragCursor = document.getElementById('editor-drag-cursor');
-    if (dragCursor) {
-        dragCursor.classList.add('hidden');
+    // Ocultar cruceta de direcciones cuando se vuelve al menú
+    const dpadEl = document.getElementById('editor-dpad');
+    if (dpadEl) {
+        dpadEl.style.display = 'none';
+        // Resetear estados de los botones
+        const dpadButtons = dpadEl.querySelectorAll('.dpad-btn');
+        dpadButtons.forEach(btn => btn.classList.remove('active'));
+        // Resetear keys
+        store.keys.ArrowUp = false;
+        store.keys.ArrowDown = false;
+        store.keys.ArrowLeft = false;
+        store.keys.ArrowRight = false;
     }
     
     // Mostrar selector de idioma (banderas) cuando esté en el menú
@@ -1914,15 +1909,6 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     setBodyClass('editing');
     updateHamburgerButtonLabel(store);
     
-    // Mostrar cursor arrastrable si es mobile
-    const dragCursor = document.getElementById('editor-drag-cursor');
-    if (dragCursor) {
-        const isMobile = window.innerWidth <= 1024;
-        if (isMobile) {
-            dragCursor.classList.remove('hidden');
-        }
-    }
-    
     // Ocultar selector de idioma (banderas) cuando esté en editor
     const languageSelectorContainer = document.getElementById('language-selector-container');
     if (languageSelectorContainer) {
@@ -2241,6 +2227,13 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     
     // Inicializar el editor avanzado
     initializeAdvancedEditor(store);
+    
+    // Inicializar la cruceta de direcciones (D-Pad) para mobile
+    const isMobile = window.innerWidth <= 1024;
+    const dpadEl = document.getElementById('editor-dpad');
+    if (dpadEl && isMobile) {
+        setupEditorDpad(store);
+    }
 };
 
 export const updateUiBar = (store: GameStore) => {
@@ -7029,6 +7022,209 @@ export const showLevelCompleteModal = (store: GameStore) => {
     const levelCompleteModal = document.getElementById('level-complete-modal');
     if (levelCompleteModal) {
         levelCompleteModal.classList.remove('hidden');
+    }
+};
+
+/**
+ * Configura la cruceta de direcciones (D-Pad) para panear el canvas en el editor mobile
+ * Emula exactamente lo que hacen las flechas del teclado, incluyendo la expansión del nivel
+ */
+const setupEditorDpad = (store: GameStore) => {
+    const dpadUp = document.getElementById('dpad-up') as HTMLButtonElement | null;
+    const dpadDown = document.getElementById('dpad-down') as HTMLButtonElement | null;
+    const dpadLeft = document.getElementById('dpad-left') as HTMLButtonElement | null;
+    const dpadRight = document.getElementById('dpad-right') as HTMLButtonElement | null;
+    
+    if (!dpadUp || !dpadDown || !dpadLeft || !dpadRight) return;
+    
+    // Mostrar la cruceta en mobile
+    const dpadEl = document.getElementById('editor-dpad');
+    if (dpadEl) {
+        dpadEl.style.display = 'block';
+    }
+    
+    // Map para mantener track de qué botones están presionados
+    const buttonStates: Record<string, boolean> = {
+        'dpad-up': false,
+        'dpad-down': false,
+        'dpad-left': false,
+        'dpad-right': false
+    };
+    
+    // Función para actualizar el estado de las teclas en store.keys
+    const updateKeyStates = () => {
+        store.keys.ArrowUp = buttonStates['dpad-up'];
+        store.keys.ArrowDown = buttonStates['dpad-down'];
+        store.keys.ArrowLeft = buttonStates['dpad-left'];
+        store.keys.ArrowRight = buttonStates['dpad-right'];
+    };
+    
+    // Crear eventos de teclado sintéticos para que el sistema de editor los procese
+    const createKeyEvent = (key: string, type: 'keydown' | 'keyup') => {
+        const keyMap: Record<string, string> = {
+            'dpad-up': 'ArrowUp',
+            'dpad-down': 'ArrowDown',
+            'dpad-left': 'ArrowLeft',
+            'dpad-right': 'ArrowRight'
+        };
+        
+        const event = new KeyboardEvent(type, {
+            key: keyMap[key],
+            code: keyMap[key],
+            bubbles: true,
+            cancelable: true
+        });
+        
+        return event;
+    };
+    
+    // Manejar touchstart y pointerdown
+    const handleButtonDown = (buttonId: string) => {
+        return (e: Event) => {
+            e.preventDefault();
+            if (!buttonStates[buttonId]) {
+                buttonStates[buttonId] = true;
+                const btn = e.target as HTMLElement;
+                btn.classList.add('active');
+                updateKeyStates();
+                // Disparar evento de teclado sintético para que el editor lo procese
+                window.dispatchEvent(createKeyEvent(buttonId, 'keydown'));
+            }
+        };
+    };
+    
+    // Manejar touchend y pointerup
+    const handleButtonUp = (buttonId: string) => {
+        return (e: Event) => {
+            e.preventDefault();
+            if (buttonStates[buttonId]) {
+                buttonStates[buttonId] = false;
+                const btn = e.target as HTMLElement;
+                btn.classList.remove('active');
+                updateKeyStates();
+                // Disparar evento de teclado sintético para que el editor lo procese
+                window.dispatchEvent(createKeyEvent(buttonId, 'keyup'));
+            }
+        };
+    };
+    
+    // Setup listeners para cada botón
+    const setupButtonListeners = (btn: HTMLButtonElement, buttonId: string) => {
+        // Touch events
+        btn.addEventListener('touchstart', handleButtonDown(buttonId), { passive: false });
+        btn.addEventListener('touchend', handleButtonUp(buttonId), { passive: false });
+        btn.addEventListener('touchcancel', handleButtonUp(buttonId), { passive: false });
+        
+        // Pointer events (para mouse y pen también)
+        btn.addEventListener('pointerdown', handleButtonDown(buttonId), { passive: false });
+        btn.addEventListener('pointerup', handleButtonUp(buttonId), { passive: false });
+        btn.addEventListener('pointercancel', handleButtonUp(buttonId), { passive: false });
+        
+        // Limpiar estado si se pierde el foco
+        btn.addEventListener('pointerleave', () => {
+            if (buttonStates[buttonId]) {
+                buttonStates[buttonId] = false;
+                btn.classList.remove('active');
+                updateKeyStates();
+                window.dispatchEvent(createKeyEvent(buttonId, 'keyup'));
+            }
+        });
+    };
+    
+    setupButtonListeners(dpadUp, 'dpad-up');
+    setupButtonListeners(dpadDown, 'dpad-down');
+    setupButtonListeners(dpadLeft, 'dpad-left');
+    setupButtonListeners(dpadRight, 'dpad-right');
+    
+    // ===== HACER EL D-PAD DRAGGABLE =====
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    
+    const handleDragStart = (e: PointerEvent | TouchEvent) => {
+        // Permitir drag solo desde el botón central (dpad-draw) o desde el contenedor
+        const target = e.target as HTMLElement;
+        const isDpadDraw = target.classList.contains('dpad-draw');
+        const isDpadContainer = target.classList.contains('dpad-container') || target.classList.contains('editor-dpad');
+        const isOtherButton = target.classList.contains('dpad-btn') && !isDpadDraw;
+        
+        if (isOtherButton) {
+            return;
+        }
+        
+        isDragging = true;
+        dpadEl?.classList.add('dragging');
+        
+        const clientX = e instanceof PointerEvent ? e.clientX : e.touches?.[0]?.clientX ?? 0;
+        const clientY = e instanceof PointerEvent ? e.clientY : e.touches?.[0]?.clientY ?? 0;
+        
+        dragStartX = clientX;
+        dragStartY = clientY;
+        
+        // Obtener posición actual del elemento
+        const rect = dpadEl?.getBoundingClientRect();
+        if (rect) {
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+        }
+    };
+    
+    const handleDragMove = (e: PointerEvent | TouchEvent) => {
+        if (!isDragging || !dpadEl) return;
+        
+        e.preventDefault();
+        
+        const clientX = e instanceof PointerEvent ? e.clientX : e.touches?.[0]?.clientX ?? 0;
+        const clientY = e instanceof PointerEvent ? e.clientY : e.touches?.[0]?.clientY ?? 0;
+        
+        const deltaX = clientX - dragStartX;
+        const deltaY = clientY - dragStartY;
+        
+        // Calcular nueva posición
+        const rect = dpadEl.getBoundingClientRect();
+        let newLeft = rect.left + deltaX;
+        let newTop = rect.top + deltaY;
+        
+        // Limitar al viewport
+        const minX = 0;
+        const maxX = window.innerWidth - rect.width;
+        const minY = 0;
+        const maxY = window.innerHeight - rect.height;
+        
+        newLeft = Math.max(minX, Math.min(maxX, newLeft));
+        newTop = Math.max(minY, Math.min(maxY, newTop));
+        
+        // Aplicar nueva posición
+        dpadEl.style.position = 'fixed';
+        dpadEl.style.left = newLeft + 'px';
+        dpadEl.style.top = newTop + 'px';
+        dpadEl.style.bottom = 'auto';
+        dpadEl.style.transform = 'none';
+        
+        dragStartX = clientX;
+        dragStartY = clientY;
+    };
+    
+    const handleDragEnd = () => {
+        isDragging = false;
+        dpadEl?.classList.remove('dragging');
+    };
+    
+    // Listeners para drag
+    if (dpadEl) {
+        // Pointer events
+        dpadEl.addEventListener('pointerdown', handleDragStart as EventListener, { passive: false });
+        document.addEventListener('pointermove', handleDragMove as EventListener, { passive: false });
+        document.addEventListener('pointerup', handleDragEnd);
+        document.addEventListener('pointercancel', handleDragEnd);
+        
+        // Touch events como fallback
+        dpadEl.addEventListener('touchstart', handleDragStart as EventListener, { passive: false });
+        document.addEventListener('touchmove', handleDragMove as EventListener, { passive: false });
+        document.addEventListener('touchend', handleDragEnd);
+        document.addEventListener('touchcancel', handleDragEnd);
     }
 };
 

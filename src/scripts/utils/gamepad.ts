@@ -28,14 +28,16 @@ const gamepadState: GamepadMapping = {
 /**
  * Mapea los botones del gamepad a códigos de teclado
  * Estándar Gamepad: 0=A (cross), 1=B (circle), 2=X, 3=Y, 6=L1, 7=R1, 8=L2, 9=R2, 10=Select, 11=Start
+ * Botones especiales: 16=Centro (Xiaomi TV), 23=OK (Android TV)
  */
 const getButtonMapping = (buttonIndex: number): string | null => {
     const mapping: Record<number, string> = {
         0: 'Enter',        // Botón principal -> disparo en juego / confirmar en menús
         10: 'Escape',      // Select (Pausa/Menú)
         11: 'Enter',       // Start (Confirmar/Entrar)
-        16: 'Enter',       // Botón central en algunos mandos de TV
-        23: 'Enter'        // Botón OK en ciertos mandos Android TV
+        // Botones centrales del mando (para disparar láser en juego)
+        16: 'Space',       // Botón central Xiaomi TV -> Disparo láser
+        23: 'Space'        // Botón OK Android TV -> Disparo láser
     };
     return mapping[buttonIndex] ?? null;
 };

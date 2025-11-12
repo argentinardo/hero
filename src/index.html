@@ -155,29 +155,43 @@
 <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
 
     <div id="main-container">
+        <div id="editor-dpad" class="editor-dpad mb-4" style="display: none;">
+            <div class="dpad-container">
+                <button id="dpad-up" class="dpad-btn dpad-up" title="Arriba">▲</button>
+                <div class="dpad-middle">
+                    <button id="dpad-left" class="dpad-btn dpad-left" title="Izquierda">◄</button>
+                    <button id="dpad-draw" class="dpad-btn dpad-draw" title="Draw"></button>
+                    <button id="dpad-right" class="dpad-btn dpad-right" title="Derecha">►</button>
+                </div>
+                <button id="dpad-down" class="dpad-btn dpad-down" title="Abajo">▼</button>
+            </div>
+        </div>
         <!-- Barra de UI con acciones rápidas (móvil) - Ahora con hamburguesa -->
         <div id="right-ui" class="text-sm flex items-center justify-end gap-4" style="display: none;">
-            <button id="hamburger-btn-mobile" class="hamburger-btn-mobile" aria-label="menu">
-                <span class="hamburger-label">menu</span>
+            <button id="hamburger-btn-mobile" class="hamburger-btn-mobile" aria-label="MENU">
+                <span class="hamburger-label">MENU</span>
             </button>
         </div>
 
             <!-- Contenedor Canvas con barras UI superpuestas -->
             <div class="canvas-wrapper">
                 <!-- Barra Superior (superpuesta) -->
-                <div id="game-ui" class="text-base" style="display: none;">
-                    <div class="flex items-center gap-2">
-                        <img id="hero-logo" alt="Hero" style="display: none; image-rendering: pixelated;">
-                        <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
+                <div id="game-ui" class="text-base" style="display: none; background: rgba(0, 0, 0, 0.5); padding: 8px 12px; border-radius: 4px;">
+                    <div class="flex items-center justify-between w-full gap-2">
+                        <!-- Logo + Level (izquierda) -->
+                        <div class="flex items-center gap-2">
+                            <img id="hero-logo" alt="Hero" style="display: none; image-rendering: pixelated">
+                            <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
+                        </div>
+                        
+                        <!-- Score (centro) -->
+                        <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
+                        
+                        <!-- Menu (derecha) -->
+                        <button id="hamburger-btn" class="hamburger-btn" aria-label="MENU">
+                            <span class="hamburger-label">MENU</span>
+                        </button>
                     </div>
-                
-                <!-- Barra de créditos (debajo de la barra superior) -->
-
-                    <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
-                    
-                    <button id="hamburger-btn" class="hamburger-btn" aria-label="menu">
-                        <span class="hamburger-label">menu</span>
-                    </button>
                 </div>
 
                 <!-- Menú Hamburguesa Desplegable (ya no se usa, el hamburger abre pause-menu-modal) -->
@@ -197,10 +211,6 @@
                 <!-- Canvas del Juego / Editor -->
                 <canvas id="gameCanvas" width="1440" height="1000"></canvas>
                 
-                <!-- Cursor Arrastrable del Editor (para mover el canvas en mobile) -->
-                <div id="editor-drag-cursor" class="hidden fixed bottom-8 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing border-2 border-purple-400 shadow-lg z-30 transition-all" style="touch-action: none;">
-                    <span class="text-white text-2xl" style="font-family: 'Press Start 2P', monospace;">⋮</span>
-                </div>
                 
                         <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
         <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2" style="top: 12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 20; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
@@ -331,6 +341,7 @@
                         <span id="edit-section-arrow">▼</span>
                     </button>
                     <div id="edit-section-content" class="mt-2">
+                        <!-- Cruceta de direcciones para panear el canvas (Mobile) -->
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <button id="undo-btn" class="nes-btn w-full text-xs">↶ Deshacer</button>
                             <button id="redo-btn" class="nes-btn w-full text-xs">↷ Rehacer</button>

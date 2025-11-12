@@ -476,9 +476,9 @@ const gameLoop = (currentTime: number): void => {
                     });
                 }
                 // Saltar este frame si aún se está cargando - la promesa se resolverá en el siguiente frame
-                requestAnimationFrame(gameLoop);
-                return;
-            }
+                    requestAnimationFrame(gameLoop);
+                    return;
+                }
             // editorModuleCache está garantizado aquí después de la verificación anterior
             const drawEditorFn = editorModuleCache.drawEditor;
             if (drawEditorFn) {
@@ -486,7 +486,7 @@ const gameLoop = (currentTime: number): void => {
             }
         } else if (store.appState === 'menu') {
             // Animar splash también en mobile
-            animateSplash(store);
+                animateSplash(store);
             
             // Procesar gamepad para navegación en el menú (modo TV)
             // Solo procesar una vez por frame para evitar activaciones múltiples
@@ -527,16 +527,9 @@ const initStatusBar = async (): Promise<void> => {
         // Usar una función que construye la ruta dinámicamente para evitar que webpack lo analice
         let StatusBar: any;
         try {
-            // Construir la ruta del módulo de forma que webpack no pueda analizarla estáticamente
-            // Usar una función que construye la ruta en tiempo de ejecución
-            const getModulePath = () => {
-                const parts = ['@capacitor', 'status-bar'];
-                return parts.join('/');
-            };
-            const modulePath = getModulePath();
-            
-            // Usar import dinámico - webpack mostrará un warning pero no bloqueará la compilación
-            const statusBarModule = await import(modulePath);
+            // Usar import directo en lugar de dinámico para evitar warnings de webpack
+            // El módulo @capacitor/status-bar es opcional y está instalado
+            const statusBarModule = await import('@capacitor/status-bar');
             StatusBar = statusBarModule?.StatusBar;
         } catch (importError: any) {
             // El módulo no está disponible - esto es normal si no está instalado
@@ -547,13 +540,11 @@ const initStatusBar = async (): Promise<void> => {
                 // Silencioso: no es un error crítico, el plugin es opcional
                 // El warning de webpack es esperado y puede ignorarse
             } else {
-                console.warn('Error importando StatusBar:', importError);
             }
             return; // Salir silenciosamente si el módulo no existe
         }
 
         if (!StatusBar) {
-            console.warn('StatusBar no está disponible');
             return;
         }
         
@@ -561,10 +552,8 @@ const initStatusBar = async (): Promise<void> => {
         await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setStyle({ style: 'dark' });
         await StatusBar.setBackgroundColor({ color: '#000000' });
-        
-        console.log('StatusBar configurado para fullscreen');
     } catch (error) {
-        console.warn('No se pudo inicializar StatusBar:', error);
+        // Error silencioso
     }
 };
 
@@ -590,12 +579,6 @@ const setupViewportAdjustment = (): void => {
         document.documentElement.style.setProperty('--vh', `${realVh * 0.01}px`);
         document.documentElement.style.setProperty('--dvh', `${realVh}px`);
         
-        console.log('Viewport ajustado:', {
-            visualViewport: window.visualViewport?.height,
-            innerHeight: window.innerHeight,
-            clientHeight: document.documentElement.clientHeight,
-            realVh
-        });
     };
 
     // Ajustar al inicio
@@ -694,7 +677,6 @@ const registerServiceWorker = async (): Promise<void> => {
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
             });
-            console.log('[PWA] Service Worker registrado:', registration.scope);
             
             // Escuchar actualizaciones del Service Worker
             registration.addEventListener('updatefound', () => {
@@ -702,13 +684,13 @@ const registerServiceWorker = async (): Promise<void> => {
                 if (newWorker) {
                     newWorker.addEventListener('statechange', () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('[PWA] Nueva versión disponible. Recarga la página para actualizar.');
+                            // Nueva versión disponible
                         }
                     });
                 }
             });
         } catch (error) {
-            console.warn('[PWA] Error registrando Service Worker:', error);
+            // Error silencioso
         }
     }
 };
@@ -722,7 +704,7 @@ const bootstrap = async (): Promise<void> => {
     
     // Registrar Service Worker para PWA (no bloqueante)
     registerServiceWorker().catch(() => {
-        console.warn('[PWA] No se pudo registrar el Service Worker');
+        // Error silencioso
     });
     
     setupUI(store);
@@ -733,7 +715,6 @@ const bootstrap = async (): Promise<void> => {
         if (isTvMode()) {
             mobileControlsEl.dataset.active = 'false';
             mobileControlsEl.style.display = 'none';
-            console.log('[UI] Modo TV detectado: ocultando controles táctiles.');
         } else {
             mobileControlsEl.style.removeProperty('display');
         }
@@ -755,21 +736,17 @@ const bootstrap = async (): Promise<void> => {
         
         // 2. Assets no críticos en background (no bloqueante)
         const nonCriticalSprites = ['P_jump', 'P_fly', 'P_die', 'P_success', '8', 'S', 'V', 'V_death', 'T', '9', 'bomb', 'explosion', '3', 'L'];
-        loadSpritesLazy(store, nonCriticalSprites).then(() => {
-            console.log('Assets no críticos cargados');
-        }).catch(() => {
-            console.warn('Error cargando assets no críticos');
+        loadSpritesLazy(store, nonCriticalSprites).catch(() => {
+            // Error silencioso
         });
         
-        loadAdditionalSFX().then(() => {
-            console.log('Efectos de sonido adicionales cargados');
-        }).catch(() => {
-            console.warn('Error cargando efectos de sonido adicionales');
+        loadAdditionalSFX().catch(() => {
+            // Error silencioso
         });
         
         // Precargar módulos del juego en background para mejor rendimiento
         loadGameModules().catch(() => {
-            console.warn('Error precargando módulos del juego');
+            // Error silencioso
         });
         
         // Iniciar el game loop
@@ -778,13 +755,13 @@ const bootstrap = async (): Promise<void> => {
 };
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    bootstrap().catch(error => {
-        console.error('Error en bootstrap:', error);
+    bootstrap().catch(() => {
+        // Error silencioso
     });
 } else {
     window.addEventListener('DOMContentLoaded', () => {
-        bootstrap().catch(error => {
-            console.error('Error en bootstrap:', error);
+        bootstrap().catch(() => {
+            // Error silencioso
         });
     });
 }
