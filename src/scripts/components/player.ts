@@ -492,7 +492,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     vibrate([50, 100, 50]);
     // Reanudar música cuando termine el sonido de perder vida (si no es game over)
     onLifedownEnded(() => {
-        if (store.lives > 0 && store.gameState !== 'gameover') {
+        if (store.lives >= 0 && store.gameState !== 'gameover') {
             playBackgroundMusic().catch(() => {});
         }
     });
@@ -563,7 +563,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     store.lives -= 1;
     store.gameState = 'respawning';
 
-    if (store.lives <= 0) {
+    if (store.lives < 0) {
         window.setTimeout(() => {
             store.gameState = 'gameover';
             store.lastRunScore = store.score;

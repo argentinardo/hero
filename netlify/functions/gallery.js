@@ -7,59 +7,88 @@
 const { neon } = require('@netlify/neon');
 
 const ensureSchema = async (sql) => {
-  // Tabla de usuarios con perfiles
-  await sql`CREATE TABLE IF NOT EXISTS users (
-    user_id text PRIMARY KEY,
-    nickname text,
-    avatar_url text,
-    email text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    last_login timestamptz,
-    UNIQUE(user_id)
-  )`;
+  try {
+    // Tabla de usuarios con perfiles
+    await sql`CREATE TABLE IF NOT EXISTS users (
+      user_id text PRIMARY KEY,
+      nickname text,
+      avatar_url text,
+      email text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_login timestamptz,
+      UNIQUE(user_id)
+    )`;
 
-  // Tabla de niveles en la galería
-  await sql`CREATE TABLE IF NOT EXISTS gallery_levels (
-    level_id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    user_id text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    name text NOT NULL,
-    description text,
-    data jsonb NOT NULL,
-    screenshot text,
-    likes_count integer NOT NULL DEFAULT 0,
-    downloads_count integer NOT NULL DEFAULT 0,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    is_public boolean NOT NULL DEFAULT true
-  )`;
+    // Tabla de niveles en la galería
+    await sql`CREATE TABLE IF NOT EXISTS gallery_levels (
+      level_id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      user_id text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      name text NOT NULL,
+      description text,
+      data jsonb NOT NULL,
+      screenshot text,
+      likes_count integer NOT NULL DEFAULT 0,
+      downloads_count integer NOT NULL DEFAULT 0,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      is_public boolean NOT NULL DEFAULT true
+    )`;
 
-  // Tabla de likes (votos) por nivel
-  await sql`CREATE TABLE IF NOT EXISTS level_likes (
-    like_id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    level_id text NOT NULL REFERENCES gallery_levels(level_id) ON DELETE CASCADE,
-    user_id text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE(level_id, user_id)
-  )`;
+    // Tabla de likes (votos) por nivel
+    await sql`CREATE TABLE IF NOT EXISTS level_likes (
+      like_id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      level_id text NOT NULL REFERENCES gallery_levels(level_id) ON DELETE CASCADE,
+      user_id text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE(level_id, user_id)
+    )`;
 
-  // Tabla de implementaciones (cuando un usuario copia y modifica un nivel)
-  await sql`CREATE TABLE IF NOT EXISTS user_implemented_levels (
-    implementation_id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    user_id text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    original_level_id text REFERENCES gallery_levels(level_id) ON DELETE SET NULL,
-    modified_data jsonb NOT NULL,
-    name text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE(user_id, original_level_id)
-  )`;
+    // Tabla de implementaciones (cuando un usuario copia y modifica un nivel)
+    await sql`CREATE TABLE IF NOT EXISTS user_implemented_levels (
+      implementation_id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      user_id text NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      original_level_id text REFERENCES gallery_levels(level_id) ON DELETE SET NULL,
+      modified_data jsonb NOT NULL,
+      name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE(user_id, original_level_id)
+    )`;
 
-  // Índices para mejor rendimiento
-  await sql`CREATE INDEX IF NOT EXISTS idx_gallery_user ON gallery_levels(user_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_gallery_created ON gallery_levels(created_at DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_gallery_likes ON gallery_levels(likes_count DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_likes_level ON level_likes(level_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_likes_user ON level_likes(user_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_implemented_user ON user_implemented_levels(user_id)`;
+    // Índices para mejor rendimiento
+    await sql`CREATE INDEX IF NOT EXISTS idx_gallery_user ON gallery_levels(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_gallery_created ON gallery_levels(created_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_gallery_likes ON gallery_levels(likes_count DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_likes_level ON level_likes(level_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_likes_user ON level_likes(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_implemented_user ON user_implemented_levels(user_id)`;
+
+  } catch (schemaError) {
+    // Si hay error de schema (ej: columna faltante), intentar migración básica
+    console.log('Intentando migración básica...', schemaError.message);
+    
+    try {
+      // Verificar si falta la columna user_id
+      const hasUserIdColumn = await sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+          AND table_name = 'gallery_levels' 
+          AND column_name = 'user_id'
+        )
+      `;
+
+      if (hasUserIdColumn && !hasUserIdColumn[0]?.exists) {
+        console.log('Agregando columna user_id a gallery_levels');
+        // Agregar columna con valor por defecto
+        await sql`ALTER TABLE gallery_levels ADD COLUMN user_id text DEFAULT 'unknown'`;
+        await sql`ALTER TABLE gallery_levels ALTER COLUMN user_id SET NOT NULL`;
+      }
+    } catch (migrationError) {
+      console.error('Error en migración básica:', migrationError);
+      // Si la migración falla, lanzar el error original
+      throw schemaError;
+    }
+  }
 };
 
 /**
