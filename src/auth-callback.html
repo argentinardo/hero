@@ -31,10 +31,17 @@
     </div>
     <script>
         (function() {
+            console.log('[Auth Callback] Página de callback cargada');
+            console.log('[Auth Callback] URL actual:', window.location.href);
+            console.log('[Auth Callback] Protocol:', window.location.protocol);
+            console.log('[Auth Callback] Hostname:', window.location.hostname);
+            
             // Detectar si viene de la app móvil (Capacitor)
             const isCapacitor = typeof window.Capacitor !== 'undefined';
             const isAndroid = /Android/i.test(navigator.userAgent);
             const isMobileApp = isCapacitor || (isAndroid && window.location.protocol === 'capacitor:');
+            
+            console.log('[Auth Callback] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isMobileApp:', isMobileApp);
             
             // Obtener los parámetros de la URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -44,14 +51,21 @@
             const error = urlParams.get('error');
             const errorDescription = urlParams.get('error_description');
             
+            console.log('[Auth Callback] accessToken:', accessToken ? 'presente' : 'ausente');
+            console.log('[Auth Callback] error:', error || 'ninguno');
+            console.log('[Auth Callback] errorDescription:', errorDescription || 'ninguno');
+            
             // Si hay un error, mostrarlo
             if (error) {
+                console.error('[Auth Callback] Error recibido:', error);
                 document.querySelector('.message').textContent = 'Error: ' + (errorDescription || error);
                 setTimeout(() => {
                     if (isMobileApp) {
+                        console.log('[Auth Callback] Intentando redirigir a app con error');
                         // Intentar cerrar el WebView y volver a la app
                         window.location.href = 'hero://auth-callback?error=' + encodeURIComponent(error);
                     } else {
+                        console.log('[Auth Callback] Cerrando ventana (no es app móvil)');
                         window.close();
                     }
                 }, 3000);
@@ -60,6 +74,7 @@
             
             // Si hay un token, procesarlo
             if (accessToken) {
+                console.log('[Auth Callback] Token de acceso recibido, procesando...');
                 // Si viene de la app móvil, redirigir usando el esquema personalizado
                 if (isMobileApp) {
                     // Construir la URL de callback con el token
@@ -68,6 +83,7 @@
                         '&token_type=' + encodeURIComponent(tokenType) +
                         (expiresIn ? '&expires_in=' + encodeURIComponent(expiresIn) : '');
                     
+                    console.log('[Auth Callback] Redirigiendo a:', callbackUrl);
                     // Redirigir a la app
                     window.location.href = callbackUrl;
                 } else {
@@ -93,11 +109,14 @@
                 }
             } else {
                 // No hay token, mostrar error
+                console.error('[Auth Callback] No se recibió token de autenticación');
                 document.querySelector('.message').textContent = 'Error: No se recibió el token de autenticación';
                 setTimeout(() => {
                     if (isMobileApp) {
+                        console.log('[Auth Callback] Redirigiendo a app con error: no_token');
                         window.location.href = 'hero://auth-callback?error=no_token';
                     } else {
+                        console.log('[Auth Callback] Cerrando ventana (no es app móvil)');
                         window.close();
                     }
                 }, 3000);

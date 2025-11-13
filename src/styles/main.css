@@ -337,3 +337,20 @@ body::after{ content:"Por favor gire su dispositivo para jugar al juego"; positi
 .tile-thumb:hover{ transform:scale(1.05) }
 .tv-focused,.highlighted{ position:relative; box-shadow:0 0 18px rgba(255,204,0,.75),0 0 6px rgba(0,0,0,.6); background:linear-gradient(135deg,rgba(255,221,0,0.25),rgba(255,149,0,0.35)); color:#0b0b0b !important; transform:scale(1.05); transition:transform .12s ease,box-shadow .12s ease }
 .tv-focused::after{ content:""; position:absolute; inset:-6px; border:2px solid hsla(0,0%,100%,.65); box-shadow:0 0 24px hsla(0,0%,100%,.35); pointer-events:none }
+#auth-choice-modal{ position:fixed !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important; width:100% !important; height:100% !important; z-index:10000 !important; overflow:auto !important; display:flex !important; flex-direction:column !important; justify-content:center !important; align-items:center !important; text-align:center !important; inset:0 !important }
+#auth-choice-modal.hidden{ display:none !important; visibility:hidden !important }
+#auth-choice-modal .nes-container{ position:relative !important; z-index:10001 !important; max-width:90vw !important; max-height:90vh !important; overflow:auto !important; visibility:visible !important; opacity:1 !important; transform:scale(1) !important; margin:auto !important }
+/* Asegurar que el widget de Netlify Identity es visible en Capacitor */
+.netlify-identity-modal,
+.netlify-identity-modal-overlay,
+[class*="netlify-identity"],
+.netlify-widget { position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; z-index:10002 !important; visibility:visible !important; opacity:1 !important; display:block !important; }
+.netlify-identity-modal { z-index:10003 !important; }
+.netlify-identity-modal-overlay { z-index:10002 !important; }
+.netlify-widget { z-index:10000 !important; }
+/* Iframe de Netlify Identity */
+iframe[src*="netlify"],
+iframe[src*="identity"] { width:100% !important; height:100% !important; z-index:10003 !important; position:fixed !important; top:0 !important; left:0 !important; }
+/* Evitar que elementos del body corten el modal */
+body { overflow:visible !important; }
+body.nli-show-modal { overflow:hidden !important; }

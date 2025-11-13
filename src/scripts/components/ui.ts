@@ -3269,13 +3269,18 @@ const setupAuthDeepLink = (store: GameStore) => {
     // Función para procesar el callback de autenticación
     const handleAuthCallback = async (url: string) => {
         try {
+            console.log('[handleAuthCallback] Procesando URL:', url);
             const urlObj = new URL(url);
+            console.log('[handleAuthCallback] Protocol:', urlObj.protocol, '| Pathname:', urlObj.pathname);
+            
             if (urlObj.protocol !== 'hero:') {
+                console.log('[handleAuthCallback] Esquema incorrecto:', urlObj.protocol);
                 return; // No es nuestro esquema
             }
 
             const pathname = urlObj.pathname;
             if (pathname !== '/auth-callback') {
+                console.log('[handleAuthCallback] Pathname incorrecto:', pathname);
                 return; // No es nuestro callback
             }
 
@@ -3283,8 +3288,10 @@ const setupAuthDeepLink = (store: GameStore) => {
             const accessToken = params.get('access_token');
             const error = params.get('error');
 
+            console.log('[handleAuthCallback] accessToken:', accessToken ? 'presente' : 'ausente', '| error:', error || 'ninguno');
+
             if (error) {
-                console.error('Error en autenticación:', error);
+                console.error('[handleAuthCallback] Error en autenticación:', error);
                 // Mostrar error al usuario
                 const notificationModal = document.getElementById('notification-modal');
                 const notificationMessage = document.getElementById('notification-message');
@@ -3296,30 +3303,40 @@ const setupAuthDeepLink = (store: GameStore) => {
             }
 
             if (!accessToken) {
-                console.error('No se recibió el token de autenticación');
+                console.error('[handleAuthCallback] No se recibió el token de autenticación');
                 return;
             }
+
+            console.log('[handleAuthCallback] Token de acceso válido, procesando...');
 
             // Procesar el token con Netlify Identity
             const ni: any = (window as any).netlifyIdentity;
             if (!ni) {
-                console.error('Netlify Identity no está disponible');
+                console.error('[handleAuthCallback] Netlify Identity no está disponible');
                 return;
             }
+
+            console.log('[handleAuthCallback] Netlify Identity disponible, autenticando usuario...');
 
             // Usar el token para autenticar al usuario
             try {
                 // Netlify Identity necesita que el token se establezca de una manera específica
                 // Primero, intentamos usar el método store() si está disponible
                 if (ni.store) {
+                    console.log('[handleAuthCallback] Guardando token en Netlify Identity');
                     ni.store({ token: accessToken });
                 }
 
                 // Obtener el usuario actual
                 const user = ni.currentUser();
+                console.log('[handleAuthCallback] Usuario actual obtenido:', user ? 'sí' : 'no');
+                
                 if (user && user.email) {
                     const email = user.email.toLowerCase();
                     const username = email.split('@')[0];
+                    
+                    console.log('[handleAuthCallback] Guardando datos de usuario:', { email, username });
+                    
                     localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
@@ -3331,20 +3348,22 @@ const setupAuthDeepLink = (store: GameStore) => {
                     }
                     updateHamburgerButtonLabel(store);
                     
+                    console.log('[handleAuthCallback] Cargando niveles del usuario...');
                     // Cargar niveles del usuario
                     await tryLoadUserLevels(store);
                     
                     // Si estamos en el menú, iniciar el editor
                     if (store.appState === 'menu') {
+                        console.log('[handleAuthCallback] En menú, iniciando editor...');
                         startEditor(store);
                     }
                     
-                    console.log('Autenticación exitosa desde deep link');
+                    console.log('[handleAuthCallback] ✅ Autenticación exitosa desde deep link - usuario logueado en la app');
                 } else {
-                    console.error('No se pudo obtener el usuario después de la autenticación');
+                    console.error('[handleAuthCallback] No se pudo obtener el usuario después de la autenticación');
                 }
             } catch (error) {
-                console.error('Error procesando el token de autenticación:', error);
+                console.error('[handleAuthCallback] Error procesando el token de autenticación:', error);
             }
         } catch (error) {
             console.error('Error procesando callback de autenticación:', error);
@@ -3355,9 +3374,10 @@ const setupAuthDeepLink = (store: GameStore) => {
     try {
         const App = (window as any).Capacitor?.Plugins?.App;
         if (App) {
+            console.log('[setupAuthDeepLink] Configurando listener de deep links');
             // Escuchar cuando la app se abre desde un deep link
             App.addListener('appUrlOpen', (data: { url: string }) => {
-                console.log('Deep link recibido:', data.url);
+                console.log('[setupAuthDeepLink] Deep link recibido:', data.url);
                 handleAuthCallback(data.url);
             });
 
@@ -4915,7 +4935,12 @@ const setupMenuButtons = (store: GameStore) => {
         if (!isLoggedIn) {
             // Mostrar modal de elección
             const modal = document.getElementById('auth-choice-modal');
-            modal?.classList.remove('hidden');
+            if (modal) {
+                modal.classList.remove('hidden');
+                // Asegurar que el modal está visible
+                modal.style.display = 'flex';
+                console.log('[Auth Modal] Modal de autenticación mostrado. Display:', window.getComputedStyle(modal).display, 'Z-index:', window.getComputedStyle(modal).zIndex);
+            }
             return;
         }
         startEditor(store);
@@ -5094,17 +5119,32 @@ const setupMenuButtons = (store: GameStore) => {
     const authLoginBtn = document.getElementById('auth-login-btn') as HTMLButtonElement | null;
     const authSignupBtn = document.getElementById('auth-signup-btn') as HTMLButtonElement | null;
     const authCancelBtn = document.getElementById('auth-cancel-btn') as HTMLButtonElement | null;
-    const closeAuthModal = () => authModal?.classList.add('hidden');
+    const closeAuthModal = () => {
+        if (authModal) {
+            authModal.classList.add('hidden');
+            authModal.style.display = 'none';
+        }
+    };
     authCancelBtn?.addEventListener('click', closeAuthModal);
     
     authLoginBtn?.addEventListener('click', () => {
+        console.log('[authLoginBtn] Botón de login presionado');
         const ni: any = (window as any).netlifyIdentity;
+        console.log('[authLoginBtn] Netlify Identity disponible:', !!ni);
+        
         if (ni) {
+            console.log('[authLoginBtn] Cerrando modal de autenticación');
             // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
             closeAuthModal();
             // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
             setTimeout(() => {
-                ni.open('login');
+                console.log('[authLoginBtn] Abriendo modal de Netlify Identity (login)');
+                try {
+                    ni.open('login');
+                    console.log('[authLoginBtn] ✅ Modal de Netlify Identity abierto');
+                } catch (error) {
+                    console.error('[authLoginBtn] ❌ Error abriendo modal de Netlify Identity:', error);
+                }
             }, 100);
             // Escuchar cuando se complete el login
             ni.on('login', async (user: any) => {
@@ -5155,13 +5195,23 @@ const setupMenuButtons = (store: GameStore) => {
         }
     });
     authSignupBtn?.addEventListener('click', () => {
+        console.log('[authSignupBtn] Botón de signup presionado');
         const ni: any = (window as any).netlifyIdentity;
+        console.log('[authSignupBtn] Netlify Identity disponible:', !!ni);
+        
         if (ni) {
+            console.log('[authSignupBtn] Cerrando modal de autenticación');
             // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
             closeAuthModal();
             // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
             setTimeout(() => {
-                ni.open('signup');
+                console.log('[authSignupBtn] Abriendo modal de Netlify Identity (signup)');
+                try {
+                    ni.open('signup');
+                    console.log('[authSignupBtn] ✅ Modal de Netlify Identity abierto');
+                } catch (error) {
+                    console.error('[authSignupBtn] ❌ Error abriendo modal de Netlify Identity:', error);
+                }
             }, 100);
             // Escuchar cuando se complete el registro
             ni.on('signup', async (user: any) => {
