@@ -1,7 +1,6 @@
 {
   "domain": "dev-xgqa1ebceww6f4x6.us.auth0.com",
-  "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
-  "audience": "https://hero-game.com/api",
-  "redirectUri": "https://newhero.netlify.app/auth-callback.html",
-  "redirectUriMobile": "https://newhero.netlify.app/auth-callback.html"
+  "clientId": "dsPrTB3BarOVKP7TvcZwmqjL64f0io2F",
+  "redirectUri": "http://localhost:8080/auth-callback.html",
+  "redirectUriProd": "https://newhero.netlify.app/auth-callback.html"
 }

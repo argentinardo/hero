@@ -1,40 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEW H.E.R.O.</title>
-    
-    <!-- Favicon personalizado -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/assets/hero-logo.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/assets/hero-logo.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/hero-logo.png">
-    <meta name="theme-color" content="#1f2937">
-    <meta name="description" content="Un juego retro de plataformas estilo arcade">
-    <meta name="keywords" content="game, retro, arcade, hero, plataforma">
-    <meta name="author" content="NEW H.E.R.O.">
-    
-    <!-- PWA Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="HERO">
-    <meta name="msapplication-navbutton-color" content="#1f2937">
-    <meta name="msapplication-TileColor" content="#1f2937">
-    
-    <!-- Manifest para PWA con orientación landscape -->
-    <link rel="manifest" href="/manifest.json">
-        <!-- Auth0 Configuration -->
-        <script id="auth0-config" type="application/json">
-{
-    "domain": "dev-xgqa1ebceww6f4x6.us.auth0.com",
-    "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
-    "audience": "https://hero-game.com/api",
-    "redirectUri": "https://newhero.netlify.app/auth-callback.html",
-    "redirectUriMobile": "https://newhero.netlify.app/auth-callback.html"
-  }
-        </script>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        <title>NEW H.E.R.O.</title>
         
+        <!-- Favicon personalizado -->
+        <link rel="icon" type="image/png" sizes="192x192" href="/assets/hero-logo.png">
+        <link rel="icon" type="image/png" sizes="512x512" href="/assets/hero-logo.png">
+        <link rel="apple-touch-icon" sizes="180x180" href="/assets/hero-logo.png">
+        <meta name="theme-color" content="#1f2937">
+        <meta name="description" content="Un juego retro de plataformas estilo arcade">
+        <meta name="keywords" content="game, retro, arcade, hero, plataforma">
+        <meta name="author" content="NEW H.E.R.O.">
+        
+        <!-- PWA Meta Tags -->
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="HERO">
+        <meta name="msapplication-navbutton-color" content="#1f2937">
+        <meta name="msapplication-TileColor" content="#1f2937">
+        
+        <!-- Manifest para PWA con orientación landscape -->
+        <link rel="manifest" href="/manifest.json">
+            
+        <!-- Auth0 Configuration (ahora se carga desde ui.ts) -->
+    
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,319 +35,7 @@
         <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
         <!-- MIDI.js para reproducir archivos MIDI -->
         <script src="https://cdn.jsdelivr.net/npm/midi-player-js@2.0.16/build/index.browser.min.js"></script>
-        <!-- Auth0 SDK se importa desde npm (@auth0/auth0-spa-js) -->
-        
-        <!-- Initialize Auth0 - Esperar a que el bundle esté listo -->
-        <script>
-// Esta función se llama desde ui.ts cuando Auth0Manager está disponible
-window.initializeAuth0FromUI = async function() {
-    try {
-        console.log('[Auth0 Init] Inicializando Auth0 desde UI...');
-        
-        const configEl = document.getElementById('auth0-config');
-        if (!configEl) {
-            console.error('[Auth0 Init] ❌ auth0-config element no encontrado');
-            return;
-        }
-        
-        const config = JSON.parse(configEl.textContent);
-        console.log('[Auth0 Init] Configuración cargada:', config.domain);
-        
-        // Auth0Manager debe estar disponible en el módulo compilado
-        // Se espera que sea inicializado desde ui.ts cuando esté listo
-    } catch (error) {
-        console.error('[Auth0 Init] Error preparando Auth0:', error);
-    }
-};
-
-console.log('[Auth0 Init] Auth0 SDK cargado - esperando bundle...');
-        </script>
-        
-        <!-- DEPRECATED: Netlify Identity (removed - usando Auth0 ahora) -->
-        <script>
-            // DEPRECATED
-            (function() {
-                // IMPORTANTE: Detectar si estamos en APK (Capacitor) ANTES de hacer nada
-                const isCapacitor = typeof window.Capacitor !== 'undefined';
-                const isAndroid = /Android/i.test(navigator.userAgent);
-                const isMobileApp = isCapacitor || (isAndroid && window.location.protocol === 'capacitor:');
-                
-                const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
-                
-                let identityUrl;
-                
-                console.log('[Identity-Init] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isMobileApp:', isMobileApp);
-                console.log('[Identity-Init] isDevelopment:', isDevelopment, '| isNetlifyHost:', isNetlifyHost);
-                console.log('[Identity-Init] hostname:', window.location.hostname, '| host:', window.location.host);
-                
-                // En APK SIEMPRE usar https://newhero.netlify.app
-                if (isMobileApp) {
-                    identityUrl = 'https://newhero.netlify.app/.netlify/identity';
-                    console.log('[Identity-Init] Detectada APP MÓVIL, usando URL de Netlify');
-                } else if (isNetlifyHost) {
-                    // En Netlify (web), usar la URL del sitio actual
-                    identityUrl = window.location.origin + '/.netlify/identity';
-                    console.log('[Identity-Init] Detectado host Netlify');
-                } else if (isDevelopment) {
-                    // En desarrollo local, usar la URL de Netlify (funciona via API CORS)
-                    identityUrl = 'https://newhero.netlify.app/.netlify/identity';
-                    console.log('[Identity-Init] Detectado desarrollo local');
-                } else {
-                    // En otros entornos, usar la URL de Netlify también
-                    identityUrl = 'https://newhero.netlify.app/.netlify/identity';
-                    console.log('[Identity-Init] Entorno desconocido, usando URL de Netlify por defecto');
-                }
-                
-                // Configurar variable global y localStorage
-                window.IDENTITY_URL = identityUrl;
-                localStorage.setItem('netlify-identity-url', identityUrl);
-                
-                // Actualizar el meta tag
-                const metaTag = document.getElementById('netlify-identity-meta');
-                if (metaTag) {
-                    metaTag.setAttribute('content', identityUrl);
-                }
-                
-                console.log('[Identity-Init] ✅ Configurado con URL:', identityUrl);
-            })();
-        </script>
-        <script>
-            console.log('[Script Load] Iniciando carga de Netlify Identity Widget...');
-            window.onNetlifyIdentityLoad = function() {
-                console.log('[Script Load] ✅ Netlify Identity Widget cargado, llamando initializeNetlifyIdentity()');
-                initializeNetlifyIdentity();
-            };
-        </script>
-        <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" onload="window.onNetlifyIdentityLoad()"></script>
-        <script>
-            function initializeNetlifyIdentity() {
-                console.log('[Init] === INICIANDO initializeNetlifyIdentity() ===');
-                var ni = window.netlifyIdentity;
-                console.log('[Init] window.netlifyIdentity:', ni);
-                
-                if (!ni) {
-                    console.warn('[Init] ⚠️ netlifyIdentity NO disponible aún, reintentando...');
-                    // Si no está disponible aún, intentar de nuevo después de un timeout
-                    setTimeout(initializeNetlifyIdentity, 100);
-                    return;
-                }
-                
-                console.log('[Init] ✅ netlifyIdentity disponible');
-                
-                // Detectar si estamos en la app móvil (Capacitor)
-                var isCapacitor = typeof window.Capacitor !== 'undefined';
-                var isAndroid = /Android/i.test(navigator.userAgent);
-                var isMobileApp = isCapacitor || (isAndroid && window.location.protocol === 'capacitor:');
-                
-                console.log('[Netlify Identity Init] *** INICIANDO CONFIGURACIÓN ***');
-                console.log('[Netlify Identity Init] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isMobileApp:', isMobileApp);
-                console.log('[Netlify Identity Init] hostname:', window.location.hostname);
-                console.log('[Netlify Identity Init] protocol:', window.location.protocol);
-                
-                // Prioridad: 1) Variable global ya configurada, 2) Meta tag, 3) localStorage, 4) Fallback
-                var configured = window.IDENTITY_URL || 
-                                 document.querySelector('meta[name="netlify-identity-url"]')?.getAttribute('content') ||
-                                 localStorage.getItem('netlify-identity-url') ||
-                                 null;
-                
-                var apiUrl = configured;
-                
-                if (configured) {
-                    console.log('[Netlify Identity Init] ✅ Usando URL preconfigured:', configured);
-                } else {
-                    // Fallback: si no está configurado, calcular
-                    console.warn('[Netlify Identity Init] ⚠️ URL no fue preconfigured, calculando fallback...');
-                    var isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    var isNetlifyHost = /\.netlify\.(app|live)$/i.test(window.location.host);
-                    
-                    console.log('[Netlify Identity Init] isDevelopment:', isDevelopment, '| isNetlifyHost:', isNetlifyHost);
-                    
-                    // CRÍTICO: En APK SIEMPRE usar Netlify, nunca localhost
-                    if (isMobileApp) {
-                        apiUrl = 'https://newhero.netlify.app/.netlify/identity';
-                        console.log('[Netlify Identity Init] 🎯 APK detectada, usando:', apiUrl);
-                    } else if (isNetlifyHost) {
-                        apiUrl = window.location.origin + '/.netlify/identity';
-                        console.log('[Netlify Identity Init] 🎯 Host Netlify detectado, usando:', apiUrl);
-                    } else if (isDevelopment) {
-                        apiUrl = 'https://newhero.netlify.app/.netlify/identity';
-                        console.log('[Netlify Identity Init] 🎯 Desarrollo detectado, usando:', apiUrl);
-                    } else {
-                        apiUrl = 'https://newhero.netlify.app/.netlify/identity';
-                        console.log('[Netlify Identity Init] 🎯 Entorno desconocido, usando fallback:', apiUrl);
-                    }
-                }
-                
-                if (!apiUrl) {
-                    console.error('❌ Netlify Identity: No se pudo determinar la URL de Identity');
-                    return;
-                }
-                
-                console.log('[Netlify Identity Init] ✅✅✅ APIUrl FINAL que se usará:', apiUrl);
-                
-                try { 
-                    // Configurar callback personalizado para app móvil
-                    var initOptions = { 
-                        APIUrl: apiUrl,
-                        locale: 'es' // Configurar idioma español si está disponible
-                    };
-                    
-                    // CRÍTICO: redirectUrl DEBE ser la URL de Netlify en AMBOS casos
-                    // Netlify solo acepta URLs de su dominio, no localhost ni esquemas personalizados
-                    // En APK: https://newhero.netlify.app/auth-callback.html → redirige a hero:// deep link
-                    // En web: https://newhero.netlify.app/auth-callback.html → procesado por la página
-                    initOptions.redirectUrl = 'https://newhero.netlify.app/auth-callback.html';
-                    console.log('[Netlify Identity Init] ✅ redirectUrl FINAL:', initOptions.redirectUrl);
-                    
-                    // Inicializar Netlify Identity
-                    console.log('[Netlify Identity Init] Llamando a ni.init()...');
-                    ni.init(initOptions); 
-                    console.log('[Netlify Identity Init] ✅ Inicializado correctamente');
-                    
-                    // Observador para manejar modales de Netlify Identity
-                    var observer = new MutationObserver(function(mutations) {
-                        mutations.forEach(function(mutation) {
-                            if (mutation.addedNodes) {
-                                mutation.addedNodes.forEach(function(node) {
-                                    if (node.nodeType === 1) { // Element node
-                                        // Buscar .modalDialog (contenido del modal)
-                                        var modalDialog = node.classList && node.classList.contains('modalDialog') ? node : node.querySelector('.modalDialog');
-                                        if (modalDialog) {
-                                            console.log('[Netlify Identity Observer] .modalDialog detectado');
-                                            modalDialog.style.position = 'fixed';
-                                            modalDialog.style.zIndex = '10003';
-                                            modalDialog.style.visibility = 'visible';
-                                            modalDialog.style.opacity = '1';
-                                            modalDialog.style.display = 'block';
-                                            console.log('[Netlify Identity Observer] .modalDialog - estilos aplicados');
-                                        }
-                                        
-                                        // Buscar .modalContainer (fondo del modal)
-                                        var modalContainer = node.classList && node.classList.contains('modalContainer') ? node : node.querySelector('.modalContainer');
-                                        if (modalContainer) {
-                                            console.log('[Netlify Identity Observer] .modalContainer detectado');
-                                            modalContainer.style.position = 'fixed';
-                                            modalContainer.style.zIndex = '10002';
-                                            modalContainer.style.visibility = 'visible';
-                                            modalContainer.style.opacity = '1';
-                                            modalContainer.style.display = 'block';
-                                            console.log('[Netlify Identity Observer] .modalContainer - estilos aplicados');
-                                        }
-                                        
-                                        // Buscar modal de Netlify Identity (principal)
-                                        var modal = node.classList && node.classList.contains('netlify-identity-modal') ? node : node.querySelector('.netlify-identity-modal');
-                                        if (modal) {
-                                            console.log('[Netlify Identity Observer] Modal de Netlify Identity detectado');
-                                            
-                                            // Forzar visibilidad en Capacitor
-                                            modal.style.position = 'fixed';
-                                            modal.style.top = '0';
-                                            modal.style.left = '0';
-                                            modal.style.width = '100%';
-                                            modal.style.height = '100%';
-                                            modal.style.zIndex = '10003';
-                                            modal.style.visibility = 'visible';
-                                            modal.style.opacity = '1';
-                                            modal.style.display = 'block';
-                                            
-                                            // Verificar si contiene un prompt de URL (cerrar si es así)
-                                            var text = modal.textContent || '';
-                                            if (text.includes('URL') || text.includes('url') || text.includes('endpoint')) {
-                                                console.log('[Netlify Identity Observer] Cerrando modal de URL');
-                                                modal.style.display = 'none';
-                                            }
-                                            
-                                            console.log('[Netlify Identity Observer] Modal aplicados estilos de visibilidad');
-                                        }
-                                        
-                                        // También forzar visibilidad en iframes
-                                        if (node.tagName === 'IFRAME') {
-                                            if (node.src && (node.src.includes('netlify') || node.src.includes('identity'))) {
-                                                console.log('[Netlify Identity Observer] Iframe de Identity detectado');
-                                                node.style.position = 'fixed';
-                                                node.style.top = '0';
-                                                node.style.left = '0';
-                                                node.style.width = '100%';
-                                                node.style.height = '100%';
-                                                node.style.zIndex = '10003';
-                                            }
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    });
-                    
-                    // Observar el body para detectar modales que se agreguen
-                    console.log('[Netlify Identity Init] Iniciando observer de mutations');
-                    observer.observe(document.body, {
-                        childList: true,
-                        subtree: true
-                    });
-                    
-                    // También monitorear periódicamente para asegurar que no se oculten
-                    var visibilityCheckInterval = setInterval(function() {
-                        // Monitorear modal principal
-                        var modal = document.querySelector('.netlify-identity-modal');
-                        if (modal) {
-                            var computedStyle = window.getComputedStyle(modal);
-                            if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') {
-                                console.log('[Netlify Identity Visibility Check] Modal oculto, reestableciendo');
-                                modal.style.display = 'block';
-                                modal.style.visibility = 'visible';
-                                modal.style.opacity = '1';
-                                modal.style.zIndex = '10003';
-                            }
-                        }
-                        
-                        // Monitorear .modalDialog específicamente (Capacitor)
-                        var modalDialog = document.querySelector('.modalDialog');
-                        if (modalDialog) {
-                            var dialogStyle = window.getComputedStyle(modalDialog);
-                            if (dialogStyle.display === 'none' || dialogStyle.visibility === 'hidden' || dialogStyle.opacity === '0') {
-                                console.log('[Netlify Identity Visibility Check] .modalDialog oculto, reestableciendo');
-                                modalDialog.style.display = 'block';
-                                modalDialog.style.visibility = 'visible';
-                                modalDialog.style.opacity = '1';
-                                modalDialog.style.zIndex = '10003';
-                                modalDialog.style.position = 'fixed';
-                            }
-                        }
-                        
-                        // Monitorear .modalContainer
-                        var modalContainer = document.querySelector('.modalContainer');
-                        if (modalContainer) {
-                            var containerStyle = window.getComputedStyle(modalContainer);
-                            if (containerStyle.display === 'none' || containerStyle.visibility === 'hidden' || containerStyle.opacity === '0') {
-                                console.log('[Netlify Identity Visibility Check] .modalContainer oculto, reestableciendo');
-                                modalContainer.style.display = 'block';
-                                modalContainer.style.visibility = 'visible';
-                                modalContainer.style.opacity = '1';
-                                modalContainer.style.zIndex = '10002';
-                            }
-                        }
-                    }, 300);
-                    
-                    // También intentar cerrar inmediatamente si ya existe
-                    setTimeout(function() {
-                        try {
-                            var modals = document.querySelectorAll('[class*="modal"], [class*="prompt"], [id*="modal"]');
-                            modals.forEach(function(modal) {
-                                var text = modal.textContent || '';
-                                if (text.includes('URL') || text.includes('url') || text.includes('endpoint') || text.includes('Netlify')) {
-                                    modal.style.display = 'none';
-                                }
-                            });
-                        } catch(e) {
-                            console.log('Verificación de modal completada');
-                        }
-                    }, 500);
-                } catch (e) {
-                    console.error('Error inicializando Netlify Identity:', e);
-                }
-            }
-        </script>
+    
         <!-- Bloquear orientación a landscape -->
         <script>
             // Bloquear orientación vía JavaScript (si el navegador lo permite)
@@ -363,7 +43,7 @@ console.log('[Auth0 Init] Auth0 SDK cargado - esperando bundle...');
                 screen.orientation.lock("landscape").catch(err => console.log(err));
             }
         </script>
-</head>
+    </head>
 <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
 
     <div id="main-container">

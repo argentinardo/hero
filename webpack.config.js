@@ -67,6 +67,7 @@ module.exports = {
         { from: 'src/sw.js', to: 'sw.js' },
         { from: 'manifest.json', to: 'manifest.json' },
         { from: 'src/auth-callback.html', to: 'auth-callback.html' },
+        { from: 'src/auth0-config.json', to: 'auth0-config.json' },
         { from: 'src/assets/sprites/hero-logo.png', to: 'hero-logo.png' },
         { from: 'src/assets/sprites/qr.png', to: 'qr.png' }
       ],

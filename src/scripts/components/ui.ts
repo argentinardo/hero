@@ -3471,60 +3471,44 @@ const setupAuthDeepLink = (store: GameStore) => {
     }
 };
 
+import Auth0Manager from '../auth0-manager';
+
 // 🔐 INICIALIZAR AUTH0 - Función reutilizable
-let auth0Manager: any = null;
+let auth0ManagerInstance: any = null;
 let auth0InitPromise: Promise<any> | null = null;
 
 async function initializeAuth0() {
-    // Si ya se está inicializando, esperar
     if (auth0InitPromise) {
-        console.log('[Auth0 Init] Ya se está inicializando, esperando...');
-        return await auth0InitPromise;
+        return auth0InitPromise;
     }
-    
-    // Si ya está inicializado, retornar
-    if (auth0Manager) {
-        console.log('[Auth0 Init] Ya está inicializado');
-        return auth0Manager;
+
+    if (auth0ManagerInstance && auth0ManagerInstance.isInitialized) {
+        return auth0ManagerInstance;
     }
-    
+
     auth0InitPromise = (async () => {
         try {
-            console.log('[Auth0 Init] Inicializando Auth0...');
-            
-            const configEl = document.getElementById('auth0-config');
-            if (!configEl) {
-                throw new Error('auth0-config element no encontrado');
+            auth0ManagerInstance = Auth0Manager; // Use the imported manager
+
+            console.log('[Auth0 Init] Cargando configuración desde /auth0-config.json...');
+            const response = await fetch('/auth0-config.json');
+            if (!response.ok) {
+                throw new Error(`No se pudo cargar auth0-config.json: ${response.statusText}`);
             }
+            const config = await response.json();
+            console.log('[Auth0 Init] ✅ Configuración cargada.');
+
+            await auth0ManagerInstance.initialize(config);
             
-            const configText = configEl.textContent || '{}';
-            const config = JSON.parse(configText);
-            console.log('[Auth0 Init] ✅ Configuración cargada:', {
-                domain: config.domain,
-                clientId: config.clientId ? config.clientId.substring(0, 10) + '...' : 'N/A',
-                redirectUri: config.redirectUri
-            });
-            
-            // Importar Auth0Manager
-            const { default: Auth0Mgr } = await import('../auth0-manager');
-            console.log('[Auth0 Init] ✅ Auth0Manager importado');
-            
-            // Inicializar
-            await Auth0Mgr.initialize(config);
-            console.log('[Auth0 Init] ✅✅ Auth0 completamente inicializado');
-            
-            auth0Manager = Auth0Mgr;
-            (window as any).Auth0Mgr = Auth0Mgr;
-            
-            return Auth0Mgr;
+            return auth0ManagerInstance;
         } catch (error) {
-            console.error('[Auth0 Init] ❌ Error:', error);
-            auth0InitPromise = null; // Reset para reintentar
+            console.error('[Auth0 Init] ❌ Error fatal inicializando Auth0:', error);
+            auth0InitPromise = null; 
             throw error;
         }
     })();
-    
-    return await auth0InitPromise;
+
+    return auth0InitPromise;
 }
 
 export const setupUI = (store: GameStore) => {
