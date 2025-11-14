@@ -3483,8 +3483,15 @@ const setupAuthDeepLink = (store: GameStore) => {
             return;
         }
         
-        const config = JSON.parse(configEl.textContent || '{}');
-        console.log('[UI Module] Configuración Auth0 cargada:', config.domain);
+        const configText = configEl.textContent || '{}';
+        console.log('[UI Module] Config text:', configText.substring(0, 100));
+        
+        const config = JSON.parse(configText);
+        console.log('[UI Module] ✅ Configuración Auth0 cargada:');
+        console.log('[UI Module]   - domain:', config.domain);
+        console.log('[UI Module]   - clientId:', config.clientId);
+        console.log('[UI Module]   - redirectUri:', config.redirectUri);
+        console.log('[UI Module]   - audience:', config.audience);
         
         // Importar Auth0Manager
         console.log('[UI Module] Importando Auth0Manager...');
@@ -3496,8 +3503,13 @@ const setupAuthDeepLink = (store: GameStore) => {
         await Auth0Mgr.initialize(config);
         console.log('[UI Module] ✅✅ Auth0Manager COMPLETAMENTE inicializado');
         
+        // Hacer Auth0Manager disponible globalmente para debug
+        (window as any).Auth0Mgr = Auth0Mgr;
+        console.log('[UI Module] ✅ Auth0Manager disponible en window.Auth0Mgr');
+        
     } catch (error) {
-        console.error('[UI Module] Error inicializando Auth0:', error);
+        console.error('[UI Module] ❌ Error inicializando Auth0:', error);
+        console.error('[UI Module] Error stack:', error instanceof Error ? error.stack : 'N/A');
     }
 })();
 
