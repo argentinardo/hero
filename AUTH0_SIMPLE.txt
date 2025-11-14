@@ -1,0 +1,103 @@
+🚀 CONFIGURACIÓN AUTH0 - VERSIÓN SÚPER SIMPLE
+
+════════════════════════════════════════════════════════════════════
+
+1️⃣ VE A: https://auth0.com
+
+2️⃣ CREA CUENTA
+   Email: tu email
+   Password: contraseña
+   Verifica email
+
+3️⃣ EN EL DASHBOARD:
+   Menú izquierdo → Applications → + Create Application
+   
+   Nombre: HERO Game
+   Tipo: Single Page Application
+   Tech: React
+   
+   Clic: CREATE
+
+4️⃣ COPIA TUS DATOS:
+   Domain: ___________________
+   Client ID: ___________________
+
+5️⃣ CONECTA GOOGLE:
+   Menú izquierdo → Authentication → Social → Google → Connect
+   
+   Pega:
+   - Tu Google Client ID (de Google Cloud)
+   - Tu Google Client Secret (de Google Cloud)
+
+6️⃣ HABILITA GOOGLE PARA TU APP:
+   Applications → HERO Game → Connections
+   
+   Google: Toggle ON (azul)
+
+7️⃣ CONFIGURA URLs:
+   Applications → HERO Game → Settings
+   
+   Allowed Callback URLs (pega esto):
+   https://newhero.netlify.app/callback
+   https://newhero.netlify.app/auth0-callback.html
+   http://localhost:3000/callback
+   http://localhost:5173/callback
+   com.hero.game://callback
+   
+   Allowed Logout URLs:
+   https://newhero.netlify.app
+   http://localhost:3000
+   http://localhost:5173
+   
+   Allowed Web Origins:
+   https://newhero.netlify.app
+   http://localhost:3000
+   http://localhost:5173
+   
+   CORS Allowed Origins:
+   https://newhero.netlify.app
+   http://localhost:3000
+   http://localhost:5173
+   
+   Clic: Save Changes
+
+8️⃣ CREA ARCHIVO: src/auth0-config.json
+   
+   Contenido:
+   {
+     "domain": "TU_DOMAIN_AQUI.auth0.com",
+     "clientId": "TU_CLIENT_ID_AQUI",
+     "audience": "https://hero-game.com/api",
+     "redirectUri": "https://newhero.netlify.app/callback",
+     "redirectUriMobile": "com.hero.game://callback"
+   }
+   
+   Reemplaza TU_DOMAIN_AQUI y TU_CLIENT_ID_AQUI con tus datos
+
+════════════════════════════════════════════════════════════════════
+
+✉️ CUANDO TERMINES, AVÍSAME CON:
+
+Domain: _______________________
+Client ID: _______________________
+✅ Google conectado: SÍ/NO
+✅ auth0-config.json creado: SÍ/NO
+
+════════════════════════════════════════════════════════════════════
+
+PROBLEMAS COMUNES:
+
+❌ "No puedo encontrar Google"
+✅ Menú izquierdo → Authentication → Social → Google
+
+❌ "Los URLs no se guardan"
+✅ Scroll hacia abajo → Botón "Save Changes"
+
+❌ "Domain not found"
+✅ Copia el domain exacto de: Applications → HERO Game → Settings
+   Debe ser: xxxxx.auth0.com
+
+════════════════════════════════════════════════════════════════════
+
+¿LISTO? ¡AVÍSAME! 🚀
+

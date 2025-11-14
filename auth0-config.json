@@ -1,0 +1,7 @@
+{
+    "domain": "dev-xgqa1ebceww6f4x6.us.auth0.com",
+    "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
+    "audience": "https://hero-game.com/api",
+    "redirectUri": "http://localhost:5173/callback",
+    "redirectUriMobile": "com.hero.game://callback"
+  }

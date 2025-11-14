@@ -41,6 +41,7 @@
     "webpack-dev-server": "^5.2.2"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.8.0",
     "@neondatabase/serverless": "^0.9.3",
     "@netlify/blobs": "^6.5.0",
     "@netlify/neon": "0.1.0",

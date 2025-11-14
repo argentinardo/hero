@@ -1762,117 +1762,179 @@ export const awardExtraLifeByScore = (store: GameStore) => {
 };
 
 /**
- * Actualiza los elementos UI del nickname en la página
+ * NUEVO: Sistema reactivo centralizado de nickname
+ * - Carga desde BD automáticamente
+ * - Actualiza en TODOS los elementos de UI
  */
-const refreshNicknameUI = async (): Promise<void> => {
-    try {
-        const { getUserStorage } = await import('../utils/storage');
-        const nickname = getUserStorage('nickname') || localStorage.getItem('username') || 'Usuario';
-        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        
-        // Actualizar panel desktop
-        const userArea = document.getElementById('user-area');
-        const usernameDisplay = document.getElementById('username-display');
-        if (userArea && usernameDisplay) {
-            if (isLoggedIn && nickname) {
-                usernameDisplay.textContent = nickname;
-                userArea.style.display = 'block';
-            } else {
-                userArea.style.display = 'none';
-            }
-        }
-        
-        // Actualizar panel mobile
-        const userAreaMobile = document.getElementById('user-area-mobile');
-        const userPanelNickname = document.getElementById('user-panel-nickname');
-        const userPanelTitle = document.getElementById('user-panel-title');
-        
-        if (userAreaMobile && userPanelNickname) {
-            if (isLoggedIn && nickname) {
-                userAreaMobile.style.display = 'block';
-                userPanelNickname.textContent = nickname.toUpperCase();
-            } else {
-                userAreaMobile.style.display = 'none';
-                userPanelNickname.textContent = 'USER';
-            }
-        }
-        
-        // Actualizar título del panel de usuario (que contiene avatar y nickname)
-        if (userPanelTitle) {
-            const nicknamSpan = userPanelTitle.querySelector('#user-panel-nickname') as HTMLElement;
-            if (nicknamSpan) {
-                if (isLoggedIn && nickname) {
-                    nicknamSpan.textContent = nickname.toUpperCase();
-                } else {
-                    nicknamSpan.textContent = 'USER';
+const nicknameManager = {
+    currentNickname: '',
+    
+    async loadFromDB(): Promise<string> {
+        try {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+            if (!isLoggedIn) return 'Usuario';
+
+            const ni: any = (window as any).netlifyIdentity;
+            const user = ni?.currentUser?.();
+            if (!user) return 'Usuario';
+
+            const token = await user.jwt();
+            if (!token) return 'Usuario';
+
+            const { getNetlifyBaseUrl } = await import('../utils/device');
+            const baseUrl = getNetlifyBaseUrl();
+
+            const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
-            }
+            });
+
+            if (!res.ok) return 'Usuario';
+
+            const profile = await res.json();
+            console.log('[NicknameManager] Perfil cargado de BD:', profile.data?.nickname);
+            return profile.data?.nickname || 'Usuario';
+        } catch (error) {
+            console.error('[NicknameManager] Error cargando de BD:', error);
+            return 'Usuario';
         }
-        
-        console.log('[Nickname] UI actualizado:', nickname);
-    } catch (error) {
-        console.error('[Nickname] Error actualizando UI:', error);
+    },
+
+    async saveToDB(nickname: string): Promise<boolean> {
+        try {
+            const ni: any = (window as any).netlifyIdentity;
+            const user = ni?.currentUser?.();
+            if (!user) return false;
+
+            const token = await user.jwt();
+            if (!token) return false;
+
+            const { getNetlifyBaseUrl } = await import('../utils/device');
+            const baseUrl = getNetlifyBaseUrl();
+
+            const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ nickname })
+            });
+
+            if (res.ok) {
+                console.log('[NicknameManager] ✅ Nickname guardado en BD:', nickname);
+                return true;
+            }
+        } catch (error) {
+            console.error('[NicknameManager] Error guardando en BD:', error);
+        }
+        return false;
+    },
+
+    async updateAllUI(nickname?: string): Promise<void> {
+        const nicknameToUse = nickname || this.currentNickname;
+        this.currentNickname = nicknameToUse;
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+        // Actualizar TODOS los elementos
+        const userPanelNickname = document.getElementById('user-panel-nickname');
+        if (userPanelNickname) {
+            userPanelNickname.textContent = isLoggedIn ? nicknameToUse.toUpperCase() : 'USER';
+        }
+
+        const usernameDisplay = document.getElementById('username-display');
+        if (usernameDisplay) {
+            usernameDisplay.textContent = isLoggedIn ? nicknameToUse : 'Usuario';
+        }
+
+        console.log('[NicknameManager] ✅ UI actualizado con:', nicknameToUse);
+    },
+
+    async initialize(): Promise<void> {
+        const nickname = await this.loadFromDB();
+        await this.updateAllUI(nickname);
     }
 };
 
 /**
- * Carga el nickname del usuario desde la base de datos
+ * Gestor de autenticación mejorado
+ * - Maneja login/logout
+ * - Carga "Legacy" por defecto al cambiar usuario
+ * - Sincroniza el nickname
+ */
+const authManager = {
+    async handleLoginSuccess(user: any): Promise<void> {
+        try {
+            console.log('[AuthManager] ✅ Login exitoso para:', user?.email);
+            
+            // 1. Marcar como logueado
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('currentUserEmail', user?.email || '');
+            
+            // 2. Cargar nickname desde BD
+            await nicknameManager.initialize();
+            
+            // 3. Cargar "Legacy" como campaña por defecto
+            console.log('[AuthManager] 📋 Configurando campaña "Legacy" por defecto...');
+            localStorage.setItem('selectedCampaign', 'legacy');
+            localStorage.setItem('selectedCampaignName', 'Legacy');
+            
+            console.log('[AuthManager] ✅ Usuario autenticado completamente');
+        } catch (error) {
+            console.error('[AuthManager] Error en handleLoginSuccess:', error);
+        }
+    },
+
+    async handleLogout(): Promise<void> {
+        try {
+            console.log('[AuthManager] 🚪 Logout ejecutado');
+            
+            // Limpiar datos de usuario
+            localStorage.setItem('isLoggedIn', 'false');
+            localStorage.removeItem('currentUserEmail');
+            
+            // Resetear nickname en UI
+            const userPanelNickname = document.getElementById('user-panel-nickname');
+            if (userPanelNickname) {
+                userPanelNickname.textContent = 'USER';
+            }
+            
+            console.log('[AuthManager] ✅ Logout completado');
+        } catch (error) {
+            console.error('[AuthManager] Error en handleLogout:', error);
+        }
+    },
+
+    /**
+     * Verifica si el usuario cambió de cuenta
+     * @returns true si cambió de usuario
+     */
+    didUserChange(newUserEmail: string): boolean {
+        const currentEmail = localStorage.getItem('currentUserEmail');
+        const changed = currentEmail && currentEmail !== newUserEmail;
+        if (changed) {
+            console.log('[AuthManager] 🔄 Cambio de usuario detectado:', currentEmail, '→', newUserEmail);
+        }
+        return changed || false;
+    }
+};
+
+/**
+ * DEPRECATED: Usar nicknameManager.initialize() en su lugar
+ * Se mantiene por compatibilidad
+ */
+const refreshNicknameUI = async (): Promise<void> => {
+    await nicknameManager.initialize();
+};
+
+/**
+ * DEPRECATED: Usar nicknameManager.initialize() en su lugar
  */
 const loadUserNicknameFromDB = async (): Promise<void> => {
-    try {
-        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        if (!isLoggedIn) {
-            console.warn('[Nickname] Usuario no logueado');
-            return;
-        }
-
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        if (!user) {
-            console.warn('[Nickname] Usuario no encontrado en Netlify Identity');
-            return;
-        }
-
-        const token = await user.jwt();
-        if (!token) {
-            console.warn('[Nickname] No se pudo obtener token JWT');
-            return;
-        }
-
-        const { getNetlifyBaseUrl } = await import('../utils/device');
-        const { setUserStorage, getUserStorage } = await import('../utils/storage');
-        const baseUrl = getNetlifyBaseUrl();
-
-        const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!res.ok) {
-            console.warn('[Nickname] Error en respuesta del servidor:', res.status);
-            return;
-        }
-
-        const profile = await res.json();
-        console.log('[Nickname] Perfil cargado:', profile);
-
-        // Si existe nickname en la BD, guardarlo en localStorage (con namespace)
-        if (profile.nickname) {
-            const currentNickname = getUserStorage('nickname');
-            if (currentNickname !== profile.nickname) {
-                console.log(`[Nickname] Actualizando nickname de "${currentNickname}" a "${profile.nickname}"`);
-                setUserStorage('nickname', profile.nickname);
-                
-                // Actualizar UI después de cambiar el nickname
-                await refreshNicknameUI();
-            }
-        }
-    } catch (error) {
-        console.error('[Nickname] Error cargando nickname de BD:', error);
-    }
+    await nicknameManager.initialize();
 };
 
 export const startEditor = async (store: GameStore, preserveCurrentLevel: boolean = false) => {
@@ -3256,15 +3318,21 @@ const syncLevelSelector = (store: GameStore) => {
 
 /**
  * Configura el manejo de deep links de autenticación para la app móvil.
+ * CRÍTICO: Esto DEBE ejecutarse ANTES de cualquier login para interceptar callbacks.
  * Cuando la app recibe un callback de autenticación (hero://auth-callback?...),
- * procesa el token y completa el login.
+ * procesa el token y completa el login en la APK (NO en web).
  */
 const setupAuthDeepLink = (store: GameStore) => {
     // Detectar si estamos en Capacitor
     const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
+    console.log('[setupAuthDeepLink] CRÍTICO: Inicializando setup de deep link, isCapacitor:', isCapacitor);
+    
     if (!isCapacitor) {
+        console.log('[setupAuthDeepLink] No es Capacitor, saltando setup de deep link');
         return; // Solo funciona en app móvil
     }
+    
+    console.log('[setupAuthDeepLink] ✅ Capacitor detectado, configurando deep link handler');
 
     // Función para procesar el callback de autenticación
     const handleAuthCallback = async (url: string) => {
@@ -3337,9 +3405,11 @@ const setupAuthDeepLink = (store: GameStore) => {
                     
                     console.log('[handleAuthCallback] Guardando datos de usuario:', { email, username });
                     
-                    localStorage.setItem('isLoggedIn', 'true');
                     localStorage.setItem('username', username);
                     localStorage.setItem('userEmail', email);
+                    
+                    // Usar authManager para manejar login completo
+                    await authManager.handleLoginSuccess(user);
                     
                     // Actualizar UI
                     const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
@@ -3401,7 +3471,39 @@ const setupAuthDeepLink = (store: GameStore) => {
     }
 };
 
+// 🔐 INICIALIZAR AUTH0 INMEDIATAMENTE
+// Esta IIFE se ejecuta cuando el archivo es cargado
+(async () => {
+    try {
+        console.log('[UI Module] Inicializando Auth0 en módulo...');
+        
+        const configEl = document.getElementById('auth0-config');
+        if (!configEl) {
+            console.error('[UI Module] ❌ auth0-config element no encontrado');
+            return;
+        }
+        
+        const config = JSON.parse(configEl.textContent || '{}');
+        console.log('[UI Module] Configuración Auth0 cargada:', config.domain);
+        
+        // Importar Auth0Manager
+        console.log('[UI Module] Importando Auth0Manager...');
+        const { default: Auth0Mgr } = await import('../auth0-manager');
+        console.log('[UI Module] ✅ Auth0Manager importado correctamente');
+        
+        // Inicializar Auth0Manager - ESTE AWAIT ES IMPORTANTE
+        console.log('[UI Module] Llamando a Auth0Mgr.initialize()...');
+        await Auth0Mgr.initialize(config);
+        console.log('[UI Module] ✅✅ Auth0Manager COMPLETAMENTE inicializado');
+        
+    } catch (error) {
+        console.error('[UI Module] Error inicializando Auth0:', error);
+    }
+})();
+
 export const setupUI = (store: GameStore) => {
+    // Auth0 ya se está inicializando en el nivel del módulo
+    
     attachDomReferences(store);
     updateHamburgerButtonLabel(store);
     syncLevelSelector(store);
@@ -3416,93 +3518,6 @@ export const setupUI = (store: GameStore) => {
     // Manejar deep links de autenticación (app móvil)
     setupAuthDeepLink(store);
     
-    // Netlify Identity: cerrar modal y continuar a editor tras login
-    try {
-        const ni: any = (window as any).netlifyIdentity;
-        if (ni) {
-            // Verificar si ya hay un usuario logueado al cargar
-            const currentUser = ni.currentUser();
-            if (currentUser && currentUser.email) {
-                const email = currentUser.email.toLowerCase();
-                const username = email.split('@')[0];
-                localStorage.setItem('isLoggedIn', 'true');
-                localStorage.setItem('username', username);
-                localStorage.setItem('userEmail', email);
-                // Cargar niveles del usuario si ya está logueado
-                tryLoadUserLevels(store);
-            }
-            
-            const afterAuth = async (user: any) => {
-                if (user && user.email) {
-                    const email = user.email.toLowerCase();
-                    const username = email.split('@')[0];
-                    
-                    // Limpiar datos del usuario anterior antes de cambiar
-                    const { clearPreviousUserData, migrateLegacyData } = await import('../utils/storage');
-                    clearPreviousUserData();
-                    
-                    // Guardar información del nuevo usuario (sin namespace, para identificación)
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('userEmail', email);
-                    
-                    // Migrar datos legacy si existen
-                    migrateLegacyData();
-                    
-                    // Crear/actualizar usuario en la base de datos
-                    try {
-                        const token = await user.jwt();
-                        if (token) {
-                            const { getNetlifyBaseUrl } = await import('../utils/device');
-                            const baseUrl = getNetlifyBaseUrl();
-                            await fetch(`${baseUrl}/.netlify/functions/profile`, {
-                                method: 'GET',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            console.log('Usuario creado/actualizado en la base de datos');
-                        }
-                    } catch (error) {
-                        console.error('Error creando usuario en la BD:', error);
-                    }
-                    
-                    // Actualizar botones y área de usuario
-                    const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-                    if (levelEditorBtn) {
-                        levelEditorBtn.textContent = t('menu.editor');
-                    }
-                    updateHamburgerButtonLabel(store);
-                    // Cargar niveles del usuario después de iniciar sesión
-                    await tryLoadUserLevels(store);
-                    if (store.appState === 'menu') {
-                        startEditor(store);
-                    }
-                }
-                try { ni.close(); } catch {}
-            };
-            ni.on('login', afterAuth);
-            ni.on('signup', afterAuth);
-            
-            // Escuchar cuando se cierre sesión
-            ni.on('logout', async () => {
-                // Limpiar datos del usuario que se desloguea
-                const { clearUserStorage } = await import('../utils/storage');
-                clearUserStorage();
-                
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('username');
-                localStorage.removeItem('userEmail');
-                clearLegacyPasswordOverride();
-                const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-                if (levelEditorBtn) {
-                    levelEditorBtn.textContent = t('menu.login');
-                }
-                updateHamburgerButtonLabel(store);
-            });
-        }
-    } catch {}
     preloadAssets(store, () => {
         populatePalette(store);
         showMenu(store);
@@ -5127,152 +5142,83 @@ const setupMenuButtons = (store: GameStore) => {
     };
     authCancelBtn?.addEventListener('click', closeAuthModal);
     
-    authLoginBtn?.addEventListener('click', () => {
-        console.log('[authLoginBtn] Botón de login presionado');
-        const ni: any = (window as any).netlifyIdentity;
-        console.log('[authLoginBtn] Netlify Identity disponible:', !!ni);
+    authLoginBtn?.addEventListener('click', async () => {
+        console.log('[authLoginBtn] ✅ Botón LOGIN presionado - Iniciando con Auth0');
+        closeAuthModal();
         
-        if (ni) {
-            console.log('[authLoginBtn] Cerrando modal de autenticación');
-            // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
-            closeAuthModal();
-            // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
-            setTimeout(() => {
-                console.log('[authLoginBtn] Abriendo modal de Netlify Identity (login)');
-                try {
-                    ni.open('login');
-                    console.log('[authLoginBtn] ✅ Modal de Netlify Identity abierto');
-                } catch (error) {
-                    console.error('[authLoginBtn] ❌ Error abriendo modal de Netlify Identity:', error);
-                }
-            }, 100);
-            // Escuchar cuando se complete el login
-            ni.on('login', async (user: any) => {
-                if (user && user.email) {
-                    const email = user.email.toLowerCase();
-                    const username = email.split('@')[0]; // Usar parte antes del @ como username
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('userEmail', email);
-                    
-                    // Crear/actualizar usuario en la base de datos
-                    try {
-                        const token = await user.jwt();
-                        if (token) {
-                            const { getNetlifyBaseUrl } = await import('../utils/device');
-                            const baseUrl = getNetlifyBaseUrl();
-                            await fetch(`${baseUrl}/.netlify/functions/profile`, {
-                                method: 'GET',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            console.log('Usuario creado/actualizado en la base de datos');
-                        }
-                    } catch (error) {
-                        console.error('Error creando usuario en la BD:', error);
-                    }
-                    
-                    updateEditorButton();
-                    updateUserArea();
-                    startEditor(store);
-                }
-            });
-        } else {
-            // Login simple para demo (sin Netlify Identity)
-            showPromptModal(store, 'Ingresa tu nombre de usuario:', '').then(username => {
-                if (username) {
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    localStorage.removeItem('userEmail');
-                    updateEditorButton();
-                    updateUserArea();
-                    closeAuthModal();
-                    startEditor(store);
-                }
-            });
+        try {
+            const { Auth0Manager } = await import('../auth0-manager');
+            console.log('[authLoginBtn] Llamando a Auth0Manager.loginWithGoogle()');
+            const user = await Auth0Manager.loginWithGoogle();
+            
+            if (user && user.email) {
+                console.log('[authLoginBtn] ✅ Usuario autenticado:', user.email);
+                const email = user.email.toLowerCase();
+                const username = email.split('@')[0];
+                
+                localStorage.setItem('username', username);
+                localStorage.setItem('userEmail', email);
+                
+                // Usar authManager para manejar login completo
+                await authManager.handleLoginSuccess(user);
+                
+                updateEditorButton();
+                updateUserArea();
+                startEditor(store);
+            } else {
+                console.error('[authLoginBtn] ❌ No se pudo autenticar con Google');
+            }
+        } catch (error) {
+            console.error('[authLoginBtn] ❌ Error en login:', error);
         }
     });
-    authSignupBtn?.addEventListener('click', () => {
-        console.log('[authSignupBtn] Botón de signup presionado');
-        const ni: any = (window as any).netlifyIdentity;
-        console.log('[authSignupBtn] Netlify Identity disponible:', !!ni);
+    authSignupBtn?.addEventListener('click', async () => {
+        console.log('[authSignupBtn] ✅ Botón SIGNUP presionado - Iniciando con Auth0');
+        closeAuthModal();
         
-        if (ni) {
-            console.log('[authSignupBtn] Cerrando modal de autenticación');
-            // Cerrar el modal de elección ANTES de abrir el modal de Netlify Identity
-            closeAuthModal();
-            // Pequeño delay para asegurar que el modal se cierre antes de abrir Netlify
-            setTimeout(() => {
-                console.log('[authSignupBtn] Abriendo modal de Netlify Identity (signup)');
-                try {
-                    ni.open('signup');
-                    console.log('[authSignupBtn] ✅ Modal de Netlify Identity abierto');
-                } catch (error) {
-                    console.error('[authSignupBtn] ❌ Error abriendo modal de Netlify Identity:', error);
-                }
-            }, 100);
-            // Escuchar cuando se complete el registro
-            ni.on('signup', async (user: any) => {
-                if (user && user.email) {
-                    const email = user.email.toLowerCase();
-                    const username = email.split('@')[0];
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('userEmail', email);
-                    
-                    // Crear/actualizar usuario en la base de datos
-                    try {
-                        const token = await user.jwt();
-                        if (token) {
-                            const { getNetlifyBaseUrl } = await import('../utils/device');
-                            const baseUrl = getNetlifyBaseUrl();
-                            await fetch(`${baseUrl}/.netlify/functions/profile`, {
-                                method: 'GET',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            console.log('Usuario creado/actualizado en la base de datos');
-                        }
-                    } catch (error) {
-                        console.error('Error creando usuario en la BD:', error);
-                    }
-                    
-                    updateEditorButton();
-                    updateUserArea();
-                    startEditor(store);
-                }
-            });
-        } else {
-            // Registro simple para demo
-            showPromptModal(store, 'Ingresa tu nombre de usuario:', '').then(username => {
-                if (username) {
-                    localStorage.setItem('isLoggedIn', 'true');
-                    localStorage.setItem('username', username);
-                    localStorage.removeItem('userEmail');
-                    updateEditorButton();
-                    updateUserArea();
-                    closeAuthModal();
-                    startEditor(store);
-                }
-            });
+        try {
+            const { Auth0Manager } = await import('../auth0-manager');
+            console.log('[authSignupBtn] Llamando a Auth0Manager.loginWithGoogle() para registro');
+            const user = await Auth0Manager.loginWithGoogle();
+            
+            if (user && user.email) {
+                console.log('[authSignupBtn] ✅ Usuario registrado/autenticado:', user.email);
+                const email = user.email.toLowerCase();
+                const username = email.split('@')[0];
+                
+                localStorage.setItem('username', username);
+                localStorage.setItem('userEmail', email);
+                
+                // Usar authManager para manejar login completo
+                await authManager.handleLoginSuccess(user);
+                
+                updateEditorButton();
+                updateUserArea();
+                startEditor(store);
+            } else {
+                console.error('[authSignupBtn] ❌ No se pudo autenticar con Google');
+            }
+        } catch (error) {
+            console.error('[authSignupBtn] ❌ Error en signup:', error);
         }
     });
 
     // Handler del botón de cerrar sesión
     const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
     logoutBtn?.addEventListener('click', () => {
-        openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), () => {
-            // Cerrar sesión en Netlify Identity si está disponible
-            const ni: any = (window as any).netlifyIdentity;
-            if (ni && ni.currentUser()) {
-                ni.logout();
+        openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), async () => {
+            try {
+                // Cerrar sesión en Auth0
+                const { Auth0Manager } = await import('../auth0-manager');
+                await Auth0Manager.logout();
+            } catch (error) {
+                console.error('[logoutBtn] Error cerrando sesión con Auth0:', error);
             }
+            
+            // Usar authManager para limpiar
+            await authManager.handleLogout();
+            
             // Limpiar localStorage
-            localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('username');
             localStorage.removeItem('userEmail');
             clearLegacyPasswordOverride();
@@ -5292,22 +5238,60 @@ const setupMenuButtons = (store: GameStore) => {
     const profileEmailDisplay = document.getElementById('profile-email-display') as HTMLInputElement | null;
     
     profileBtn?.addEventListener('click', async () => {
+        console.log('[Profile Modal Open] Abriendo modal de perfil');
         profileModal?.classList.remove('hidden');
+        
         // Cargar datos del usuario
         const ni: any = (window as any).netlifyIdentity;
         const user = ni?.currentUser?.();
         if (user && profileEmailDisplay) {
             profileEmailDisplay.value = user.email || '';
         }
-        // Cargar datos del usuario con namespace
-        const { getUserStorage } = await import('../utils/storage');
-        const currentNickname = getUserStorage('nickname');
+        
+        // Intentar cargar nickname desde la base de datos primero
+        let currentNickname = null;
+        try {
+            if (user) {
+                const token = await user.jwt();
+                if (token) {
+                    const { getNetlifyBaseUrl } = await import('../utils/device');
+                    const baseUrl = getNetlifyBaseUrl();
+                    
+                    const response = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.ok && data.data.nickname) {
+                            currentNickname = data.data.nickname;
+                            console.log('[Profile Modal Open] ✅ Nickname cargado de BD:', currentNickname);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('[Profile Modal Open] ⚠️ Error cargando de BD, usando localStorage:', error);
+        }
+        
+        // Fallback: cargar del localStorage si no está en BD
+        if (!currentNickname) {
+            const { getUserStorage } = await import('../utils/storage');
+            currentNickname = getUserStorage('nickname');
+            console.log('[Profile Modal Open] Nickname cargado de localStorage:', currentNickname);
+        }
+        
         if (profileNicknameInput) {
             profileNicknameInput.value = currentNickname || '';
         }
         // Cargar avatar actual (default: Player)
         const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
-        const savedAvatar = getUserStorage('avatar') || 'P';
+        const { getUserStorage: getUserStorageForAvatar } = await import('../utils/storage');
+        const savedAvatar = getUserStorageForAvatar('avatar') || 'P';
         if (profileAvatarPreview) {
             drawAvatar(store, savedAvatar, profileAvatarPreview, performance.now());
             // Registrar para animación continua
@@ -5373,53 +5357,16 @@ const setupMenuButtons = (store: GameStore) => {
         if (!profileNicknameInput) return;
         const newNickname = profileNicknameInput.value.trim();
         if (newNickname) {
-            const { setUserStorage } = await import('../utils/storage');
-            setUserStorage('nickname', newNickname);
-            // Actualizar nickname del panel mobile
-            const userPanelNickname = document.getElementById('user-panel-nickname');
-            if (userPanelNickname) {
-                userPanelNickname.textContent = newNickname.toUpperCase();
-            }
+            console.log('[Profile Save] Guardando nickname:', newNickname);
+            
+            // Usar nicknameManager para guardar y actualizar
+            await nicknameManager.saveToDB(newNickname);
+            await nicknameManager.updateAllUI(newNickname);
+            
             // Actualizar área de usuario
             updateUserArea();
             
-            // Guardar nickname en la base de datos
-            try {
-                const ni: any = (window as any).netlifyIdentity;
-                const user = ni?.currentUser?.();
-                if (user) {
-                    const token = await user.jwt();
-                    if (token) {
-                        const { getNetlifyBaseUrl } = await import('../utils/device');
-                        const baseUrl = getNetlifyBaseUrl();
-                        const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
-                        const { getUserStorage } = await import('../utils/storage');
-                        const avatar = getUserStorage('avatar') || 'P';
-                        const avatarUrl = profileAvatarPreview ? profileAvatarPreview.toDataURL('image/png') : null;
-                        
-                        const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
-                            method: 'PUT',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                nickname: newNickname,
-                                avatar_url: avatarUrl
-                            })
-                        });
-                        
-                        if (res.ok) {
-                            console.log('Nickname guardado en la base de datos');
-                        } else {
-                            console.error('Error guardando nickname en la BD:', await res.text());
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error guardando nickname en la BD:', error);
-            }
-            
+            // Mostrar confirmación
             showNotification(store, t('modals.errors.nicknameSaved'), t('modals.errors.nicknameSaved'));
         }
         profileModal?.classList.add('hidden');

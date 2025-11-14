@@ -1,0 +1,158 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║              URLS EXACTOS PARA AUTH0 - COPIA Y PEGA                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+IMPORTANTE: Copia EXACTAMENTE - mayúsculas, puntos, todo igual
+
+═══════════════════════════════════════════════════════════════════════════════
+
+1️⃣ ALLOWED CALLBACK URLs (5 URLs)
+────────────────────────────────────────────────────────────────────────────
+
+DÓNDE: Applications → HERO Game → Settings → Busca "Allowed Callback URLs"
+
+COPIA ESTO (línea por línea, sin cambios):
+
+https://newhero.netlify.app/callback
+https://newhero.netlify.app/auth0-callback.html
+http://localhost:3000/callback
+http://localhost:5173/callback
+com.hero.game://callback
+
+═══════════════════════════════════════════════════════════════════════════════
+
+2️⃣ ALLOWED LOGOUT URLs (3 URLs)
+────────────────────────────────────────────────────────────────────────────
+
+DÓNDE: Applications → HERO Game → Settings → Busca "Allowed Logout URLs"
+
+COPIA ESTO:
+
+https://newhero.netlify.app
+http://localhost:3000
+http://localhost:5173
+
+═══════════════════════════════════════════════════════════════════════════════
+
+3️⃣ ALLOWED WEB ORIGINS (3 URLs)
+────────────────────────────────────────────────────────────────────────────
+
+DÓNDE: Applications → HERO Game → Settings → Busca "Allowed Web Origins"
+
+COPIA ESTO:
+
+https://newhero.netlify.app
+http://localhost:3000
+http://localhost:5173
+
+═══════════════════════════════════════════════════════════════════════════════
+
+4️⃣ CORS ALLOWED ORIGINS (3 URLs)
+────────────────────────────────────────────────────────────────────────────
+
+DÓNDE: Applications → HERO Game → Settings → Busca "Cross-Origin Resource Sharing"
+       O "CORS Allowed Origins"
+
+COPIA ESTO:
+
+https://newhero.netlify.app
+http://localhost:3000
+http://localhost:5173
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📌 RESUMEN VISUAL
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ALLOWED CALLBACK URLs:     (5 URLs)                                    │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ https://newhero.netlify.app/callback                             │  │
+│ │ https://newhero.netlify.app/auth0-callback.html                  │  │
+│ │ http://localhost:3000/callback                                   │  │
+│ │ http://localhost:5173/callback                                   │  │
+│ │ com.hero.game://callback                                         │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ALLOWED LOGOUT URLs:       (3 URLs)                                    │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ https://newhero.netlify.app                                      │  │
+│ │ http://localhost:3000                                            │  │
+│ │ http://localhost:5173                                            │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ALLOWED WEB ORIGINS:       (3 URLs)                                    │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ https://newhero.netlify.app                                      │  │
+│ │ http://localhost:3000                                            │  │
+│ │ http://localhost:5173                                            │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ CORS ALLOWED ORIGINS:      (3 URLs)                                    │
+│ ┌───────────────────────────────────────────────────────────────────┐  │
+│ │ https://newhero.netlify.app                                      │  │
+│ │ http://localhost:3000                                            │  │
+│ │ http://localhost:5173                                            │  │
+│ └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❓ ¿QUÉ SIGNIFICA CADA URL?
+
+🌐 https://newhero.netlify.app
+   └─ Tu app en producción (la web publicada)
+
+🏠 http://localhost:3000
+   └─ Para desarrollo en tu computadora (puerto 3000)
+
+🏠 http://localhost:5173
+   └─ Para desarrollo en tu computadora (puerto 5173)
+
+📱 com.hero.game://callback
+   └─ Deep link para la app móvil (APK)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANTE:
+
+✓ Son URLs DIFERENTES en diferentes secciones
+✓ Algunos tienen /callback al final
+✓ Algunos NO tienen /callback
+✓ Algunos son https
+✓ Algunos son http
+✓ UNO es un deep link (com.hero.game://)
+
+NO CAMBIES NADA - COPIA EXACTAMENTE
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 PASO A PASO EN AUTH0:
+
+1. Ve a: https://dashboard.auth0.com
+2. Menú izquierdo: Applications
+3. Haz clic en: HERO Game
+4. Pestaña: Settings
+5. Scroll hacia abajo y busca:
+   ✓ "Allowed Callback URLs"
+   ✓ "Allowed Logout URLs"
+   ✓ "Allowed Web Origins"
+   ✓ "CORS Allowed Origins"
+6. En cada sección, pega los URLs correspondientes
+7. Scroll hasta abajo
+8. Botón: "Save Changes"
+9. LISTO
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ CHECKLIST:
+
+Cuando hayas pegado TODO, verifica:
+
+☑ Callback URLs: 5 URLs pegados
+☑ Logout URLs: 3 URLs pegados
+☑ Web Origins: 3 URLs pegados
+☑ CORS Origins: 3 URLs pegados
+☑ Botón "Save Changes" presionado
+
+═══════════════════════════════════════════════════════════════════════════════
+

@@ -1,0 +1,120 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║              FIX: "web_origins" must be a valid uri                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+❌ PROBLEMA:
+Auth0 rechaza los Web Origins porque necesitan un formato diferente
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ LO QUE NO FUNCIONA:
+
+https://newhero.netlify.app
+http://localhost:3000
+http://localhost:5173
+
+(Rechaza porque le falta algo)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ LO QUE SÍ FUNCIONA:
+
+OPCIÓN 1 - CON PUERTO (más específico):
+
+https://newhero.netlify.app:443
+http://localhost:3000
+http://localhost:5173
+
+OPCIÓN 2 - SIN PUERTO (recomendado):
+
+https://newhero.netlify.app
+http://localhost:3000
+http://localhost:5173
+
+PERO EN AUTH0:
+┌─────────────────────────────────────────────────┐
+│ Allowed Web Origins:                            │
+│                                                 │
+│ DEJA ESTE CAMPO VACÍO                           │
+│ (O simplemente borra lo que pusiste)            │
+│                                                 │
+│ NO ES OBLIGATORIO                               │
+└─────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 LO REALMENTE IMPORTANTE:
+
+┌──────────────────────┬──────────┬─────────────────────────────────┐
+│ Campo                │ ¿Necesario? │ Qué poner                     │
+├──────────────────────┼──────────┼─────────────────────────────────┤
+│ Callback URLs        │ ✅ SÍ    │ Los 5 URLs (ya los tienes)     │
+│ Logout URLs          │ ✅ SÍ    │ Los 3 URLs                     │
+│ Web Origins          │ ❓ NO    │ DÉJALO VACÍO                   │
+│ CORS Origins         │ ❓ NO    │ DÉJALO VACÍO (o igual a web)   │
+└──────────────────────┴──────────┴─────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 SOLUCIÓN RÁPIDA:
+
+1. Ve a: Applications → HERO Game → Settings
+
+2. Busca "Allowed Web Origins"
+
+3. BORRA lo que pusiste
+
+4. Déjalo VACÍO (espacio en blanco)
+
+5. Busca "CORS Allowed Origins"
+
+6. BORRA lo que pusiste
+
+7. Déjalo VACÍO (espacio en blanco)
+
+8. Scroll abajo: "Save Changes"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ OPCIÓN ALTERNATIVA (si quieres mantener algo):
+
+Si realmente quieres poner algo en Web Origins, intenta:
+
+https://newhero.netlify.app
+http://localhost:3000
+http://localhost:5173
+
+(Sin cambios, tal cual está)
+
+Si sigue dando error, simplemente déjalo vacío.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 POR QUÉ PASA ESTO:
+
+- "Allowed Callback URLs" → Auth0 lo entiende
+- "Allowed Logout URLs" → Auth0 lo entiende  
+- "Allowed Web Origins" → Auth0 es más estricto (a veces rechaza)
+- "CORS Origins" → Depende de la configuración
+
+Para evitar problemas, simplemente déjalos en blanco.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 INSTRUCCIONES FINALES:
+
+En Applications → HERO Game → Settings:
+
+✅ FILLED (llenar):
+   ✓ Allowed Callback URLs → Pega los 5 URLs
+   ✓ Allowed Logout URLs → Pega los 3 URLs
+
+❌ EMPTY (dejar en blanco):
+   ✓ Application Login URI → Vacío
+   ✓ Allowed Web Origins → Vacío
+   ✓ CORS Allowed Origins → Vacío
+
+✅ SAVE: "Save Changes"
+
+═══════════════════════════════════════════════════════════════════════════════
+

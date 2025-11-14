@@ -35,13 +35,17 @@
             console.log('[Auth Callback] URL actual:', window.location.href);
             console.log('[Auth Callback] Protocol:', window.location.protocol);
             console.log('[Auth Callback] Hostname:', window.location.hostname);
+            console.log('[Auth Callback] User Agent:', navigator.userAgent);
             
             // Detectar si viene de la app móvil (Capacitor)
+            // CLAVE: Usamos múltiples señales para detectar APK
             const isCapacitor = typeof window.Capacitor !== 'undefined';
             const isAndroid = /Android/i.test(navigator.userAgent);
-            const isMobileApp = isCapacitor || (isAndroid && window.location.protocol === 'capacitor:');
+            // En Capacitor, la app se ejecuta desde https://localhost en la APK
+            const isLocalhostApp = window.location.hostname === 'localhost' && /Android/i.test(navigator.userAgent);
+            const isMobileApp = isCapacitor || isAndroid || isLocalhostApp;
             
-            console.log('[Auth Callback] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isMobileApp:', isMobileApp);
+            console.log('[Auth Callback] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isLocalhostApp:', isLocalhostApp, '| isMobileApp:', isMobileApp);
             
             // Obtener los parámetros de la URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -74,21 +78,30 @@
             
             // Si hay un token, procesarlo
             if (accessToken) {
-                console.log('[Auth Callback] Token de acceso recibido, procesando...');
-                // Si viene de la app móvil, redirigir usando el esquema personalizado
+                console.log('[Auth Callback] ✅ Token de acceso recibido');
+                console.log('[Auth Callback] Token preview:', accessToken.substring(0, 20) + '...');
+                
                 if (isMobileApp) {
+                    console.log('[Auth Callback] 📱 DETECTADA APP MÓVIL - REDIRIGIENDO VIA DEEP LINK');
                     // Construir la URL de callback con el token
                     const callbackUrl = 'hero://auth-callback?' + 
                         'access_token=' + encodeURIComponent(accessToken) +
                         '&token_type=' + encodeURIComponent(tokenType) +
                         (expiresIn ? '&expires_in=' + encodeURIComponent(expiresIn) : '');
                     
-                    console.log('[Auth Callback] Redirigiendo a:', callbackUrl);
-                    // Redirigir a la app
-                    window.location.href = callbackUrl;
+                    console.log('[Auth Callback] 🎯 URL de redirect:', callbackUrl);
+                    console.log('[Auth Callback] Redirigiendo en 1 segundo...');
+                    
+                    // Pequeña espera para asegurar que el log se procese
+                    setTimeout(() => {
+                        console.log('[Auth Callback] 🚀 REDIRIGIENDO AHORA');
+                        window.location.href = callbackUrl;
+                    }, 1000);
                 } else {
+                    console.log('[Auth Callback] 🌐 DETECTADA WEB - PROCESANDO NORMALMENTE');
                     // Si es web, cerrar la ventana y notificar al padre
                     if (window.opener) {
+                        console.log('[Auth Callback] Enviando token al padre via postMessage');
                         // Enviar el token al padre
                         window.opener.postMessage({
                             type: 'netlify-auth-callback',
@@ -98,6 +111,7 @@
                         }, window.location.origin);
                         window.close();
                     } else {
+                        console.log('[Auth Callback] No hay opener, guardando en localStorage y redirigiendo a /');
                         // Si no hay opener, intentar guardar en localStorage y redirigir
                         localStorage.setItem('netlify-auth-token', accessToken);
                         localStorage.setItem('netlify-auth-token-type', tokenType);
@@ -109,14 +123,14 @@
                 }
             } else {
                 // No hay token, mostrar error
-                console.error('[Auth Callback] No se recibió token de autenticación');
+                console.error('[Auth Callback] ❌ No se recibió token de autenticación');
                 document.querySelector('.message').textContent = 'Error: No se recibió el token de autenticación';
                 setTimeout(() => {
                     if (isMobileApp) {
-                        console.log('[Auth Callback] Redirigiendo a app con error: no_token');
+                        console.log('[Auth Callback] 📱 Redirigiendo app con error: no_token');
                         window.location.href = 'hero://auth-callback?error=no_token';
                     } else {
-                        console.log('[Auth Callback] Cerrando ventana (no es app móvil)');
+                        console.log('[Auth Callback] 🌐 Cerrando ventana (web)');
                         window.close();
                     }
                 }, 3000);

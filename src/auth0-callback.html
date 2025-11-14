@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticación - NEW H.E.R.O.</title>
+    <style>
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: #1f2937;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            padding: 2rem;
+        }
+        .message {
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .spinner {
+            border: 4px solid #3b82f6;
+            border-top: 4px solid transparent;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="message">Procesando autenticación...</div>
+        <div class="spinner"></div>
+    </div>
+    <script>
+        (function() {
+            console.log('[Auth0 Callback] Página de callback cargada');
+            console.log('[Auth0 Callback] URL actual:', window.location.href);
+            console.log('[Auth0 Callback] Protocol:', window.location.protocol);
+            console.log('[Auth0 Callback] Hostname:', window.location.hostname);
+            
+            // Detectar si viene de la app móvil (Capacitor)
+            const isCapacitor = typeof window.Capacitor !== 'undefined';
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isLocalhostApp = window.location.hostname === 'localhost' && /Android/i.test(navigator.userAgent);
+            const isMobileApp = isCapacitor || isAndroid || isLocalhostApp;
+            
+            console.log('[Auth0 Callback] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isMobileApp:', isMobileApp);
+            
+            // Obtener los parámetros de la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            
+            console.log('[Auth0 Callback] code:', code ? 'presente' : 'ausente');
+            console.log('[Auth0 Callback] error:', error || 'ninguno');
+            console.log('[Auth0 Callback] errorDescription:', errorDescription || 'ninguno');
+            
+            // Si hay un error, mostrarlo
+            if (error) {
+                console.error('[Auth0 Callback] Error recibido:', error);
+                document.querySelector('.message').textContent = 'Error: ' + (errorDescription || error);
+                setTimeout(() => {
+                    if (isMobileApp) {
+                        console.log('[Auth0 Callback] 📱 Redirigiendo a app con error');
+                        window.location.href = 'com.hero.game://callback?error=' + encodeURIComponent(error);
+                    } else {
+                        console.log('[Auth0 Callback] 🌐 Redirigiendo a página de inicio');
+                        window.location.href = '/';
+                    }
+                }, 3000);
+                return;
+            }
+            
+            // Si hay un code (de Auth0), procesar
+            if (code && state) {
+                console.log('[Auth0 Callback] ✅ Auth0 authorization code recibido');
+                
+                if (isMobileApp) {
+                    console.log('[Auth0 Callback] 📱 DETECTADA APP MÓVIL - REDIRIGIENDO VIA DEEP LINK');
+                    // Redirigir a la app con el code
+                    const callbackUrl = 'com.hero.game://callback?' + 
+                        'code=' + encodeURIComponent(code) +
+                        '&state=' + encodeURIComponent(state);
+                    
+                    console.log('[Auth0 Callback] 🎯 URL de redirect:', callbackUrl);
+                    console.log('[Auth0 Callback] Redirigiendo en 1 segundo...');
+                    
+                    setTimeout(() => {
+                        console.log('[Auth0 Callback] 🚀 REDIRIGIENDO AHORA');
+                        window.location.href = callbackUrl;
+                    }, 1000);
+                } else {
+                    console.log('[Auth0 Callback] 🌐 DETECTADA WEB - Auth0 debe manejar el callback');
+                    // En web, Auth0 SPA JS debe interceptar este callback
+                    // No hacemos nada, Auth0 lo maneja
+                    document.querySelector('.message').textContent = 'Completando autenticación...';
+                }
+            } else {
+                // No hay code ni error
+                console.log('[Auth0 Callback] ⚠️ No se recibió code de Auth0');
+                document.querySelector('.message').textContent = 'Por favor espera...';
+                
+                // Esperar un poco y redirigir
+                setTimeout(() => {
+                    if (isMobileApp) {
+                        console.log('[Auth0 Callback] 📱 Redirigiendo a app');
+                        window.location.href = 'com.hero.game://callback?error=no_code';
+                    } else {
+                        console.log('[Auth0 Callback] 🌐 Redirigiendo a página de inicio');
+                        window.location.href = '/';
+                    }
+                }, 2000);
+            }
+        })();
+    </script>
+</body>
+</html>
+

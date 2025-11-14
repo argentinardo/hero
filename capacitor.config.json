@@ -12,7 +12,9 @@
     "captureInput": true,
     "webContentsDebuggingEnabled": true,
     "useWebView": true,
-    "allowMixedContentOverride": true
+    "allowMixedContentOverride": true,
+    "webViewDebuggingEnabled": true,
+    "iFrameSupport": true
   },
   "plugins": {
     "StatusBar": {
