@@ -3471,47 +3471,61 @@ const setupAuthDeepLink = (store: GameStore) => {
     }
 };
 
-// 🔐 INICIALIZAR AUTH0 INMEDIATAMENTE
-// Esta IIFE se ejecuta cuando el archivo es cargado
-(async () => {
-    try {
-        console.log('[UI Module] Inicializando Auth0 en módulo...');
-        
-        const configEl = document.getElementById('auth0-config');
-        if (!configEl) {
-            console.error('[UI Module] ❌ auth0-config element no encontrado');
-            return;
-        }
-        
-        const configText = configEl.textContent || '{}';
-        console.log('[UI Module] Config text:', configText.substring(0, 100));
-        
-        const config = JSON.parse(configText);
-        console.log('[UI Module] ✅ Configuración Auth0 cargada:');
-        console.log('[UI Module]   - domain:', config.domain);
-        console.log('[UI Module]   - clientId:', config.clientId);
-        console.log('[UI Module]   - redirectUri:', config.redirectUri);
-        console.log('[UI Module]   - audience:', config.audience);
-        
-        // Importar Auth0Manager
-        console.log('[UI Module] Importando Auth0Manager...');
-        const { default: Auth0Mgr } = await import('../auth0-manager');
-        console.log('[UI Module] ✅ Auth0Manager importado correctamente');
-        
-        // Inicializar Auth0Manager - ESTE AWAIT ES IMPORTANTE
-        console.log('[UI Module] Llamando a Auth0Mgr.initialize()...');
-        await Auth0Mgr.initialize(config);
-        console.log('[UI Module] ✅✅ Auth0Manager COMPLETAMENTE inicializado');
-        
-        // Hacer Auth0Manager disponible globalmente para debug
-        (window as any).Auth0Mgr = Auth0Mgr;
-        console.log('[UI Module] ✅ Auth0Manager disponible en window.Auth0Mgr');
-        
-    } catch (error) {
-        console.error('[UI Module] ❌ Error inicializando Auth0:', error);
-        console.error('[UI Module] Error stack:', error instanceof Error ? error.stack : 'N/A');
+// 🔐 INICIALIZAR AUTH0 - Función reutilizable
+let auth0Manager: any = null;
+let auth0InitPromise: Promise<any> | null = null;
+
+async function initializeAuth0() {
+    // Si ya se está inicializando, esperar
+    if (auth0InitPromise) {
+        console.log('[Auth0 Init] Ya se está inicializando, esperando...');
+        return await auth0InitPromise;
     }
-})();
+    
+    // Si ya está inicializado, retornar
+    if (auth0Manager) {
+        console.log('[Auth0 Init] Ya está inicializado');
+        return auth0Manager;
+    }
+    
+    auth0InitPromise = (async () => {
+        try {
+            console.log('[Auth0 Init] Inicializando Auth0...');
+            
+            const configEl = document.getElementById('auth0-config');
+            if (!configEl) {
+                throw new Error('auth0-config element no encontrado');
+            }
+            
+            const configText = configEl.textContent || '{}';
+            const config = JSON.parse(configText);
+            console.log('[Auth0 Init] ✅ Configuración cargada:', {
+                domain: config.domain,
+                clientId: config.clientId ? config.clientId.substring(0, 10) + '...' : 'N/A',
+                redirectUri: config.redirectUri
+            });
+            
+            // Importar Auth0Manager
+            const { default: Auth0Mgr } = await import('../auth0-manager');
+            console.log('[Auth0 Init] ✅ Auth0Manager importado');
+            
+            // Inicializar
+            await Auth0Mgr.initialize(config);
+            console.log('[Auth0 Init] ✅✅ Auth0 completamente inicializado');
+            
+            auth0Manager = Auth0Mgr;
+            (window as any).Auth0Mgr = Auth0Mgr;
+            
+            return Auth0Mgr;
+        } catch (error) {
+            console.error('[Auth0 Init] ❌ Error:', error);
+            auth0InitPromise = null; // Reset para reintentar
+            throw error;
+        }
+    })();
+    
+    return await auth0InitPromise;
+}
 
 export const setupUI = (store: GameStore) => {
     // Auth0 ya se está inicializando en el nivel del módulo
@@ -5159,8 +5173,11 @@ const setupMenuButtons = (store: GameStore) => {
         closeAuthModal();
         
         try {
-            const { Auth0Manager } = await import('../auth0-manager');
-            console.log('[authLoginBtn] Llamando a Auth0Manager.loginWithGoogle()');
+            // Inicializar Auth0 primero
+            console.log('[authLoginBtn] Inicializando Auth0...');
+            const Auth0Manager = await initializeAuth0();
+            console.log('[authLoginBtn] ✅ Auth0 inicializado, llamando a loginWithGoogle()');
+            
             const user = await Auth0Manager.loginWithGoogle();
             
             if (user && user.email) {
