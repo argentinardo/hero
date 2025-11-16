@@ -1,5 +1,6 @@
 import nipplejs from 'nipplejs';
 import type { EventData as NippleEvent, Joystick as NippleJoystick } from 'nipplejs';
+import { App as CapApp } from '@capacitor/app';
 
 import type { GameStore } from '../core/types';
 import { TILE_TYPES, preloadAssets, ANIMATION_DATA, SPRITE_SOURCES } from '../core/assets';
@@ -3319,156 +3320,232 @@ const syncLevelSelector = (store: GameStore) => {
 /**
  * Configura el manejo de deep links de autenticación para la app móvil.
  * CRÍTICO: Esto DEBE ejecutarse ANTES de cualquier login para interceptar callbacks.
- * Cuando la app recibe un callback de autenticación (hero://auth-callback?...),
+ * Cuando la app recibe un callback de autenticación (com.hero.game://auth-callback?...),
  * procesa el token y completa el login en la APK (NO en web).
  */
 const setupAuthDeepLink = (store: GameStore) => {
+    // CRÍTICO: Logs inmediatos para verificar que se ejecuta
+    console.log('🔵🔵🔵 [setupAuthDeepLink] ========== INICIANDO ==========');
+    console.log('🔵🔵🔵 [setupAuthDeepLink] window:', typeof window);
+    console.log('🔵🔵🔵 [setupAuthDeepLink] window.Capacitor:', typeof (window as any).Capacitor);
+    
     // Detectar si estamos en Capacitor
     const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
-    console.log('[setupAuthDeepLink] CRÍTICO: Inicializando setup de deep link, isCapacitor:', isCapacitor);
+    console.log('🔵🔵🔵 [setupAuthDeepLink] CRÍTICO: Inicializando setup de deep link, isCapacitor:', isCapacitor);
+    console.log('🔵🔵🔵 [setupAuthDeepLink] window.Capacitor:', (window as any).Capacitor);
+    console.log('🔵🔵🔵 [setupAuthDeepLink] User Agent:', navigator.userAgent);
+    
+    // También verificar si estamos en Android
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    console.log('🔵🔵🔵 [setupAuthDeepLink] isAndroid:', isAndroid);
     
     if (!isCapacitor) {
-        console.log('[setupAuthDeepLink] No es Capacitor, saltando setup de deep link');
+        console.log('🔴🔴🔴 [setupAuthDeepLink] No es Capacitor, saltando setup de deep link');
+        console.log('🔴🔴🔴 [setupAuthDeepLink] Pero isAndroid es:', isAndroid);
+        // Si estamos en Android pero no detectamos Capacitor, puede ser un problema de timing
+        if (isAndroid) {
+            console.log('🔴🔴🔴 [setupAuthDeepLink] ⚠️ Android detectado pero Capacitor no disponible. Esperando...');
+            // Intentar de nuevo después de un delay
+            setTimeout(() => {
+                console.log('🔴🔴🔴 [setupAuthDeepLink] Reintentando después de delay...');
+                setupAuthDeepLink(store);
+            }, 1000);
+        }
         return; // Solo funciona en app móvil
     }
     
-    console.log('[setupAuthDeepLink] ✅ Capacitor detectado, configurando deep link handler');
+    console.log('🟢🟢🟢 [setupAuthDeepLink] ✅ Capacitor detectado, configurando deep link handler');
 
     // Función para procesar el callback de autenticación
     const handleAuthCallback = async (url: string) => {
-        try {
-            console.log('[handleAuthCallback] Procesando URL:', url);
-            const urlObj = new URL(url);
-            console.log('[handleAuthCallback] Protocol:', urlObj.protocol, '| Pathname:', urlObj.pathname);
-            
-            if (urlObj.protocol !== 'hero:') {
-                console.log('[handleAuthCallback] Esquema incorrecto:', urlObj.protocol);
-                return; // No es nuestro esquema
-            }
 
-            const pathname = urlObj.pathname;
-            if (pathname !== '/auth-callback') {
-                console.log('[handleAuthCallback] Pathname incorrecto:', pathname);
-                return; // No es nuestro callback
-            }
-
-            const params = new URLSearchParams(urlObj.search);
-            const accessToken = params.get('access_token');
-            const error = params.get('error');
-
-            console.log('[handleAuthCallback] accessToken:', accessToken ? 'presente' : 'ausente', '| error:', error || 'ninguno');
-
-            if (error) {
-                console.error('[handleAuthCallback] Error en autenticación:', error);
-                // Mostrar error al usuario
-                const notificationModal = document.getElementById('notification-modal');
-                const notificationMessage = document.getElementById('notification-message');
-                if (notificationModal && notificationMessage) {
-                    notificationMessage.textContent = `Error de autenticación: ${error}`;
-                    notificationModal.classList.remove('hidden');
-                }
-                return;
-            }
-
-            if (!accessToken) {
-                console.error('[handleAuthCallback] No se recibió el token de autenticación');
-                return;
-            }
-
-            console.log('[handleAuthCallback] Token de acceso válido, procesando...');
-
-            // Procesar el token con Netlify Identity
-            const ni: any = (window as any).netlifyIdentity;
-            if (!ni) {
-                console.error('[handleAuthCallback] Netlify Identity no está disponible');
-                return;
-            }
-
-            console.log('[handleAuthCallback] Netlify Identity disponible, autenticando usuario...');
-
-            // Usar el token para autenticar al usuario
-            try {
-                // Netlify Identity necesita que el token se establezca de una manera específica
-                // Primero, intentamos usar el método store() si está disponible
-                if (ni.store) {
-                    console.log('[handleAuthCallback] Guardando token en Netlify Identity');
-                    ni.store({ token: accessToken });
-                }
-
-                // Obtener el usuario actual
-                const user = ni.currentUser();
-                console.log('[handleAuthCallback] Usuario actual obtenido:', user ? 'sí' : 'no');
-                
-                if (user && user.email) {
-                    const email = user.email.toLowerCase();
-                    const username = email.split('@')[0];
-                    
-                    console.log('[handleAuthCallback] Guardando datos de usuario:', { email, username });
-                    
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('userEmail', email);
-                    
-                    // Usar authManager para manejar login completo
-                    await authManager.handleLoginSuccess(user);
-                    
-                    // Actualizar UI
-                    const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-                    if (levelEditorBtn) {
-                        levelEditorBtn.textContent = t('menu.editor');
-                    }
-                    updateHamburgerButtonLabel(store);
-                    
-                    console.log('[handleAuthCallback] Cargando niveles del usuario...');
-                    // Cargar niveles del usuario
-                    await tryLoadUserLevels(store);
-                    
-                    // Si estamos en el menú, iniciar el editor
-                    if (store.appState === 'menu') {
-                        console.log('[handleAuthCallback] En menú, iniciando editor...');
-                        startEditor(store);
-                    }
-                    
-                    console.log('[handleAuthCallback] ✅ Autenticación exitosa desde deep link - usuario logueado en la app');
-                } else {
-                    console.error('[handleAuthCallback] No se pudo obtener el usuario después de la autenticación');
-                }
-            } catch (error) {
-                console.error('[handleAuthCallback] Error procesando el token de autenticación:', error);
-            }
-        } catch (error) {
-            console.error('Error procesando callback de autenticación:', error);
-        }
     };
 
     // Escuchar eventos de deep link de Capacitor
+    // CRÍTICO: Según documentación de Auth0, usar App.addListener('appUrlOpen') y handleRedirectCallback
     try {
-        const App = (window as any).Capacitor?.Plugins?.App;
-        if (App) {
-            console.log('[setupAuthDeepLink] Configurando listener de deep links');
-            // Escuchar cuando la app se abre desde un deep link
-            App.addListener('appUrlOpen', (data: { url: string }) => {
-                console.log('[setupAuthDeepLink] Deep link recibido:', data.url);
-                handleAuthCallback(data.url);
+        // Verificar si estamos en Capacitor antes de usar CapApp
+        const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
+        console.log('🟢🟢🟢 [setupAuthDeepLink] Capacitor disponible:', isCapacitor);
+        
+        if (isCapacitor && CapApp) {
+            console.log('🟢🟢🟢 [setupAuthDeepLink] ✅ Configurando listener de deep links con @capacitor/app');
+            
+            // CRÍTICO: Según documentación de Auth0, manejar appUrlOpen y llamar handleRedirectCallback
+            CapApp.addListener('appUrlOpen', async (data: { url: string }) => {
+                console.log('[setupAuthDeepLink] Deep link recibido (appUrlOpen):', data.url);
+                
+                // CRÍTICO: Según documentación de Auth0, verificar si tiene code y state
+                if (data.url.includes('state') && (data.url.includes('code') || data.url.includes('error'))) {
+                    console.log('[setupAuthDeepLink] ✅ Callback de Auth0 detectado (code/state presente)');
+                    try {
+                        const mgr = await initializeAuth0();
+                        // handleRedirectCallback ya cierra el Browser automáticamente
+                        const user = await mgr.handleRedirectCallback(data.url);
+                        
+                        if (user && user.email) {
+                            console.log('[setupAuthDeepLink] ✅ Usuario autenticado desde callback:', user.email);
+                            const email = user.email.toLowerCase();
+                            const username = email.split('@')[0];
+                            
+                            localStorage.setItem('username', username);
+                            localStorage.setItem('userEmail', email);
+                            
+                            // Usar authManager para manejar login completo
+                            await authManager.handleLoginSuccess(user);
+                            
+                            // Actualizar UI
+                            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+                            if (levelEditorBtn) {
+                                levelEditorBtn.textContent = t('menu.editor');
+                            }
+                            updateHamburgerButtonLabel(store);
+                            
+                            // Cargar niveles del usuario
+                            await tryLoadUserLevels(store);
+                            
+                            // Si estamos en el menú, iniciar el editor
+                            if (store.appState === 'menu') {
+                                startEditor(store);
+                            }
+                        } else {
+                            console.error('[setupAuthDeepLink] ❌ Callback procesado pero no se obtuvo usuario');
+                        }
+                    } catch (err) {
+                        console.error('[setupAuthDeepLink] ❌ Error procesando callback (appUrlOpen):', err);
+                    }
+                } else {
+                    // No es un callback de Auth0, procesar como deep link normal
+                    handleAuthCallback(data.url);
+                }
             });
 
-            // También verificar si la app se abrió desde un deep link al iniciar
-            App.getLaunchUrl().then((result: { url: string } | null) => {
-                if (result && result.url) {
-                    console.log('URL de lanzamiento:', result.url);
-                    handleAuthCallback(result.url);
-                }
-            }).catch(() => {
-                // No hay URL de lanzamiento, es normal
-            });
+            // Verificar URL de lanzamiento cuando la app se abre desde cero
+            CapApp.getLaunchUrl()
+                .then((result) => {
+                    if (result && result.url) {
+                        // App abierta con deep link
+                        console.log('[setupAuthDeepLink] URL de lanzamiento:', result.url);
+                        try {
+                            if (result.url.includes('code=') && result.url.includes('state=')) {
+                                console.log('Listener [getLaunchUrl] detectó URL de login (Auth0).');
+                                (async () => {
+                                    try {
+                                        const mgr = await initializeAuth0();
+                                        const user = await mgr.handleRedirectCallback(result.url);
+                                        
+                                        if (user && user.email) {
+                                            console.log('[setupAuthDeepLink] ✅ Usuario autenticado desde callback:', user.email);
+                                            const email = user.email.toLowerCase();
+                                            const username = email.split('@')[0];
+                                            
+                                            localStorage.setItem('username', username);
+                                            localStorage.setItem('userEmail', email);
+                                            
+                                            // Usar authManager para manejar login completo
+                                            await authManager.handleLoginSuccess(user);
+                                            
+                                            // Actualizar UI
+                                            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+                                            if (levelEditorBtn) {
+                                                levelEditorBtn.textContent = t('menu.editor');
+                                            }
+                                            updateHamburgerButtonLabel(store);
+                                            
+                                            // Cargar niveles del usuario
+                                            await tryLoadUserLevels(store);
+                                            
+                                            // Si estamos en el menú, iniciar el editor
+                                            if (store.appState === 'menu') {
+                                                startEditor(store);
+                                            }
+                                            
+                                            console.log('[setupAuthDeepLink] ✅ Login completado! Usuario: ' + user.email);
+                                        } else {
+                                            console.error('[setupAuthDeepLink] ❌ Callback procesado pero no se obtuvo usuario');
+                                        }
+                                    } catch (err) {
+                                        console.error('[setupAuthDeepLink] ❌ Error procesando callback (getLaunchUrl):', err);
+                                    }
+                                })();
+                            } else {
+                                handleAuthCallback(result.url);
+                            }
+                        } catch (e) {
+                            console.warn('Error en getLaunchUrl handler:', e);
+                        }
+                    } else {
+                        // Esto es normal cuando la app se abre directamente sin un deep link
+                        // No es un error, simplemente significa que la app se abrió normalmente
+                        console.log('[setupAuthDeepLink] getLaunchUrl sin URL - app abierta normalmente (no es un error)');
+                    }
+                })
+                .catch((error: any) => {
+                    console.warn('[setupAuthDeepLink] Error en getLaunchUrl:', error);
+                });
         }
     } catch (error) {
+        console.error('[setupAuthDeepLink] ❌ ERROR CRÍTICO: Fallo al configurar los listeners:', error);
         console.warn('No se pudo configurar el listener de deep links:', error);
     }
 
     // También verificar la URL actual en caso de que la app se haya abierto desde un deep link
-    if (window.location.href.startsWith('hero://')) {
+    console.log('🔵🔵🔵 [setupAuthDeepLink] Verificando window.location.href:', window.location.href);
+    if (window.location.href.startsWith('com.hero.game://')) {
+        console.log('🔵🔵🔵 [setupAuthDeepLink] ✅ Deep link detectado en window.location!');
         handleAuthCallback(window.location.href);
     }
+    
+    // CRÍTICO: También escuchar cuando la app se reanuda (después de volver del navegador)
+    if (isCapacitor && CapApp) {
+        console.log('🔵🔵🔵 [setupAuthDeepLink] Configurando listener de appStateChange...');
+        CapApp.addListener('appStateChange', (state: { isActive: boolean }) => {
+            console.log('🔵🔵🔵 [setupAuthDeepLink] appStateChange:', state);
+            if (state.isActive) {
+                console.log('🔵🔵🔵 [setupAuthDeepLink] App se reanudó, verificando getLaunchUrl...');
+                CapApp.getLaunchUrl()
+                    .then((result) => {
+                        if (result && result.url) {
+                            console.log('🔵🔵🔵 [setupAuthDeepLink] ✅ URL encontrada al reanudar:', result.url);
+                            if (result.url.includes('code=') && result.url.includes('state=')) {
+                                console.log('🔵🔵🔵 [setupAuthDeepLink] ✅ Callback de Auth0 detectado!');
+                                (async () => {
+                                    try {
+                                        const mgr = await initializeAuth0();
+                                        const user = await mgr.handleRedirectCallback(result.url);
+                                        if (user && user.email) {
+                                            console.log('[setupAuthDeepLink] ✅ Usuario autenticado desde callback:', user.email);
+                                            const email = user.email.toLowerCase();
+                                            const username = email.split('@')[0];
+                                            localStorage.setItem('username', username);
+                                            localStorage.setItem('userEmail', email);
+                                            await authManager.handleLoginSuccess(user);
+                                            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+                                            if (levelEditorBtn) {
+                                                levelEditorBtn.textContent = t('menu.editor');
+                                            }
+                                            updateHamburgerButtonLabel(store);
+                                            await tryLoadUserLevels(store);
+                                            if (store.appState === 'menu') {
+                                                startEditor(store);
+                                            }
+                                            console.log('[setupAuthDeepLink] ✅ Login completado! Usuario: ' + user.email);
+                                        }
+                                    } catch (err) {
+                                        console.error('Error procesando callback al reanudar:', err);
+                                    }
+                                })();
+                            }
+                        }
+                    })
+                    .catch((error: any) => {
+                        console.log('🔵🔵🔵 [setupAuthDeepLink] getLaunchUrl al reanudar sin URL:', error);
+                    });
+            }
+        });
+    }
+    
+    console.log('🔵🔵🔵 [setupAuthDeepLink] ========== COMPLETADO ==========');
 };
 
 import Auth0Manager from '../auth0-manager';
@@ -3514,6 +3591,9 @@ async function initializeAuth0() {
 export const setupUI = (store: GameStore) => {
     // Auth0 ya se está inicializando en el nivel del módulo
     
+    console.log('🔵🔵🔵 [setupUI] Iniciando setupUI...');
+    console.log('🔵🔵🔵 [setupUI] Capacitor disponible:', typeof (window as any).Capacitor !== 'undefined');
+    
     attachDomReferences(store);
     updateHamburgerButtonLabel(store);
     syncLevelSelector(store);
@@ -3526,7 +3606,9 @@ export const setupUI = (store: GameStore) => {
     setupPinchZoom(store);
     
     // Manejar deep links de autenticación (app móvil)
+    console.log('🔵🔵🔵 [setupUI] Llamando a setupAuthDeepLink...');
     setupAuthDeepLink(store);
+    console.log('🔵🔵🔵 [setupUI] setupAuthDeepLink completado.');
     
     preloadAssets(store, () => {
         populatePalette(store);
@@ -5179,10 +5261,9 @@ const setupMenuButtons = (store: GameStore) => {
                 updateUserArea();
                 startEditor(store);
             } else {
-                console.error('[authLoginBtn] ❌ No se pudo autenticar con Google');
-            }
+                console.log('[authLoginBtn] ⏳ Login con redirect iniciado. Esperando callback de Auth0...');            }
         } catch (error) {
-            console.error('[authLoginBtn] ❌ Error en login:', error);
+            console.error('[authLoginBtn] ❌ No se pudo autenticar con Google. La razón exacta es:', error);
         }
     });
     authSignupBtn?.addEventListener('click', async () => {

@@ -42,6 +42,8 @@
   },
   "dependencies": {
     "@auth0/auth0-spa-js": "^2.8.0",
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/browser": "^7.0.2",
     "@neondatabase/serverless": "^0.9.3",
     "@netlify/blobs": "^6.5.0",
     "@netlify/neon": "0.1.0",

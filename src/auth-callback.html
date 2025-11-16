@@ -67,7 +67,7 @@
                     if (isMobileApp) {
                         console.log('[Auth Callback] Intentando redirigir a app con error');
                         // Intentar cerrar el WebView y volver a la app
-                        window.location.href = 'hero://auth-callback?error=' + encodeURIComponent(error);
+                        window.location.href = 'com.hero.game://auth-callback?error=' + encodeURIComponent(error);
                     } else {
                         console.log('[Auth Callback] Cerrando ventana (no es app móvil)');
                         window.close();
@@ -84,7 +84,7 @@
                 if (isMobileApp) {
                     console.log('[Auth Callback] 📱 DETECTADA APP MÓVIL - REDIRIGIENDO VIA DEEP LINK');
                     // Construir la URL de callback con el token
-                    const callbackUrl = 'hero://auth-callback?' + 
+                    const callbackUrl = 'com.hero.game://auth-callback?' + 
                         'access_token=' + encodeURIComponent(accessToken) +
                         '&token_type=' + encodeURIComponent(tokenType) +
                         (expiresIn ? '&expires_in=' + encodeURIComponent(expiresIn) : '');
@@ -128,7 +128,7 @@
                 setTimeout(() => {
                     if (isMobileApp) {
                         console.log('[Auth Callback] 📱 Redirigiendo app con error: no_token');
-                        window.location.href = 'hero://auth-callback?error=no_token';
+                        window.location.href = 'com.hero.game://auth-callback?error=no_token';
                     } else {
                         console.log('[Auth Callback] 🌐 Cerrando ventana (web)');
                         window.close();

@@ -1,10 +1,11 @@
 {
   "appId": "com.hero.game",
-  "appName": "NEW H.E.R.O.",
+  "appName": "HERO Game",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "https",
+    "androidScheme": "http",
+    "hostname": "localhost",
     "allowNavigation": ["https://localhost", "https://newhero.netlify.app", "*.netlify.app", "*.netlify.live"]
   },
   "android": {
@@ -23,8 +24,8 @@
       "overlaysWebView": true
     },
     "App": {
-      "launchUrl": "hero://",
-      "deepLinkScheme": "hero"
+      "launchUrl": "com.hero.game://",
+      "deepLinkScheme": "com.hero.game"
     }
   }
 }

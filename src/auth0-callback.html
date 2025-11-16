@@ -104,10 +104,13 @@
                         window.location.href = callbackUrl;
                     }, 1000);
                 } else {
-                    console.log('[Auth0 Callback] 🌐 DETECTADA WEB - Auth0 debe manejar el callback');
-                    // En web, Auth0 SPA JS debe interceptar este callback
-                    // No hacemos nada, Auth0 lo maneja
-                    document.querySelector('.message').textContent = 'Completando autenticación...';
+                    console.log('[Auth0 Callback] 🌐 DETECTADA WEB - Redirigiendo a página principal para que SDK procese');
+                    // En web, necesitamos redirigir a la página principal donde está el SDK
+                    // El SDK detectará automáticamente los parámetros code y state en la URL
+                    // y procesará el callback
+                    const mainUrl = window.location.origin + '/?' + window.location.search;
+                    console.log('[Auth0 Callback] Redirigiendo a:', mainUrl);
+                    window.location.href = mainUrl;
                 }
             } else {
                 // No hay code ni error
