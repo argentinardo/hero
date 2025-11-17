@@ -128,31 +128,78 @@ exports.handler = async (event, context) => {
   const userId = user.sub || user.email || user.id;
   console.log('User ID:', userId);
   
-  const sql = neon(); // usa NETLIFY_DATABASE_URL
-
-  try {
-    await ensureSchema(sql);
-  } catch (e) {
-    console.error('Schema error:', e);
+  // Verificar que la variable de entorno esté presente
+  const hasDatabaseUrl = !!process.env.NETLIFY_DATABASE_URL;
+  console.log('NETLIFY_DATABASE_URL presente:', hasDatabaseUrl);
+  
+  if (!hasDatabaseUrl) {
+    console.error('ERROR CRÍTICO: NETLIFY_DATABASE_URL no está configurada');
     return { 
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ ok: false, error: `Schema error: ${e.message}` }) 
+      body: JSON.stringify({ 
+        ok: false, 
+        error: 'Database not configured: NETLIFY_DATABASE_URL environment variable is missing' 
+      }) 
+    };
+  }
+
+  console.log('Inicializando conexión a la base de datos...');
+  let sql;
+  try {
+    sql = neon(); // usa NETLIFY_DATABASE_URL
+    console.log('Conexión a la base de datos inicializada exitosamente');
+  } catch (error) {
+    console.error('ERROR al inicializar neon():', error);
+    return { 
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        ok: false, 
+        error: `Database connection error: ${error.message}` 
+      }) 
+    };
+  }
+
+  try {
+    console.log('Asegurando schema de levels...');
+    await ensureSchema(sql);
+    console.log('Schema de levels verificado/creado exitosamente');
+  } catch (e) {
+    console.error('Schema error:', e);
+    console.error('Error details:', {
+      name: e.name,
+      message: e.message,
+      stack: e.stack,
+      code: e.code,
+    });
+    return { 
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        ok: false, 
+        error: `Schema error: ${e.message}`,
+        details: e.code || 'UNKNOWN_ERROR'
+      }) 
     };
   }
 
   if (event.httpMethod === 'GET') {
     try {
+      console.log('Ejecutando query GET para obtener niveles del usuario:', userId);
       const rows = await sql`SELECT data FROM levels WHERE user_id = ${userId} LIMIT 1`;
+      console.log('Query GET levels exitosa, filas encontradas:', rows.length);
       let data = rows?.[0]?.data || { levels: [] };
       
       // También cargar niveles implementados desde user_implemented_levels
+      console.log('Ejecutando query para obtener niveles implementados...');
       const implementedRows = await sql`
         SELECT modified_data, name 
         FROM user_implemented_levels 
         WHERE user_id = ${userId}
         ORDER BY created_at ASC
       `;
+      console.log('Query niveles implementados exitosa, filas encontradas:', implementedRows.length);
       
       if (implementedRows.length > 0) {
         // Si no hay formato chunked, inicializar
@@ -184,10 +231,20 @@ exports.handler = async (event, context) => {
       };
     } catch (e) {
       console.error('Error en GET:', e);
+      console.error('Error details:', {
+        name: e.name,
+        message: e.message,
+        stack: e.stack,
+        code: e.code,
+      });
       return { 
         statusCode: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ ok: false, error: e.message }) 
+        body: JSON.stringify({ 
+          ok: false, 
+          error: e.message,
+          details: e.code || 'UNKNOWN_ERROR'
+        }) 
       };
     }
   }
@@ -196,9 +253,10 @@ exports.handler = async (event, context) => {
     try {
       const body = JSON.parse(event.body || '{}');
       console.log('Guardando niveles para usuario:', userId, 'Formato:', body.format || 'legacy', 'Niveles:', Array.isArray(body.levels) ? body.levels.length : 'N/A');
+      console.log('Ejecutando query POST para guardar niveles...');
       await sql`INSERT INTO levels (user_id, data) VALUES (${userId}, ${body}::jsonb)
                 ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
-      console.log('Niveles guardados exitosamente para usuario:', userId);
+      console.log('Query POST exitosa, niveles guardados para usuario:', userId);
       return { 
         statusCode: 200,
         headers: corsHeaders,
@@ -206,10 +264,20 @@ exports.handler = async (event, context) => {
       };
     } catch (e) {
       console.error('Error en POST:', e);
+      console.error('Error details:', {
+        name: e.name,
+        message: e.message,
+        stack: e.stack,
+        code: e.code,
+      });
       return { 
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ ok: false, error: e.message }) 
+        body: JSON.stringify({ 
+          ok: false, 
+          error: e.message,
+          details: e.code || 'UNKNOWN_ERROR'
+        }) 
       };
     }
   }

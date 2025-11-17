@@ -130,16 +130,58 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const sql = neon();
-
-  try {
-    await ensureUsersTable(sql);
-  } catch (error) {
-    console.error('Error asegurando tabla users:', error);
+  // Verificar que la variable de entorno esté presente
+  const hasDatabaseUrl = !!process.env.NETLIFY_DATABASE_URL;
+  console.log('NETLIFY_DATABASE_URL presente:', hasDatabaseUrl);
+  
+  if (!hasDatabaseUrl) {
+    console.error('ERROR CRÍTICO: NETLIFY_DATABASE_URL no está configurada');
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ ok: false, error: `Schema error: ${error.message}` }),
+      body: JSON.stringify({ 
+        ok: false, 
+        error: 'Database not configured: NETLIFY_DATABASE_URL environment variable is missing' 
+      }),
+    };
+  }
+
+  console.log('Inicializando conexión a la base de datos...');
+  let sql;
+  try {
+    sql = neon();
+    console.log('Conexión a la base de datos inicializada exitosamente');
+  } catch (error) {
+    console.error('ERROR al inicializar neon():', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        ok: false, 
+        error: `Database connection error: ${error.message}` 
+      }),
+    };
+  }
+
+  try {
+    console.log('Asegurando tabla users...');
+    await ensureUsersTable(sql);
+    console.log('Tabla users verificada/creada exitosamente');
+  } catch (error) {
+    console.error('Error asegurando tabla users:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        ok: false, 
+        error: `Schema error: ${error.message}`,
+        details: error.stack 
+      }),
     };
   }
 
@@ -156,6 +198,7 @@ exports.handler = async (event, context) => {
 
   if (event.httpMethod === 'GET') {
     try {
+      console.log('Ejecutando query GET para usuario:', userId);
       const [profile] = await sql`
         INSERT INTO users (user_id, email, last_login)
         VALUES (${userId}, ${userEmail}, now())
@@ -164,6 +207,7 @@ exports.handler = async (event, context) => {
             email = COALESCE(EXCLUDED.email, users.email)
         RETURNING user_id, email, nickname, avatar_url, created_at, last_login
       `;
+      console.log('Query GET exitosa, perfil obtenido:', profile ? 'Sí' : 'No');
 
       return {
         statusCode: 200,
@@ -172,10 +216,20 @@ exports.handler = async (event, context) => {
       };
     } catch (error) {
       console.error('Error obteniendo perfil:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+      });
       return {
         statusCode: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ ok: false, error: error.message }),
+        body: JSON.stringify({ 
+          ok: false, 
+          error: error.message,
+          details: error.code || 'UNKNOWN_ERROR'
+        }),
       };
     }
   }
@@ -195,6 +249,7 @@ exports.handler = async (event, context) => {
           ? rawAvatarUrl.trim().slice(0, 256)
           : null;
 
+      console.log('Ejecutando query PUT para actualizar perfil:', { userId, nickname, avatarUrl });
       const [profile] = await sql`
         INSERT INTO users (user_id, email, nickname, avatar_url, last_login)
         VALUES (${userId}, ${userEmail}, ${nickname}, ${avatarUrl}, now())
@@ -205,6 +260,7 @@ exports.handler = async (event, context) => {
             last_login = now()
         RETURNING user_id, email, nickname, avatar_url, created_at, last_login
       `;
+      console.log('Query PUT exitosa, perfil actualizado:', profile ? 'Sí' : 'No');
 
       return {
         statusCode: 200,
@@ -213,10 +269,20 @@ exports.handler = async (event, context) => {
       };
     } catch (error) {
       console.error('Error actualizando perfil:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+      });
       return {
         statusCode: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ ok: false, error: error.message }),
+        body: JSON.stringify({ 
+          ok: false, 
+          error: error.message,
+          details: error.code || 'UNKNOWN_ERROR'
+        }),
       };
     }
   }
