@@ -32,7 +32,7 @@ npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
 
 # Inicializar Capacitor
 echo -e "${YELLOW}⚙️  Inicializando Capacitor...${NC}"
-npx cap init "NEW H.E.R.O." "com.new.h.e.r.o.game" --web-dir=dist
+npx cap init "NEW H.E.R.O." "com.newhero.game" --web-dir=dist
 
 # Build inicial
 echo -e "${YELLOW}🔨 Haciendo build inicial...${NC}"

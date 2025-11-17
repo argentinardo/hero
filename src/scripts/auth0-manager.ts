@@ -507,27 +507,56 @@ export const Auth0Manager = {
     },
     
     async getAccessToken(): Promise<string | null> {
-        if (!this.client) return null;
+        if (!this.client) {
+            console.warn('[Auth0] Client no inicializado, intentando obtener token de localStorage');
+            const storedToken = localStorage.getItem('auth0_access_token');
+            if (storedToken) {
+                console.log('[Auth0] Token obtenido de localStorage (client no inicializado)');
+                return storedToken;
+            }
+            return null;
+        }
         
         try {
+            // Verificar primero si el usuario está autenticado
+            const isAuthenticated = await this.client.isAuthenticated();
+            if (!isAuthenticated) {
+                console.warn('[Auth0] Usuario no autenticado, intentando obtener token de localStorage');
+                const storedToken = localStorage.getItem('auth0_access_token');
+                if (storedToken) {
+                    console.log('[Auth0] Token obtenido de localStorage (usuario no autenticado en SDK)');
+                    return storedToken;
+                }
+                return null;
+            }
+            
             // Intentar obtener el token del SDK
             const token = await this.client.getTokenSilently();
             if (token) {
+                console.log('[Auth0] Token obtenido del SDK exitosamente');
+                // Guardar también en localStorage como backup
+                localStorage.setItem('auth0_access_token', token);
                 return token;
             }
             
             // Fallback: intentar obtener del localStorage
             const storedToken = localStorage.getItem('auth0_access_token');
             if (storedToken) {
+                console.log('[Auth0] Token obtenido de localStorage (getTokenSilently no devolvió token)');
                 return storedToken;
             }
             
+            console.warn('[Auth0] No se pudo obtener token ni del SDK ni de localStorage');
             return null;
         } catch (error) {
             console.error('[Auth0] Error obteniendo access token:', error);
             // Fallback: intentar obtener del localStorage
             const storedToken = localStorage.getItem('auth0_access_token');
-            return storedToken;
+            if (storedToken) {
+                console.log('[Auth0] Token obtenido de localStorage (después de error)');
+                return storedToken;
+            }
+            return null;
         }
     }
 };

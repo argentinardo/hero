@@ -56,22 +56,53 @@ const extractUserFromRequest = (event, context) => {
 
   if (!user && event.headers && event.headers.authorization) {
     try {
-      const token = event.headers.authorization.replace('Bearer ', '');
+      const authHeader = event.headers.authorization || event.headers.Authorization || event.headers.AUTHORIZATION;
+      if (!authHeader) {
+        console.warn('No se encontró header Authorization');
+        return null;
+      }
+      
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      if (!token) {
+        console.warn('Token vacío después de remover Bearer');
+        return null;
+      }
+      
+      console.log('Token recibido (primeros 20 caracteres):', token.substring(0, 20) + '...');
+      
       const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
-        const decoded = JSON.parse(payload);
-        if (decoded) {
-          user = {
-            sub: decoded.sub,
-            email: decoded.email,
-            id: decoded.sub || decoded.email,
-          };
-        }
+      if (parts.length !== 3) {
+        console.error('Token no tiene formato JWT válido (debe tener 3 partes separadas por puntos)');
+        return null;
+      }
+      
+      // Decodificar el payload (segunda parte)
+      const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
+      const decoded = JSON.parse(payload);
+      
+      if (!decoded) {
+        console.error('No se pudo decodificar el payload del token');
+        return null;
+      }
+      
+      console.log('Token decodificado exitosamente. Sub:', decoded.sub, 'Email:', decoded.email);
+      
+      user = {
+        sub: decoded.sub,
+        email: decoded.email,
+        id: decoded.sub || decoded.email,
+      };
+      
+      if (!user.sub && !user.email) {
+        console.error('Token decodificado pero no tiene sub ni email');
+        return null;
       }
     } catch (error) {
-      console.error('Error decodificando token JWT:', error);
+      console.error('Error decodificando token JWT:', error.message);
+      console.error('Stack:', error.stack);
     }
+  } else if (!user) {
+    console.warn('No hay usuario en context.clientContext.user ni header Authorization');
   }
 
   return user;

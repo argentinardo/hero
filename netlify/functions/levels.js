@@ -30,10 +30,15 @@ const getCorsHeaders = (origin) => {
   const normalizedOrigin = origin ? origin.toLowerCase().replace(/\/$/, '') : null;
   
   // Verificar si el origen está permitido (comparación flexible)
-  const isAllowed = normalizedOrigin && allowedOrigins.some(allowed => 
-    normalizedOrigin.includes(allowed.replace(/^https?:\/\//, '')) || 
-    normalizedOrigin === allowed
-  );
+  const isAllowed = normalizedOrigin && allowedOrigins.some(allowed => {
+    const normalizedAllowed = allowed.toLowerCase().replace(/\/$/, '');
+    const strippedAllowed = normalizedAllowed.replace(/^https?:\/\//, '');
+    return normalizedOrigin === normalizedAllowed || 
+           normalizedOrigin.includes(strippedAllowed) ||
+           normalizedOrigin.startsWith('http://localhost') ||
+           normalizedOrigin.startsWith('capacitor://') ||
+           normalizedOrigin.startsWith('ionic://');
+  });
 
   const corsHeaders = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -41,14 +46,27 @@ const getCorsHeaders = (origin) => {
     'Access-Control-Max-Age': '86400', // 24 horas
   };
 
-  // Solo permitir origen específico si está en la lista, de lo contrario usar wildcard para desarrollo
-  if (isAllowed && normalizedOrigin) {
-    corsHeaders['Access-Control-Allow-Origin'] = origin;
-  } else {
-    // En desarrollo, permitir cualquier origen (solo si no es producción)
-    if (normalizedOrigin && !normalizedOrigin.includes('netlify.app')) {
+  // Establecer el header Access-Control-Allow-Origin
+  // CRÍTICO: Siempre establecer el header para evitar errores de CORS
+  if (origin) {
+    // Si hay origen, usarlo si está permitido o es localhost/capacitor
+    if (isAllowed) {
+      corsHeaders['Access-Control-Allow-Origin'] = origin;
+    } else if (normalizedOrigin && (
+      normalizedOrigin.startsWith('http://localhost') ||
+      normalizedOrigin.startsWith('capacitor://') ||
+      normalizedOrigin.startsWith('ionic://') ||
+      !normalizedOrigin.includes('netlify.app')
+    )) {
+      // Permitir localhost y otros orígenes de desarrollo
+      corsHeaders['Access-Control-Allow-Origin'] = origin;
+    } else {
+      // Para otros orígenes, usar el origen original (más permisivo)
       corsHeaders['Access-Control-Allow-Origin'] = origin;
     }
+  } else {
+    // Si no hay origen (petición directa o desde app nativa), permitir cualquier origen
+    corsHeaders['Access-Control-Allow-Origin'] = '*';
   }
 
   return corsHeaders;

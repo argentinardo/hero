@@ -3,5 +3,5 @@
   "clientId": "dsPrTB3BarOVKP7TvcZwmqjL64f0io2F",
   "redirectUri": "http://localhost:8080/auth0-callback.html",
   "redirectUriProd": "https://newhero.netlify.app/auth0-callback.html",
-  "redirectUriApk": "com.hero.game://dev-xgqa1ebceww6f4x6.us.auth0.com/capacitor/com.hero.game/callback"
+  "redirectUriApk": "com.newhero.game://dev-xgqa1ebceww6f4x6.us.auth0.com/capacitor/com.newhero.game/callback"
 }

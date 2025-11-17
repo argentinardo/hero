@@ -1780,11 +1780,16 @@ const nicknameManager = {
             const token = await Auth0Manager.getAccessToken();
             if (!token) {
                 console.warn('[NicknameManager] No se pudo obtener token de Auth0');
+                console.warn('[NicknameManager] isLoggedIn:', localStorage.getItem('isLoggedIn'));
+                console.warn('[NicknameManager] auth0_access_token en localStorage:', localStorage.getItem('auth0_access_token') ? 'presente' : 'ausente');
                 return 'Usuario';
             }
 
+            console.log('[NicknameManager] Token obtenido (primeros 20 caracteres):', token.substring(0, 20) + '...');
+
             const { getNetlifyBaseUrl } = await import('../utils/device');
             const baseUrl = getNetlifyBaseUrl();
+            console.log('[NicknameManager] Haciendo petición a:', `${baseUrl}/.netlify/functions/profile`);
 
             const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
                 method: 'GET',
@@ -1815,11 +1820,16 @@ const nicknameManager = {
             const token = await Auth0Manager.getAccessToken();
             if (!token) {
                 console.warn('[NicknameManager] No se pudo obtener token de Auth0 para guardar');
+                console.warn('[NicknameManager] isLoggedIn:', localStorage.getItem('isLoggedIn'));
+                console.warn('[NicknameManager] auth0_access_token en localStorage:', localStorage.getItem('auth0_access_token') ? 'presente' : 'ausente');
                 return false;
             }
 
+            console.log('[NicknameManager] Token obtenido para guardar (primeros 20 caracteres):', token.substring(0, 20) + '...');
+
             const { getNetlifyBaseUrl } = await import('../utils/device');
             const baseUrl = getNetlifyBaseUrl();
+            console.log('[NicknameManager] Guardando nickname en:', `${baseUrl}/.netlify/functions/profile`);
 
             const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
                 method: 'PUT',
@@ -3381,7 +3391,7 @@ const syncLevelSelector = (store: GameStore) => {
 /**
  * Configura el manejo de deep links de autenticación para la app móvil.
  * CRÍTICO: Esto DEBE ejecutarse ANTES de cualquier login para interceptar callbacks.
- * Cuando la app recibe un callback de autenticación (com.hero.game://auth-callback?...),
+ * Cuando la app recibe un callback de autenticación (com.newhero.game://auth-callback?...),
  * procesa el token y completa el login en la APK (NO en web).
  */
 const setupAuthDeepLink = (store: GameStore) => {
@@ -3552,7 +3562,7 @@ const setupAuthDeepLink = (store: GameStore) => {
 
     // También verificar la URL actual en caso de que la app se haya abierto desde un deep link
     console.log('🔵🔵🔵 [setupAuthDeepLink] Verificando window.location.href:', window.location.href);
-    if (window.location.href.startsWith('com.hero.game://')) {
+    if (window.location.href.startsWith('com.newhero.game://')) {
         console.log('🔵🔵🔵 [setupAuthDeepLink] ✅ Deep link detectado en window.location!');
         handleAuthCallback(window.location.href);
     }

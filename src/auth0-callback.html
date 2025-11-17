@@ -50,13 +50,25 @@
             console.log('[Auth0 Callback] Protocol:', window.location.protocol);
             console.log('[Auth0 Callback] Hostname:', window.location.hostname);
             
-            // Detectar si viene de la app móvil (Capacitor)
+            // CRÍTICO: Solo usar deep links si realmente estamos en Capacitor (app nativa)
+            // NO usar deep links en navegador web, incluso si es Android
             const isCapacitor = typeof window.Capacitor !== 'undefined';
-            const isAndroid = /Android/i.test(navigator.userAgent);
-            const isLocalhostApp = window.location.hostname === 'localhost' && /Android/i.test(navigator.userAgent);
-            const isMobileApp = isCapacitor || isAndroid || isLocalhostApp;
+            // Verificar también si Capacitor está realmente disponible y funcionando
+            let isNativePlatform = false;
+            if (isCapacitor && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function') {
+                isNativePlatform = window.Capacitor.isNativePlatform();
+            } else {
+                isNativePlatform = isCapacitor;
+            }
             
-            console.log('[Auth0 Callback] isCapacitor:', isCapacitor, '| isAndroid:', isAndroid, '| isMobileApp:', isMobileApp);
+            // Solo considerar app móvil si realmente está en Capacitor
+            // NO usar detección por User Agent porque puede ser navegador web en Android
+            const isMobileApp = isNativePlatform;
+            
+            console.log('[Auth0 Callback] isCapacitor:', isCapacitor);
+            console.log('[Auth0 Callback] isNativePlatform:', isNativePlatform);
+            console.log('[Auth0 Callback] isMobileApp:', isMobileApp);
+            console.log('[Auth0 Callback] User Agent:', navigator.userAgent);
             
             // Obtener los parámetros de la URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -76,7 +88,19 @@
                 setTimeout(() => {
                     if (isMobileApp) {
                         console.log('[Auth0 Callback] 📱 Redirigiendo a app con error');
-                        window.location.href = 'com.hero.game://callback?error=' + encodeURIComponent(error);
+                        const errorDeepLink = 'com.newhero.game://callback?error=' + encodeURIComponent(error);
+                        const packageName = 'com.newhero.game';
+                        const errorIntentUrl = 'intent://callback?error=' + encodeURIComponent(error) +
+                            '#Intent;scheme=com.newhero.game;package=' + packageName + ';end';
+                        try {
+                            window.location.href = errorIntentUrl;
+                        } catch (e) {
+                            try {
+                                window.location.replace(errorDeepLink);
+                            } catch (e2) {
+                                window.location.href = errorDeepLink;
+                            }
+                        }
                     } else {
                         console.log('[Auth0 Callback] 🌐 Redirigiendo a página de inicio');
                         window.location.href = '/';
@@ -92,16 +116,44 @@
                 if (isMobileApp) {
                     console.log('[Auth0 Callback] 📱 DETECTADA APP MÓVIL - REDIRIGIENDO VIA DEEP LINK');
                     // Redirigir a la app con el code
-                    const callbackUrl = 'com.hero.game://callback?' + 
+                    const deepLinkUrl = 'com.newhero.game://callback?' + 
                         'code=' + encodeURIComponent(code) +
                         '&state=' + encodeURIComponent(state);
                     
-                    console.log('[Auth0 Callback] 🎯 URL de redirect:', callbackUrl);
+                    // CRÍTICO: Usar Android Intent URL para que el navegador pueda abrir la app
+                    // Formato: intent://[host]/[path]#Intent;scheme=[scheme];package=[package];end
+                    // Para parámetros de query, usamos el deep link completo en el scheme
+                    const packageName = 'com.newhero.game';
+                    // Construir el Intent URL con el deep link codificado
+                    const intentUrl = 'intent://callback?code=' + encodeURIComponent(code) +
+                        '&state=' + encodeURIComponent(state) +
+                        '#Intent;scheme=com.newhero.game;package=' + packageName + ';end';
+                    
+                    console.log('[Auth0 Callback] 🎯 Deep link URL:', deepLinkUrl);
+                    console.log('[Auth0 Callback] 🎯 Intent URL:', intentUrl);
                     console.log('[Auth0 Callback] Redirigiendo en 1 segundo...');
                     
                     setTimeout(() => {
                         console.log('[Auth0 Callback] 🚀 REDIRIGIENDO AHORA');
-                        window.location.href = callbackUrl;
+                        try {
+                            // Intentar usar Android Intent URL primero (funciona desde navegador)
+                            window.location.href = intentUrl;
+                        } catch (e) {
+                            console.warn('[Auth0 Callback] Intent URL falló, intentando deep link directo:', e);
+                            try {
+                                // Fallback: intentar deep link directo
+                                window.location.replace(deepLinkUrl);
+                            } catch (e2) {
+                                console.warn('[Auth0 Callback] location.replace falló, intentando con href:', e2);
+                                try {
+                                    window.location.href = deepLinkUrl;
+                                } catch (e3) {
+                                    console.error('[Auth0 Callback] ❌ Error al redirigir:', e3);
+                                    // Último recurso: intentar abrir en nueva ventana
+                                    window.open(deepLinkUrl, '_self');
+                                }
+                            }
+                        }
                     }, 1000);
                 } else {
                     console.log('[Auth0 Callback] 🌐 DETECTADA WEB - Redirigiendo a página principal para que SDK procese');
@@ -122,7 +174,19 @@
                 setTimeout(() => {
                     if (isMobileApp) {
                         console.log('[Auth0 Callback] 📱 Redirigiendo a app');
-                        window.location.href = 'com.hero.game://callback?error=no_code';
+                        const noCodeDeepLink = 'com.newhero.game://callback?error=no_code';
+                        const packageName = 'com.newhero.game';
+                        const noCodeIntentUrl = 'intent://callback?error=no_code' +
+                            '#Intent;scheme=com.newhero.game;package=' + packageName + ';end';
+                        try {
+                            window.location.href = noCodeIntentUrl;
+                        } catch (e) {
+                            try {
+                                window.location.replace(noCodeDeepLink);
+                            } catch (e2) {
+                                window.location.href = noCodeDeepLink;
+                            }
+                        }
                     } else {
                         console.log('[Auth0 Callback] 🌐 Redirigiendo a página de inicio');
                         window.location.href = '/';
