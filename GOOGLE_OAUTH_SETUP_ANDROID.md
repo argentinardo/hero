@@ -89,7 +89,7 @@ AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD
 3. Ve a **APIs & Services** → **Credentials**
 4. Haz clic en tu **OAuth 2.0 Client ID** (o créalo si no existe)
 5. En la sección **Android**, agrega:
-   - **Package name**: `com.hero.game` (de `capacitor.config.json`)
+   - **Package name**: `com.new.h.e.r.o.game` (de `capacitor.config.json`)
    - **SHA-1 certificate fingerprint**: Pega el SHA-1 que obtuviste
 6. Guarda los cambios
 

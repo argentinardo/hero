@@ -107,7 +107,7 @@ Usuario ve Google login
 Se loguea
   ↓
 ¿Web? → /callback
-¿APK? → com.hero.game://callback
+¿APK? → com.new.h.e.r.o.game://callback
   ↓
 ✅ USUARIO EN APP
 ✅ NICKNAME CARGADO

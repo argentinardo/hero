@@ -86,7 +86,7 @@
        │
        ▼
 ┌────────────────────────────┐
-│ com.hero.game://callback   │
+│ com.new.h.e.r.o.game://callback   │
 │ (o /callback en web)       │
 └──────┬─────────────────────┘
        │
@@ -179,7 +179,7 @@ https://newhero.netlify.app/callback
 https://newhero.netlify.app/auth0-callback.html
 http://localhost:3000/callback
 http://localhost:5173/callback
-com.hero.game://callback
+com.new.h.e.r.o.game://callback
 ```
 
 #### "Allowed Logout URLs"
@@ -232,7 +232,7 @@ Si quieres usar tokens para tu backend:
   "clientId": "TU_CLIENT_ID_DE_AUTH0",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 
@@ -255,7 +255,7 @@ Si quieres usar tokens para tu backend:
   "clientId": "TU_CLIENT_ID_DE_AUTH0",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 </script>
 
@@ -463,7 +463,7 @@ src/
 
 ### "En APK se queda en web"
 **Solución:**
-1. Verifica que `com.hero.game://callback` está en Allowed Callback URLs
+1. Verifica que `com.new.h.e.r.o.game://callback` está en Allowed Callback URLs
 2. Verifica que AndroidManifest.xml tiene el intent-filter correcto
 3. Verifica que setupAuthDeepLink() está activo
 

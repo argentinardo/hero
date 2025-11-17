@@ -30,7 +30,7 @@
     "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
     "audience": "https://hero-game.com/api",
     "redirectUri": "https://newhero.netlify.app/callback",
-    "redirectUriMobile": "com.hero.game://callback"
+    "redirectUriMobile": "com.new.h.e.r.o.game://callback"
   }
   ```
 
@@ -97,7 +97,7 @@ Auth0 abre Google Sign-In
   ↓
 Usuario se loguea
   ↓
-Redirige a /callback o com.hero.game://callback
+Redirige a /callback o com.new.h.e.r.o.game://callback
   ↓
 authManager.handleLoginSuccess()
   ↓

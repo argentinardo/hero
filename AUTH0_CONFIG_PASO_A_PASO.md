@@ -183,7 +183,7 @@ https://newhero.netlify.app/callback
 https://newhero.netlify.app/auth0-callback.html
 http://localhost:3000/callback
 http://localhost:5173/callback
-com.hero.game://callback
+com.new.h.e.r.o.game://callback
 ```
 
 ### 5.4 Guardarlo
@@ -264,7 +264,7 @@ COPIA ESTO EXACTO:
   "clientId": "TU_CLIENT_ID",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 
@@ -314,7 +314,7 @@ Después de completar todos los pasos, deberías tener:
   ☑ https://newhero.netlify.app/callback
   ☑ https://newhero.netlify.app/auth0-callback.html
   ☑ http://localhost:5173/callback
-  ☑ com.hero.game://callback
+  ☑ com.new.h.e.r.o.game://callback
 ☑ Logout URLs configuradas
 ☑ Web Origins configuradas
 ☑ CORS Origins configuradas
@@ -381,7 +381,7 @@ Pega aquí el contenido exacto de tu auth0-config.json:
   "clientId": "________________",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 

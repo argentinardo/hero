@@ -377,14 +377,12 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
     }
     
     try {
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        if (!user) {
-            return false;
-        }
-        
-        const token = await user.jwt();
+        // Obtener token de Auth0
+        const { initializeAuth0 } = await import('../components/ui');
+        const Auth0Manager = await initializeAuth0();
+        const token = await Auth0Manager.getAccessToken();
         if (!token) {
+            console.warn('[Campaigns] No se pudo obtener token de Auth0 para sincronizar');
             return false;
         }
         
@@ -392,7 +390,8 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
         // La campaña original siempre se sirve desde levels.json
         const campaignsToSync = store.campaigns.filter(c => c.id !== DEFAULT_CAMPAIGN_ID);
         
-        const baseUrl = (window as any).NETLIFY_BASE_URL || '';
+        const { getNetlifyBaseUrl } = await import('./device');
+        const baseUrl = getNetlifyBaseUrl();
         const res = await fetch(`${baseUrl}/.netlify/functions/campaigns`, {
             method: 'POST',
             headers: {
@@ -404,9 +403,15 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
             })
         });
         
+        if (res.ok) {
+            console.log('[Campaigns] ✅ Campañas sincronizadas con el servidor');
+        } else {
+            console.error('[Campaigns] Error sincronizando campañas:', res.status, res.statusText);
+        }
+        
         return res.ok;
     } catch (error) {
-        console.error('Error sincronizando campañas:', error);
+        console.error('[Campaigns] Error sincronizando campañas:', error);
         return false;
     }
 };
@@ -423,18 +428,17 @@ export const loadCampaignsFromServer = async (store: GameStore): Promise<boolean
     }
     
     try {
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        if (!user) {
-            return false;
-        }
-        
-        const token = await user.jwt();
+        // Obtener token de Auth0
+        const { initializeAuth0 } = await import('../components/ui');
+        const Auth0Manager = await initializeAuth0();
+        const token = await Auth0Manager.getAccessToken();
         if (!token) {
+            console.warn('[Campaigns] No se pudo obtener token de Auth0 para cargar');
             return false;
         }
         
-        const baseUrl = (window as any).NETLIFY_BASE_URL || '';
+        const { getNetlifyBaseUrl } = await import('./device');
+        const baseUrl = getNetlifyBaseUrl();
         const res = await fetch(`${baseUrl}/.netlify/functions/campaigns`, {
             method: 'GET',
             headers: {

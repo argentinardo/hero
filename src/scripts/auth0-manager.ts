@@ -57,7 +57,15 @@ export const Auth0Manager = {
             // El SDK de Auth0 procesa automáticamente los redirects cuando detecta code y state en la URL
             try {
                 // Primero verificar si hay parámetros de callback en la URL (web)
-                const urlParams = new URLSearchParams(window.location.search);
+                // CRÍTICO: Limpiar la URL si tiene doble signo de interrogación (??)
+                let search = window.location.search;
+                if (search.startsWith('??')) {
+                    console.log('[Auth0] ⚠️ URL tiene doble signo de interrogación, corrigiendo...');
+                    search = '?' + search.substring(2);
+                    window.history.replaceState({}, document.title, window.location.pathname + search);
+                }
+                
+                const urlParams = new URLSearchParams(search);
                 const code = urlParams.get('code');
                 const state = urlParams.get('state');
                 
@@ -78,6 +86,34 @@ export const Auth0Manager = {
                             if (user) {
                                 console.log('[Auth0] ✅ Usuario autenticado después del callback:', user.email);
                                 localStorage.setItem('isLoggedIn', 'true');
+                                
+                                // CRÍTICO: Guardar estado del login para que la UI lo pueda verificar después
+                                localStorage.setItem('auth0:login:pending', JSON.stringify({
+                                    email: user.email || '',
+                                    name: user.name,
+                                    picture: user.picture,
+                                    sub: user.sub || '',
+                                    timestamp: Date.now()
+                                }));
+                                
+                                // Disparar evento personalizado (por si el listener ya está configurado)
+                                const authEvent = new CustomEvent('auth0:login', {
+                                    detail: {
+                                        user: {
+                                            email: user.email || '',
+                                            name: user.name,
+                                            picture: user.picture,
+                                            sub: user.sub || ''
+                                        }
+                                    }
+                                });
+                                window.dispatchEvent(authEvent);
+                                
+                                // También intentar disparar después de un pequeño delay por si el listener aún no está listo
+                                setTimeout(() => {
+                                    window.dispatchEvent(authEvent);
+                                }, 100);
+                                
                                 return;
                             }
                         }
@@ -211,12 +247,6 @@ export const Auth0Manager = {
             throw new Error('Auth0 client no inicializado');
         }
         
-        // CRÍTICO: El SDK de Auth0 SPA JS maneja PKCE automáticamente
-        // Necesitamos simular que la URL está en window.location para que el SDK la procese
-        // Guardar la URL original
-        const originalUrl = window.location.href;
-        const originalSearch = window.location.search;
-        
         try {
             // Extraer los parámetros de la URL del deep link
             const urlObj = new URL(url);
@@ -236,134 +266,48 @@ export const Auth0Manager = {
             
             console.log('[Auth0] ✅ Code y state encontrados');
             
-            // Construir una URL temporal con los parámetros para que el SDK la procese
-            // El SDK lee de window.location, así que necesitamos simularlo
-            const tempUrl = new URL(window.location.origin + window.location.pathname);
-            tempUrl.searchParams.set('code', code);
-            tempUrl.searchParams.set('state', state);
+            // SOLUCIÓN SIMPLE: Usar el SDK directamente simulando que window.location tiene los parámetros
+            // El SDK maneja PKCE automáticamente porque tiene el code_verifier en su estado interno
+            const originalHref = window.location.href;
+            const tempUrl = new URL(url);
+            const tempSearch = tempUrl.search;
             
-            // Usar el método del SDK que maneja PKCE automáticamente
-            // Nota: El SDK de Auth0 SPA JS no acepta URL como parámetro,
-            // pero podemos usar el método interno o procesar manualmente con PKCE
+            // Simular que window.location tiene los parámetros del callback
+            const newUrl = window.location.origin + window.location.pathname + tempSearch;
+            window.history.replaceState({}, '', newUrl);
             
-            // Intentar usar el método del SDK primero
             try {
-                // El SDK espera que window.location tenga los parámetros
-                // Como no podemos cambiar window.location directamente,
-                // usamos el método manual pero necesitamos el code_verifier del SDK
+                // El SDK procesará el callback automáticamente con PKCE
+                console.log('[Auth0] 🔄 Procesando callback con SDK...');
+                const result = await this.client.handleRedirectCallback();
+                console.log('[Auth0] ✅ SDK procesó el callback correctamente');
                 
-                // El SDK almacena el code_verifier en localStorage con una clave específica
-                // Buscar el code_verifier en el cache del SDK
-                if (!this.config) {
-                    throw new Error('Configuración no disponible');
-                }
+                // Restaurar URL original
+                window.history.replaceState({}, '', originalHref);
                 
-                // Buscar code_verifier en localStorage - el SDK puede almacenarlo de varias formas
-                let codeVerifier: string | null = null;
-                
-                // Intentar diferentes formatos de clave
-                const possibleKeys = [
-                    `@@auth0spajs@@::${this.config.clientId}::${this.config.domain}::code_verifier`,
-                    `@@auth0spajs@@::${this.config.clientId}::${this.config.domain}::@@code_verifier@@`,
-                    `auth0spajs::${this.config.clientId}::${this.config.domain}::code_verifier`,
-                ];
-                
-                for (const key of possibleKeys) {
-                    codeVerifier = localStorage.getItem(key);
-                    if (codeVerifier) {
-                        console.log(`[Auth0] ✅ Code verifier encontrado en clave: ${key}`);
-                        break;
-                    }
-                }
-                
-                // Si no se encuentra con las claves conocidas, buscar en todos los items de localStorage
-                if (!codeVerifier) {
-                    console.log('[Auth0] 🔍 Buscando code_verifier en todos los items de localStorage...');
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
-                        if (key && (key.includes('code_verifier') || key.includes('codeVerifier'))) {
-                            const value = localStorage.getItem(key);
-                            console.log(`[Auth0] 🔍 Encontrado posible code_verifier en clave: ${key}`, value ? 'valor presente' : 'sin valor');
-                            if (value && value.length > 20) { // code_verifier debe ser largo
-                                codeVerifier = value;
-                                console.log(`[Auth0] ✅ Code verifier encontrado en: ${key}`);
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                if (codeVerifier) {
-                    console.log('[Auth0] ✅ Code verifier encontrado, usando PKCE');
-                    return await this.handleRedirectCallbackWithPKCE(url, codeVerifier);
+                // Obtener usuario después del callback
+                const user = await this.client.getUser();
+                if (user) {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    return {
+                        email: user.email || '',
+                        name: user.name,
+                        picture: user.picture,
+                        sub: user.sub || ''
+                    };
                 } else {
-                    console.warn('[Auth0] ⚠️ No se encontró code_verifier');
-                    console.warn('[Auth0] 📋 Items en localStorage que contienen auth0:', 
-                        Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
-                            .filter(key => key && key.includes('auth0'))
-                            .map(key => `${key}: ${localStorage.getItem(key!)?.substring(0, 50)}...`)
-                    );
-                    
-                    // ÚLTIMO INTENTO: Intentar usar el método handleRedirectCallback del SDK
-                    // El SDK puede tener el code_verifier en su estado interno
-                    console.log('[Auth0] 🔄 Intentando usar handleRedirectCallback del SDK directamente...');
-                    try {
-                        // Construir una URL temporal en window.location para que el SDK la procese
-                        // Guardar la URL original
-                        const originalHref = window.location.href;
-                        const originalSearch = window.location.search;
-                        
-                        // Crear una URL temporal con los parámetros del deep link
-                        const tempUrl = new URL(url);
-                        const tempSearch = tempUrl.search;
-                        
-                        // Usar history.replaceState para simular que window.location tiene los parámetros
-                        const newUrl = window.location.origin + window.location.pathname + tempSearch;
-                        window.history.replaceState({}, '', newUrl);
-                        
-                        try {
-                            // Intentar que el SDK procese el callback
-                            const result = await this.client!.handleRedirectCallback();
-                            console.log('[Auth0] ✅ SDK procesó el callback correctamente:', result);
-                            
-                            // Restaurar URL original
-                            window.history.replaceState({}, '', originalHref);
-                            
-                            // Obtener usuario después del callback
-                            const user = await this.client!.getUser();
-                            if (user) {
-                                localStorage.setItem('isLoggedIn', 'true');
-                                return {
-                                    email: user.email || '',
-                                    name: user.name,
-                                    picture: user.picture,
-                                    sub: user.sub || ''
-                                };
-                            } else {
-                                console.warn('[Auth0] ⚠️ SDK procesó callback pero no se obtuvo usuario');
-                                return null;
-                            }
-                        } catch (sdkCallbackError) {
-                            // Restaurar URL original en caso de error
-                            window.history.replaceState({}, '', originalHref);
-                            throw sdkCallbackError;
-                        }
-                    } catch (sdkMethodError) {
-                        console.error('[Auth0] ❌ Error usando método del SDK:', sdkMethodError);
-                        throw new Error('code_verifier no encontrado y SDK no pudo procesar el callback');
-                    }
+                    console.warn('[Auth0] ⚠️ SDK procesó callback pero no se obtuvo usuario');
+                    return null;
                 }
             } catch (sdkError) {
-                console.warn('[Auth0] ⚠️ Error procesando callback, intentando método manual:', sdkError);
-                // No intentar método manual sin PKCE porque fallará
+                // Restaurar URL original en caso de error
+                window.history.replaceState({}, '', originalHref);
+                console.error('[Auth0] ❌ Error procesando callback con SDK:', sdkError);
                 throw sdkError;
             }
         } catch (error) {
             console.error('[Auth0] ❌ Error general en handleRedirectCallback:', error);
             throw error;
-        } finally {
-            // Restaurar la URL original (aunque no podemos cambiar window.location realmente)
-            // Esto es solo para limpieza conceptual
         }
     },
     
@@ -559,6 +503,31 @@ export const Auth0Manager = {
         } catch (error) {
             console.error('[Auth0] Error obteniendo usuario:', error);
             return null;
+        }
+    },
+    
+    async getAccessToken(): Promise<string | null> {
+        if (!this.client) return null;
+        
+        try {
+            // Intentar obtener el token del SDK
+            const token = await this.client.getTokenSilently();
+            if (token) {
+                return token;
+            }
+            
+            // Fallback: intentar obtener del localStorage
+            const storedToken = localStorage.getItem('auth0_access_token');
+            if (storedToken) {
+                return storedToken;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('[Auth0] Error obteniendo access token:', error);
+            // Fallback: intentar obtener del localStorage
+            const storedToken = localStorage.getItem('auth0_access_token');
+            return storedToken;
         }
     }
 };

@@ -696,6 +696,15 @@ const registerServiceWorker = async (): Promise<void> => {
 };
 
 const bootstrap = async (): Promise<void> => {
+    // CRÍTICO: Inicializar Auth0 PRIMERO para procesar callbacks temprano
+    try {
+        const { initializeAuth0 } = await import('./components/ui');
+        await initializeAuth0();
+        console.log('[Bootstrap] ✅ Auth0 inicializado temprano');
+    } catch (error) {
+        console.warn('[Bootstrap] ⚠️ Error inicializando Auth0 (no crítico):', error);
+    }
+    
     // Inicializar StatusBar primero para que ocupe todo el espacio (solo en Capacitor)
     await initStatusBar();
     

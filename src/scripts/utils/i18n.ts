@@ -145,6 +145,7 @@ export interface Translations {
         authentication: string;
         loginMessage: string;
         login: string;
+        loginWithGoogle: string;
         signup: string;
         createAccount: string;
         continueWithGoogle: string;
@@ -376,8 +377,9 @@ const translations: Record<Language, Translations> = {
         },
         auth: {
             authentication: 'Autenticación',
-            loginMessage: 'Para poder editar niveles, inicia sesión o crea una cuenta.',
+            loginMessage: 'Para poder editar niveles, inicia sesión con tu cuenta de Google.',
             login: 'Entrar',
+            loginWithGoogle: 'Entrar con Google',
             signup: 'Crear cuenta',
             createAccount: 'Crear cuenta',
             continueWithGoogle: 'Continuar con Google',
@@ -602,8 +604,9 @@ const translations: Record<Language, Translations> = {
         },
         auth: {
             authentication: 'Authentication',
-            loginMessage: 'To edit levels, please login or create an account.',
+            loginMessage: 'To edit levels, please login with your Google account.',
             login: 'Login',
+            loginWithGoogle: 'Sign in with Google',
             signup: 'Sign Up',
             createAccount: 'Create Account',
             continueWithGoogle: 'Continue with Google',
@@ -828,8 +831,9 @@ const translations: Record<Language, Translations> = {
         },
         auth: {
             authentication: 'Autenticació',
-            loginMessage: 'Per poder editar nivells, inicia sessió o crea un compte.',
+            loginMessage: 'Per poder editar nivells, inicia sessió amb el teu compte de Google.',
             login: 'Entrar',
+            loginWithGoogle: 'Entrar amb Google',
             signup: 'Crear compte',
             createAccount: 'Crear compte',
             continueWithGoogle: 'Continuar amb Google',

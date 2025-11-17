@@ -27,7 +27,7 @@ call npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
 
 REM Inicializar Capacitor
 echo ⚙️  Inicializando Capacitor...
-call npx cap init "NEW H.E.R.O." "com.hero.game" --web-dir=dist
+call npx cap init "NEW H.E.R.O." "com.new.h.e.r.o.game" --web-dir=dist
 
 REM Build inicial
 echo 🔨 Haciendo build inicial...

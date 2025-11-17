@@ -122,7 +122,7 @@ Pega ESTO exactamente:
   "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 
@@ -151,7 +151,7 @@ Contenido de auth0-config.json:
   "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 

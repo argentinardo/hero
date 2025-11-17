@@ -11,7 +11,7 @@
    https://newhero.netlify.app/callback
    https://newhero.netlify.app/auth0-callback.html
    http://localhost:5173/callback
-   com.hero.game://callback
+   com.new.h.e.r.o.game://callback
    ```
 5. **Copia tu Domain y Client ID**
 6. **Crea `src/auth0-config.json`:**
@@ -21,7 +21,7 @@
      "clientId": "TU_CLIENT_ID",
      "audience": "https://hero-game.com/api",
      "redirectUri": "https://newhero.netlify.app/callback",
-     "redirectUriMobile": "com.hero.game://callback"
+     "redirectUriMobile": "com.new.h.e.r.o.game://callback"
    }
    ```
 7. **Listo, avísame y actualizo el resto del código**

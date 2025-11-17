@@ -17,7 +17,7 @@ https://newhero.netlify.app/callback
 https://newhero.netlify.app/auth0-callback.html
 http://localhost:3000/callback
 http://localhost:5173/callback
-com.hero.game://callback
+com.new.h.e.r.o.game://callback
 
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -70,7 +70,7 @@ http://localhost:5173
 │ │ https://newhero.netlify.app/auth0-callback.html                  │  │
 │ │ http://localhost:3000/callback                                   │  │
 │ │ http://localhost:5173/callback                                   │  │
-│ │ com.hero.game://callback                                         │  │
+│ │ com.new.h.e.r.o.game://callback                                         │  │
 │ └───────────────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ ALLOWED LOGOUT URLs:       (3 URLs)                                    │
@@ -108,7 +108,7 @@ http://localhost:5173
 🏠 http://localhost:5173
    └─ Para desarrollo en tu computadora (puerto 5173)
 
-📱 com.hero.game://callback
+📱 com.new.h.e.r.o.game://callback
    └─ Deep link para la app móvil (APK)
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -120,7 +120,7 @@ http://localhost:5173
 ✓ Algunos NO tienen /callback
 ✓ Algunos son https
 ✓ Algunos son http
-✓ UNO es un deep link (com.hero.game://)
+✓ UNO es un deep link (com.new.h.e.r.o.game://)
 
 NO CAMBIES NADA - COPIA EXACTAMENTE
 

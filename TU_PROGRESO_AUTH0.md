@@ -111,7 +111,7 @@ https://newhero.netlify.app/callback
 https://newhero.netlify.app/auth0-callback.html
 http://localhost:3000/callback
 http://localhost:5173/callback
-com.hero.game://callback
+com.new.h.e.r.o.game://callback
 ```
 
 #### Allowed Logout URLs
@@ -156,7 +156,7 @@ Cuando termines TODO lo anterior:
   "clientId": "09DWQqEc0FUTvyuMPWRfnOoEi3YBwhyM",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 

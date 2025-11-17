@@ -1775,12 +1775,13 @@ const nicknameManager = {
             const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
             if (!isLoggedIn) return 'Usuario';
 
-            const ni: any = (window as any).netlifyIdentity;
-            const user = ni?.currentUser?.();
-            if (!user) return 'Usuario';
-
-            const token = await user.jwt();
-            if (!token) return 'Usuario';
+            // Obtener token de Auth0
+            const Auth0Manager = await initializeAuth0();
+            const token = await Auth0Manager.getAccessToken();
+            if (!token) {
+                console.warn('[NicknameManager] No se pudo obtener token de Auth0');
+                return 'Usuario';
+            }
 
             const { getNetlifyBaseUrl } = await import('../utils/device');
             const baseUrl = getNetlifyBaseUrl();
@@ -1793,7 +1794,10 @@ const nicknameManager = {
                 }
             });
 
-            if (!res.ok) return 'Usuario';
+            if (!res.ok) {
+                console.warn('[NicknameManager] Error obteniendo perfil:', res.status, res.statusText);
+                return 'Usuario';
+            }
 
             const profile = await res.json();
             console.log('[NicknameManager] Perfil cargado de BD:', profile.data?.nickname);
@@ -1806,12 +1810,13 @@ const nicknameManager = {
 
     async saveToDB(nickname: string): Promise<boolean> {
         try {
-            const ni: any = (window as any).netlifyIdentity;
-            const user = ni?.currentUser?.();
-            if (!user) return false;
-
-            const token = await user.jwt();
-            if (!token) return false;
+            // Obtener token de Auth0
+            const Auth0Manager = await initializeAuth0();
+            const token = await Auth0Manager.getAccessToken();
+            if (!token) {
+                console.warn('[NicknameManager] No se pudo obtener token de Auth0 para guardar');
+                return false;
+            }
 
             const { getNetlifyBaseUrl } = await import('../utils/device');
             const baseUrl = getNetlifyBaseUrl();
@@ -1828,6 +1833,8 @@ const nicknameManager = {
             if (res.ok) {
                 console.log('[NicknameManager] ✅ Nickname guardado en BD:', nickname);
                 return true;
+            } else {
+                console.error('[NicknameManager] Error guardando nickname:', res.status, res.statusText);
             }
         } catch (error) {
             console.error('[NicknameManager] Error guardando en BD:', error);
@@ -1867,7 +1874,7 @@ const nicknameManager = {
  * - Sincroniza el nickname
  */
 const authManager = {
-    async handleLoginSuccess(user: any): Promise<void> {
+    async handleLoginSuccess(user: any, store?: GameStore): Promise<void> {
         try {
             console.log('[AuthManager] ✅ Login exitoso para:', user?.email);
             
@@ -1878,7 +1885,22 @@ const authManager = {
             // 2. Cargar nickname desde BD
             await nicknameManager.initialize();
             
-            // 3. Cargar "Legacy" como campaña por defecto
+            // 3. Cargar campañas desde el servidor (si hay store disponible)
+            if (store) {
+                try {
+                    const { loadCampaignsFromServer } = await import('../utils/campaigns');
+                    const loaded = await loadCampaignsFromServer(store);
+                    if (loaded) {
+                        console.log('[AuthManager] ✅ Campañas cargadas desde el servidor');
+                    } else {
+                        console.log('[AuthManager] ℹ️ No se encontraron campañas en el servidor (primera vez)');
+                    }
+                } catch (campaignError) {
+                    console.error('[AuthManager] Error cargando campañas:', campaignError);
+                }
+            }
+            
+            // 4. Cargar "Legacy" como campaña por defecto
             console.log('[AuthManager] 📋 Configurando campaña "Legacy" por defecto...');
             localStorage.setItem('selectedCampaign', 'legacy');
             localStorage.setItem('selectedCampaignName', 'Legacy');
@@ -1889,18 +1911,37 @@ const authManager = {
         }
     },
 
-    async handleLogout(): Promise<void> {
+    async handleLogout(store?: GameStore): Promise<void> {
         try {
             console.log('[AuthManager] 🚪 Logout ejecutado');
+            
+            // CRÍTICO: Si estamos en el editor, cerrarlo y volver al menú
+            if (store && store.appState === 'editing') {
+                console.log('[AuthManager] Cerrando editor y volviendo al menú...');
+                showMenu(store);
+            }
             
             // Limpiar datos de usuario
             localStorage.setItem('isLoggedIn', 'false');
             localStorage.removeItem('currentUserEmail');
+            localStorage.removeItem('username');
+            localStorage.removeItem('userEmail');
             
             // Resetear nickname en UI
             const userPanelNickname = document.getElementById('user-panel-nickname');
             if (userPanelNickname) {
                 userPanelNickname.textContent = 'USER';
+            }
+            
+            // Actualizar botón del editor
+            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+            if (levelEditorBtn) {
+                levelEditorBtn.textContent = t('menu.login');
+            }
+            
+            // Actualizar hamburger button
+            if (store) {
+                updateHamburgerButtonLabel(store);
             }
             
             console.log('[AuthManager] ✅ Logout completado');
@@ -1938,7 +1979,27 @@ const loadUserNicknameFromDB = async (): Promise<void> => {
     await nicknameManager.initialize();
 };
 
-export const startEditor = async (store: GameStore, preserveCurrentLevel: boolean = false) => {
+export const startEditor = async (store: GameStore, preserveCurrentLevel: boolean = false, skipAuthCheck: boolean = false) => {
+    // CRÍTICO: Verificar autenticación antes de permitir acceso al editor
+    if (!skipAuthCheck) {
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) {
+            console.warn('[startEditor] ❌ Acceso denegado: usuario no autenticado');
+            // Mostrar modal de autenticación
+            const modal = document.getElementById('auth-choice-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                console.log('[startEditor] Modal de autenticación mostrado');
+            }
+            // Volver al menú si estamos en otro estado
+            if (store.appState !== 'menu') {
+                showMenu(store);
+            }
+            return;
+        }
+    }
+    
     // Cargar nickname desde la base de datos al entrar al editor
     await loadUserNicknameFromDB();
     
@@ -3392,7 +3453,7 @@ const setupAuthDeepLink = (store: GameStore) => {
                             localStorage.setItem('userEmail', email);
                             
                             // Usar authManager para manejar login completo
-                            await authManager.handleLoginSuccess(user);
+                            await authManager.handleLoginSuccess(user, store);
                             
                             // Actualizar UI
                             const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
@@ -3404,9 +3465,9 @@ const setupAuthDeepLink = (store: GameStore) => {
                             // Cargar niveles del usuario
                             await tryLoadUserLevels(store);
                             
-                            // Si estamos en el menú, iniciar el editor
+                            // Si estamos en el menú, iniciar el editor (skipAuthCheck porque ya estamos autenticados)
                             if (store.appState === 'menu') {
-                                startEditor(store);
+                                startEditor(store, false, true);
                             }
                         } else {
                             console.error('[setupAuthDeepLink] ❌ Callback procesado pero no se obtuvo usuario');
@@ -3443,7 +3504,7 @@ const setupAuthDeepLink = (store: GameStore) => {
                                             localStorage.setItem('userEmail', email);
                                             
                                             // Usar authManager para manejar login completo
-                                            await authManager.handleLoginSuccess(user);
+                                            await authManager.handleLoginSuccess(user, store);
                                             
                                             // Actualizar UI
                                             const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
@@ -3554,7 +3615,7 @@ import Auth0Manager from '../auth0-manager';
 let auth0ManagerInstance: any = null;
 let auth0InitPromise: Promise<any> | null = null;
 
-async function initializeAuth0() {
+export async function initializeAuth0() {
     if (auth0InitPromise) {
         return auth0InitPromise;
     }
@@ -3609,6 +3670,71 @@ export const setupUI = (store: GameStore) => {
     console.log('🔵🔵🔵 [setupUI] Llamando a setupAuthDeepLink...');
     setupAuthDeepLink(store);
     console.log('🔵🔵🔵 [setupUI] setupAuthDeepLink completado.');
+    
+    // CRÍTICO: Función para procesar login (reutilizable)
+    const processAuth0Login = async (user: any) => {
+        if (!user || !user.email) return;
+        
+        console.log('[setupUI] ✅ Procesando login:', user.email);
+        const email = user.email.toLowerCase();
+        const username = email.split('@')[0];
+        
+        localStorage.setItem('username', username);
+        localStorage.setItem('userEmail', email);
+        
+        // Usar authManager para manejar login completo
+        await authManager.handleLoginSuccess(user, store);
+        
+        // Actualizar UI
+        const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
+        if (levelEditorBtn) {
+            levelEditorBtn.textContent = 'INGRESAR';
+        }
+        updateHamburgerButtonLabel(store);
+        
+        // Cargar niveles del usuario
+        await tryLoadUserLevels(store);
+        
+        // Si estamos en el menú, iniciar el editor (skipAuthCheck porque ya estamos autenticados)
+        if (store.appState === 'menu') {
+            startEditor(store, false, true);
+        }
+    };
+    
+    // CRÍTICO: Listener para eventos de login de Auth0 (web)
+    window.addEventListener('auth0:login', async (event: any) => {
+        console.log('[setupUI] 🔔 Evento auth0:login recibido:', event.detail);
+        const user = event.detail?.user;
+        if (user) {
+            await processAuth0Login(user);
+            // Limpiar el estado pendiente después de procesar
+            localStorage.removeItem('auth0:login:pending');
+        }
+    });
+    
+    // CRÍTICO: Verificar si hay un login pendiente (por si el evento se perdió)
+    const checkPendingLogin = async () => {
+        try {
+            const pendingLogin = localStorage.getItem('auth0:login:pending');
+            if (pendingLogin) {
+                const loginData = JSON.parse(pendingLogin);
+                // Solo procesar si tiene menos de 5 segundos (evitar procesar logins antiguos)
+                if (Date.now() - loginData.timestamp < 5000) {
+                    console.log('[setupUI] 🔍 Login pendiente detectado, procesando...');
+                    await processAuth0Login(loginData);
+                    localStorage.removeItem('auth0:login:pending');
+                } else {
+                    // Limpiar login antiguo
+                    localStorage.removeItem('auth0:login:pending');
+                }
+            }
+        } catch (error) {
+            console.error('[setupUI] Error verificando login pendiente:', error);
+        }
+    };
+    
+    // Verificar login pendiente después de un pequeño delay
+    setTimeout(checkPendingLogin, 500);
     
     preloadAssets(store, () => {
         populatePalette(store);
@@ -3671,29 +3797,13 @@ export const tryLoadUserLevels = async (store: GameStore) => {
     }
 
     try {
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        if (!user) {
-            console.warn('Usuario no encontrado en Netlify Identity');
-            // Aún así, cargar campañas del servidor si existen
-            const { loadCampaignsFromServer } = await import('../utils/campaigns');
-            await loadCampaignsFromServer(store);
+        // Verificar si está logueado con Auth0
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) {
+            console.warn('[tryLoadUserLevels] Usuario no logueado');
             return;
         }
         
-        let token: string | null = null;
-        try {
-            token = await user.jwt();
-        } catch (error) {
-            console.error('Error obteniendo token:', error);
-            return;
-        }
-
-        if (!token) {
-            console.warn('No se pudo obtener el token JWT');
-            return;
-        }
-
         // IMPORTANTE: Los niveles originales siempre vienen de levels.json
         // Solo cargar niveles personalizados adicionales de la BD
         // Los niveles originales en store.initialLevels NO deben ser sobrescritos
@@ -3709,6 +3819,14 @@ export const tryLoadUserLevels = async (store: GameStore) => {
         let loadedFromDB = false;
         
         try {
+            // Obtener token de Auth0
+            const Auth0Manager = await initializeAuth0();
+            const token = await Auth0Manager.getAccessToken();
+            if (!token) {
+                console.warn('[tryLoadUserLevels] No se pudo obtener token de Auth0');
+                return;
+            }
+            
             const res = await fetch(`${baseUrl}/.netlify/functions/levels`, {
                 method: 'GET',
                 headers: {
@@ -4648,8 +4766,37 @@ const updateAuthModalTexts = () => {
     const authCancelBtn = document.getElementById('auth-cancel-btn');
     
     if (authModalTitle) authModalTitle.textContent = t('auth.authentication');
-    if (authModalMessage) authModalMessage.textContent = t('auth.loginMessage');
-    if (authLoginBtn) authLoginBtn.textContent = t('auth.login');
+    if (authModalMessage) authModalMessage.textContent = t('auth.loginMessage') || 'Para poder editar niveles, inicia sesión con tu cuenta de Google.';
+    
+    // Actualizar botón de login preservando el logo de Google
+    if (authLoginBtn) {
+        // Asegurar que el botón tenga el estilo correcto y el logo
+        authLoginBtn.style.display = 'flex';
+        authLoginBtn.style.alignItems = 'center';
+        authLoginBtn.style.justifyContent = 'center';
+        authLoginBtn.style.gap = '8px';
+        
+        // Verificar si ya tiene el SVG del logo
+        const existingSvg = authLoginBtn.querySelector('svg');
+        const span = authLoginBtn.querySelector('span');
+        
+        if (!existingSvg) {
+            // No hay logo, crear el botón completo con logo y texto
+            authLoginBtn.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span>${t('auth.loginWithGoogle') || 'Entrar con Google'}</span>
+            `;
+        } else if (span) {
+            // Ya tiene logo, solo actualizar el texto
+            span.textContent = t('auth.loginWithGoogle') || 'Entrar con Google';
+        }
+    }
+    
     if (authSignupBtn) authSignupBtn.textContent = t('auth.createAccount');
     if (authCancelBtn) authCancelBtn.textContent = t('modals.cancel');
 };
@@ -5255,11 +5402,11 @@ const setupMenuButtons = (store: GameStore) => {
                 localStorage.setItem('userEmail', email);
                 
                 // Usar authManager para manejar login completo
-                await authManager.handleLoginSuccess(user);
+                await authManager.handleLoginSuccess(user, store);
                 
                 updateEditorButton();
                 updateUserArea();
-                startEditor(store);
+                startEditor(store, false, true); // skipAuthCheck porque ya estamos autenticados
             } else {
                 console.log('[authLoginBtn] ⏳ Login con redirect iniciado. Esperando callback de Auth0...');            }
         } catch (error) {
@@ -5284,11 +5431,11 @@ const setupMenuButtons = (store: GameStore) => {
                 localStorage.setItem('userEmail', email);
                 
                 // Usar authManager para manejar login completo
-                await authManager.handleLoginSuccess(user);
+                await authManager.handleLoginSuccess(user, store);
                 
                 updateEditorButton();
                 updateUserArea();
-                startEditor(store);
+                startEditor(store, false, true); // skipAuthCheck porque ya estamos autenticados
             } else {
                 console.error('[authSignupBtn] ❌ No se pudo autenticar con Google');
             }
@@ -5309,16 +5456,15 @@ const setupMenuButtons = (store: GameStore) => {
                 console.error('[logoutBtn] Error cerrando sesión con Auth0:', error);
             }
             
-            // Usar authManager para limpiar
-            await authManager.handleLogout();
+            // Usar authManager para limpiar (pasar store para cerrar editor si está abierto)
+            await authManager.handleLogout(store);
             
-            // Limpiar localStorage
-            localStorage.removeItem('username');
-            localStorage.removeItem('userEmail');
-            clearLegacyPasswordOverride();
+            // Actualizar UI
             updateEditorButton();
             updateUserArea();
-            showMenu(store);
+            
+            // Limpiar override de password legacy
+            clearLegacyPasswordOverride();
         });
     });
     
@@ -5679,7 +5825,7 @@ const setupMenuButtons = (store: GameStore) => {
         closePauseMenu();
         showMenu(store);
     });
-    pauseDynamicBtn?.addEventListener('click', () => {
+    pauseDynamicBtn?.addEventListener('click', async () => {
         const primary = resolvePrimaryAction(store);
         if (primary.action === 'login') {
             closePauseMenu();
@@ -5687,20 +5833,36 @@ const setupMenuButtons = (store: GameStore) => {
             authModal?.classList.remove('hidden');
         } else if (primary.action === 'editor') {
             closePauseMenu();
+            // Verificar autenticación antes de abrir el editor
+            const { isLoggedIn } = await checkLoginStatus();
+            if (!isLoggedIn) {
+                const authModal = document.getElementById('auth-choice-modal');
+                authModal?.classList.remove('hidden');
+                return;
+            }
             startEditor(store, true);
         } else {
+            // Logout
             closePauseMenu(false);
-            openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), () => {
-                const ni: any = (window as any).netlifyIdentity;
-                if (ni && ni.currentUser()) {
-                    ni.logout();
+            openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), async () => {
+                try {
+                    // Cerrar sesión en Auth0
+                    const { Auth0Manager } = await import('../auth0-manager');
+                    await Auth0Manager.logout();
+                } catch (error) {
+                    console.error('[pauseDynamicBtn] Error cerrando sesión con Auth0:', error);
                 }
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('username');
-                localStorage.removeItem('userEmail');
-                clearLegacyPasswordOverride();
+                
+                // Usar authManager para limpiar (pasar store para cerrar editor si está abierto)
+                await authManager.handleLogout(store);
+                
+                // Actualizar UI
                 updateEditorButton();
                 updateUserArea();
+                
+                // Limpiar override de password legacy
+                clearLegacyPasswordOverride();
+                
                 showMenu(store);
                 resumeGame(store, 'pause-menu');
             }, () => {
@@ -7182,29 +7344,22 @@ const setupLevelData = (store: GameStore) => {
         if (exitTitleEl) exitTitleEl.textContent = t('modals.logoutConfirm');
         if (exitTextEl) exitTextEl.textContent = t('modals.logoutMessage');
         exitModalEl.classList.remove('hidden');
-        const confirmHandler = () => {
-            // Cerrar sesión en Netlify Identity si está disponible
-            const ni: any = (window as any).netlifyIdentity;
-            if (ni && ni.currentUser()) {
-                ni.logout();
+        const confirmHandler = async () => {
+            try {
+                // Cerrar sesión en Auth0
+                const { Auth0Manager } = await import('../auth0-manager');
+                await Auth0Manager.logout();
+            } catch (error) {
+                console.error('[logoutBtnMobile] Error cerrando sesión con Auth0:', error);
             }
-            // Limpiar localStorage
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('username');
-            localStorage.removeItem('userEmail');
+            
+            // Usar authManager para limpiar (pasar store para cerrar editor si está abierto)
+            await authManager.handleLogout(store);
+            
+            // Limpiar override de password legacy
             clearLegacyPasswordOverride();
-            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-            if (levelEditorBtn) {
-                levelEditorBtn.textContent = t('menu.login');
-            }
-            updateHamburgerButtonLabel(store);
-            const updateUserArea = () => {
-                const userAreaMobile = document.getElementById('user-area-mobile');
-                if (userAreaMobile) {
-                    userAreaMobile.style.display = 'none';
-                }
-            };
-            updateUserArea();
+            
+            // showMenu ya actualiza la UI, incluyendo el botón del editor
             showMenu(store);
             exitModalEl.classList.add('hidden');
             exitConfirmBtn?.removeEventListener('click', confirmHandler);

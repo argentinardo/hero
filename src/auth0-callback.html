@@ -108,7 +108,8 @@
                     // En web, necesitamos redirigir a la página principal donde está el SDK
                     // El SDK detectará automáticamente los parámetros code y state en la URL
                     // y procesará el callback
-                    const mainUrl = window.location.origin + '/?' + window.location.search;
+                    // CRÍTICO: window.location.search ya incluye el '?', así que solo concatenamos
+                    const mainUrl = window.location.origin + window.location.pathname.replace('/auth0-callback.html', '/') + (window.location.search || '');
                     console.log('[Auth0 Callback] Redirigiendo a:', mainUrl);
                     window.location.href = mainUrl;
                 }

@@ -62,7 +62,7 @@ Allowed Callback URLs:
 - https://newhero.netlify.app/auth0-callback.html
 - http://localhost:3000/callback
 - http://localhost:5173/callback
-- com.hero.game://callback
+- com.new.h.e.r.o.game://callback
 
 Allowed Logout URLs:
 - https://newhero.netlify.app
@@ -82,7 +82,7 @@ Allowed Web Origins:
   "clientId": "TU_CLIENT_ID",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 
@@ -126,7 +126,7 @@ Auth0 Login Page (con Google)
   ↓
 Usuario se loguea
   ↓
-Redirige a /callback o com.hero.game://callback
+Redirige a /callback o com.new.h.e.r.o.game://callback
   ↓
 handleAuth0Callback()
   ↓

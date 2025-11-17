@@ -63,7 +63,7 @@ https://newhero.netlify.app/callback
 https://newhero.netlify.app/auth0-callback.html
 http://localhost:3000/callback
 http://localhost:5173/callback
-com.hero.game://callback
+com.new.h.e.r.o.game://callback
 ```
 
 #### "Allowed Logout URLs"
@@ -112,7 +112,7 @@ http://localhost:5173
   "clientId": "TU_CLIENT_ID_DE_AUTH0",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 ```
 
@@ -142,7 +142,7 @@ Reemplaza todo el script de Netlify Identity con Auth0Manager.
   "clientId": "TU_CLIENT_ID",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 </script>
 ```
@@ -207,7 +207,7 @@ User → Click "Ingresar"
 User → Click "Ingresar"
   → Auth0Manager.loginWithGoogle()
   → Auth0 Login Page (con Google integrado)
-  → Redirige a /callback o com.hero.game://callback
+  → Redirige a /callback o com.new.h.e.r.o.game://callback
   → Auth0Manager maneja el callback
   → User en app ✅
 ```
@@ -250,7 +250,7 @@ User → Click "Ingresar"
 - Verificar que "google-oauth2" connection está habilitada
 
 ### "En APK se queda en web"
-- Verificar que redirectUriMobile es `com.hero.game://callback`
+- Verificar que redirectUriMobile es `com.new.h.e.r.o.game://callback`
 - Verificar que AndroidManifest.xml tiene el intent-filter correcto
 - Verificar que setupAuthDeepLink() está registrado
 

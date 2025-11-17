@@ -90,7 +90,7 @@ https://newhero.netlify.app/callback
 https://newhero.netlify.app/auth0-callback.html
 http://localhost:3000/callback
 http://localhost:5173/callback
-com.hero.game://callback
+com.new.h.e.r.o.game://callback
 ```
 
 #### "Allowed Logout URLs"
@@ -154,7 +154,7 @@ CONTENIDO:
   "clientId": "TU_CLIENT_ID_AQUI",
   "audience": "https://hero-game.com/api",
   "redirectUri": "https://newhero.netlify.app/callback",
-  "redirectUriMobile": "com.hero.game://callback"
+  "redirectUriMobile": "com.new.h.e.r.o.game://callback"
 }
 
 REEMPLAZAR:
@@ -244,7 +244,7 @@ API Identifier: ___________________________
 | "Invalid client_id" | Verifica Client ID correcto |
 | "Redirect URI mismatch" | Verifica Allowed Callback URLs |
 | "Google no funciona" | Verifica Google está en Connections |
-| "En APK se va a web" | Verifica com.hero.game://callback en URLs |
+| "En APK se va a web" | Verifica com.new.h.e.r.o.game://callback en URLs |
 
 ---
 
