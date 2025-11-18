@@ -255,6 +255,59 @@ export const adjustUIBars = () => {
     }
 };
 
+/**
+ * Cierra los paneles del editor (usuario y tools) cuando se abre un modal
+ * Esta función debe ser llamada cuando se abre cualquier modal en el editor
+ */
+const closeEditorPanels = (store: GameStore): void => {
+    // Solo cerrar si estamos en modo editor
+    if (store.appState !== 'editing') {
+        return;
+    }
+    
+    const userPanel = document.getElementById('user-panel');
+    const editorPanel = document.getElementById('editor-panel');
+    
+    if (userPanel && !userPanel.classList.contains('collapsed')) {
+        userPanel.classList.add('collapsed');
+    }
+    
+    if (editorPanel && !editorPanel.classList.contains('collapsed')) {
+        editorPanel.classList.add('collapsed');
+    }
+    
+    // Actualizar estados visuales de los paneles
+    const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement | null;
+    const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+    const editorPanelTitle = document.getElementById('editor-panel-title');
+    const userPanelTitle = document.getElementById('user-panel-title');
+    
+    // Actualizar estado visual del panel del editor
+    if (editorPanel && editorToggleBtn && editorPanelTitle) {
+        editorToggleBtn.style.display = 'flex';
+        const editorIconSpan = editorPanelTitle.querySelector('.toggle-icon-title');
+        if (editorIconSpan) {
+            (editorIconSpan as HTMLElement).style.display = 'none';
+        }
+    }
+    
+    // Actualizar estado visual del panel de usuario
+    if (userPanel && userPanelToggleBtn && userPanelTitle) {
+        userPanelToggleBtn.style.display = 'flex';
+        const userIconSpan = userPanelTitle.querySelector('.toggle-icon-title');
+        if (userIconSpan) {
+            (userIconSpan as HTMLElement).style.display = 'none';
+        }
+    }
+    
+    // Ajustar posición del canvas
+    const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+    if (canvasWrapper) {
+        canvasWrapper.style.left = '0';
+        canvasWrapper.style.width = '100vw';
+    }
+};
+
 export const attachDomReferences = (store: GameStore) => {
     store.dom.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
     
@@ -2026,6 +2079,8 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             // Mostrar modal de autenticación
             const modal = document.getElementById('auth-choice-modal');
             if (modal) {
+                // Cerrar paneles del editor cuando se abre el modal
+                closeEditorPanels(store);
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
                 console.log('[startEditor] Modal de autenticación mostrado');
@@ -3216,12 +3271,36 @@ const populatePalette = (store: GameStore) => {
             }
         }
 
-        const label = document.createElement('span');
-        label.className = 'tile-label';
-        label.textContent = name;
+        // Para paredes aplastantes, crear estructura especial con texto arriba y flecha abajo
+        if (key === 'H' || key === 'J') {
+            const labelContainer = document.createElement('div');
+            labelContainer.className = 'tile-label-container';
+            labelContainer.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 2px;';
+            
+            const label = document.createElement('span');
+            label.className = 'tile-label';
+            label.textContent = name;
+            label.style.cssText = 'font-size: 0.7rem;';
+            
+            const arrow = document.createElement('span');
+            arrow.className = 'tile-arrow';
+            // Intercambiar flechas: H tiene → y J tiene ←
+            arrow.textContent = key === 'H' ? '→' : '←';
+            arrow.style.cssText = 'font-size: 1rem !important';
+            
+            labelContainer.appendChild(label);
+            labelContainer.appendChild(arrow);
+            
+            tileDiv.appendChild(preview);
+            tileDiv.appendChild(labelContainer);
+        } else {
+            const label = document.createElement('span');
+            label.className = 'tile-label';
+            label.textContent = name;
 
-        tileDiv.appendChild(preview);
-        tileDiv.appendChild(label);
+            tileDiv.appendChild(preview);
+            tileDiv.appendChild(label);
+        }
         
         tileDiv.addEventListener('click', () => {
             const selected = paletteEl.querySelector('.tile-item.selected');
@@ -4876,6 +4955,11 @@ const openSettingsModal = (store: GameStore) => {
     const settingsModal = document.getElementById('settings-modal');
     if (!settingsModal) return;
     
+    // Cerrar paneles del editor cuando se abre el modal (si estamos en editor)
+    if (store.appState === 'editing') {
+        closeEditorPanels(store);
+    }
+    
     if (store.appState === 'playing') {
         pauseGame(store, 'settings');
     }
@@ -5531,6 +5615,8 @@ const setupMenuButtons = (store: GameStore) => {
     
     profileBtn?.addEventListener('click', async () => {
         console.log('[Profile Modal Open] Abriendo modal de perfil');
+        // Cerrar paneles del editor cuando se abre el modal
+        closeEditorPanels(store);
         profileModal?.classList.remove('hidden');
         
         // Cargar datos del usuario
@@ -5816,6 +5902,8 @@ const setupMenuButtons = (store: GameStore) => {
     // Confirmación de acciones (Menú y Reiniciar)
     const openExitModal = (title: string, text: string, onConfirm: () => void, onCancel?: () => void) => {
         if (!exitModalEl) return;
+        // Cerrar paneles del editor cuando se abre el modal
+        closeEditorPanels(store);
         if (exitTitleEl) exitTitleEl.textContent = title;
         if (exitTextEl) exitTextEl.textContent = text;
         exitModalEl.classList.remove('hidden');
@@ -6787,6 +6875,8 @@ const setupLevelData = (store: GameStore) => {
         
         exitTitleEl.textContent = '⚠️ Función Experimental';
         exitTextEl.textContent = 'El generador de niveles es una función experimental. Esto sobrescribirá el contenido actual del nivel. ¿Deseas continuar?';
+        // Cerrar paneles del editor cuando se abre el modal
+        closeEditorPanels(store);
         exitModalEl.classList.remove('hidden');
         
         const confirmHandler = () => {
@@ -7392,6 +7482,8 @@ const setupLevelData = (store: GameStore) => {
     logoutBtnMobile?.addEventListener('click', () => {
         const { exitModalEl, exitTitleEl, exitTextEl, exitConfirmBtn, exitCancelBtn } = store.dom.ui;
         if (!exitModalEl) return;
+        // Cerrar paneles del editor cuando se abre el modal
+        closeEditorPanels(store);
         if (exitTitleEl) exitTitleEl.textContent = t('modals.logoutConfirm');
         if (exitTextEl) exitTextEl.textContent = t('modals.logoutMessage');
         exitModalEl.classList.remove('hidden');

@@ -448,6 +448,20 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             transform: translateX(0);
             transition: transform 200ms ease-in-out;
             
+            /* CRÍTICO: Reducir tamaño de fuente en mobile */
+            font-size: 0.5rem !important;
+            
+            /* Reducir tamaño de fuente en títulos y textos */
+            h2, .title, span, label, button, select {
+                font-size: 0.5rem !important;
+            }
+            
+            /* Botones más pequeños */
+            .nes-btn {
+                font-size: 0.65rem !important;
+                padding: 0.25rem 0.5rem !important;
+            }
+            
             /* Ocultar elementos duplicados que están en user-panel */
             .user-area-desktop,
             .play-test-desktop,
@@ -459,11 +473,35 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
                 display: none !important;
             }
             
+            /* CRÍTICO: Botones deben ocupar 100% del ancho en mobile, no 50% */
+            .grid.grid-cols-2 {
+                grid-template-columns: 1fr !important; /* Cambiar de 2 columnas a 1 */
+                gap: 0.5rem !important;
+                
+                button {
+                    width: 100% !important;
+                }
+            }
+            
             #tile-palette {
                 canvas {
                     cursor: pointer;
                     image-rendering: pixelated;
                 }
+            }
+        }
+        
+        /* Panel de Usuario también con fuente más pequeña */
+        #user-panel {
+            font-size: 0.7rem !important;
+            
+            h2, .title, span, label, button, select {
+                font-size: 0.7rem !important;
+            }
+            
+            .nes-btn {
+                font-size: 0.65rem !important;
+                padding: 0.25rem 0.5rem !important;
             }
         }
         
@@ -979,7 +1017,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
+    z-index: 59;
     cursor: grab;
     padding: 8px;
     background-color: rgba(0, 0, 0, 0.4);

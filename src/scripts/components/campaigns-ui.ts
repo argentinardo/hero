@@ -80,6 +80,51 @@ export const showCampaignsModal = (store: GameStore, isPlayMode: boolean = false
     const modal = document.getElementById('campaigns-modal');
     if (!modal) return;
     
+    // Cerrar paneles del editor cuando se abre el modal
+    if (store.appState === 'editing') {
+        const userPanel = document.getElementById('user-panel');
+        const editorPanel = document.getElementById('editor-panel');
+        
+        if (userPanel && !userPanel.classList.contains('collapsed')) {
+            userPanel.classList.add('collapsed');
+        }
+        
+        if (editorPanel && !editorPanel.classList.contains('collapsed')) {
+            editorPanel.classList.add('collapsed');
+        }
+        
+        // Actualizar estados visuales de los paneles
+        const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement | null;
+        const userPanelToggleBtn = document.getElementById('user-panel-toggle') as HTMLButtonElement | null;
+        const editorPanelTitle = document.getElementById('editor-panel-title');
+        const userPanelTitle = document.getElementById('user-panel-title');
+        
+        // Actualizar estado visual del panel del editor
+        if (editorPanel && editorToggleBtn && editorPanelTitle) {
+            editorToggleBtn.style.display = 'flex';
+            const editorIconSpan = editorPanelTitle.querySelector('.toggle-icon-title');
+            if (editorIconSpan) {
+                (editorIconSpan as HTMLElement).style.display = 'none';
+            }
+        }
+        
+        // Actualizar estado visual del panel de usuario
+        if (userPanel && userPanelToggleBtn && userPanelTitle) {
+            userPanelToggleBtn.style.display = 'flex';
+            const userIconSpan = userPanelTitle.querySelector('.toggle-icon-title');
+            if (userIconSpan) {
+                (userIconSpan as HTMLElement).style.display = 'none';
+            }
+        }
+        
+        // Ajustar posición del canvas
+        const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+        if (canvasWrapper) {
+            canvasWrapper.style.left = '0';
+            canvasWrapper.style.width = '100vw';
+        }
+    }
+    
     updateCampaignsModal(store, isPlayMode);
     modal.classList.remove('hidden');
 };
