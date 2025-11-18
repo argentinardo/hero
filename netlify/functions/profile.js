@@ -69,10 +69,16 @@ const extractUserFromRequest = (event, context) => {
       }
       
       console.log('Token recibido (primeros 20 caracteres):', token.substring(0, 20) + '...');
+      console.log('Token completo length:', token.length);
       
       const parts = token.split('.');
+      console.log('Token parts count:', parts.length);
+      
       if (parts.length !== 3) {
         console.error('Token no tiene formato JWT válido (debe tener 3 partes separadas por puntos)');
+        console.error('El token recibido parece ser un token opaco, no un JWT');
+        console.error('Esto puede ocurrir si se está usando access_token en lugar de id_token');
+        console.error('Solución: Usar id_token (siempre es JWT) en lugar de access_token');
         return null;
       }
       

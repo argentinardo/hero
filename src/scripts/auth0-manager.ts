@@ -506,12 +506,60 @@ export const Auth0Manager = {
         }
     },
     
+    /**
+     * Intenta obtener el id_token del caché interno del SDK de Auth0
+     */
+    getIdTokenFromSDKCache(): string | null {
+        if (!this.config) return null;
+        
+        const { clientId, domain } = this.config;
+        
+        // El SDK de Auth0 guarda los tokens en localStorage con esta clave
+        const cacheKey = `@@auth0spajs@@::${clientId}::${domain}::@@user@@`;
+        const cacheData = localStorage.getItem(cacheKey);
+        
+        if (cacheData) {
+            try {
+                const parsed = JSON.parse(cacheData);
+                // El SDK puede guardar el id_token en diferentes lugares
+                if (parsed.id_token) {
+                    console.log('[Auth0] ID Token encontrado en caché del SDK');
+                    return parsed.id_token;
+                }
+                // También puede estar en body.id_token
+                if (parsed.body && parsed.body.id_token) {
+                    console.log('[Auth0] ID Token encontrado en caché del SDK (body.id_token)');
+                    return parsed.body.id_token;
+                }
+            } catch (e) {
+                console.warn('[Auth0] Error parseando caché del SDK:', e);
+            }
+        }
+        
+        return null;
+    },
+    
     async getAccessToken(): Promise<string | null> {
+        // CRÍTICO: Para las funciones de Netlify, necesitamos un JWT que contenga información del usuario
+        // El access_token puede ser opaco, pero el id_token siempre es un JWT
+        // Intentar obtener id_token primero, luego access_token como fallback
+        
         if (!this.client) {
             console.warn('[Auth0] Client no inicializado, intentando obtener token de localStorage');
+            // Intentar id_token primero (siempre es JWT)
+            let idToken = localStorage.getItem('auth0_id_token');
+            if (!idToken && this.config) {
+                // Intentar obtener del caché del SDK
+                idToken = this.getIdTokenFromSDKCache();
+            }
+            if (idToken) {
+                console.log('[Auth0] ID Token obtenido (client no inicializado)');
+                return idToken;
+            }
+            // Fallback a access_token
             const storedToken = localStorage.getItem('auth0_access_token');
             if (storedToken) {
-                console.log('[Auth0] Token obtenido de localStorage (client no inicializado)');
+                console.log('[Auth0] Access Token obtenido de localStorage (client no inicializado)');
                 return storedToken;
             }
             return null;
@@ -522,27 +570,112 @@ export const Auth0Manager = {
             const isAuthenticated = await this.client.isAuthenticated();
             if (!isAuthenticated) {
                 console.warn('[Auth0] Usuario no autenticado, intentando obtener token de localStorage');
+                // Intentar id_token primero
+                let idToken = localStorage.getItem('auth0_id_token');
+                if (!idToken) {
+                    // Intentar obtener del caché del SDK
+                    idToken = this.getIdTokenFromSDKCache();
+                }
+                if (idToken) {
+                    console.log('[Auth0] ID Token obtenido (usuario no autenticado en SDK)');
+                    return idToken;
+                }
+                // Fallback a access_token
                 const storedToken = localStorage.getItem('auth0_access_token');
                 if (storedToken) {
-                    console.log('[Auth0] Token obtenido de localStorage (usuario no autenticado en SDK)');
+                    console.log('[Auth0] Access Token obtenido de localStorage (usuario no autenticado en SDK)');
                     return storedToken;
                 }
                 return null;
             }
             
-            // Intentar obtener el token del SDK
+            // CRÍTICO: Para funciones de Netlify, necesitamos un JWT con información del usuario
+            // El id_token siempre es JWT y contiene sub/email, así que lo preferimos
+            // Intentar obtener id_token primero del localStorage (se guarda durante el login)
+            let idToken = localStorage.getItem('auth0_id_token');
+            if (!idToken) {
+                // Intentar obtener del caché del SDK
+                idToken = this.getIdTokenFromSDKCache();
+                if (idToken) {
+                    // Guardar en localStorage para uso futuro
+                    localStorage.setItem('auth0_id_token', idToken);
+                }
+            }
+            
+            if (idToken) {
+                console.log('[Auth0] ID Token encontrado (siempre es JWT)');
+                // Verificar que sea un JWT válido
+                const tokenParts = idToken.split('.');
+                if (tokenParts.length === 3) {
+                    console.log('[Auth0] Usando ID Token (JWT válido)');
+                    return idToken;
+                } else {
+                    console.warn('[Auth0] ID Token no tiene formato JWT válido, continuando con access_token...');
+                }
+            }
+            
+            // Si no hay id_token o no es válido, intentar obtener access_token del SDK
             const token = await this.client.getTokenSilently();
             if (token) {
-                console.log('[Auth0] Token obtenido del SDK exitosamente');
+                console.log('[Auth0] Access Token obtenido del SDK');
                 // Guardar también en localStorage como backup
                 localStorage.setItem('auth0_access_token', token);
-                return token;
+                
+                // Verificar si el access_token es JWT
+                const tokenParts = token.split('.');
+                if (tokenParts.length === 3) {
+                    console.log('[Auth0] Access token es JWT, usando directamente');
+                    return token;
+                } else {
+                    console.warn('[Auth0] Access token NO es JWT (token opaco)');
+                    console.warn('[Auth0] Las funciones de Netlify necesitan un JWT para decodificar el usuario');
+                    console.warn('[Auth0] Intentando obtener id_token del caché del SDK...');
+                    
+                    // Intentar obtener id_token del caché del SDK si no lo tenemos
+                    if (!idToken) {
+                        idToken = this.getIdTokenFromSDKCache();
+                        if (idToken) {
+                            localStorage.setItem('auth0_id_token', idToken);
+                            console.log('[Auth0] ID Token obtenido del caché del SDK, usando en lugar de access_token');
+                            return idToken;
+                        }
+                    } else {
+                        console.warn('[Auth0] Usando ID Token como fallback (aunque no pasó validación inicial)');
+                        return idToken;
+                    }
+                    
+                    console.error('[Auth0] ERROR: No hay id_token disponible y access_token no es JWT');
+                    console.error('[Auth0] Las funciones de Netlify no podrán decodificar el usuario');
+                    // Devolver el token de todas formas, pero con advertencia
+                    return token;
+                }
             }
             
             // Fallback: intentar obtener del localStorage
+            // Intentar id_token primero (ya verificado arriba, pero verificar de nuevo por si cambió)
+            let fallbackIdToken = localStorage.getItem('auth0_id_token');
+            if (!fallbackIdToken) {
+                // Intentar obtener del caché del SDK
+                fallbackIdToken = this.getIdTokenFromSDKCache();
+                if (fallbackIdToken) {
+                    localStorage.setItem('auth0_id_token', fallbackIdToken);
+                }
+            }
+            
+            if (fallbackIdToken && fallbackIdToken !== idToken) {
+                const tokenParts = fallbackIdToken.split('.');
+                if (tokenParts.length === 3) {
+                    console.log('[Auth0] ID Token obtenido de localStorage (getTokenSilently no devolvió token)');
+                    return fallbackIdToken;
+                }
+            } else if (idToken) {
+                // Reusar el idToken ya verificado arriba
+                console.log('[Auth0] ID Token obtenido de localStorage (getTokenSilently no devolvió token)');
+                return idToken;
+            }
             const storedToken = localStorage.getItem('auth0_access_token');
             if (storedToken) {
-                console.log('[Auth0] Token obtenido de localStorage (getTokenSilently no devolvió token)');
+                console.log('[Auth0] Access Token obtenido de localStorage (getTokenSilently no devolvió token)');
                 return storedToken;
             }
             
@@ -551,9 +684,25 @@ export const Auth0Manager = {
         } catch (error) {
             console.error('[Auth0] Error obteniendo access token:', error);
             // Fallback: intentar obtener del localStorage
+            // Intentar id_token primero (siempre es JWT)
+            let errorIdToken = localStorage.getItem('auth0_id_token');
+            if (!errorIdToken) {
+                // Intentar obtener del caché del SDK
+                errorIdToken = this.getIdTokenFromSDKCache();
+                if (errorIdToken) {
+                    localStorage.setItem('auth0_id_token', errorIdToken);
+                }
+            }
+            if (errorIdToken) {
+                const tokenParts = errorIdToken.split('.');
+                if (tokenParts.length === 3) {
+                    console.log('[Auth0] ID Token obtenido de localStorage (después de error)');
+                    return errorIdToken;
+                }
+            }
             const storedToken = localStorage.getItem('auth0_access_token');
             if (storedToken) {
-                console.log('[Auth0] Token obtenido de localStorage (después de error)');
+                console.log('[Auth0] Access Token obtenido de localStorage (después de error)');
                 return storedToken;
             }
             return null;
