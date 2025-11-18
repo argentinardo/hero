@@ -3,11 +3,6 @@
   "appName": "HERO Game",
   "webDir": "dist",
   "bundledWebRuntime": false,
-  "server": {
-    "androidScheme": "http",
-    "hostname": "localhost",
-    "allowNavigation": ["https://localhost", "https://newhero.netlify.app", "*.netlify.app", "*.netlify.live"]
-  },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,

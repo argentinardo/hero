@@ -89,6 +89,49 @@ import { applyGraphicsSettings, loadSettings } from './core/settings';
 import { initGamepadSupport, updateGamepadState } from './utils/gamepad';
 import { isTvMode } from './utils/device';
 
+// ============================================
+// MANEJO GLOBAL DE ERRORES - CRÍTICO PARA DEBUG
+// ============================================
+// Capturar TODOS los errores no manejados para debugging en APK
+window.addEventListener('error', (event) => {
+    console.error('❌ ERROR GLOBAL NO CAPTURADO:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error,
+        stack: event.error?.stack
+    });
+    // Intentar mostrar en pantalla también (útil en APK)
+    try {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:20px;z-index:99999;font-family:monospace;font-size:12px;white-space:pre-wrap;';
+        errorDiv.textContent = `ERROR: ${event.message}\n${event.error?.stack || 'No stack trace'}`;
+        document.body.appendChild(errorDiv);
+    } catch (e) {
+        // Si no podemos mostrar en pantalla, al menos loguear
+        console.error('No se pudo mostrar error en pantalla:', e);
+    }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('❌ PROMISE RECHAZADA NO MANEJADA:', {
+        reason: event.reason,
+        promise: event.promise
+    });
+    // Intentar mostrar en pantalla también
+    try {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:orange;color:white;padding:20px;z-index:99999;font-family:monospace;font-size:12px;white-space:pre-wrap;';
+        errorDiv.textContent = `PROMISE REJECTED: ${String(event.reason)}\n${event.reason?.stack || ''}`;
+        document.body.appendChild(errorDiv);
+    } catch (e) {
+        console.error('No se pudo mostrar promise rejection en pantalla:', e);
+    }
+});
+
+console.log('[Main] ✅ Handlers globales de errores configurados');
+
 // Inicializar estado global del juego
 // DECISIÓN ARQUITECTÓNICA: Estado global centralizado facilita comunicación entre componentes
 // Ver ARCHITECTURE_DECISIONS.md para más detalles
@@ -549,11 +592,16 @@ const initStatusBar = async (): Promise<void> => {
         }
         
         // Configurar StatusBar para que ocupe todo el espacio
+        console.log('[initStatusBar] Configurando StatusBar...');
         await StatusBar.setOverlaysWebView({ overlay: true });
         await StatusBar.setStyle({ style: 'dark' });
         await StatusBar.setBackgroundColor({ color: '#000000' });
+        console.log('[initStatusBar] ✅ StatusBar configurado correctamente');
     } catch (error) {
-        // Error silencioso
+        console.error('[initStatusBar] ❌ Error configurando StatusBar:', error);
+        console.error('[initStatusBar] Stack trace:', error instanceof Error ? error.stack : 'No stack');
+        // Re-lanzar el error para que el bootstrap lo capture
+        throw error;
     }
 };
 
@@ -696,92 +744,212 @@ const registerServiceWorker = async (): Promise<void> => {
 };
 
 const bootstrap = async (): Promise<void> => {
-    // CRÍTICO: Inicializar Auth0 PRIMERO para procesar callbacks temprano
+    console.log('[Bootstrap] 🚀 Iniciando bootstrap...');
+    
     try {
-        const { initializeAuth0 } = await import('./components/ui');
-        await initializeAuth0();
-        console.log('[Bootstrap] ✅ Auth0 inicializado temprano');
-    } catch (error) {
-        console.warn('[Bootstrap] ⚠️ Error inicializando Auth0 (no crítico):', error);
-    }
-    
-    // Inicializar StatusBar primero para que ocupe todo el espacio (solo en Capacitor)
-    await initStatusBar();
-    
-    // Ajustar viewport para navegadores móviles web (compensar barra de direcciones)
-    setupViewportAdjustment();
-    
-    // Registrar Service Worker para PWA (no bloqueante)
-    registerServiceWorker().catch(() => {
-        // Error silencioso
-    });
-    
-    setupUI(store);
-    initAudio();
-    
-    const mobileControlsEl = store.dom.ui.mobileControlsEl;
-    if (mobileControlsEl) {
-        if (isTvMode()) {
-            mobileControlsEl.dataset.active = 'false';
-            mobileControlsEl.style.display = 'none';
-        } else {
-            mobileControlsEl.style.removeProperty('display');
+        // CRÍTICO: Inicializar Auth0 PRIMERO para procesar callbacks temprano
+        console.log('[Bootstrap] Paso 1: Inicializando Auth0...');
+        try {
+            const { initializeAuth0 } = await import('./components/ui');
+            await initializeAuth0();
+            console.log('[Bootstrap] ✅ Auth0 inicializado temprano');
+        } catch (error) {
+            console.warn('[Bootstrap] ⚠️ Error inicializando Auth0 (no crítico):', error);
+            console.error('[Bootstrap] Stack trace Auth0:', error instanceof Error ? error.stack : 'No stack');
         }
-    }
-    
-    // Inicializar soporte de gamepad
-    initGamepadSupport();
-    
-    // Cargar configuración desde BD/localStorage y aplicar
-    loadSettings().then(settings => {
-        store.settings = settings;
-        applyGraphicsSettings(store.settings.graphics);
-        setMusicVolume(store.settings.audio.musicVolume);
-        setSFXVolume(store.settings.audio.sfxVolume);
-        console.log('[Bootstrap] ✅ Configuración cargada y aplicada');
-    }).catch(err => {
-        console.warn('[Bootstrap] ⚠️ Error cargando configuración:', err);
-        // Aplicar configuración por defecto
-        applyGraphicsSettings(store.settings.graphics);
-    });
-    
-    showMenu(store);
+        
+        // Inicializar StatusBar primero para que ocupe todo el espacio (solo en Capacitor)
+        console.log('[Bootstrap] Paso 2: Inicializando StatusBar...');
+        try {
+            await initStatusBar();
+            console.log('[Bootstrap] ✅ StatusBar inicializado');
+        } catch (error) {
+            console.error('[Bootstrap] ❌ ERROR CRÍTICO en initStatusBar:', error);
+            console.error('[Bootstrap] Stack trace StatusBar:', error instanceof Error ? error.stack : 'No stack');
+            throw error; // Re-lanzar porque puede ser crítico
+        }
+        
+        // Ajustar viewport para navegadores móviles web (compensar barra de direcciones)
+        console.log('[Bootstrap] Paso 3: Configurando viewport...');
+        try {
+            setupViewportAdjustment();
+            console.log('[Bootstrap] ✅ Viewport configurado');
+        } catch (error) {
+            console.error('[Bootstrap] ❌ ERROR en setupViewportAdjustment:', error);
+            console.error('[Bootstrap] Stack trace viewport:', error instanceof Error ? error.stack : 'No stack');
+        }
+        
+        // Registrar Service Worker para PWA (no bloqueante)
+        console.log('[Bootstrap] Paso 4: Registrando Service Worker...');
+        registerServiceWorker().catch((error) => {
+            console.warn('[Bootstrap] ⚠️ Error registrando Service Worker (no crítico):', error);
+        });
+        
+        console.log('[Bootstrap] Paso 5: Configurando UI...');
+        try {
+            setupUI(store);
+            console.log('[Bootstrap] ✅ UI configurada');
+        } catch (error) {
+            console.error('[Bootstrap] ❌ ERROR CRÍTICO en setupUI:', error);
+            console.error('[Bootstrap] Stack trace UI:', error instanceof Error ? error.stack : 'No stack');
+            throw error;
+        }
+        
+        console.log('[Bootstrap] Paso 6: Inicializando audio...');
+        try {
+            initAudio();
+            console.log('[Bootstrap] ✅ Audio inicializado');
+        } catch (error) {
+            console.error('[Bootstrap] ❌ ERROR en initAudio:', error);
+            console.error('[Bootstrap] Stack trace audio:', error instanceof Error ? error.stack : 'No stack');
+        }
+        
+        const mobileControlsEl = store.dom.ui.mobileControlsEl;
+        if (mobileControlsEl) {
+            if (isTvMode()) {
+                mobileControlsEl.dataset.active = 'false';
+                mobileControlsEl.style.display = 'none';
+            } else {
+                mobileControlsEl.style.removeProperty('display');
+            }
+        }
+        
+        // Inicializar soporte de gamepad
+        console.log('[Bootstrap] Paso 7: Inicializando gamepad...');
+        try {
+            initGamepadSupport();
+            console.log('[Bootstrap] ✅ Gamepad inicializado');
+        } catch (error) {
+            console.error('[Bootstrap] ❌ ERROR en initGamepadSupport:', error);
+            console.error('[Bootstrap] Stack trace gamepad:', error instanceof Error ? error.stack : 'No stack');
+        }
+        
+        // Cargar configuración desde BD/localStorage y aplicar
+        console.log('[Bootstrap] Paso 8: Cargando configuración...');
+        loadSettings().then(settings => {
+            store.settings = settings;
+            applyGraphicsSettings(store.settings.graphics);
+            setMusicVolume(store.settings.audio.musicVolume);
+            setSFXVolume(store.settings.audio.sfxVolume);
+            console.log('[Bootstrap] ✅ Configuración cargada y aplicada');
+        }).catch(err => {
+            console.warn('[Bootstrap] ⚠️ Error cargando configuración:', err);
+            console.error('[Bootstrap] Stack trace settings:', err instanceof Error ? err.stack : 'No stack');
+            // Aplicar configuración por defecto
+            applyGraphicsSettings(store.settings.graphics);
+        });
+        
+        console.log('[Bootstrap] Paso 9: Mostrando menú...');
+        try {
+            showMenu(store);
+            console.log('[Bootstrap] ✅ Menú mostrado');
+        } catch (error) {
+            console.error('[Bootstrap] ❌ ERROR CRÍTICO en showMenu:', error);
+            console.error('[Bootstrap] Stack trace menu:', error instanceof Error ? error.stack : 'No stack');
+            throw error;
+        }
 
-    // ESTRATEGIA: Carga progresiva de assets
-    // 1. Assets críticos primero (bloqueante)
-    preloadCriticalAssets(store, () => {
-        loadLevel(store);
-        lastFrameTime = performance.now();
-        
-        // 2. Assets no críticos en background (no bloqueante)
-        const nonCriticalSprites = ['P_jump', 'P_fly', 'P_die', 'P_success', '8', 'S', 'V', 'V_death', 'T', '9', 'bomb', 'explosion', '3', 'L'];
-        loadSpritesLazy(store, nonCriticalSprites).catch(() => {
-            // Error silencioso
+        // ESTRATEGIA: Carga progresiva de assets
+        // 1. Assets críticos primero (bloqueante)
+        console.log('[Bootstrap] Paso 10: Cargando assets críticos...');
+        preloadCriticalAssets(store, () => {
+            console.log('[Bootstrap] ✅ Assets críticos cargados');
+            try {
+                loadLevel(store);
+                lastFrameTime = performance.now();
+                
+                // 2. Assets no críticos en background (no bloqueante)
+                const nonCriticalSprites = ['P_jump', 'P_fly', 'P_die', 'P_success', '8', 'S', 'V', 'V_death', 'T', '9', 'bomb', 'explosion', '3', 'L'];
+                loadSpritesLazy(store, nonCriticalSprites).catch((error) => {
+                    console.warn('[Bootstrap] ⚠️ Error cargando sprites no críticos:', error);
+                });
+                
+                loadAdditionalSFX().catch((error) => {
+                    console.warn('[Bootstrap] ⚠️ Error cargando SFX adicionales:', error);
+                });
+                
+                // Precargar módulos del juego en background para mejor rendimiento
+                loadGameModules().catch((error) => {
+                    console.warn('[Bootstrap] ⚠️ Error precargando módulos:', error);
+                });
+                
+                // Iniciar el game loop
+                console.log('[Bootstrap] ✅ Iniciando game loop...');
+                requestAnimationFrame(gameLoop);
+            } catch (error) {
+                console.error('[Bootstrap] ❌ ERROR CRÍTICO después de cargar assets:', error);
+                console.error('[Bootstrap] Stack trace post-assets:', error instanceof Error ? error.stack : 'No stack');
+                throw error;
+            }
         });
         
-        loadAdditionalSFX().catch(() => {
-            // Error silencioso
-        });
+        console.log('[Bootstrap] ✅ Bootstrap completado exitosamente');
+    } catch (error) {
+        console.error('[Bootstrap] ❌❌❌ ERROR FATAL EN BOOTSTRAP ❌❌❌');
+        console.error('[Bootstrap] Error:', error);
+        console.error('[Bootstrap] Stack:', error instanceof Error ? error.stack : 'No stack');
+        console.error('[Bootstrap] Tipo:', typeof error);
+        console.error('[Bootstrap] Constructor:', error?.constructor?.name);
         
-        // Precargar módulos del juego en background para mejor rendimiento
-        loadGameModules().catch(() => {
-            // Error silencioso
-        });
+        // Intentar mostrar error en pantalla
+        try {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);color:red;padding:40px;z-index:99999;font-family:monospace;font-size:14px;white-space:pre-wrap;overflow:auto;';
+            errorDiv.innerHTML = `
+                <h1 style="color:red;font-size:24px;">❌ ERROR FATAL EN BOOTSTRAP</h1>
+                <p><strong>Error:</strong> ${String(error)}</p>
+                <p><strong>Stack:</strong></p>
+                <pre style="background:#222;padding:10px;border-radius:4px;">${error instanceof Error ? error.stack : 'No stack trace'}</pre>
+            `;
+            document.body.appendChild(errorDiv);
+        } catch (e) {
+            console.error('No se pudo mostrar error fatal en pantalla:', e);
+        }
         
-        // Iniciar el game loop
-        requestAnimationFrame(gameLoop);
+        // Re-lanzar para que el handler global lo capture
+        throw error;
+    }
+};
+
+// Función para iniciar la aplicación con manejo robusto de errores
+const startApp = () => {
+    console.log('[Main] 🚀 Iniciando aplicación...');
+    console.log('[Main] ReadyState:', document.readyState);
+    console.log('[Main] Capacitor disponible:', typeof (window as any).Capacitor !== 'undefined');
+    
+    bootstrap().catch((error) => {
+        console.error('[Main] ❌❌❌ ERROR FATAL AL INICIAR APLICACIÓN ❌❌❌');
+        console.error('[Main] Error:', error);
+        console.error('[Main] Stack:', error instanceof Error ? error.stack : 'No stack');
+        
+        // Intentar mostrar error en pantalla
+        try {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);color:red;padding:40px;z-index:99999;font-family:monospace;font-size:16px;white-space:pre-wrap;overflow:auto;';
+            errorDiv.innerHTML = `
+                <h1 style="color:red;font-size:28px;margin-bottom:20px;">❌ ERROR FATAL</h1>
+                <p style="color:yellow;font-size:18px;margin-bottom:10px;"><strong>La aplicación no pudo iniciarse</strong></p>
+                <p style="margin-bottom:10px;"><strong>Error:</strong> ${String(error)}</p>
+                <p style="margin-bottom:10px;"><strong>Stack Trace:</strong></p>
+                <pre style="background:#222;padding:15px;border-radius:4px;overflow:auto;max-height:400px;">${error instanceof Error ? error.stack : 'No stack trace disponible'}</pre>
+                <p style="margin-top:20px;color:#888;font-size:12px;">Revisa los logs de la consola para más detalles</p>
+            `;
+            document.body.appendChild(errorDiv);
+        } catch (e) {
+            console.error('[Main] No se pudo mostrar error en pantalla:', e);
+        }
     });
 };
 
+// Iniciar cuando el DOM esté listo
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    bootstrap().catch(() => {
-        // Error silencioso
-    });
+    console.log('[Main] DOM ya está listo, iniciando inmediatamente...');
+    startApp();
 } else {
+    console.log('[Main] Esperando DOMContentLoaded...');
     window.addEventListener('DOMContentLoaded', () => {
-        bootstrap().catch(() => {
-            // Error silencioso
-        });
+        console.log('[Main] DOMContentLoaded disparado, iniciando...');
+        startApp();
     });
 }
 

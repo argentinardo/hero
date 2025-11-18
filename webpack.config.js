@@ -70,7 +70,11 @@ module.exports = {
         { from: 'src/auth0-callback.html', to: 'auth0-callback.html' },
         { from: 'src/auth0-config.json', to: 'auth0-config.json' },
         { from: 'src/assets/sprites/hero-logo.png', to: 'hero-logo.png' },
-        { from: 'src/assets/sprites/qr.png', to: 'qr.png' }
+        { from: 'src/assets/sprites/qr.png', to: 'qr.png' },
+        // Copiar archivos de audio al directorio público
+        { from: 'src/assets/audio', to: 'audio', noErrorOnMissing: true },
+        // Copiar recursos vendor (CSS, JS, fuentes) embebidos localmente
+        { from: 'public/vendor', to: 'vendor', noErrorOnMissing: true }
       ],
     }),
   ],
@@ -98,13 +102,15 @@ module.exports = {
           },
         },
       },
-      {
-        test: /\.(mp3|wav|ogg)$/i,
-        type: 'asset/resource',
-        generator: {
-          filename: 'audio/[name].[contenthash][ext]',
-        },
-      },
+      // Los archivos de audio se copian directamente con CopyWebpackPlugin
+      // No procesarlos como módulos para evitar problemas con rutas en Capacitor
+      // {
+      //   test: /\.(mp3|wav|ogg)$/i,
+      //   type: 'asset/resource',
+      //   generator: {
+      //     filename: 'audio/[name].[contenthash][ext]',
+      //   },
+      // },
     ],
   },
   resolve: {

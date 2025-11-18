@@ -1906,9 +1906,19 @@ const nicknameManager = {
     },
 
     async updateAllUI(nickname?: string): Promise<void> {
-        const nicknameToUse = nickname || this.currentNickname;
-        this.currentNickname = nicknameToUse;
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        
+        // Si se proporciona un nickname explícito, usarlo
+        if (nickname) {
+            this.currentNickname = nickname;
+        } else if (isLoggedIn && !this.currentNickname) {
+            // Si el usuario está logueado pero no hay nickname cargado, cargarlo desde la BD
+            console.log('[NicknameManager] No hay nickname cargado, cargando desde BD...');
+            const loadedNickname = await this.loadFromDB();
+            this.currentNickname = loadedNickname;
+        }
+        
+        const nicknameToUse = nickname || this.currentNickname || 'Usuario';
 
         // Actualizar TODOS los elementos
         // 1. user-panel-nickname (dentro de user-panel-title)
@@ -3609,15 +3619,34 @@ const setupAuthDeepLink = (store: GameStore) => {
                             // Cargar niveles del usuario
                             await tryLoadUserLevels(store);
                             
+                            // Ocultar modal de "Ingresando..." antes de abrir el editor
+                            const loggingInModal = document.getElementById('logging-in-modal');
+                            if (loggingInModal) {
+                                loggingInModal.classList.add('hidden');
+                                loggingInModal.style.display = 'none';
+                            }
+                            
                             // Si estamos en el menú, iniciar el editor (skipAuthCheck porque ya estamos autenticados)
                             if (store.appState === 'menu') {
                                 startEditor(store, false, true);
                             }
                         } else {
                             console.error('[setupAuthDeepLink] ❌ Callback procesado pero no se obtuvo usuario');
+                            // Ocultar modal en caso de error
+                            const loggingInModal = document.getElementById('logging-in-modal');
+                            if (loggingInModal) {
+                                loggingInModal.classList.add('hidden');
+                                loggingInModal.style.display = 'none';
+                            }
                         }
                     } catch (err) {
                         console.error('[setupAuthDeepLink] ❌ Error procesando callback (appUrlOpen):', err);
+                        // Ocultar modal en caso de error
+                        const loggingInModal = document.getElementById('logging-in-modal');
+                        if (loggingInModal) {
+                            loggingInModal.classList.add('hidden');
+                            loggingInModal.style.display = 'none';
+                        }
                     }
                 } else {
                     // No es un callback de Auth0, procesar como deep link normal
@@ -3660,6 +3689,13 @@ const setupAuthDeepLink = (store: GameStore) => {
                                             // Cargar niveles del usuario
                                             await tryLoadUserLevels(store);
                                             
+                                            // Ocultar modal de "Ingresando..." antes de abrir el editor
+                                            const loggingInModal = document.getElementById('logging-in-modal');
+                                            if (loggingInModal) {
+                                                loggingInModal.classList.add('hidden');
+                                                loggingInModal.style.display = 'none';
+                                            }
+                                            
                                             // Si estamos en el menú, iniciar el editor
                                             if (store.appState === 'menu') {
                                                 startEditor(store);
@@ -3671,6 +3707,12 @@ const setupAuthDeepLink = (store: GameStore) => {
                                         }
                                     } catch (err) {
                                         console.error('[setupAuthDeepLink] ❌ Error procesando callback (getLaunchUrl):', err);
+                                        // Ocultar modal en caso de error
+                                        const loggingInModal = document.getElementById('logging-in-modal');
+                                        if (loggingInModal) {
+                                            loggingInModal.classList.add('hidden');
+                                            loggingInModal.style.display = 'none';
+                                        }
                                     }
                                 })();
                             } else {
@@ -3815,6 +3857,15 @@ export const setupUI = (store: GameStore) => {
     setupAuthDeepLink(store);
     console.log('🔵🔵🔵 [setupUI] setupAuthDeepLink completado.');
     
+    // CRÍTICO: Si el usuario ya está logueado al iniciar la app, cargar el nickname desde la BD
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+        console.log('[setupUI] Usuario ya logueado, cargando nickname desde BD...');
+        nicknameManager.initialize().catch(err => {
+            console.warn('[setupUI] Error cargando nickname al iniciar:', err);
+        });
+    }
+    
     // CRÍTICO: Función para procesar login (reutilizable)
     const processAuth0Login = async (user: any) => {
         if (!user || !user.email) return;
@@ -3838,6 +3889,13 @@ export const setupUI = (store: GameStore) => {
         
         // Cargar niveles del usuario
         await tryLoadUserLevels(store);
+        
+        // Ocultar modal de "Ingresando..." antes de abrir el editor
+        const loggingInModal = document.getElementById('logging-in-modal');
+        if (loggingInModal) {
+            loggingInModal.classList.add('hidden');
+            loggingInModal.style.display = 'none';
+        }
         
         // Si estamos en el menú, iniciar el editor (skipAuthCheck porque ya estamos autenticados)
         if (store.appState === 'menu') {
@@ -5275,9 +5333,19 @@ const setupMenuButtons = (store: GameStore) => {
     // Función para actualizar el área de usuario en el editor (desktop y mobile)
     const updateUserArea = async () => {
         const { isLoggedIn, username } = await checkLoginStatus();
+        
+        // CRÍTICO: Si el usuario está logueado, asegurar que el nickname se carga desde la BD
+        // Esto actualiza la UI con el nickname correcto desde la base de datos
+        if (isLoggedIn) {
+            await nicknameManager.updateAllUI();
+        } else {
+            // Si no está logueado, solo actualizar la UI con valores por defecto
+            await nicknameManager.updateAllUI('Usuario');
+        }
+        
         // Asegurar que usamos nickname si está disponible (con namespace)
         const { getUserStorage } = await import('../utils/storage');
-        const displayName = getUserStorage('nickname') || username;
+        const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || username;
         
         // Actualizar panel desktop
         const userArea = document.getElementById('user-area');
@@ -5290,10 +5358,6 @@ const setupMenuButtons = (store: GameStore) => {
                 userArea.style.display = 'none';
             }
         }
-        
-        // CRÍTICO: Actualizar nickname usando nicknameManager para mantener consistencia
-        // Esto asegura que user-panel-nickname esté "observando" el nickname
-        await nicknameManager.updateAllUI();
         
         // Actualizar panel mobile
         const userAreaMobile = document.getElementById('user-area-mobile');
@@ -5551,6 +5615,25 @@ const setupMenuButtons = (store: GameStore) => {
     const authLoginBtn = document.getElementById('auth-login-btn') as HTMLButtonElement | null;
     const authSignupBtn = document.getElementById('auth-signup-btn') as HTMLButtonElement | null;
     const authCancelBtn = document.getElementById('auth-cancel-btn') as HTMLButtonElement | null;
+    // Funciones para mostrar/ocultar el modal de "Ingresando..."
+    const showLoggingInModal = () => {
+        const modal = document.getElementById('logging-in-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            console.log('[UI] Modal de "Ingresando..." mostrado');
+        }
+    };
+    
+    const hideLoggingInModal = () => {
+        const modal = document.getElementById('logging-in-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            console.log('[UI] Modal de "Ingresando..." ocultado');
+        }
+    };
+    
     const closeAuthModal = () => {
         if (authModal) {
             authModal.classList.add('hidden');
@@ -5562,6 +5645,7 @@ const setupMenuButtons = (store: GameStore) => {
     authLoginBtn?.addEventListener('click', async () => {
         console.log('[authLoginBtn] ✅ Botón LOGIN presionado - Iniciando con Auth0');
         closeAuthModal();
+        showLoggingInModal(); // Mostrar modal de "Ingresando..."
         
         try {
             // Inicializar Auth0 primero
@@ -5584,11 +5668,15 @@ const setupMenuButtons = (store: GameStore) => {
                 
                 updateEditorButton();
                 updateUserArea();
+                hideLoggingInModal(); // Ocultar modal antes de abrir el editor
                 startEditor(store, false, true); // skipAuthCheck porque ya estamos autenticados
             } else {
-                console.log('[authLoginBtn] ⏳ Login con redirect iniciado. Esperando callback de Auth0...');            }
+                console.log('[authLoginBtn] ⏳ Login con redirect iniciado. Esperando callback de Auth0...');
+                // El modal se ocultará cuando se complete el callback en setupAuthDeepLink
+            }
         } catch (error) {
             console.error('[authLoginBtn] ❌ No se pudo autenticar con Google. La razón exacta es:', error);
+            hideLoggingInModal(); // Ocultar modal en caso de error
         }
     });
     authSignupBtn?.addEventListener('click', async () => {

@@ -27,14 +27,48 @@
             
         <!-- Auth0 Configuration (ahora se carga desde ui.ts) -->
     
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+        <!-- Preload de recursos críticos para carga más rápida -->
+        <link rel="preload" href="/vendor/press-start-2p.ttf" as="font" type="font/ttf" crossorigin>
+        <link rel="preload" href="/vendor/nes.min.css" as="style">
+        <link rel="preload" href="/vendor/press-start-2p.css" as="style">
+        
+        <!-- Estilos críticos inline para evitar FOUC (Flash of Unstyled Content) -->
+        <style>
+            /* Estilos mínimos críticos para renderizado inmediato */
+            body { 
+                margin: 0; 
+                padding: 0; 
+                background-color: #1f2937; 
+                color: #fff; 
+                font-family: monospace;
+                overflow: hidden;
+            }
+            #main-container {
+                width: 100%;
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            /* Ocultar contenido hasta que los estilos carguen */
+            .loading-styles { opacity: 0; transition: opacity 0.3s ease-in; }
+            .styles-loaded { opacity: 1; }
+            
+            /* Animación para el spinner de carga */
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+        
+        <!-- Recursos embebidos localmente (carga asíncrona) -->
+        <!-- Fuente Press Start 2P -->
+        <link rel="stylesheet" href="/vendor/press-start-2p.css" media="print" onload="this.media='all'; this.onload=null;" onerror="console.warn('[Index] No se pudo cargar fuente local')">
+        <noscript><link rel="stylesheet" href="/vendor/press-start-2p.css"></noscript>
+        
         <!-- NES.css para estilos retro -->
-        <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
-        <!-- MIDI.js para reproducir archivos MIDI -->
-        <script src="https://cdn.jsdelivr.net/npm/midi-player-js@2.0.16/build/index.browser.min.js"></script>
+        <link rel="stylesheet" href="/vendor/nes.min.css" media="print" onload="this.media='all'; this.onload=null;" onerror="console.warn('[Index] No se pudo cargar NES.css local')">
+        <noscript><link rel="stylesheet" href="/vendor/nes.min.css"></noscript>
     
         <!-- Bloquear orientación a landscape -->
         <script>
@@ -44,7 +78,7 @@
             }
         </script>
     </head>
-<body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden">
+<body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden loading-styles">
 
     <div id="main-container">
         <div id="editor-dpad" class="editor-dpad mb-4" style="display: none;">
@@ -325,6 +359,19 @@
             </div>
         </div>
 
+        <!-- Modal de Ingresando (mientras se procesa el login) -->
+        <div id="logging-in-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 10001; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; overflow: auto;">
+            <div class="nes-container with-title is-dark max-w-sm" style="position: relative; z-index: 10002;">
+                <p class="title" style="font-family: 'Press Start 2P', monospace;">INGRESANDO...</p>
+                <div class="mb-6">
+                    <div class="flex justify-center items-center gap-4 mb-4">
+                        <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #fff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    </div>
+                    <p class="text-sm" style="font-family: 'Press Start 2P', monospace; font-size: 0.7rem;">Procesando autenticación...</p>
+                </div>
+            </div>
+        </div>
+        
         <!-- Modal de Autenticación: elegir Entrar o Crear cuenta
              NOTA: Este modal tiene estilos inline y en main.css para asegurar visibilidad en todos los dispositivos,
              incluyendo APK/Capacitor donde el overflow del body puede causar que el contenido no sea visible.
@@ -832,7 +879,22 @@
             .catch(e => {
                 console.error('[PWA] ❌ Error cargando manifest:', e);
             });
+        
+        // Marcar cuando los estilos están cargados
+        window.addEventListener('load', function() {
+            document.body.classList.add('styles-loaded');
+            console.log('[Index] ✅ Estilos cargados');
+        });
+        
+        // Fallback: si los estilos no cargan en 2 segundos, mostrar contenido de todas formas
+        setTimeout(function() {
+            document.body.classList.add('styles-loaded');
+        }, 2000);
     </script>
+    
+    <!-- Scripts no críticos al final del body (carga asíncrona) -->
+    <!-- Tailwind CSS (completamente embebido, sin CDN) -->
+    <script src="/vendor/tailwindcss-loader.js" async onerror="console.warn('[Index] No se pudo cargar Tailwind loader local')"></script>
 </body>
 </html>
 

@@ -343,6 +343,28 @@ export const Auth0Manager = {
                 // Restaurar URL original en caso de error
                 window.history.replaceState({}, '', originalHref);
                 console.error('[Auth0] ❌ Error procesando callback con SDK:', sdkError);
+                
+                // En APK, si el SDK falla por CORS, intentar intercambio manual
+                const errorMessage = (sdkError as any).message || String(sdkError);
+                if (isApk && (errorMessage.includes('CORS') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_FAILED'))) {
+                    console.log('[Auth0] 📱 SDK falló por CORS en APK, intentando intercambio manual...');
+                    try {
+                        // Intentar obtener code_verifier del caché del SDK
+                        const codeVerifier = this.getCodeVerifierFromSDKCache();
+                        if (codeVerifier) {
+                            console.log('[Auth0] ✅ Code verifier encontrado en caché, usando intercambio con PKCE');
+                            return await this.handleRedirectCallbackWithPKCE(url, codeVerifier);
+                        } else {
+                            console.log('[Auth0] ⚠️ Code verifier no encontrado, intentando intercambio sin PKCE');
+                            // Intentar intercambio sin PKCE (puede fallar si Auth0 requiere PKCE)
+                            return await this.handleRedirectCallbackManual(url);
+                        }
+                    } catch (manualError) {
+                        console.error('[Auth0] ❌ Error en intercambio manual:', manualError);
+                        throw sdkError; // Lanzar el error original del SDK
+                    }
+                }
+                
                 throw sdkError;
             }
         } catch (error) {
@@ -370,27 +392,74 @@ export const Auth0Manager = {
             const redirectUri = config.redirectUriApk;
             
             // Intercambiar código por token con PKCE
-            const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    grant_type: 'authorization_code',
-                    client_id: clientId,
-                    code: code,
-                    redirect_uri: redirectUri,
-                    code_verifier: codeVerifier, // CRÍTICO: PKCE requiere code_verifier
-                }),
-            });
+            const isApk = Capacitor.isNativePlatform();
+            let tokenData: any;
             
-            if (!tokenResponse.ok) {
-                const errorData = await tokenResponse.json();
-                console.error('[Auth0] ❌ Error intercambiando código con PKCE:', errorData);
-                throw new Error(`Error: ${errorData.error_description || errorData.error}`);
+            if (isApk) {
+                console.log('[Auth0] 📱 Usando XMLHttpRequest para PKCE (evitar CORS)...');
+                // En APK, usar XMLHttpRequest que no tiene restricciones CORS tan estrictas
+                tokenData = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', `https://${domain}/oauth/token`, true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                console.log('[Auth0] ✅ Token obtenido con PKCE usando XMLHttpRequest');
+                                resolve(data);
+                            } catch (e) {
+                                reject(new Error('Error parseando respuesta'));
+                            }
+                        } else {
+                            try {
+                                const errorData = JSON.parse(xhr.responseText);
+                                console.error('[Auth0] ❌ Error intercambiando código con PKCE:', errorData);
+                                reject(new Error(`Error: ${errorData.error_description || errorData.error}`));
+                            } catch (e) {
+                                reject(new Error(`Error HTTP ${xhr.status}`));
+                            }
+                        }
+                    };
+                    
+                    xhr.onerror = function() {
+                        console.error('[Auth0] ❌ Error de red con XMLHttpRequest (PKCE)');
+                        reject(new Error('Error de red'));
+                    };
+                    
+                    xhr.send(JSON.stringify({
+                        grant_type: 'authorization_code',
+                        client_id: clientId,
+                        code: code,
+                        redirect_uri: redirectUri,
+                        code_verifier: codeVerifier, // CRÍTICO: PKCE requiere code_verifier
+                    }));
+                });
+            } else {
+                // En web, usar fetch normal
+                const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        grant_type: 'authorization_code',
+                        client_id: clientId,
+                        code: code,
+                        redirect_uri: redirectUri,
+                        code_verifier: codeVerifier, // CRÍTICO: PKCE requiere code_verifier
+                    }),
+                });
+                
+                if (!tokenResponse.ok) {
+                    const errorData = await tokenResponse.json();
+                    console.error('[Auth0] ❌ Error intercambiando código con PKCE:', errorData);
+                    throw new Error(`Error: ${errorData.error_description || errorData.error}`);
+                }
+                
+                tokenData = await tokenResponse.json();
             }
-            
-            const tokenData = await tokenResponse.json();
             console.log('[Auth0] ✅ Token obtenido con PKCE');
             
             // Procesar el token igual que en el método manual
@@ -463,27 +532,73 @@ export const Auth0Manager = {
             console.log('[Auth0] Domain:', domain);
             console.log('[Auth0] Redirect URI:', redirectUri);
             
-            // Intercambiar código por token directamente
-            const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    grant_type: 'authorization_code',
-                    client_id: clientId,
-                    code: code,
-                    redirect_uri: redirectUri,
-                }),
-            });
+            // En APK, usar Capacitor HTTP para evitar CORS
+            const isApk = Capacitor.isNativePlatform();
+            let tokenData: any;
             
-            if (!tokenResponse.ok) {
-                const errorData = await tokenResponse.json();
-                console.error('[Auth0] ❌ Error intercambiando código:', errorData);
-                throw new Error(`Error: ${errorData.error_description || errorData.error}`);
+            if (isApk) {
+                console.log('[Auth0] 📱 Usando XMLHttpRequest para evitar CORS...');
+                // En APK, usar XMLHttpRequest que no tiene restricciones CORS tan estrictas
+                tokenData = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', `https://${domain}/oauth/token`, true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                console.log('[Auth0] ✅ Token obtenido usando XMLHttpRequest');
+                                resolve(data);
+                            } catch (e) {
+                                reject(new Error('Error parseando respuesta'));
+                            }
+                        } else {
+                            try {
+                                const errorData = JSON.parse(xhr.responseText);
+                                console.error('[Auth0] ❌ Error intercambiando código:', errorData);
+                                reject(new Error(`Error: ${errorData.error_description || errorData.error}`));
+                            } catch (e) {
+                                reject(new Error(`Error HTTP ${xhr.status}`));
+                            }
+                        }
+                    };
+                    
+                    xhr.onerror = function() {
+                        console.error('[Auth0] ❌ Error de red con XMLHttpRequest');
+                        reject(new Error('Error de red'));
+                    };
+                    
+                    xhr.send(JSON.stringify({
+                        grant_type: 'authorization_code',
+                        client_id: clientId,
+                        code: code,
+                        redirect_uri: redirectUri,
+                    }));
+                });
+            } else {
+                // En web, usar fetch normal
+                const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        grant_type: 'authorization_code',
+                        client_id: clientId,
+                        code: code,
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                
+                if (!tokenResponse.ok) {
+                    const errorData = await tokenResponse.json();
+                    console.error('[Auth0] ❌ Error intercambiando código:', errorData);
+                    throw new Error(`Error: ${errorData.error_description || errorData.error}`);
+                }
+                
+                tokenData = await tokenResponse.json();
             }
-            
-            const tokenData = await tokenResponse.json();
             console.log('[Auth0] ✅ Token obtenido');
             
             // Decodificar el ID token para obtener el usuario
@@ -544,6 +659,66 @@ export const Auth0Manager = {
             console.error('[Auth0] Error obteniendo usuario:', error);
             return null;
         }
+    },
+    
+    /**
+     * Intenta obtener el code_verifier del caché interno del SDK de Auth0
+     */
+    getCodeVerifierFromSDKCache(): string | null {
+        if (!this.config) {
+            console.warn('[Auth0] No hay config para buscar code_verifier en caché');
+            return null;
+        }
+        
+        const { clientId, domain } = this.config;
+        console.log('[Auth0] Buscando code_verifier en caché del SDK:', { clientId, domain });
+        
+        // El SDK de Auth0 guarda el code_verifier en localStorage con esta clave
+        // El formato puede variar, pero generalmente está en el estado de PKCE
+        const allKeys = Object.keys(localStorage);
+        const auth0Keys = allKeys.filter(key => key.includes('auth0') || key.includes('code_verifier') || key.includes('pkce'));
+        
+        console.log('[Auth0] Claves relacionadas con Auth0/PKCE:', auth0Keys);
+        
+        // Buscar en todas las claves de Auth0
+        for (const key of auth0Keys) {
+            try {
+                const data = localStorage.getItem(key);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    // Buscar code_verifier en diferentes lugares
+                    if (parsed.code_verifier) {
+                        console.log('[Auth0] ✅ Code verifier encontrado en:', key);
+                        return parsed.code_verifier;
+                    }
+                    if (parsed.pkce?.code_verifier) {
+                        console.log('[Auth0] ✅ Code verifier encontrado en pkce.code_verifier:', key);
+                        return parsed.pkce.code_verifier;
+                    }
+                }
+            } catch (e) {
+                // Continuar buscando
+            }
+        }
+        
+        // Si no encontramos el code_verifier, intentar obtenerlo del estado guardado durante el login
+        // El SDK guarda el estado en una clave específica
+        const stateKey = `@@auth0spajs@@::${clientId}::${domain}::@@state@@`;
+        const stateData = localStorage.getItem(stateKey);
+        if (stateData) {
+            try {
+                const parsed = JSON.parse(stateData);
+                if (parsed.code_verifier) {
+                    console.log('[Auth0] ✅ Code verifier encontrado en estado');
+                    return parsed.code_verifier;
+                }
+            } catch (e) {
+                console.warn('[Auth0] Error parseando estado:', e);
+            }
+        }
+        
+        console.warn('[Auth0] ⚠️ Code verifier no encontrado en caché');
+        return null;
     },
     
     /**

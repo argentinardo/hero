@@ -1,23 +1,63 @@
 import type { GameStore } from '../core/types';
+import { Capacitor } from '@capacitor/core';
 
-// Importar archivos de audio
-// Cargar música de fondo dinámicamente desde el servidor
-import mainMusicUrl from '../../assets/audio/main.mp3';
-import jetpackSound from '../../assets/audio/jetpack.mp3';
-import laserSound from '../../assets/audio/laser.mp3';
-import lifedownSound from '../../assets/audio/lifedown.mp3';
-import stepsSound from '../../assets/audio/steps.mp3';
-import bombFireSound from '../../assets/audio/bomb_fire.mp3';
-import bombBoomSound from '../../assets/audio/bomb_boom.mp3';
-import enemyKillSound from '../../assets/audio/enemy_kill.mp3';
-import successLevelSound from '../../assets/audio/success_level.mp3';
-import toyBounceSound from '../../assets/audio/toy.mp3';
-import brickBounceSound from '../../assets/audio/brick.mp3';
-import bulbOffSound from '../../assets/audio/bulb.mp3';
-import energyDrainSound from '../../assets/audio/energy-drain.mp3';
-import tentacleSound from '../../assets/audio/tentacle.mp3';
-import wallHitSound from '../../assets/audio/wall_hit.mp3';
-import oneUpSound from '../../assets/audio/1up.mp3';
+/**
+ * Obtiene la ruta correcta para un archivo de audio según el entorno
+ * En Capacitor/Android, los archivos están en la raíz del webDir (dist/audio/)
+ * En web, los archivos están en /audio/ desde la raíz
+ */
+const getAudioPath = (filename: string): string => {
+    try {
+        const isCapacitor = Capacitor.isNativePlatform();
+        
+        if (isCapacitor) {
+            // En Capacitor, usar ruta relativa desde la raíz del webDir
+            // Los archivos están en dist/audio/ después del build
+            // Usar ruta relativa que funcione en el contexto de la app
+            const relativePath = `./audio/${filename}`;
+            
+            // Intentar usar convertFileSrc si está disponible
+            if (typeof Capacitor.convertFileSrc === 'function') {
+                try {
+                    return Capacitor.convertFileSrc(relativePath);
+                } catch (error) {
+                    console.warn('[Audio] Error usando convertFileSrc, usando ruta relativa:', error);
+                }
+            }
+            
+            // Fallback: usar ruta relativa simple
+            return relativePath;
+        } else {
+            // En web, usar ruta absoluta desde la raíz
+            // Webpack copia los archivos a /audio/ en dist
+            return `/audio/${filename}`;
+        }
+    } catch (error) {
+        console.warn('[Audio] Error obteniendo ruta de audio, usando fallback:', error);
+        // Fallback: ruta relativa simple
+        return `./audio/${filename}`;
+    }
+};
+
+// Rutas de archivos de audio (sin imports estáticos para mejor compatibilidad con Capacitor)
+const audioFiles = {
+    main: getAudioPath('main.mp3'),
+    jetpack: getAudioPath('jetpack.mp3'),
+    laser: getAudioPath('laser.mp3'),
+    lifedown: getAudioPath('lifedown.mp3'),
+    steps: getAudioPath('steps.mp3'),
+    bombFire: getAudioPath('bomb_fire.mp3'),
+    bombBoom: getAudioPath('bomb_boom.mp3'),
+    enemyKill: getAudioPath('enemy_kill.mp3'),
+    successLevel: getAudioPath('success_level.mp3'),
+    toy: getAudioPath('toy.mp3'),
+    brick: getAudioPath('brick.mp3'),
+    bulb: getAudioPath('bulb.mp3'),
+    energyDrain: getAudioPath('energy-drain.mp3'),
+    tentacle: getAudioPath('tentacle.mp3'),
+    wallHit: getAudioPath('wall_hit.mp3'),
+    oneUp: getAudioPath('1up.mp3'),
+};
 
 // Interfaz para el sistema de audio
 interface AudioSystem {
@@ -71,35 +111,44 @@ let audioSystem: AudioSystem = {
     sfxVolume: 0.5,
 };
 
+/**
+ * Crea un elemento de audio de forma robusta con manejo de errores
+ */
+const createAudioElement = (src: string, options: { loop?: boolean; volume?: number } = {}): HTMLAudioElement | null => {
+    try {
+        const audio = new Audio();
+        audio.src = src;
+        if (options.loop !== undefined) audio.loop = options.loop;
+        if (options.volume !== undefined) audio.volume = options.volume;
+        audio.preload = 'auto';
+        
+        // Manejar errores de carga
+        audio.addEventListener('error', (e) => {
+            console.warn(`[Audio] Error cargando audio: ${src}`, e);
+        });
+        
+        return audio;
+    } catch (error) {
+        console.error(`[Audio] Error creando elemento de audio para ${src}:`, error);
+        return null;
+    }
+};
+
 // Inicializar solo efectos de sonido críticos
 export const initAudio = () => {
     try {
         // Crear solo efectos de sonido críticos (archivos pequeños)
-        audioSystem.sounds.laser = new Audio(laserSound);
-        audioSystem.sounds.laser.volume = audioSystem.sfxVolume;
+        audioSystem.sounds.laser = createAudioElement(audioFiles.laser, { volume: audioSystem.sfxVolume });
+        audioSystem.sounds.lifedown = createAudioElement(audioFiles.lifedown, { volume: audioSystem.sfxVolume });
+        audioSystem.sounds.bomb = createAudioElement(audioFiles.bombBoom, { volume: audioSystem.sfxVolume }); // Mantener para compatibilidad
+        audioSystem.sounds.enemyKill = createAudioElement(audioFiles.enemyKill, { volume: audioSystem.sfxVolume });
+        audioSystem.sounds.toy = createAudioElement(audioFiles.toy, { volume: audioSystem.sfxVolume });
+        audioSystem.sounds.brick = createAudioElement(audioFiles.brick, { volume: audioSystem.sfxVolume });
+        audioSystem.sounds.bulb = createAudioElement(audioFiles.bulb, { volume: audioSystem.sfxVolume });
 
-        audioSystem.sounds.lifedown = new Audio(lifedownSound);
-        audioSystem.sounds.lifedown.volume = audioSystem.sfxVolume;
-
-        // Mantener bomb para compatibilidad pero ya no se usa
-        audioSystem.sounds.bomb = new Audio(bombBoomSound);
-        audioSystem.sounds.bomb.volume = audioSystem.sfxVolume;
-
-        audioSystem.sounds.enemyKill = new Audio(enemyKillSound);
-        audioSystem.sounds.enemyKill.volume = audioSystem.sfxVolume;
-
-        audioSystem.sounds.toy = new Audio(toyBounceSound);
-        audioSystem.sounds.toy.volume = audioSystem.sfxVolume;
-
-        audioSystem.sounds.brick = new Audio(brickBounceSound);
-        audioSystem.sounds.brick.volume = audioSystem.sfxVolume;
-
-        audioSystem.sounds.bulb = new Audio(bulbOffSound);
-        audioSystem.sounds.bulb.volume = audioSystem.sfxVolume;
-
-        console.log('Audio crítico inicializado correctamente');
+        console.log('[Audio] ✅ Audio crítico inicializado correctamente');
     } catch (error) {
-        console.error('Error al inicializar el sistema de audio:', error);
+        console.error('[Audio] ❌ Error al inicializar el sistema de audio:', error);
     }
 };
 
@@ -112,44 +161,71 @@ export const loadBackgroundMusic = async (): Promise<void> => {
         }
 
         // Cargar dinámicamente el archivo de audio
-        const audio = new Audio();
-        audio.loop = true;
-        audio.volume = audioSystem.musicVolume;
-        audio.preload = 'none'; // No precargar para evitar incluirlo en el bundle
+        const audio = createAudioElement(audioFiles.main, { 
+            loop: true, 
+            volume: audioSystem.musicVolume 
+        });
         
-        audio.addEventListener('canplaythrough', () => {
+        if (!audio) {
+            console.warn('[Audio] ⚠️ No se pudo crear elemento de audio para música de fondo');
+            reject(new Error('Failed to create audio element'));
+            return;
+        }
+        
+        audio.preload = 'auto'; // Precargar para mejor rendimiento en Capacitor
+        
+        const onCanPlay = () => {
             audioSystem.bgMusic = audio;
-            console.log('Música de fondo cargada dinámicamente');
+            console.log('[Audio] ✅ Música de fondo cargada dinámicamente');
+            audio.removeEventListener('canplaythrough', onCanPlay);
+            audio.removeEventListener('error', onError);
             resolve();
-        });
+        };
         
-        audio.addEventListener('error', () => {
-            console.warn('No se pudo cargar la música de fondo');
+        const onError = (e: Event) => {
+            console.warn('[Audio] ⚠️ No se pudo cargar la música de fondo:', audioFiles.main, e);
+            audio.removeEventListener('canplaythrough', onCanPlay);
+            audio.removeEventListener('error', onError);
             reject(new Error('Failed to load background music'));
-        });
+        };
         
-        // Cargar el archivo solo cuando se necesite
-        audio.src = mainMusicUrl;
+        audio.addEventListener('canplaythrough', onCanPlay, { once: true });
+        audio.addEventListener('error', onError, { once: true });
+        
+        // Cargar el archivo
         audio.load();
+        
+        // Timeout de seguridad (10 segundos)
+        setTimeout(() => {
+            if (!audioSystem.bgMusic) {
+                console.warn('[Audio] ⚠️ Timeout cargando música de fondo');
+                audio.removeEventListener('canplaythrough', onCanPlay);
+                audio.removeEventListener('error', onError);
+                // Continuar aunque no se haya cargado completamente
+                audioSystem.bgMusic = audio;
+                resolve();
+            }
+        }, 10000);
     });
 };
 
 // Función para cargar efectos de sonido adicionales de forma lazy
 export const loadAdditionalSFX = async (): Promise<void> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const sfxToLoad = [
-            { key: 'jetpack', src: jetpackSound, loop: true },
-            { key: 'steps', src: stepsSound, loop: true },
-            { key: 'successLevel', src: successLevelSound, loop: false },
-            { key: 'energyDrain', src: energyDrainSound, loop: true },
-            { key: 'tentacle', src: tentacleSound, loop: false },
-            { key: 'bombFire', src: bombFireSound, loop: true },
-            { key: 'bombBoom', src: bombBoomSound, loop: false },
-            { key: 'wallHit', src: wallHitSound, loop: false },
-            { key: 'oneUp', src: oneUpSound, loop: false }
+            { key: 'jetpack', src: audioFiles.jetpack, loop: true },
+            { key: 'steps', src: audioFiles.steps, loop: true },
+            { key: 'successLevel', src: audioFiles.successLevel, loop: false },
+            { key: 'energyDrain', src: audioFiles.energyDrain, loop: true },
+            { key: 'tentacle', src: audioFiles.tentacle, loop: false },
+            { key: 'bombFire', src: audioFiles.bombFire, loop: true },
+            { key: 'bombBoom', src: audioFiles.bombBoom, loop: false },
+            { key: 'wallHit', src: audioFiles.wallHit, loop: false },
+            { key: 'oneUp', src: audioFiles.oneUp, loop: false }
         ];
 
         let loaded = 0;
+        let failed = 0;
         const total = sfxToLoad.length;
 
         if (total === 0) {
@@ -157,32 +233,62 @@ export const loadAdditionalSFX = async (): Promise<void> => {
             return;
         }
 
+        const checkComplete = () => {
+            if (loaded + failed === total) {
+                console.log(`[Audio] ✅ Efectos de sonido cargados: ${loaded}/${total} (${failed} fallidos)`);
+                resolve(); // Continuar aunque algunos fallen
+            }
+        };
+
         sfxToLoad.forEach(({ key, src, loop }) => {
-            const audio = new Audio();
-            if (loop) audio.loop = true;
-            audio.volume = audioSystem.sfxVolume;
-            audio.preload = 'none'; // No precargar para evitar incluirlo en el bundle
+            const audio = createAudioElement(src, { 
+                loop, 
+                volume: audioSystem.sfxVolume 
+            });
             
-            audio.addEventListener('canplaythrough', () => {
+            if (!audio) {
+                console.warn(`[Audio] ⚠️ No se pudo crear elemento de audio para: ${key}`);
+                failed++;
+                checkComplete();
+                return;
+            }
+            
+            audio.preload = 'auto'; // Precargar para mejor rendimiento en Capacitor
+            
+            const onCanPlay = () => {
                 audioSystem.sounds[key as keyof typeof audioSystem.sounds] = audio;
                 loaded++;
-                if (loaded === total) {
-                    console.log('Efectos de sonido adicionales cargados dinámicamente');
-                    resolve();
-                }
-            });
+                audio.removeEventListener('canplaythrough', onCanPlay);
+                audio.removeEventListener('error', onError);
+                checkComplete();
+            };
             
-            audio.addEventListener('error', () => {
-                console.warn(`No se pudo cargar el efecto de sonido: ${key}`);
-                loaded++;
-                if (loaded === total) {
-                    resolve(); // Continuar aunque algunos fallen
-                }
-            });
+            const onError = (e: Event) => {
+                console.warn(`[Audio] ⚠️ No se pudo cargar el efecto de sonido: ${key}`, src, e);
+                failed++;
+                audio.removeEventListener('canplaythrough', onCanPlay);
+                audio.removeEventListener('error', onError);
+                checkComplete();
+            };
             
-            // Cargar el archivo solo cuando se necesite
-            audio.src = src;
+            audio.addEventListener('canplaythrough', onCanPlay, { once: true });
+            audio.addEventListener('error', onError, { once: true });
+            
+            // Cargar el archivo
             audio.load();
+            
+            // Timeout de seguridad por archivo (5 segundos)
+            setTimeout(() => {
+                if (!audioSystem.sounds[key as keyof typeof audioSystem.sounds]) {
+                    console.warn(`[Audio] ⚠️ Timeout cargando: ${key}`);
+                    audio.removeEventListener('canplaythrough', onCanPlay);
+                    audio.removeEventListener('error', onError);
+                    // Continuar aunque no se haya cargado completamente
+                    audioSystem.sounds[key as keyof typeof audioSystem.sounds] = audio;
+                    loaded++;
+                    checkComplete();
+                }
+            }, 5000);
         });
     });
 };
@@ -380,13 +486,20 @@ export const playBombFireSound = (x: number, y: number) => {
     if (activeBombFireSounds.has(key)) return;
     
     // Crear nueva instancia de audio para esta bomba específica
-    const fireSound = new Audio(bombFireSound);
-    fireSound.loop = true;
-    fireSound.volume = audioSystem.sfxVolume;
+    const fireSound = createAudioElement(audioFiles.bombFire, { 
+        loop: true, 
+        volume: audioSystem.sfxVolume 
+    });
+    
+    if (!fireSound) {
+        console.warn('[Audio] ⚠️ No se pudo crear sonido de bomb_fire');
+        return;
+    }
+    
     activeBombFireSounds.set(key, fireSound);
     
     fireSound.play().catch(error => {
-        console.log('Error al reproducir bomb_fire:', error);
+        console.warn('[Audio] ⚠️ Error al reproducir bomb_fire:', error);
         activeBombFireSounds.delete(key);
     });
 };

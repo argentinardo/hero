@@ -1,0 +1,54 @@
+========================================
+URLs QUE DEBES AGREGAR EN AUTH0
+========================================
+
+Ve a: https://manage.auth0.com
+→ Applications → HERO Game → Settings
+
+AGREGA ESTAS URLs (una por línea):
+
+--------------------------------------------------
+ALLOWED CALLBACK URLs:
+--------------------------------------------------
+https://newhero.netlify.app/auth0-callback.html
+http://localhost:8080/auth0-callback.html
+com.newhero.game://dev-xgqa1ebceww6f4x6.us.auth0.com/capacitor/com.newhero.game/callback
+https://localhost
+https://localhost/
+
+--------------------------------------------------
+ALLOWED WEB ORIGINS:
+--------------------------------------------------
+https://newhero.netlify.app
+http://localhost:8080
+http://localhost:5173
+https://localhost
+https://localhost/
+
+--------------------------------------------------
+ALLOWED LOGOUT URLs:
+--------------------------------------------------
+https://newhero.netlify.app
+http://localhost:8080
+https://localhost
+https://localhost/
+
+--------------------------------------------------
+CORS (Cross-Origin Resource Sharing):
+--------------------------------------------------
+https://newhero.netlify.app
+http://localhost:8080
+http://localhost:5173
+https://localhost
+https://localhost/
+
+========================================
+IMPORTANTE:
+========================================
+1. Copia y pega EXACTAMENTE como se muestra
+2. Una URL por línea
+3. NO olvides hacer clic en "Save Changes"
+4. Espera 30 segundos después de guardar
+
+========================================
+
