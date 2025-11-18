@@ -84,8 +84,8 @@ import { handlePlayerInput, updatePlayer } from './components/player';
 import { loadLevel, updateWalls } from './components/level';
 import { renderGame, renderEditor, animateSplash } from './components/render';
 
-import { initAudio, playBackgroundMusic, loadAdditionalSFX } from './components/audio';
-import { applyGraphicsSettings } from './core/settings';
+import { initAudio, playBackgroundMusic, loadAdditionalSFX, setMusicVolume, setSFXVolume } from './components/audio';
+import { applyGraphicsSettings, loadSettings } from './core/settings';
 import { initGamepadSupport, updateGamepadState } from './utils/gamepad';
 import { isTvMode } from './utils/device';
 
@@ -732,8 +732,18 @@ const bootstrap = async (): Promise<void> => {
     // Inicializar soporte de gamepad
     initGamepadSupport();
     
-    // Aplicar configuración de gráficos al inicio
-    applyGraphicsSettings(store.settings.graphics);
+    // Cargar configuración desde BD/localStorage y aplicar
+    loadSettings().then(settings => {
+        store.settings = settings;
+        applyGraphicsSettings(store.settings.graphics);
+        setMusicVolume(store.settings.audio.musicVolume);
+        setSFXVolume(store.settings.audio.sfxVolume);
+        console.log('[Bootstrap] ✅ Configuración cargada y aplicada');
+    }).catch(err => {
+        console.warn('[Bootstrap] ⚠️ Error cargando configuración:', err);
+        // Aplicar configuración por defecto
+        applyGraphicsSettings(store.settings.graphics);
+    });
     
     showMenu(store);
 

@@ -92,13 +92,69 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
 const SETTINGS_KEY = 'hero_game_settings';
 
 /**
- * Carga la configuración desde localStorage o retorna valores por defecto
+ * Carga la configuración desde la base de datos (si el usuario está logueado) o desde localStorage
  * 
  * En móvil, por defecto todos los efectos gráficos están activados
  * excepto showFps para no distraer. Si el usuario ya tiene configuración guardada,
  * se respeta esa configuración.
  */
-export const loadSettings = (): GameSettings => {
+export const loadSettings = async (): Promise<GameSettings> => {
+    // Intentar cargar desde la BD si el usuario está logueado
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+        try {
+            const { initializeAuth0 } = await import('../components/ui');
+            const { Auth0Manager } = await import('../auth0-manager');
+            await initializeAuth0();
+            const token = await Auth0Manager.getAccessToken();
+            
+            if (token) {
+                const { getNetlifyBaseUrl } = await import('../utils/device');
+                const baseUrl = getNetlifyBaseUrl();
+                
+                const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (res.ok) {
+                    const profile = await res.json();
+                    if (profile.data?.settings) {
+                        console.log('[Settings] ✅ Configuración cargada desde la BD');
+                        const parsed = profile.data.settings;
+                        const defaults = isMobileDevice() ? DEFAULT_MOBILE_SETTINGS : DEFAULT_SETTINGS;
+                        // Merge con defaults para asegurar que todas las propiedades existen
+                        const merged: GameSettings = {
+                            audio: {
+                                ...defaults.audio,
+                                ...parsed.audio,
+                            },
+                            graphics: {
+                                ...defaults.graphics,
+                                ...parsed.graphics,
+                            },
+                            controls: {
+                                ...defaults.controls,
+                                ...parsed.controls,
+                            },
+                            language: parsed.language || getCurrentLanguage() || defaults.language,
+                        };
+                        merged.graphics.style = (parsed.graphics?.style ?? defaults.graphics.style) as GraphicsStyle;
+                        // También guardar en localStorage como backup
+                        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+                        return merged;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('[Settings] Error cargando configuración desde BD, usando localStorage:', error);
+        }
+    }
+    
+    // Fallback: cargar desde localStorage
     try {
         const saved = localStorage.getItem(SETTINGS_KEY);
         if (saved) {
@@ -134,37 +190,74 @@ export const loadSettings = (): GameSettings => {
 };
 
 /**
- * Guarda la configuración en localStorage
+ * Guarda la configuración en la base de datos (si el usuario está logueado) y en localStorage
  */
-export const saveSettings = (settings: GameSettings): void => {
+export const saveSettings = async (settings: GameSettings): Promise<void> => {
+    // Siempre guardar en localStorage como backup
     try {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
-        console.error('Error guardando configuración:', error);
+        console.error('[Settings] Error guardando configuración en localStorage:', error);
+    }
+    
+    // Intentar guardar en la BD si el usuario está logueado
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+        try {
+            const { initializeAuth0 } = await import('../components/ui');
+            const { Auth0Manager } = await import('../auth0-manager');
+            await initializeAuth0();
+            const token = await Auth0Manager.getAccessToken();
+            
+            if (token) {
+                const { getNetlifyBaseUrl } = await import('../utils/device');
+                const baseUrl = getNetlifyBaseUrl();
+                
+                const res = await fetch(`${baseUrl}/.netlify/functions/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        settingsOnly: true,
+                        settings: settings
+                    })
+                });
+                
+                if (res.ok) {
+                    console.log('[Settings] ✅ Configuración guardada en la BD');
+                } else {
+                    console.warn('[Settings] Error guardando configuración en BD:', res.status, res.statusText);
+                }
+            }
+        } catch (error) {
+            console.warn('[Settings] Error guardando configuración en BD:', error);
+        }
     }
 };
 
 /**
  * Actualiza una parte específica de la configuración
  */
-export const updateSettings = (updates: Partial<GameSettings>): GameSettings => {
-    const current = loadSettings();
+export const updateSettings = async (updates: Partial<GameSettings>): Promise<GameSettings> => {
+    const current = await loadSettings();
     const updated = {
         audio: { ...current.audio, ...updates.audio },
         graphics: { ...current.graphics, ...updates.graphics },
         controls: { ...current.controls, ...updates.controls },
         language: updates.language || current.language,
     };
-    saveSettings(updated);
+    await saveSettings(updated);
     return updated;
 };
 
 /**
  * Resetea la configuración a los valores por defecto según el dispositivo
  */
-export const resetSettings = (): GameSettings => {
+export const resetSettings = async (): Promise<GameSettings> => {
     const defaults = isMobileDevice() ? DEFAULT_MOBILE_SETTINGS : DEFAULT_SETTINGS;
-    saveSettings({ ...defaults });
+    await saveSettings({ ...defaults });
     return { ...defaults };
 };
 

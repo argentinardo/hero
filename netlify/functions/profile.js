@@ -7,11 +7,14 @@ const ensureUsersTable = async (sql) => {
     nickname text,
     avatar_url text,
     email text,
+    settings jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
     last_login timestamptz,
     UNIQUE(user_id)
   )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
+  // Agregar columna settings si no existe (para usuarios existentes)
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS settings jsonb`;
 };
 
 const allowedOrigins = [
@@ -211,7 +214,7 @@ exports.handler = async (event, context) => {
         ON CONFLICT (user_id) DO UPDATE
         SET last_login = now(),
             email = COALESCE(EXCLUDED.email, users.email)
-        RETURNING user_id, email, nickname, avatar_url, created_at, last_login
+        RETURNING user_id, email, nickname, avatar_url, settings, created_at, last_login
       `;
       console.log('Query GET exitosa, perfil obtenido:', profile ? 'Sí' : 'No');
 
@@ -245,6 +248,7 @@ exports.handler = async (event, context) => {
       const payload = JSON.parse(event.body || '{}');
       const rawNickname = payload.nickname;
       const rawAvatarUrl = payload.avatar_url;
+      const rawSettings = payload.settings;
 
       const nickname =
         typeof rawNickname === 'string' && rawNickname.trim().length > 0
@@ -254,17 +258,49 @@ exports.handler = async (event, context) => {
         typeof rawAvatarUrl === 'string' && rawAvatarUrl.trim().length > 0
           ? rawAvatarUrl.trim().slice(0, 256)
           : null;
+      
+      // Validar que settings sea un objeto válido si está presente
+      let settings = null;
+      if (rawSettings && typeof rawSettings === 'object' && !Array.isArray(rawSettings)) {
+        try {
+          // Validar estructura básica de settings
+          if (rawSettings.audio || rawSettings.graphics || rawSettings.controls || rawSettings.language) {
+            settings = rawSettings;
+          }
+        } catch (e) {
+          console.warn('Settings inválido, ignorando:', e);
+        }
+      }
 
-      console.log('Ejecutando query PUT para actualizar perfil:', { userId, nickname, avatarUrl });
+      console.log('Ejecutando query PUT para actualizar perfil:', { userId, nickname, avatarUrl, hasSettings: !!settings });
+      
+      // Si solo se está actualizando settings, no actualizar otros campos
+      if (payload.settingsOnly) {
+        const [profile] = await sql`
+          UPDATE users
+          SET settings = ${settings}::jsonb,
+              last_login = now()
+          WHERE user_id = ${userId}
+          RETURNING user_id, email, nickname, avatar_url, settings, created_at, last_login
+        `;
+        console.log('Query PUT (settings only) exitosa, perfil actualizado:', profile ? 'Sí' : 'No');
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ ok: true, data: profile }),
+        };
+      }
+      
       const [profile] = await sql`
-        INSERT INTO users (user_id, email, nickname, avatar_url, last_login)
-        VALUES (${userId}, ${userEmail}, ${nickname}, ${avatarUrl}, now())
+        INSERT INTO users (user_id, email, nickname, avatar_url, settings, last_login)
+        VALUES (${userId}, ${userEmail}, ${nickname}, ${avatarUrl}, ${settings}::jsonb, now())
         ON CONFLICT (user_id) DO UPDATE
-        SET nickname = ${nickname},
-            avatar_url = ${avatarUrl},
+        SET nickname = COALESCE(${nickname}, users.nickname),
+            avatar_url = COALESCE(${avatarUrl}, users.avatar_url),
+            settings = COALESCE(${settings}::jsonb, users.settings),
             email = COALESCE(EXCLUDED.email, users.email),
             last_login = now()
-        RETURNING user_id, email, nickname, avatar_url, created_at, last_login
+        RETURNING user_id, email, nickname, avatar_url, settings, created_at, last_login
       `;
       console.log('Query PUT exitosa, perfil actualizado:', profile ? 'Sí' : 'No');
 

@@ -16,9 +16,9 @@ import { applyControlMode } from './mobile-controls';
 import { t, setLanguage, getCurrentLanguage, type Language } from '../utils/i18n';
 
 // Helper para guardar settings con idioma incluido
-const saveSettingsWithLanguage = (settings: any) => {
+const saveSettingsWithLanguage = async (settings: any) => {
     const lang = (settings as any).language || getCurrentLanguage();
-    saveSettings({ ...settings, language: lang } as any);
+    await saveSettings({ ...settings, language: lang } as any);
 };
 import { 
     undo, 
@@ -1962,7 +1962,21 @@ const authManager = {
             // 2. Cargar nickname desde BD
             await nicknameManager.initialize();
             
-            // 3. Cargar campañas desde el servidor (si hay store disponible)
+            // 3. Cargar configuración desde BD
+            if (store) {
+                try {
+                    const settings = await loadSettings();
+                    store.settings = settings;
+                    applyGraphicsSettings(store.settings.graphics);
+                    setMusicVolume(store.settings.audio.musicVolume);
+                    setSFXVolume(store.settings.audio.sfxVolume);
+                    console.log('[AuthManager] ✅ Configuración cargada desde BD después del login');
+                } catch (error) {
+                    console.warn('[AuthManager] Error cargando configuración después del login:', error);
+                }
+            }
+            
+            // 4. Cargar campañas desde el servidor (si hay store disponible)
             if (store) {
                 try {
                     const { loadCampaignsFromServer } = await import('../utils/campaigns');
@@ -1977,7 +1991,7 @@ const authManager = {
                 }
             }
             
-            // 4. Cargar "Legacy" como campaña por defecto
+            // 5. Cargar "Legacy" como campaña por defecto
             console.log('[AuthManager] 📋 Configurando campaña "Legacy" por defecto...');
             localStorage.setItem('selectedCampaign', 'legacy');
             localStorage.setItem('selectedCampaignName', 'Legacy');
@@ -4183,7 +4197,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false,
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
         updateSettingsUI(store);
     };
 
@@ -4210,7 +4226,9 @@ const setupSettingsModal = (store: GameStore) => {
         controlModeSelector.addEventListener('change', (e) => {
             const newMode = (e.target as HTMLSelectElement).value as ControlMode;
             store.settings.controls.mobileMode = newMode;
-            saveSettingsWithLanguage(store.settings);
+            saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
             
             // Aplicar el nuevo modo si estamos en juego
             if (store.appState === 'playing') {
@@ -4228,7 +4246,9 @@ const setupSettingsModal = (store: GameStore) => {
             const newLang = (e.target as HTMLSelectElement).value as Language;
             setLanguage(newLang);
             (store.settings as any).language = newLang;
-            saveSettings({ ...store.settings, language: newLang } as any);
+            saveSettings({ ...store.settings, language: newLang } as any).catch(err => {
+                console.warn('[Settings] Error guardando configuración:', err);
+            });
             updateAllTexts(store);
         });
     }
@@ -4253,7 +4273,9 @@ const setupSettingsModal = (store: GameStore) => {
         const volume = value / 100;
         store.settings.audio.musicVolume = volume;
         setMusicVolume(volume);
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     // Actualizar volumen de efectos
@@ -4266,7 +4288,9 @@ const setupSettingsModal = (store: GameStore) => {
         const volume = value / 100;
         store.settings.audio.sfxVolume = volume;
         setSFXVolume(volume);
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     // Toggle de mute
@@ -4291,7 +4315,9 @@ const setupSettingsModal = (store: GameStore) => {
                 ...store.settings.graphics,
                 showFps: store.settings.graphics.showFps ?? false,
             });
-            saveSettingsWithLanguage(store.settings);
+            saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
             updateSettingsUI(store);
         } else {
             applyGraphicsPreset(preset);
@@ -4307,7 +4333,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     glowToggle?.addEventListener('change', (e) => {
@@ -4318,7 +4346,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     brightnessToggle?.addEventListener('change', (e) => {
@@ -4329,7 +4359,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     contrastToggle?.addEventListener('change', (e) => {
@@ -4340,7 +4372,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     vignetteToggle?.addEventListener('change', (e) => {
@@ -4351,7 +4385,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     blurToggle?.addEventListener('change', (e) => {
@@ -4366,7 +4402,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     fpsToggle?.addEventListener('change', (e) => {
@@ -4377,7 +4415,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
     
     mobileFullWidthToggle?.addEventListener('change', (e) => {
@@ -4388,7 +4428,9 @@ const setupSettingsModal = (store: GameStore) => {
             ...store.settings.graphics,
             showFps: store.settings.graphics.showFps ?? false
         });
-        saveSettingsWithLanguage(store.settings);
+        saveSettingsWithLanguage(store.settings).catch(err => {
+            console.warn('[Settings] Error guardando configuración:', err);
+        });
     });
 };
 
@@ -5619,11 +5661,36 @@ const setupMenuButtons = (store: GameStore) => {
         closeEditorPanels(store);
         profileModal?.classList.remove('hidden');
         
-        // Cargar datos del usuario
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        if (user && profileEmailDisplay) {
-            profileEmailDisplay.value = user.email || '';
+        // Cargar datos del usuario desde Auth0
+        try {
+            const { Auth0Manager } = await import('../auth0-manager');
+            const user = await Auth0Manager.getUser();
+            
+            if (user && profileEmailDisplay) {
+                profileEmailDisplay.value = user.email || '';
+                console.log('[Profile Modal Open] ✅ Email cargado desde Auth0:', user.email);
+            } else if (profileEmailDisplay) {
+                // Fallback: intentar obtener del localStorage
+                const storedEmail = localStorage.getItem('currentUserEmail');
+                if (storedEmail) {
+                    profileEmailDisplay.value = storedEmail;
+                    console.log('[Profile Modal Open] ✅ Email cargado desde localStorage:', storedEmail);
+                } else {
+                    profileEmailDisplay.value = '';
+                    console.warn('[Profile Modal Open] ⚠️ No se pudo obtener email del usuario');
+                }
+            }
+        } catch (error) {
+            console.error('[Profile Modal Open] Error obteniendo usuario de Auth0:', error);
+            // Fallback: intentar obtener del localStorage
+            if (profileEmailDisplay) {
+                const storedEmail = localStorage.getItem('currentUserEmail');
+                if (storedEmail) {
+                    profileEmailDisplay.value = storedEmail;
+                } else {
+                    profileEmailDisplay.value = '';
+                }
+            }
         }
         
         // CRÍTICO: Usar nicknameManager para obtener el nickname actual (más confiable)

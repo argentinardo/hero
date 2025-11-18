@@ -394,6 +394,7 @@ export interface GameStore {
         controls: {
             mobileMode: 'hybrid' | 'onehand' | 'virtual' | 'fixed';
         };
+        language: string;
     };
 }
 

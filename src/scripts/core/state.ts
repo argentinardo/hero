@@ -92,7 +92,22 @@ export const createInitialStore = (): GameStore => ({
     splashAnimationFrame: 0,
     splashAnimationTick: 0,
     splashAnimationDirection: 1,
-    settings: loadSettings(), // Cargar configuración desde localStorage
+    settings: {
+        audio: { musicVolume: 0.3, sfxVolume: 0.5 },
+        graphics: {
+            scanline: true,
+            glow: true,
+            brightness: true,
+            contrast: true,
+            vignette: true,
+            blur: 1.5,
+            showFps: false,
+            mobileFullWidth: false,
+            style: 'retro' as const,
+        },
+        controls: { mobileMode: 'hybrid' as const },
+        language: 'es' as const,
+    }, // Se cargará desde BD/localStorage después de la inicialización
     dom: {
         canvas: null,
         ctx: null,
