@@ -323,8 +323,9 @@ const updateCampaignsList = (store: GameStore) => {
                 const levelNameContainer = document.createElement('div');
                 levelNameContainer.className = 'flex-1';
                 
-                // Nombre por defecto si no hay nombre personalizado
-                const defaultName = `${t('editor.levelNumber')} ${level.levelIndex + 1}`;
+                // CRÍTICO: Usar el índice dentro de la campaña (idx + 1), NO el índice global (level.levelIndex + 1)
+                // El nombre debe ser "Nivel" + posición en la campaña + 1
+                const defaultName = `${t('editor.levelNumber')} ${idx + 1}`;
                 const displayName = level.name || defaultName;
                 
                 // Crear span que se convertirá en input al hacer click

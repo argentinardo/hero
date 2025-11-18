@@ -281,6 +281,46 @@ export const Auth0Manager = {
                 console.log('[Auth0] 🔄 Procesando callback con SDK...');
                 const result = await this.client.handleRedirectCallback();
                 console.log('[Auth0] ✅ SDK procesó el callback correctamente');
+                console.log('[Auth0] Resultado del callback:', result);
+                
+                // CRÍTICO: Intentar obtener el id_token del resultado o del caché del SDK
+                let idToken: string | null = null;
+                
+                // El resultado puede contener el id_token
+                if (result && (result as any).id_token) {
+                    idToken = (result as any).id_token;
+                    console.log('[Auth0] ✅ ID Token encontrado en resultado del callback');
+                }
+                
+                // Si no está en el resultado, intentar obtenerlo del caché del SDK
+                if (!idToken) {
+                    idToken = this.getIdTokenFromSDKCache();
+                    if (idToken) {
+                        console.log('[Auth0] ✅ ID Token obtenido del caché después del callback');
+                    }
+                }
+                
+                // Si aún no lo tenemos, intentar obtenerlo de las claims
+                if (!idToken && this.config) {
+                    try {
+                        const claims = await this.client.getIdTokenClaims();
+                        if (claims && (claims as any).__raw) {
+                            idToken = (claims as any).__raw;
+                            console.log('[Auth0] ✅ ID Token obtenido de claims.__raw');
+                        }
+                    } catch (e) {
+                        console.warn('[Auth0] No se pudo obtener id_token de claims:', e);
+                    }
+                }
+                
+                // Guardar el id_token si lo encontramos
+                if (idToken) {
+                    localStorage.setItem('auth0_id_token', idToken);
+                    console.log('[Auth0] ✅ ID Token guardado en localStorage');
+                } else {
+                    console.warn('[Auth0] ⚠️ No se pudo obtener id_token después del callback');
+                    console.warn('[Auth0] Esto puede causar problemas con las funciones de Netlify');
+                }
                 
                 // Restaurar URL original
                 window.history.replaceState({}, '', originalHref);
@@ -510,30 +550,77 @@ export const Auth0Manager = {
      * Intenta obtener el id_token del caché interno del SDK de Auth0
      */
     getIdTokenFromSDKCache(): string | null {
-        if (!this.config) return null;
+        if (!this.config) {
+            console.warn('[Auth0] No hay config para buscar id_token en caché');
+            return null;
+        }
         
         const { clientId, domain } = this.config;
+        console.log('[Auth0] Buscando id_token en caché del SDK:', { clientId, domain });
         
         // El SDK de Auth0 guarda los tokens en localStorage con esta clave
         const cacheKey = `@@auth0spajs@@::${clientId}::${domain}::@@user@@`;
-        const cacheData = localStorage.getItem(cacheKey);
+        console.log('[Auth0] Clave de caché:', cacheKey);
         
-        if (cacheData) {
-            try {
-                const parsed = JSON.parse(cacheData);
-                // El SDK puede guardar el id_token en diferentes lugares
-                if (parsed.id_token) {
-                    console.log('[Auth0] ID Token encontrado en caché del SDK');
-                    return parsed.id_token;
+        const cacheData = localStorage.getItem(cacheKey);
+        if (!cacheData) {
+            console.warn('[Auth0] No se encontró caché del SDK en localStorage');
+            // Intentar buscar todas las claves que empiecen con @@auth0spajs@@
+            const allKeys = Object.keys(localStorage);
+            const auth0Keys = allKeys.filter(key => key.startsWith('@@auth0spajs@@'));
+            console.log('[Auth0] Claves de Auth0 encontradas en localStorage:', auth0Keys);
+            if (auth0Keys.length > 0) {
+                // Intentar con la primera clave encontrada
+                const firstKey = auth0Keys[0];
+                console.log('[Auth0] Intentando con clave alternativa:', firstKey);
+                const altCacheData = localStorage.getItem(firstKey);
+                if (altCacheData) {
+                    try {
+                        const parsed = JSON.parse(altCacheData);
+                        console.log('[Auth0] Datos del caché alternativo:', Object.keys(parsed));
+                        if (parsed.id_token) {
+                            console.log('[Auth0] ID Token encontrado en caché alternativo');
+                            return parsed.id_token;
+                        }
+                    } catch (e) {
+                        console.warn('[Auth0] Error parseando caché alternativo:', e);
+                    }
                 }
-                // También puede estar en body.id_token
-                if (parsed.body && parsed.body.id_token) {
-                    console.log('[Auth0] ID Token encontrado en caché del SDK (body.id_token)');
-                    return parsed.body.id_token;
-                }
-            } catch (e) {
-                console.warn('[Auth0] Error parseando caché del SDK:', e);
             }
+            return null;
+        }
+        
+        try {
+            const parsed = JSON.parse(cacheData);
+            console.log('[Auth0] Datos del caché:', Object.keys(parsed));
+            
+            // El SDK puede guardar el id_token en diferentes lugares
+            if (parsed.id_token) {
+                console.log('[Auth0] ✅ ID Token encontrado en caché del SDK (parsed.id_token)');
+                return parsed.id_token;
+            }
+            // También puede estar en body.id_token
+            if (parsed.body && parsed.body.id_token) {
+                console.log('[Auth0] ✅ ID Token encontrado en caché del SDK (body.id_token)');
+                return parsed.body.id_token;
+            }
+            // O en body directamente si es un string
+            if (parsed.body && typeof parsed.body === 'string') {
+                try {
+                    const bodyParsed = JSON.parse(parsed.body);
+                    if (bodyParsed.id_token) {
+                        console.log('[Auth0] ✅ ID Token encontrado en caché del SDK (body string parsed)');
+                        return bodyParsed.id_token;
+                    }
+                } catch (e) {
+                    // No es JSON, continuar
+                }
+            }
+            
+            console.warn('[Auth0] No se encontró id_token en el caché del SDK');
+            console.warn('[Auth0] Estructura del caché:', JSON.stringify(parsed, null, 2).substring(0, 500));
+        } catch (e) {
+            console.error('[Auth0] Error parseando caché del SDK:', e);
         }
         
         return null;
@@ -618,16 +705,18 @@ export const Auth0Manager = {
             const token = await this.client.getTokenSilently();
             if (token) {
                 console.log('[Auth0] Access Token obtenido del SDK');
+                console.log('[Auth0] Access Token (primeros 50 caracteres):', token.substring(0, 50));
                 // Guardar también en localStorage como backup
                 localStorage.setItem('auth0_access_token', token);
                 
                 // Verificar si el access_token es JWT
                 const tokenParts = token.split('.');
+                console.log('[Auth0] Access Token partes:', tokenParts.length);
                 if (tokenParts.length === 3) {
-                    console.log('[Auth0] Access token es JWT, usando directamente');
+                    console.log('[Auth0] ✅ Access token es JWT, usando directamente');
                     return token;
                 } else {
-                    console.warn('[Auth0] Access token NO es JWT (token opaco)');
+                    console.warn('[Auth0] ⚠️ Access token NO es JWT (token opaco)');
                     console.warn('[Auth0] Las funciones de Netlify necesitan un JWT para decodificar el usuario');
                     console.warn('[Auth0] Intentando obtener id_token del caché del SDK...');
                     
@@ -635,17 +724,30 @@ export const Auth0Manager = {
                     if (!idToken) {
                         idToken = this.getIdTokenFromSDKCache();
                         if (idToken) {
-                            localStorage.setItem('auth0_id_token', idToken);
-                            console.log('[Auth0] ID Token obtenido del caché del SDK, usando en lugar de access_token');
-                            return idToken;
+                            const idTokenParts = idToken.split('.');
+                            if (idTokenParts.length === 3) {
+                                localStorage.setItem('auth0_id_token', idToken);
+                                console.log('[Auth0] ✅ ID Token obtenido del caché del SDK, usando en lugar de access_token');
+                                return idToken;
+                            } else {
+                                console.warn('[Auth0] ID Token del caché no es JWT válido');
+                            }
+                        } else {
+                            console.error('[Auth0] ❌ No se pudo obtener id_token del caché del SDK');
                         }
                     } else {
-                        console.warn('[Auth0] Usando ID Token como fallback (aunque no pasó validación inicial)');
-                        return idToken;
+                        const idTokenParts = idToken.split('.');
+                        if (idTokenParts.length === 3) {
+                            console.log('[Auth0] ✅ Usando ID Token como fallback (JWT válido)');
+                            return idToken;
+                        } else {
+                            console.warn('[Auth0] ID Token disponible no es JWT válido');
+                        }
                     }
                     
-                    console.error('[Auth0] ERROR: No hay id_token disponible y access_token no es JWT');
+                    console.error('[Auth0] ❌ ERROR CRÍTICO: No hay id_token disponible y access_token no es JWT');
                     console.error('[Auth0] Las funciones de Netlify no podrán decodificar el usuario');
+                    console.error('[Auth0] Solución: Hacer login de nuevo para obtener id_token');
                     // Devolver el token de todas formas, pero con advertencia
                     return token;
                 }

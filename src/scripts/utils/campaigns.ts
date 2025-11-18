@@ -9,7 +9,7 @@ import type { Campaign, CampaignLevel, GameStore } from '../core/types';
 import { getUserStorage, setUserStorage } from './storage';
 
 const CAMPAIGNS_STORAGE_KEY = 'campaigns'; // Ahora se usa con namespace
-const DEFAULT_CAMPAIGN_ID = 'default';
+export const DEFAULT_CAMPAIGN_ID = 'default';
 
 /**
  * Crea la campaña por defecto (Legacy) con los niveles originales desde levels.json

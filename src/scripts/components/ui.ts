@@ -1858,14 +1858,28 @@ const nicknameManager = {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
         // Actualizar TODOS los elementos
+        // 1. user-panel-nickname (dentro de user-panel-title)
         const userPanelNickname = document.getElementById('user-panel-nickname');
         if (userPanelNickname) {
             userPanelNickname.textContent = isLoggedIn ? nicknameToUse.toUpperCase() : 'USER';
+            console.log('[NicknameManager] ✅ user-panel-nickname actualizado:', nicknameToUse.toUpperCase());
+        } else {
+            console.warn('[NicknameManager] ⚠️ user-panel-nickname no encontrado');
         }
 
+        // 2. username-display
         const usernameDisplay = document.getElementById('username-display');
         if (usernameDisplay) {
             usernameDisplay.textContent = isLoggedIn ? nicknameToUse : 'Usuario';
+        }
+
+        // 3. profile-nickname-input (input del modal de perfil)
+        const profileNicknameInput = document.getElementById('profile-nickname-input') as HTMLInputElement | null;
+        if (profileNicknameInput) {
+            profileNicknameInput.value = isLoggedIn ? nicknameToUse : '';
+            console.log('[NicknameManager] ✅ profile-nickname-input actualizado:', nicknameToUse);
+        } else {
+            console.warn('[NicknameManager] ⚠️ profile-nickname-input no encontrado');
         }
 
         console.log('[NicknameManager] ✅ UI actualizado con:', nicknameToUse);
@@ -1914,6 +1928,20 @@ const authManager = {
             console.log('[AuthManager] 📋 Configurando campaña "Legacy" por defecto...');
             localStorage.setItem('selectedCampaign', 'legacy');
             localStorage.setItem('selectedCampaignName', 'Legacy');
+            
+            // CRÍTICO: Establecer la campaña Legacy como activa en el store SIEMPRE al hacer login
+            if (store) {
+                const DEFAULT_CAMPAIGN_ID = 'default'; // ID de la campaña Legacy
+                // SIEMPRE establecer Legacy, incluso si había otra campaña seleccionada
+                store.currentCampaignId = DEFAULT_CAMPAIGN_ID;
+                console.log('[AuthManager] ✅ Campaña Legacy establecida como activa (siempre al hacer login):', store.currentCampaignId);
+                
+                // Sincronizar el selector de niveles para mostrar los niveles de Legacy
+                if (store.appState === 'editing') {
+                    const { syncLevelSelectorForCampaign } = await import('./campaigns-ui');
+                    syncLevelSelectorForCampaign(store);
+                }
+            }
             
             console.log('[AuthManager] ✅ Usuario autenticado completamente');
         } catch (error) {
@@ -2013,6 +2041,14 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     // Cargar nickname desde la base de datos al entrar al editor
     await loadUserNicknameFromDB();
     
+    // CRÍTICO: Si el usuario está logueado, asegurar que Legacy sea la campaña activa
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn && !store.currentCampaignId) {
+        const DEFAULT_CAMPAIGN_ID = 'default'; // ID de la campaña Legacy
+        store.currentCampaignId = DEFAULT_CAMPAIGN_ID;
+        console.log('[startEditor] ✅ Campaña Legacy establecida como activa para usuario logueado');
+    }
+    
     // Cargar editor de forma lazy
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
     setupEditorState(store);
@@ -2040,6 +2076,14 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         }
     }
     // Legacy: NO cargar cambios desde localStorage - siempre usar niveles originales de assets/levels.json
+    
+    // CRÍTICO: Si el usuario está logueado, asegurar que Legacy sea la campaña activa
+    const isLoggedInForCampaign = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedInForCampaign && !store.currentCampaignId) {
+        const DEFAULT_CAMPAIGN_ID = 'default'; // ID de la campaña Legacy
+        store.currentCampaignId = DEFAULT_CAMPAIGN_ID;
+        console.log('[startEditor] ✅ Campaña Legacy establecida como activa (selector de niveles)');
+    }
     
     // Actualizar el selector de niveles
     // Si hay una campaña seleccionada, mostrar solo los niveles de esa campaña
@@ -2115,10 +2159,13 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         const levelsSectionMobile = userPanel.querySelector('.mt-4');
         const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
         
-        // Actualizar título con nickname del usuario (priorizar nickname sobre username)
-        const { getUserStorage } = await import('../utils/storage');
-        const nickname = getUserStorage('nickname') || localStorage.getItem('username') || 'Usuario';
+        // CRÍTICO: Actualizar nickname usando nicknameManager para mantener consistencia
+        // Esto asegura que user-panel-nickname esté "observando" el nickname
+        await nicknameManager.updateAllUI();
+        
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        const { getUserStorage } = await import('../utils/storage');
+        const nickname = nicknameManager.currentNickname || getUserStorage('nickname') || localStorage.getItem('username') || 'Usuario';
         
         // Restaurar elementos que podrían estar ocultos
         if (userAreaMobileEl) {
@@ -2132,13 +2179,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         if (levelsSectionMobile) (levelsSectionMobile as HTMLElement).style.display = 'block';
         if (resumeEditorBtnPanel) resumeEditorBtnPanel.style.display = 'none';
         
-        const userPanelNickname = document.getElementById('user-panel-nickname');
         const userPanelAvatar = document.getElementById('user-panel-avatar');
-        
-        // Actualizar nickname
-        if (userPanelNickname) {
-            userPanelNickname.textContent = nickname.toUpperCase();
-        }
         
         // Actualizar avatar si está guardado (default: Player)
         const savedAvatar = getUserStorage('avatar') || 'P';
@@ -5124,18 +5165,21 @@ const setupMenuButtons = (store: GameStore) => {
             }
         }
         
+        // CRÍTICO: Actualizar nickname usando nicknameManager para mantener consistencia
+        // Esto asegura que user-panel-nickname esté "observando" el nickname
+        await nicknameManager.updateAllUI();
+        
         // Actualizar panel mobile
         const userAreaMobile = document.getElementById('user-area-mobile');
-        const userPanelNickname = document.getElementById('user-panel-nickname');
         const userPanelAvatar = document.getElementById('user-panel-avatar');
         
+        // Usar el nickname del manager en lugar del displayName
+        const currentNickname = nicknameManager.currentNickname || displayName;
+        
         if (userAreaMobile) {
-            if (isLoggedIn && displayName) {
+            if (isLoggedIn && currentNickname) {
                 userAreaMobile.style.display = 'block';
-                // Actualizar nickname del panel
-                if (userPanelNickname) {
-                    userPanelNickname.textContent = displayName.toUpperCase();
-                }
+                // El nickname ya fue actualizado por nicknameManager.updateAllUI()
                 // Actualizar avatar si está guardado (default: Player)
                 const savedAvatar = getUserStorage('avatar') || 'P';
                 const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
@@ -5151,9 +5195,7 @@ const setupMenuButtons = (store: GameStore) => {
                 }
             } else {
                 userAreaMobile.style.display = 'none';
-                if (userPanelNickname) {
-                    userPanelNickname.textContent = t('user.user');
-                }
+                // El nickname ya fue actualizado por nicknameManager.updateAllUI() cuando no hay login
                 const userPanelAvatarCanvas = document.getElementById('user-panel-avatar') as HTMLCanvasElement | null;
                 if (userPanelAvatarCanvas) {
                     drawAvatar(store, 'P', userPanelAvatarCanvas, performance.now());
@@ -5498,45 +5540,14 @@ const setupMenuButtons = (store: GameStore) => {
             profileEmailDisplay.value = user.email || '';
         }
         
-        // Intentar cargar nickname desde la base de datos primero
-        let currentNickname = null;
-        try {
-            if (user) {
-                const token = await user.jwt();
-                if (token) {
-                    const { getNetlifyBaseUrl } = await import('../utils/device');
-                    const baseUrl = getNetlifyBaseUrl();
-                    
-                    const response = await fetch(`${baseUrl}/.netlify/functions/profile`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.ok && data.data.nickname) {
-                            currentNickname = data.data.nickname;
-                            console.log('[Profile Modal Open] ✅ Nickname cargado de BD:', currentNickname);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('[Profile Modal Open] ⚠️ Error cargando de BD, usando localStorage:', error);
-        }
+        // CRÍTICO: Usar nicknameManager para obtener el nickname actual (más confiable)
+        // Esto asegura que profile-nickname-input esté "observando" el nickname
+        await nicknameManager.updateAllUI();
         
-        // Fallback: cargar del localStorage si no está en BD
-        if (!currentNickname) {
-            const { getUserStorage } = await import('../utils/storage');
-            currentNickname = getUserStorage('nickname');
-            console.log('[Profile Modal Open] Nickname cargado de localStorage:', currentNickname);
-        }
-        
+        // Actualizar el input con el nickname del manager
         if (profileNicknameInput) {
-            profileNicknameInput.value = currentNickname || '';
+            profileNicknameInput.value = nicknameManager.currentNickname || '';
+            console.log('[Profile Modal Open] ✅ profile-nickname-input actualizado con:', nicknameManager.currentNickname);
         }
         // Cargar avatar actual (default: Player)
         const profileAvatarPreview = document.getElementById('profile-avatar-preview') as HTMLCanvasElement | null;
@@ -5603,9 +5614,24 @@ const setupMenuButtons = (store: GameStore) => {
         profileModal?.classList.add('hidden');
     });
     
+    // Agregar validación de límite de 10 caracteres al input
+    profileNicknameInput?.addEventListener('input', (e) => {
+        const input = e.target as HTMLInputElement;
+        if (input.value.length > 10) {
+            input.value = input.value.substring(0, 10);
+        }
+    });
+    
     profileSaveBtn?.addEventListener('click', async () => {
         if (!profileNicknameInput) return;
-        const newNickname = profileNicknameInput.value.trim();
+        let newNickname = profileNicknameInput.value.trim();
+        
+        // Asegurar que no exceda 10 caracteres
+        if (newNickname.length > 10) {
+            newNickname = newNickname.substring(0, 10);
+            profileNicknameInput.value = newNickname;
+        }
+        
         if (newNickname) {
             console.log('[Profile Save] Guardando nickname:', newNickname);
             
@@ -5668,6 +5694,20 @@ const setupMenuButtons = (store: GameStore) => {
     });
     
     window.addEventListener('keydown', event => {
+        // CRÍTICO: No interceptar teclas si el usuario está escribiendo en un input/textarea
+        const activeElement = document.activeElement as HTMLElement | null;
+        const isInputFocused = activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            activeElement.tagName === 'SELECT' ||
+            (activeElement.isContentEditable === true)
+        );
+        
+        // Si está escribiendo en un input, no procesar las teclas (excepto Escape para cerrar modales)
+        if (isInputFocused && event.key !== 'Escape') {
+            return;
+        }
+        
         const tvModeActive = isTvMode();
         if (tvModeActive) {
             const keyCodeValue = getEventKeyCode(event);
@@ -6348,20 +6388,21 @@ const shareLevelToGallery = async (store: GameStore) => {
         return;
     }
 
-    const ni: any = (window as any).netlifyIdentity;
-    const user = ni?.currentUser?.();
-    
-    if (!user) {
-        showNotification(store, `❌ ${t('modals.errors.sessionExpired')}`, t('modals.errors.sessionExpired'));
-        return;
-    }
-
     try {
         console.log('=== INICIANDO COMPARTIR NIVEL ===');
         
-        const token = await user.jwt();
+        // CRÍTICO: Usar Auth0 en lugar de Netlify Identity
+        const Auth0Manager = await initializeAuth0();
+        const token = await Auth0Manager.getAccessToken();
+        
+        if (!token) {
+            console.error('No se pudo obtener token de Auth0');
+            showNotification(store, `❌ ${t('modals.errors.sessionExpired')}`, t('modals.errors.sessionExpired'));
+            return;
+        }
+        
         const baseUrl = getNetlifyBaseUrl();
-        console.log('Token obtenido, baseUrl:', baseUrl);
+        console.log('Token obtenido de Auth0, baseUrl:', baseUrl);
         
         // Verificar que el nivel del editor existe y no está vacío
         if (!store.editorLevel || store.editorLevel.length === 0) {
