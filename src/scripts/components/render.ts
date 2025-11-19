@@ -900,7 +900,23 @@ const drawHud = (store: GameStore) => {
         hudCache.score = store.score;
     }
     if (levelCountEl && hudCache.level !== store.currentLevelIndex) {
-        levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+        // Obtener posición en campaña en lugar de índice global
+        import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices }) => {
+            const campaign = getCurrentCampaign(store);
+            if (campaign && campaign.levels.length > 0) {
+                const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                const positionInCampaign = levelIndices.findIndex(idx => idx === store.currentLevelIndex);
+                if (positionInCampaign >= 0) {
+                    levelCountEl.textContent = `${positionInCampaign + 1}`;
+                } else {
+                    levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+                }
+            } else {
+                levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+            }
+        }).catch(() => {
+            levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+        });
         hudCache.level = store.currentLevelIndex;
     }
     if (energyBarEl) {

@@ -730,12 +730,10 @@ body.scanline-enabled .hamburger-btn-mobile .hamburger-label,
     background-size: 2000% 100%; /* 20 frames horizontales: ancho = 20 * 100% */
     background-repeat: no-repeat;
     background-position: 0% 0%;
-    image-rendering: pixelated;
-    -webkit-image-rendering: pixelated;
     z-index: 0; /* Detrás del message-overlay pero por encima del canvas */
     display: none; /* Oculto por defecto, se muestra en el menú */
     
-    /* Overlay oscuro para apagar el fondo del menú */
+    /* Overlay base (sin background por defecto) */
     &::before {
         content: '';
         position: absolute;
@@ -747,7 +745,29 @@ body.scanline-enabled .hamburger-btn-mobile .hamburger-label,
         pointer-events: none;
     }
     
-    /* NO aplicar scanline al splash del menú - removido a petición */
+    /* Efecto Vignette (oscurecimiento en los bordes) - Solo si está habilitado - Más oscuro */
+    &.vignette-enabled::before {
+        background: radial-gradient(
+            ellipse at center,
+            transparent 0%,
+            transparent 40%,
+            rgba(0, 0, 0, 0.8) 100%
+        );
+    }
+    
+    /* Efecto CRT Scanlines - Solo si está habilitado - Líneas de 2px */
+    &.scanline-enabled::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0px, rgba(0, 0, 0, 0.5) 2px,transparent 2px,transparent 4px
+        );
+        pointer-events: none;
+        z-index: 2; /* Por encima del overlay/vignette pero debajo del message-overlay (z-index: 10) */
+    }
 }
 
 /* Ocultar game-ui y credit-bar cuando está en el menú para que no se vean sobre el splash */
@@ -768,19 +788,28 @@ body.state-menu {
         display: none !important;
     }
     
-    /* Desactivar scanline en el menú inicial - nunca debe mostrarse */
+    /* Desactivar scanline en el canvas-wrapper del menú inicial - solo se muestra en splash-container */
     .canvas-wrapper.scanline-enabled::after {
         display: none !important;
     }
     
-    /* Desactivar viñeta en el menú inicial - nunca debe mostrarse */
+    /* Desactivar viñeta en el canvas-wrapper del menú inicial - solo se muestra en splash-container */
     .canvas-wrapper.vignette-enabled::before {
         display: none !important;
     }
     
-    /* También desactivar scanline del splash-container */
-    #splash-container::after {
-        display: none !important;
+    /* Overlay de scanlines que cubre todo el menú (incluyendo botones) cuando scanline está habilitado */
+    &.scanline-enabled::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0px, rgba(0, 0, 0, 0.5) 2px,transparent 2px,transparent 4px
+        );
+        pointer-events: none;
+        z-index: 15; /* Por encima del message-overlay (z-index: 10) pero debajo de modales (z-index: 20+) */
     }
 }
 

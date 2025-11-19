@@ -386,13 +386,24 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             background-size: 2000% 100% !important; /* 20 frames horizontales */
             background-repeat: no-repeat !important;
             background-position: 0% 0% !important;
-            image-rendering: pixelated !important;
-            -webkit-image-rendering: pixelated !important;
+            /* Quitar pixelated en mobile */
+            image-rendering: auto !important;
+            -webkit-image-rendering: auto !important;
+        }
+        
+        /* Desactivar scanlines del splash en mobile */
+        #splash-container.scanline-enabled::after {
+            display: none !important;
         }
         
         /* Asegurar que el canvas esté detrás del splash */
         #gameCanvas {
             z-index: -1 !important;
+        }
+        
+        /* Desactivar scanlines del overlay del body en mobile */
+        &.scanline-enabled::after {
+            display: none !important;
         }
     }
     

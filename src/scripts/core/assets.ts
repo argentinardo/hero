@@ -21,11 +21,18 @@ import lavaColSrc from '../../assets/sprites/lava_col.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splashSprite.jpg';
+import splashMobileSrc from '../../assets/sprites/splashSprite_mobile.jpg';
 import baseSrc from '../../assets/sprites/base.png';
 import heroLogoSrc from '../../assets/sprites/hero-logo.png';
 import qrSrc from '../../assets/sprites/qr.png';
 
 import type { AnimationMap, GameStore, TileDictionary } from './types';
+
+// Función helper para detectar si es mobile (consistente con main.ts y render.ts)
+const isMobile = (): boolean => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+};
 
 export const SPRITE_SOURCES: Record<string, string> = {
     P_walk: playerWalkSrc,
@@ -50,7 +57,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     K: lavaColSrc,
     L: lightSrc,
     background: backgroundSrc,
-    splash: splashSrc,
+    splash: isMobile() ? splashMobileSrc : splashSrc,
     base: baseSrc,
     heroLogo: heroLogoSrc,
     qr: qrSrc,

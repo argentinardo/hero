@@ -276,6 +276,7 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
     const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
     const gameUi = document.getElementById('game-ui') as HTMLElement;
     const bottomUi = document.getElementById('bottom-ui') as HTMLElement;
+    const splashContainer = document.getElementById('splash-container') as HTMLElement;
     const body = document.body;
     
     if (!canvas || !canvasWrapper) return;
@@ -299,24 +300,28 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
         canvas.style.filter = 'none';
     }
     
-    // Aplicar scanline mediante clase CSS (canvas y UI)
+    // Aplicar scanline mediante clase CSS (canvas, UI y splash del menú)
     if (settings.scanline) {
         canvasWrapper.classList.add('scanline-enabled');
         body.classList.add('scanline-enabled');
         if (gameUi) gameUi.classList.add('scanline-enabled');
         if (bottomUi) bottomUi.classList.add('scanline-enabled');
+        if (splashContainer) splashContainer.classList.add('scanline-enabled');
     } else {
         canvasWrapper.classList.remove('scanline-enabled');
         body.classList.remove('scanline-enabled');
         if (gameUi) gameUi.classList.remove('scanline-enabled');
         if (bottomUi) bottomUi.classList.remove('scanline-enabled');
+        if (splashContainer) splashContainer.classList.remove('scanline-enabled');
     }
     
-    // Aplicar vignette mediante clase CSS
+    // Aplicar vignette mediante clase CSS (canvas y splash del menú)
     if (settings.vignette) {
         canvasWrapper.classList.add('vignette-enabled');
+        if (splashContainer) splashContainer.classList.add('vignette-enabled');
     } else {
         canvasWrapper.classList.remove('vignette-enabled');
+        if (splashContainer) splashContainer.classList.remove('vignette-enabled');
     }
     
     // Aplicar glow a los textos de la UI mediante clase CSS

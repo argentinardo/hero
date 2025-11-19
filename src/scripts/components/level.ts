@@ -636,34 +636,37 @@ export const loadLevel = (store: GameStore) => {
     parseLevel(store, store.levelDesigns[store.currentLevelIndex]);
     // La cámara ya se posiciona correctamente en parseLevel centrada en el jugador
     if (store.dom.ui.levelCountEl) {
-        // Si estamos jugando desde el editor, usar el índice del selector del editor
-        if (store.playingFromEditor && store.dom.ui.levelSelectorEl) {
-            const editorLevelIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
-            store.dom.ui.levelCountEl.textContent = `${editorLevelIndex + 1}`;
-        } else {
-            // Si estamos usando una campaña, mostrar el número de orden en la campaña
-            if (store.dom.ui.levelCountEl) {
-                import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices }) => {
-                    const campaign = getCurrentCampaign(store);
-                    if (campaign && campaign.levels.length > 0) {
-                        const levelIndices = getCampaignLevelIndices(store, campaign.id);
-                        const positionInCampaign = levelIndices.findIndex(idx => idx === store.currentLevelIndex);
-                        if (positionInCampaign >= 0 && store.dom.ui.levelCountEl) {
-                            store.dom.ui.levelCountEl.textContent = `${positionInCampaign + 1}`;
-                        } else if (store.dom.ui.levelCountEl) {
-                            store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
-                        }
-                    } else if (store.dom.ui.levelCountEl) {
-                        store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
-                    }
-                }).catch(() => {
-                    // Fallback si hay error
-                    if (store.dom.ui.levelCountEl) {
-                        store.dom.ui.levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
-                    }
-                });
+        // Obtener posición en campaña para todos los casos
+        import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices }) => {
+            const campaign = getCurrentCampaign(store);
+            let levelIndexToUse = store.currentLevelIndex;
+            
+            // Si estamos jugando desde el editor, usar el índice del selector del editor
+            if (store.playingFromEditor && store.dom.ui.levelSelectorEl) {
+                levelIndexToUse = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
             }
-        }
+            
+            // Si estamos usando una campaña, mostrar el número de orden en la campaña
+            if (campaign && campaign.levels.length > 0) {
+                const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                const positionInCampaign = levelIndices.findIndex(idx => idx === levelIndexToUse);
+                if (positionInCampaign >= 0 && store.dom.ui.levelCountEl) {
+                    store.dom.ui.levelCountEl.textContent = `${positionInCampaign + 1}`;
+                } else if (store.dom.ui.levelCountEl) {
+                    store.dom.ui.levelCountEl.textContent = `${levelIndexToUse + 1}`;
+                }
+            } else if (store.dom.ui.levelCountEl) {
+                store.dom.ui.levelCountEl.textContent = `${levelIndexToUse + 1}`;
+            }
+        }).catch(() => {
+            // Fallback si hay error
+            if (store.dom.ui.levelCountEl) {
+                const levelIndexToUse = (store.playingFromEditor && store.dom.ui.levelSelectorEl) 
+                    ? parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10)
+                    : store.currentLevelIndex;
+                store.dom.ui.levelCountEl.textContent = `${levelIndexToUse + 1}`;
+            }
+        });
     }
     // La música ya se gestiona al iniciar/pausar el juego; evitar duplicados aquí
 };
