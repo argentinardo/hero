@@ -59,7 +59,7 @@ body {
 
 /* Todos los nes-container deben tener scroll automático en Y */
 .nes-container {
-    overflow-y: auto;
+    overflow-y: visible;
     overflow-x: hidden;
 }
 

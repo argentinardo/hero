@@ -373,6 +373,12 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         }
     }
     
+    /* Desactivar animación del background del splash en mobile - usar imagen estática */
+    #splash-container {
+        background-size: cover !important;
+        background-position: center center !important;
+    }
+    
     /* Asegurar que el splash sea visible en móvil cuando está en el menú */
     body.state-menu {
         #splash-container {
@@ -383,9 +389,9 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            background-size: 2000% 100% !important; /* 20 frames horizontales */
+            background-size: cover !important; /* Imagen estática mobile - cubrir todo el área */
             background-repeat: no-repeat !important;
-            background-position: 0% 0% !important;
+            background-position: center center !important; /* Centrar imagen estática */
             /* Quitar pixelated en mobile */
             image-rendering: auto !important;
             -webkit-image-rendering: auto !important;

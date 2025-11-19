@@ -1451,6 +1451,18 @@ export const animateSplash = (store: GameStore) => {
     
     const splashSprite = store.sprites.splash;
     
+    // En mobile, establecer el backgroundImage pero no animar - el CSS lo fija en 0% 0%
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+    if (isMobile) {
+        // En mobile, solo establecer la imagen de fondo (splashSprite mobile ya está cargado en store.sprites.splash)
+        if (splashSprite && (!splashContainer.style.backgroundImage || !splashContainer.dataset.imageSet)) {
+            splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+            splashContainer.dataset.imageSet = 'true';
+        }
+        return;
+    }
+    
     // Intentar establecer la imagen de fondo incluso si el sprite aún no está completamente cargado
     // Esto asegura que la imagen aparezca tan pronto como sea posible
     if (splashSprite) {
