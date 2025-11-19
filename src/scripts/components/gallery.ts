@@ -1,7 +1,7 @@
 import { GameStore } from '../core/types';
 import { getNetlifyBaseUrl } from '../utils/device';
 import { expandChunkedLevels, chunkifyLevel20x18 } from '../utils/levels';
-import { showNotification, showPromptModal } from './ui';
+import { showNotification, showPromptModal, initializeAuth0 } from './ui';
 
 /**
  * Representa un nivel público en la galería
@@ -125,7 +125,27 @@ const loadGalleryLevels = async (store: GameStore, sortType: 'likes' | 'newest' 
 
     try {
         const baseUrl = getNetlifyBaseUrl();
-        const res = await fetch(`${baseUrl}/.netlify/functions/gallery?sort=${sortType}&limit=50`);
+        
+        // Intentar obtener token de Auth0 si el usuario está logueado
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        let headers: HeadersInit = {};
+        
+        if (isLoggedIn) {
+            try {
+                const Auth0Manager = await initializeAuth0();
+                const token = await Auth0Manager.getAccessToken();
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+            } catch (error) {
+                console.warn('Error obteniendo token para cargar galería:', error);
+                // Continuar sin token si hay error
+            }
+        }
+        
+        const res = await fetch(`${baseUrl}/.netlify/functions/gallery?sort=${sortType}&limit=50`, {
+            headers
+        });
         
         // Si hay error o no hay niveles, mostrar niveles por defecto
         if (!res.ok || res.status !== 200) {
@@ -372,15 +392,23 @@ const renderGalleryLevels = (store: GameStore, levels: GalleryLevel[]) => {
  */
 const toggleLike = async (store: GameStore, levelId: string): Promise<void> => {
     try {
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        
-        if (!user) {
+        // Verificar si el usuario está logueado
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) {
             showNotification(store, 'Acción requerida', 'Necesitas iniciar sesión para votar');
             return;
         }
 
-        const token = await user.jwt();
+        // CRÍTICO: Usar Auth0 en lugar de Netlify Identity
+        const Auth0Manager = await initializeAuth0();
+        const token = await Auth0Manager.getAccessToken();
+        
+        if (!token) {
+            console.error('No se pudo obtener token de Auth0');
+            showNotification(store, 'Error', 'No se pudo verificar tu sesión. Por favor inicia sesión de nuevo.');
+            return;
+        }
+
         const baseUrl = getNetlifyBaseUrl();
         
         const res = await fetch(`${baseUrl}/.netlify/functions/gallery/${levelId}/like`, {
@@ -405,7 +433,7 @@ const toggleLike = async (store: GameStore, levelId: string): Promise<void> => {
             }
             // Recargar después de un breve delay para que la DB se actualice
             setTimeout(() => {
-                loadGalleryLevels({} as GameStore, currentSort);
+                loadGalleryLevels(store, currentSort);
             }, 500);
         }
         
@@ -535,15 +563,23 @@ const implementLevel = async (store: GameStore, levelId: string): Promise<void> 
     if (!level) return;
 
     try {
-        const ni: any = (window as any).netlifyIdentity;
-        const user = ni?.currentUser?.();
-        
-        if (!user) {
+        // Verificar si el usuario está logueado
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) {
             showNotification(store, 'Acción requerida', 'Necesitas iniciar sesión para implementar niveles');
             return;
         }
 
-        const token = await user.jwt();
+        // CRÍTICO: Usar Auth0 en lugar de Netlify Identity
+        const Auth0Manager = await initializeAuth0();
+        const token = await Auth0Manager.getAccessToken();
+        
+        if (!token) {
+            console.error('No se pudo obtener token de Auth0');
+            showNotification(store, 'Error', 'No se pudo verificar tu sesión. Por favor inicia sesión de nuevo.');
+            return;
+        }
+
         const baseUrl = getNetlifyBaseUrl();
         
         // Convertir los datos al formato adecuado
@@ -835,4 +871,6 @@ const shareLevel = async (store: GameStore, levelId: string, levelName: string, 
 */
 
 // Las funciones de conversión ahora usan las importadas de levels.ts
+
+
 

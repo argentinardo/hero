@@ -149,24 +149,50 @@ exports.handler = async (event, context) => {
 
   let user = context.clientContext && context.clientContext.user;
   
-  if (!user && event.headers && event.headers.authorization) {
+  // Si no hay usuario en el contexto, intentar obtenerlo del header Authorization
+  // Esto es necesario para Auth0 ya que Netlify Identity no está disponible
+  if (!user && event.headers) {
     try {
-      const token = event.headers.authorization.replace('Bearer ', '');
-      const parts = token.split('.');
-      if (parts.length === 3) {
-        const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
-        const decoded = JSON.parse(payload);
-        if (decoded) {
-          user = {
-            sub: decoded.sub,
-            email: decoded.email,
-            id: decoded.sub || decoded.email
-          };
+      const authHeader = event.headers.authorization || event.headers.Authorization || event.headers.AUTHORIZATION;
+      if (!authHeader) {
+        console.log('[Gallery] No se encontró header Authorization - usuario no autenticado');
+      } else {
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+        if (!token) {
+          console.warn('[Gallery] Token vacío después de remover Bearer');
+        } else {
+          console.log('[Gallery] Token recibido (primeros 20 caracteres):', token.substring(0, 20) + '...');
+          const parts = token.split('.');
+          console.log('[Gallery] Token parts count:', parts.length);
+          
+          if (parts.length !== 3) {
+            console.error('[Gallery] Token no tiene formato JWT válido (debe tener 3 partes separadas por puntos)');
+          } else {
+            // Decodificar el payload (segunda parte)
+            const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
+            const decoded = JSON.parse(payload);
+            
+            if (decoded && (decoded.sub || decoded.email)) {
+              user = {
+                sub: decoded.sub,
+                email: decoded.email,
+                id: decoded.sub || decoded.email
+              };
+              console.log('[Gallery] Usuario extraído del token. Sub:', user.sub, 'Email:', user.email);
+            } else {
+              console.error('[Gallery] Token decodificado pero no tiene sub ni email');
+            }
+          }
         }
       }
     } catch (e) {
-      console.error('Error decodificando token:', e);
+      console.error('[Gallery] Error decodificando token JWT:', e.message);
+      console.error('[Gallery] Stack:', e.stack);
     }
+  }
+  
+  if (!user) {
+    console.log('[Gallery] No hay usuario autenticado - algunas funciones requerirán autenticación');
   }
 
   const sql = neon();
