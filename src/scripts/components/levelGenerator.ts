@@ -87,8 +87,8 @@ const generateStartPattern = (level: string[], width: number, difficulty: number
     }
     
     // Fila 3-5: Héroe y columnas de 3 tiles
-    // Patrón observado: '10P0000C000000000111' (niveles 1-4)
-    // O: '30P0000K000000000333' / '3000000K000000000333' (niveles 6+)
+    // Patrón observado: '100P000C000000000111' (niveles 1-4)
+    // O: '300P000K000000000333' / '3000000K000000000333' (niveles 6+)
     // CRÍTICO: Tanto C (destructible) como K (lava) siempre tienen exactamente 3 tiles de altura
     const heroX = 2; // Posición del héroe (después de '1')
     const columnX = 7; // Posición fija de la columna (posición 7 como en los niveles originales)
