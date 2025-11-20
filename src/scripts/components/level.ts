@@ -636,8 +636,8 @@ export const loadLevel = (store: GameStore) => {
     parseLevel(store, store.levelDesigns[store.currentLevelIndex]);
     // La cámara ya se posiciona correctamente en parseLevel centrada en el jugador
     if (store.dom.ui.levelCountEl) {
-        // Obtener posición en campaña para todos los casos
-        import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices }) => {
+        // Obtener nombre del nivel desde la campaña o posición en campaña
+        import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices, getLevelNameFromCampaign }) => {
             const campaign = getCurrentCampaign(store);
             let levelIndexToUse = store.currentLevelIndex;
             
@@ -646,8 +646,12 @@ export const loadLevel = (store: GameStore) => {
                 levelIndexToUse = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
             }
             
-            // Si estamos usando una campaña, mostrar el número de orden en la campaña
-            if (campaign && campaign.levels.length > 0) {
+            // Intentar obtener el nombre del nivel desde la campaña
+            const levelName = getLevelNameFromCampaign(store, levelIndexToUse);
+            if (levelName && store.dom.ui.levelCountEl) {
+                store.dom.ui.levelCountEl.textContent = levelName;
+            } else if (campaign && campaign.levels.length > 0) {
+                // Si no hay nombre, mostrar el número de orden en la campaña
                 const levelIndices = getCampaignLevelIndices(store, campaign.id);
                 const positionInCampaign = levelIndices.findIndex(idx => idx === levelIndexToUse);
                 if (positionInCampaign >= 0 && store.dom.ui.levelCountEl) {

@@ -53,21 +53,43 @@ export const syncLevelSelectorForCampaign = (store: GameStore) => {
     
     // Seleccionar el primer nivel si hay alguno
     if (levelIndices.length > 0 && levelSelectorEl.options.length > 0) {
-        levelSelectorEl.value = `${levelIndices[0]}`;
-    }
-    
-    // Sincronizar selector mobile
-    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
-    if (levelSelectorMobile) {
-        levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
-        levelSelectorMobile.value = levelSelectorEl.value;
-    }
-    
-    // Si estamos en el editor, cargar el nivel seleccionado
-    if (store.appState === 'editing') {
-        const selectedIndex = parseInt(levelSelectorEl.value ?? '0', 10);
-        if (store.levelDataStore[selectedIndex]) {
-            store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[selectedIndex]));
+        const firstLevelIndex = levelIndices[0];
+        levelSelectorEl.value = `${firstLevelIndex}`;
+        
+        // Sincronizar selector mobile
+        const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+        if (levelSelectorMobile) {
+            levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
+            levelSelectorMobile.value = levelSelectorEl.value;
+        }
+        
+        // Si estamos en el editor, cargar el nivel seleccionado
+        if (store.appState === 'editing') {
+            // Cargar el nivel en el editor
+            if (store.levelDataStore[firstLevelIndex] && store.levelDataStore[firstLevelIndex].length > 0) {
+                store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[firstLevelIndex]));
+            } else {
+                // Si el nivel está vacío, usar una copia del nivel 1 de Legacy
+                const legacyLevel1 = store.initialLevels[0] || store.levelDataStore[0];
+                if (legacyLevel1) {
+                    if (typeof legacyLevel1[0] === 'string') {
+                        // Es string[] (filas como strings), convertir a string[][]
+                        store.editorLevel = (legacyLevel1 as string[]).map(row => row.split(''));
+                    } else {
+                        // Ya es string[][]
+                        store.editorLevel = JSON.parse(JSON.stringify(legacyLevel1));
+                    }
+                    // Guardar en levelDataStore para que no se pierda
+                    store.levelDataStore[firstLevelIndex] = JSON.parse(JSON.stringify(store.editorLevel));
+                    store.initialLevels[firstLevelIndex] = store.editorLevel.map(row => row.join(''));
+                }
+            }
+        }
+    } else {
+        // Si no hay niveles, sincronizar selector mobile vacío
+        const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+        if (levelSelectorMobile) {
+            levelSelectorMobile.innerHTML = levelSelectorEl.innerHTML;
         }
     }
 };
@@ -131,8 +153,54 @@ export const showCampaignsModal = (store: GameStore, isPlayMode: boolean = false
 
 /**
  * Oculta el modal de campañas
+ * Guarda los niveles antes de cerrar
  */
-export const hideCampaignsModal = () => {
+export const hideCampaignsModal = async (store?: GameStore) => {
+    // Si hay store, guardar los niveles antes de cerrar
+    if (store) {
+        try {
+            // Guardar el nivel actual del editor si hay cambios
+            if (store.editorLevel && store.dom.ui.levelSelectorEl) {
+                const index = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
+                if (store.levelDataStore[index]) {
+                    // Limpiar filas y columnas vacías antes de guardar
+                    const { purgeEmptyRowsAndColumns } = await import('./ui');
+                    const cleanedLevel = purgeEmptyRowsAndColumns(store.editorLevel);
+                    store.levelDataStore[index] = JSON.parse(JSON.stringify(cleanedLevel));
+                    store.editorLevel = cleanedLevel;
+                }
+            }
+            
+            // Sincronizar campañas con el servidor
+            const { syncCampaignsToServer, getCurrentCampaign } = await import('../utils/campaigns');
+            const currentCampaign = getCurrentCampaign(store);
+            const isLegacyCampaign = currentCampaign?.isDefault === true;
+            
+            // Si es Legacy, guardar en localStorage
+            if (isLegacyCampaign) {
+                const { buildChunkedFile20x18 } = await import('../utils/levels');
+                const levelsAsStrings = store.levelDataStore.map((level: string[][]) => 
+                    level.map((row: string[]) => row.join(''))
+                );
+                const fullPayload = buildChunkedFile20x18(levelsAsStrings);
+                
+                try {
+                    localStorage.setItem('userLevels', JSON.stringify(fullPayload));
+                    console.log('[Campaigns] Niveles guardados en localStorage');
+                } catch (localError) {
+                    console.error('[Campaigns] Error guardando en localStorage:', localError);
+                }
+            } else {
+                // Para otras campañas, sincronizar con el servidor
+                await syncCampaignsToServer(store).catch((error) => {
+                    console.error('[Campaigns] Error sincronizando campañas:', error);
+                });
+            }
+        } catch (error) {
+            console.error('[Campaigns] Error guardando niveles antes de cerrar:', error);
+        }
+    }
+    
     const modal = document.getElementById('campaigns-modal');
     if (modal) {
         modal.classList.add('hidden');
@@ -188,18 +256,25 @@ const updateCampaignsListForPlay = (store: GameStore) => {
         campaignBtn.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
         
         // Al hacer click, iniciar el juego con esa campaña
-        campaignBtn.addEventListener('click', () => {
-            store.currentCampaignId = campaign.id;
-            hideCampaignsModal();
-            
-            // Obtener los niveles de la campaña y empezar desde el primero
+        campaignBtn.addEventListener('click', async () => {
+            // Obtener los niveles de la campaña
             const levelIndices = getCampaignLevelIndices(store, campaign.id);
             
-            if (levelIndices.length > 0) {
-                import('./ui').then(({ startGame }) => {
-                    startGame(store, null, levelIndices[0], false);
-                });
+            // Validar que la campaña tenga niveles
+            if (levelIndices.length === 0) {
+                // Mostrar advertencia y permanecer en el popup de campañas
+                const { showNotification } = await import('./ui');
+                showNotification(store, `⚠️ Advertencia`, 'La campaña está vacía. Agrega niveles antes de seleccionarla.');
+                return; // No cerrar el modal ni cambiar la campaña
             }
+            
+            store.currentCampaignId = campaign.id;
+            await hideCampaignsModal(store);
+            
+            // Iniciar el juego desde el primer nivel
+            import('./ui').then(({ startGame }) => {
+                startGame(store, null, levelIndices[0], false);
+            });
         });
         
         listEl.appendChild(campaignBtn);
@@ -232,11 +307,14 @@ export const updateAddToCampaignSelector = (store: GameStore) => {
     
     selector.innerHTML = '<option value="">' + t('campaigns.selectCampaign') + '</option>';
     store.campaigns.forEach(campaign => {
-        // IMPORTANTE: La campaña Legacy ahora es editable, así que se incluye en el selector
+        // IMPORTANTE: Legacy es de solo lectura - no se pueden agregar niveles nuevos
+        // Solo mostrar campañas personalizadas en el selector para agregar niveles
+        if (campaign.isDefault) {
+            return; // Omitir Legacy del selector
+        }
         const option = document.createElement('option');
         option.value = campaign.id;
-        // Mostrar el nombre traducido para Legacy
-        option.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
+        option.textContent = campaign.name;
         selector.appendChild(option);
     });
 };
@@ -258,6 +336,7 @@ const updateCampaignsList = (store: GameStore) => {
     store.campaigns.forEach(campaign => {
         const campaignDiv = document.createElement('div');
         campaignDiv.className = 'mb-4 p-3 border-2 border-gray-600 bg-gray-700';
+        campaignDiv.setAttribute('data-campaign-id', campaign.id);
         
         const header = document.createElement('div');
         header.className = 'flex items-center justify-between mb-2';
@@ -268,17 +347,71 @@ const updateCampaignsList = (store: GameStore) => {
         name.textContent = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
         
         // Al hacer click en el botón, cargar la campaña en el editor
-        name.addEventListener('click', () => {
+        name.addEventListener('click', async () => {
+            // Validar que la campaña tenga niveles
+            if (campaign.levels.length === 0) {
+                // Mostrar advertencia y permanecer en el popup de campañas
+                const { showNotification } = await import('./ui');
+                showNotification(store, `⚠️ Advertencia`, 'La campaña está vacía. Agrega niveles antes de seleccionarla.');
+                return; // No cerrar el modal ni cambiar la campaña
+            }
+            
             store.currentCampaignId = campaign.id;
-            hideCampaignsModal();
+            await hideCampaignsModal(store);
             
-            // Actualizar el nombre de la campaña en el panel izquierdo inmediatamente
-            import('./ui').then(({ updateEditorTexts }) => {
-                updateEditorTexts(store);
-            });
+            // Obtener los índices de niveles de la campaña
+            const levelIndices = getCampaignLevelIndices(store, campaign.id);
+            const firstLevelIndex = levelIndices.length > 0 ? levelIndices[0] : 0;
             
-            // Sincronizar el selector de niveles para mostrar solo los niveles de esta campaña
-            syncLevelSelectorForCampaign(store);
+            // Si no estamos en el editor, iniciarlo
+            if (store.appState !== 'editing') {
+                import('./ui').then(async ({ startEditor }) => {
+                    await startEditor(store, true);
+                    // Después de iniciar el editor, sincronizar y cargar el primer nivel
+                    syncLevelSelectorForCampaign(store);
+                    // Asegurar que el selector esté en el primer nivel
+                    if (store.dom.ui.levelSelectorEl) {
+                        store.dom.ui.levelSelectorEl.value = firstLevelIndex.toString();
+                    }
+                    // Sincronizar también el selector mobile
+                    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                    if (levelSelectorMobile && store.dom.ui.levelSelectorEl) {
+                        levelSelectorMobile.innerHTML = store.dom.ui.levelSelectorEl.innerHTML;
+                        levelSelectorMobile.value = store.dom.ui.levelSelectorEl.value;
+                    }
+                    // Cargar el primer nivel en el editor
+                    import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                        updateEditorLevelFromSelector(store);
+                    });
+                    // Actualizar los textos del editor
+                    import('./ui').then(({ updateEditorTexts, updateUiBar }) => {
+                        updateEditorTexts(store);
+                        updateUiBar(store);
+                    });
+                });
+            } else {
+                // Si ya estamos en el editor, sincronizar y cargar el primer nivel
+                syncLevelSelectorForCampaign(store);
+                // Asegurar que el selector esté en el primer nivel
+                if (store.dom.ui.levelSelectorEl) {
+                    store.dom.ui.levelSelectorEl.value = firstLevelIndex.toString();
+                }
+                // Sincronizar también el selector mobile
+                const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                if (levelSelectorMobile && store.dom.ui.levelSelectorEl) {
+                    levelSelectorMobile.innerHTML = store.dom.ui.levelSelectorEl.innerHTML;
+                    levelSelectorMobile.value = store.dom.ui.levelSelectorEl.value;
+                }
+                // Cargar el primer nivel en el editor
+                import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                    updateEditorLevelFromSelector(store);
+                });
+                // Actualizar los textos del editor
+                import('./ui').then(({ updateEditorTexts, updateUiBar }) => {
+                    updateEditorTexts(store);
+                    updateUiBar(store);
+                });
+            }
         });
         
         const deleteBtn = document.createElement('button');
@@ -353,16 +486,20 @@ const updateCampaignsList = (store: GameStore) => {
         levelsList.className = 'mt-2 border-2 border-gray-600 bg-gray-800 p-2';
         levelsList.style.display = 'none';
         
+        // Guardar referencia al desplegable para poder mantenerlo abierto después de actualizar
+        (levelsDropdown as any).campaignId = campaign.id;
+        
         if (campaign.levels.length === 0) {
             const noLevelsMsg = document.createElement('p');
-            noLevelsMsg.className = 'text-xs opacity-75 text-center';
-            noLevelsMsg.textContent = t('campaigns.noCampaigns');
+            noLevelsMsg.className = 'text-xs opacity-75 text-center mb-2';
+            noLevelsMsg.textContent = t('campaigns.noLevelsInCampaign') || 'No hay niveles en esta campaña';
             levelsList.appendChild(noLevelsMsg);
         } else {
             const sortedLevels = [...campaign.levels].sort((a, b) => a.order - b.order);
             sortedLevels.forEach((level, idx) => {
                 const levelItem = document.createElement('div');
                 levelItem.className = 'flex items-center justify-start mb-1 p-1 bg-gray-800 gap-2';
+                levelItem.setAttribute('data-level-index', level.levelIndex.toString());
                 
                 // Crear contenedor para el nombre editable
                 const levelNameContainer = document.createElement('div');
@@ -426,9 +563,120 @@ const updateCampaignsList = (store: GameStore) => {
                 levelNameContainer.appendChild(levelInfo);
                 
                 const controls = document.createElement('div');
-                controls.className = 'gap-1';
+                controls.className = 'flex gap-1';
                 
-                // Legacy es de solo lectura - no mostrar controles de edición
+                // Botón Editar (disponible para todos los niveles)
+                const editBtn = document.createElement('button');
+                editBtn.className = 'nes-btn is-primary text-xs';
+                editBtn.textContent = '✏️';
+                editBtn.title = t('editor.edit') || 'Editar';
+                editBtn.addEventListener('click', async () => {
+                    // Cerrar el modal de campañas
+                    await hideCampaignsModal(store);
+                    
+                    // IMPORTANTE: Establecer la campaña que contiene este nivel
+                    // Usar getCampaignForLevel para encontrar la campaña correcta del nivel
+                    const { getCampaignForLevel } = await import('../utils/campaigns');
+                    const levelCampaign = getCampaignForLevel(store, level.levelIndex);
+                    
+                    // Si se encuentra una campaña para este nivel, usarla; si no, usar la campaña actual
+                    if (levelCampaign) {
+                        store.currentCampaignId = levelCampaign.id;
+                        console.log(`[Campaigns] ✅ Campaña establecida para nivel ${level.levelIndex}: ${levelCampaign.name}`);
+                    } else {
+                        // Fallback: usar la campaña desde donde se está editando
+                        store.currentCampaignId = campaign.id;
+                        console.log(`[Campaigns] ⚠️ No se encontró campaña para nivel ${level.levelIndex}, usando campaña actual: ${campaign.name}`);
+                    }
+                    
+                    // Sincronizar el selector de niveles para mostrar solo los niveles de esta campaña PRIMERO
+                    syncLevelSelectorForCampaign(store);
+                    
+                    // Después de sincronizar, establecer el nivel correcto en el selector
+                    if (store.dom.ui.levelSelectorEl) {
+                        store.dom.ui.levelSelectorEl.value = level.levelIndex.toString();
+                    }
+                    // Sincronizar también el selector mobile
+                    const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                    if (levelSelectorMobile && store.dom.ui.levelSelectorEl) {
+                        levelSelectorMobile.value = store.dom.ui.levelSelectorEl.value;
+                    }
+                    
+                    // Cargar el nivel en el editor
+                    // Si el nivel existe en levelDataStore, usarlo; si no, usar una copia del nivel 1 de Legacy
+                    if (store.levelDataStore[level.levelIndex] && store.levelDataStore[level.levelIndex].length > 0) {
+                        store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[level.levelIndex]));
+                    } else {
+                        // Si el nivel está vacío, usar una copia del nivel 1 de Legacy
+                        const legacyLevel1 = store.initialLevels[0] || store.levelDataStore[0];
+                        if (legacyLevel1) {
+                            if (typeof legacyLevel1[0] === 'string') {
+                                // Es string[] (filas como strings), convertir a string[][]
+                                store.editorLevel = (legacyLevel1 as string[]).map(row => row.split(''));
+                            } else {
+                                // Ya es string[][]
+                                store.editorLevel = JSON.parse(JSON.stringify(legacyLevel1));
+                            }
+                            // Guardar en levelDataStore para que no se pierda
+                            store.levelDataStore[level.levelIndex] = JSON.parse(JSON.stringify(store.editorLevel));
+                            store.initialLevels[level.levelIndex] = store.editorLevel.map(row => row.join(''));
+                        } else {
+                            console.error(`[Campaigns] No se pudo cargar el nivel ${level.levelIndex}. Nivel 1 de Legacy no encontrado.`);
+                        }
+                    }
+                    
+                    // Actualizar los textos del editor (nombre de campaña, etc.)
+                    import('./ui').then(({ updateEditorTexts, updateUiBar }) => {
+                        updateEditorTexts(store);
+                        // Actualizar level-count usando updateUiBar que ya tiene la lógica correcta
+                        updateUiBar(store);
+                    });
+                    
+                    // Si no estamos en el editor, iniciarlo preservando el nivel actual
+                    if (store.appState !== 'editing') {
+                        import('./ui').then(async ({ startEditor }) => {
+                            await startEditor(store, true);
+                            // Después de iniciar el editor, asegurar que todo esté sincronizado
+                            syncLevelSelectorForCampaign(store);
+                            if (store.dom.ui.levelSelectorEl) {
+                                store.dom.ui.levelSelectorEl.value = level.levelIndex.toString();
+                            }
+                            // Actualizar los textos del editor para mostrar la campaña correcta
+                            import('./ui').then(({ updateEditorTexts }) => {
+                                updateEditorTexts(store);
+                            });
+                            // Cargar el nivel en el editor
+                            import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                                updateEditorLevelFromSelector(store);
+                            });
+                        });
+                    } else {
+                        // Si ya estamos en el editor, actualizar el nivel
+                        // Sincronizar el selector de niveles para la campaña actual primero
+                        syncLevelSelectorForCampaign(store);
+                        // Asegurar que el selector esté en el nivel correcto después de sincronizar
+                        if (store.dom.ui.levelSelectorEl) {
+                            store.dom.ui.levelSelectorEl.value = level.levelIndex.toString();
+                        }
+                        // Sincronizar también el selector mobile
+                        const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                        if (levelSelectorMobile && store.dom.ui.levelSelectorEl) {
+                            levelSelectorMobile.innerHTML = store.dom.ui.levelSelectorEl.innerHTML;
+                            levelSelectorMobile.value = store.dom.ui.levelSelectorEl.value;
+                        }
+                        // Actualizar los textos del editor para mostrar la campaña correcta
+                        import('./ui').then(({ updateEditorTexts }) => {
+                            updateEditorTexts(store);
+                        });
+                        // Cargar el nivel en el editor
+                        import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                            updateEditorLevelFromSelector(store);
+                        });
+                    }
+                });
+                controls.appendChild(editBtn);
+                
+                // Legacy es de solo lectura - no mostrar controles de mover/eliminar
                 if (!campaign.isDefault) {
                     // Campañas no-Legacy: mostrar botones de mover y eliminar
                     const moveUpBtn = document.createElement('button');
@@ -463,10 +711,44 @@ const updateCampaignsList = (store: GameStore) => {
                     
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'nes-btn is-error text-xs';
-                    removeBtn.textContent = t('campaigns.remove');
+                    removeBtn.textContent = '🗑️';
+                    removeBtn.title = t('campaigns.remove') || 'Quitar';
                     removeBtn.addEventListener('click', async () => {
-                        await removeLevelFromCampaign(store, campaign.id, level.levelIndex);
-                        updateCampaignsModal(store);
+                        // Pedir confirmación antes de borrar
+                        const exitModalEl = document.getElementById('exit-modal');
+                        const exitTitleEl = document.getElementById('exit-title');
+                        const exitTextEl = document.getElementById('exit-text');
+                        const exitConfirmBtn = document.getElementById('exit-confirm-btn');
+                        const exitCancelBtn = document.getElementById('exit-cancel-btn');
+                        
+                        if (!exitModalEl || !exitTitleEl || !exitTextEl || !exitConfirmBtn || !exitCancelBtn) {
+                            return;
+                        }
+                        
+                        // Obtener el nombre del nivel para mostrar en el mensaje
+                        const levelName = level.name || `${t('editor.levelNumber')} ${campaign.levels.findIndex(l => l.levelIndex === level.levelIndex) + 1}`;
+                        const campaignName = campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name;
+                        
+                        exitTitleEl.textContent = t('campaigns.remove') || 'Quitar nivel';
+                        exitTextEl.textContent = `¿Seguro que deseas quitar el nivel "${levelName}" de la campaña "${campaignName}"?`;
+                        exitModalEl.classList.remove('hidden');
+                        
+                        const confirmHandler = async () => {
+                            await removeLevelFromCampaign(store, campaign.id, level.levelIndex);
+                            updateCampaignsModal(store);
+                            exitModalEl.classList.add('hidden');
+                            exitConfirmBtn.removeEventListener('click', confirmHandler);
+                            exitCancelBtn.removeEventListener('click', cancelHandler);
+                        };
+                        
+                        const cancelHandler = () => {
+                            exitModalEl.classList.add('hidden');
+                            exitConfirmBtn.removeEventListener('click', confirmHandler);
+                            exitCancelBtn.removeEventListener('click', cancelHandler);
+                        };
+                        
+                        exitConfirmBtn.addEventListener('click', confirmHandler);
+                        exitCancelBtn.addEventListener('click', cancelHandler);
                     });
                     
                     controls.appendChild(moveUpBtn);
@@ -479,6 +761,238 @@ const updateCampaignsList = (store: GameStore) => {
                 levelsList.appendChild(levelItem);
             });
         }
+        
+        // Botón para añadir nivel (al final de la lista)
+        // IMPORTANTE: Legacy es de solo lectura - no mostrar botón para Legacy
+        const addLevelBtn = document.createElement('button');
+        addLevelBtn.className = 'nes-btn is-success w-full mt-2 text-xs';
+        addLevelBtn.style.fontFamily = "'Press Start 2P', monospace";
+        addLevelBtn.textContent = '+ Añadir nivel';
+        
+        // Ocultar el botón para Legacy
+        if (campaign.isDefault) {
+            addLevelBtn.style.display = 'none';
+        }
+        
+        addLevelBtn.addEventListener('click', async () => {
+            // Validar que no sea Legacy (doble verificación)
+            if (campaign.isDefault) {
+                import('./ui').then(({ showNotification }) => {
+                    showNotification(store, `❌ Error`, 'Legacy es de solo lectura. No se pueden agregar niveles nuevos.');
+                });
+                return;
+            }
+            // Asegurarse de que el desplegable esté abierto antes de añadir el nivel
+            if (levelsList.style.display === 'none') {
+                levelsList.style.display = 'block';
+                dropdownArrow.textContent = '▼';
+            }
+            
+            // Crear un nuevo nivel como réplica del nivel 1 de Legacy
+            // Obtener el nivel 1 de Legacy (índice 0)
+            const legacyLevel1 = store.initialLevels[0] || store.levelDataStore[0];
+            
+            if (!legacyLevel1) {
+                console.error('[Campaigns] No se pudo encontrar el nivel 1 de Legacy');
+                import('./ui').then(({ showNotification }) => {
+                    showNotification(store, `❌ Error`, 'No se pudo crear el nivel. Nivel 1 de Legacy no encontrado.');
+                });
+                return;
+            }
+            
+            // Crear una copia profunda del nivel 1 de Legacy
+            // Si legacyLevel1 es string[] (filas como strings), convertir a string[][]
+            let newLevel: string[][];
+            if (Array.isArray(legacyLevel1[0]) && typeof legacyLevel1[0] === 'string' && legacyLevel1[0].length > 0 && typeof legacyLevel1[0][0] === 'string') {
+                // Ya es string[][]
+                newLevel = JSON.parse(JSON.stringify(legacyLevel1));
+            } else if (typeof legacyLevel1[0] === 'string') {
+                // Es string[] (filas como strings), convertir a string[][]
+                newLevel = (legacyLevel1 as string[]).map(row => row.split(''));
+            } else {
+                // Fallback: usar el patrón por defecto del botón "Nuevo Nivel"
+                const canvas = store.dom.canvas;
+                if (!canvas) return;
+                
+                const TILE_SIZE = 72;
+                const levelWidth = Math.floor(canvas.width / TILE_SIZE);
+                const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5;
+                
+                const defaultPattern = [
+                    "11111111111111111111",
+                    "11000001000000001111",
+                    "11000001000000001111",
+                    "100P000C000000000111",
+                    "1000000C000000000111",
+                    "1000000C000000000111",
+                    "11111111100111111111",
+                    "11111111100111111111",
+                    "11111111100111111111"
+                ];
+                
+                newLevel = [];
+                for (let row = 0; row < defaultPattern.length; row++) {
+                    newLevel.push(defaultPattern[row].split(''));
+                }
+                for (let row = defaultPattern.length; row < levelHeight; row++) {
+                    const levelRow: string[] = [];
+                    for (let col = 0; col < levelWidth; col++) {
+                        levelRow.push('0');
+                    }
+                    newLevel.push(levelRow);
+                }
+            }
+            
+            // Crear una copia profunda del nivel
+            const newLevelCopy = JSON.parse(JSON.stringify(newLevel));
+            
+            // IMPORTANTE: Encontrar el siguiente índice disponible que NO esté en la campaña
+            // Primero, obtener todos los índices que ya están en la campaña
+            const existingIndices = new Set(campaign.levels.map(l => l.levelIndex));
+            
+            // Encontrar el siguiente índice disponible
+            // Empezar desde el tamaño actual del array (que es el siguiente índice disponible)
+            let newLevelIndex = store.levelDataStore.length;
+            
+            // Asegurarse de que el índice no esté en uso en la campaña
+            // Si el índice ya está en la campaña, buscar el siguiente disponible
+            while (existingIndices.has(newLevelIndex)) {
+                newLevelIndex++;
+            }
+            
+            // Asegurarse de que levelDataStore tenga espacio para el nuevo índice
+            // Si el nuevo índice es mayor que el tamaño actual, expandir el array
+            // IMPORTANTE: Los niveles intermedios deben ser copias del nivel 1 de Legacy, no vacíos
+            // Reutilizar legacyLevel1 ya declarado arriba y crear la copia para expandir
+            let legacyLevel1Copy: string[][] = [];
+            
+            if (legacyLevel1) {
+                // Convertir a string[][] si es necesario
+                if (Array.isArray(legacyLevel1[0]) && typeof legacyLevel1[0] === 'string' && legacyLevel1[0].length > 0 && typeof legacyLevel1[0][0] === 'string') {
+                    // Ya es string[][]
+                    legacyLevel1Copy = JSON.parse(JSON.stringify(legacyLevel1));
+                } else if (typeof legacyLevel1[0] === 'string') {
+                    // Es string[] (filas como strings), convertir a string[][]
+                    legacyLevel1Copy = (legacyLevel1 as string[]).map(row => row.split(''));
+                } else {
+                    // Fallback: usar levelDataStore[0] si está disponible
+                    legacyLevel1Copy = store.levelDataStore[0] ? JSON.parse(JSON.stringify(store.levelDataStore[0])) : [];
+                }
+            }
+            
+            while (store.levelDataStore.length <= newLevelIndex) {
+                // Usar copia del nivel 1 de Legacy en lugar de array vacío
+                store.levelDataStore.push(JSON.parse(JSON.stringify(legacyLevel1Copy)));
+                store.initialLevels.push(legacyLevel1Copy.map((row: string[]) => row.join('')));
+            }
+            
+            // Agregar el nuevo nivel en el índice calculado
+            // Asegurarse de que newLevelCopy tenga contenido antes de guardar
+            if (!newLevelCopy || newLevelCopy.length === 0) {
+                console.error('[Campaigns] ❌ Error: newLevelCopy está vacío. No se puede crear el nivel.');
+                import('./ui').then(({ showNotification }) => {
+                    showNotification(store, `❌ Error`, 'No se pudo crear el nivel. El nivel está vacío.');
+                });
+                return;
+            }
+            
+            // Guardar el nivel en levelDataStore (formato string[][])
+            store.levelDataStore[newLevelIndex] = JSON.parse(JSON.stringify(newLevelCopy));
+            // Guardar también en initialLevels (formato string[])
+            store.initialLevels[newLevelIndex] = newLevelCopy.map((row: string[]) => row.join(''));
+            
+            console.log(`[Campaigns] ✅ Creando nuevo nivel en índice ${newLevelIndex}. Índices existentes en campaña:`, Array.from(existingIndices), 'Tamaño levelDataStore:', store.levelDataStore.length, 'Filas del nivel:', newLevelCopy.length);
+            
+            // Agregar el nivel a la campaña
+            const result = await addLevelToCampaign(store, campaign.id, newLevelIndex);
+            if (result.success) {
+                // Sincronizar con el servidor
+                syncCampaignsToServer(store).catch(() => {
+                    // Ignorar errores de sincronización
+                });
+                
+                // Si el editor está abierto y esta es la campaña actual, sincronizar el selector y cargar el nivel
+                if (store.appState === 'editing' && store.currentCampaignId === campaign.id) {
+                    // Establecer la campaña actual si no está establecida
+                    store.currentCampaignId = campaign.id;
+                    
+                    // Sincronizar el selector de niveles para mostrar solo los niveles de esta campaña
+                    syncLevelSelectorForCampaign(store);
+                    
+                    // Seleccionar el nuevo nivel
+                    if (store.dom.ui.levelSelectorEl) {
+                        store.dom.ui.levelSelectorEl.value = newLevelIndex.toString();
+                    }
+                    
+                    // Cargar el nivel en el editor
+                    store.editorLevel = JSON.parse(JSON.stringify(newLevelCopy));
+                    
+                    // Actualizar el editor con el nuevo nivel
+                    import('./editor').then(({ updateEditorLevelFromSelector }) => {
+                        updateEditorLevelFromSelector(store);
+                    });
+                }
+                
+                // Actualizar el modal para reflejar el nuevo nivel
+                updateCampaignsModal(store);
+                
+                // Asegurarse de que el desplegable permanezca abierto después de actualizar
+                setTimeout(() => {
+                    const updatedCampaignDiv = document.querySelector(`[data-campaign-id="${campaign.id}"]`);
+                    if (updatedCampaignDiv) {
+                        const updatedLevelsList = (updatedCampaignDiv as HTMLElement).querySelector('.mt-2.border-2.border-gray-600') as HTMLElement | null;
+                        const updatedDropdownButton = (updatedCampaignDiv as HTMLElement).querySelector('.w-full.text-left.flex.items-center.justify-between') as HTMLElement | null;
+                        const updatedDropdownArrow = updatedDropdownButton?.querySelector('span:last-child') as HTMLElement | null;
+                        if (updatedLevelsList && updatedDropdownButton && updatedDropdownArrow) {
+                            // Mantener el desplegable abierto
+                            updatedLevelsList.style.display = 'block';
+                            updatedDropdownArrow.textContent = '▼';
+                            
+                            // Actualizar el contador de niveles en el botón
+                            const updatedDropdownText = updatedDropdownButton.querySelector('span:first-child') as HTMLElement | null;
+                            if (updatedDropdownText) {
+                                updatedDropdownText.textContent = `${t('editor.levels')} (${campaign.levels.length})`;
+                            }
+                        }
+                    }
+                }, 50);
+                
+                // Hacer foco en el nombre del nuevo nivel para editarlo
+                setTimeout(() => {
+                    // Buscar el nuevo nivel en la lista actualizada usando el data-level-index
+                    const updatedCampaignDiv = document.querySelector(`[data-campaign-id="${campaign.id}"]`) || 
+                                               Array.from(document.querySelectorAll('.mb-4.p-3.border-2')).find((div: any) => {
+                                                   const nameBtn = div.querySelector('button.nes-btn.is-primary');
+                                                   return nameBtn && nameBtn.textContent === (campaign.isDefault ? t('campaigns.defaultCampaign') : campaign.name);
+                                               });
+                    
+                    if (updatedCampaignDiv) {
+                        const updatedLevelsList = (updatedCampaignDiv as HTMLElement).querySelector('.mt-2.border-2.border-gray-600');
+                        if (updatedLevelsList) {
+                            // Buscar el último item de nivel (que debería ser el nuevo)
+                            const levelItems = updatedLevelsList.querySelectorAll('[data-level-index]');
+                            if (levelItems.length > 0) {
+                                // El último item debería ser el nuevo nivel
+                                const lastItem = levelItems[levelItems.length - 1] as HTMLElement;
+                                const levelNameContainer = lastItem.querySelector('.flex-1');
+                                if (levelNameContainer) {
+                                    const span = levelNameContainer.querySelector('span.text-xs.cursor-pointer');
+                                    if (span) {
+                                        // Hacer click para activar la edición
+                                        (span as HTMLElement).click();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }, 200);
+            } else {
+                import('./ui').then(({ showNotification }) => {
+                    showNotification(store, `❌ Error`, 'No se pudo agregar el nivel a la campaña.');
+                });
+            }
+        });
+        levelsList.appendChild(addLevelBtn);
         
         // Toggle del desplegable
         dropdownButton.addEventListener('click', () => {
@@ -511,8 +1025,8 @@ export const setupCampaignsModal = (store: GameStore) => {
     const addToCampaignConfirmBtn = document.getElementById('add-to-campaign-confirm-btn');
     const addToCampaignSelector = document.getElementById('add-to-campaign-selector') as HTMLSelectElement | null;
     
-    closeBtn?.addEventListener('click', () => {
-        hideCampaignsModal();
+    closeBtn?.addEventListener('click', async () => {
+        await hideCampaignsModal(store);
     });
     
     createBtn?.addEventListener('click', async () => {

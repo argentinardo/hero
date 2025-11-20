@@ -2120,17 +2120,46 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     // Cargar nickname desde la base de datos al entrar al editor
     await loadUserNicknameFromDB();
     
-    // CRÍTICO: Si el usuario está logueado, asegurar que Legacy sea la campaña activa
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    if (isLoggedIn && !store.currentCampaignId) {
+    // Si NO se preserva el nivel actual, siempre cargar el nivel 1 de Legacy
+    if (!preserveCurrentLevel) {
         const DEFAULT_CAMPAIGN_ID = 'default'; // ID de la campaña Legacy
         store.currentCampaignId = DEFAULT_CAMPAIGN_ID;
-        console.log('[startEditor] ✅ Campaña Legacy establecida como activa para usuario logueado');
+        console.log('[startEditor] ✅ Cargando nivel 1 de Legacy (inicio del editor)');
+        
+        // Cargar el nivel 1 (índice 0) en el editor
+        if (store.levelDataStore[0]) {
+            store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[0]));
+        } else if (store.initialLevels[0]) {
+            store.editorLevel = (store.initialLevels[0] as string[]).map(row => row.split(''));
+        }
+        
+        // Establecer el selector en el nivel 1
+        if (store.dom.ui.levelSelectorEl) {
+            store.dom.ui.levelSelectorEl.value = '0';
+        }
+    } else {
+        // Si se preserva el nivel, mantener la campaña actual si existe
+        // Si no hay campaña seleccionada y el usuario está logueado, usar Legacy
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (isLoggedIn && !store.currentCampaignId) {
+            const DEFAULT_CAMPAIGN_ID = 'default'; // ID de la campaña Legacy
+            store.currentCampaignId = DEFAULT_CAMPAIGN_ID;
+            console.log('[startEditor] ✅ Campaña Legacy establecida como activa para usuario logueado');
+        }
     }
     
     // Cargar editor de forma lazy
     const { setupEditorState, bindEditorCanvas } = await import('./editor');
-    setupEditorState(store);
+    // Solo llamar setupEditorState si no se preserva el nivel (ya lo configuramos arriba)
+    if (!preserveCurrentLevel) {
+        // setupEditorState carga el nivel 0, pero ya lo configuramos arriba, así que solo inicializamos el estado básico
+        store.selectedTile = '1';
+        store.mouse = { x: 0, y: 0, gridX: 0, gridY: 0, isDown: false };
+        const { initializeAdvancedEditor } = await import('./advancedEditor');
+        initializeAdvancedEditor(store);
+    } else {
+        setupEditorState(store);
+    }
     bindEditorCanvas(store);
     teardownTvMenuNavigation();
     
@@ -2167,15 +2196,29 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
     // Actualizar el selector de niveles
     // Si hay una campaña seleccionada, mostrar solo los niveles de esa campaña
     if (store.currentCampaignId) {
-        import('./campaigns-ui').then(({ syncLevelSelectorForCampaign }) => {
+        import('./campaigns-ui').then(async ({ syncLevelSelectorForCampaign }) => {
             syncLevelSelectorForCampaign(store);
+            // Si no se preserva el nivel, asegurar que el selector esté en el nivel 1 (índice 0)
+            if (!preserveCurrentLevel && store.dom.ui.levelSelectorEl) {
+                const { getCampaignLevelIndices } = await import('../utils/campaigns');
+                const levelIndices = getCampaignLevelIndices(store, store.currentCampaignId);
+                if (levelIndices.length > 0 && levelIndices[0] === 0) {
+                    store.dom.ui.levelSelectorEl.value = '0';
+                }
+            }
         }).catch(() => {
             // Si falla, usar el método normal
             syncLevelSelector(store);
+            if (!preserveCurrentLevel && store.dom.ui.levelSelectorEl) {
+                store.dom.ui.levelSelectorEl.value = '0';
+            }
         });
     } else {
         // Si no hay campaña seleccionada, mostrar todos los niveles
         syncLevelSelector(store);
+        if (!preserveCurrentLevel && store.dom.ui.levelSelectorEl) {
+            store.dom.ui.levelSelectorEl.value = '0';
+        }
     }
     
     store.appState = 'editing';
@@ -2517,13 +2560,39 @@ export const updateUiBar = (store: GameStore) => {
         }
     }
     if (levelCountEl) {
-        // Mostrar nombre del nivel si existe, de lo contrario mostrar número
-        const levelName = store.levelNames[store.currentLevelIndex];
-        if (levelName) {
-            levelCountEl.textContent = levelName;
-        } else {
-            levelCountEl.textContent = `${store.currentLevelIndex + 1}`;
+        // En el editor, usar el índice del selector en lugar de currentLevelIndex
+        let levelIndexToUse = store.currentLevelIndex;
+        if (store.appState === 'editing' && store.dom.ui.levelSelectorEl) {
+            const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
+            if (!isNaN(selectedIndex)) {
+                levelIndexToUse = selectedIndex;
+            }
         }
+        
+        // Obtener nombre del nivel desde la campaña
+        import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices, getLevelNameFromCampaign }) => {
+            // Intentar obtener el nombre del nivel desde la campaña
+            const levelName = getLevelNameFromCampaign(store, levelIndexToUse);
+            if (levelName) {
+                levelCountEl.textContent = levelName;
+            } else {
+                // Si no hay nombre, mostrar el número de orden en la campaña
+                const campaign = getCurrentCampaign(store);
+                if (campaign && campaign.levels.length > 0) {
+                    const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                    const positionInCampaign = levelIndices.findIndex(idx => idx === levelIndexToUse);
+                    if (positionInCampaign >= 0) {
+                        levelCountEl.textContent = `${positionInCampaign + 1}`;
+                    } else {
+                        levelCountEl.textContent = `${levelIndexToUse + 1}`;
+                    }
+                } else {
+                    levelCountEl.textContent = `${levelIndexToUse + 1}`;
+                }
+            }
+        }).catch(() => {
+            levelCountEl.textContent = `${levelIndexToUse + 1}`;
+        });
     }
     if (scoreCountEl) {
         scoreCountEl.textContent = `${store.score}`;
@@ -6483,7 +6552,7 @@ const ensureEditorVisible = (store: GameStore) => {
 /**
  * Elimina filas y columnas completamente vacías (solo '0') de un nivel
  */
-const purgeEmptyRowsAndColumns = (level: string[][]): string[][] => {
+export const purgeEmptyRowsAndColumns = (level: string[][]): string[][] => {
     if (level.length === 0) return level;
     
     // Crear una copia para no modificar el original
@@ -6870,7 +6939,30 @@ const setupLevelData = (store: GameStore) => {
     // Función para cargar nivel desde el store
     const loadLevelFromStore = () => {
         const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-        store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index] ?? []));
+        
+        // Si el nivel está vacío o no existe, usar una copia del nivel 1 de Legacy
+        if (store.levelDataStore[index] && store.levelDataStore[index].length > 0) {
+            store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index]));
+        } else {
+            // Si el nivel está vacío, usar una copia del nivel 1 de Legacy
+            const legacyLevel1 = store.initialLevels[0] || store.levelDataStore[0];
+            if (legacyLevel1) {
+                if (typeof legacyLevel1[0] === 'string') {
+                    // Es string[] (filas como strings), convertir a string[][]
+                    store.editorLevel = (legacyLevel1 as string[]).map(row => row.split(''));
+                } else {
+                    // Ya es string[][]
+                    store.editorLevel = JSON.parse(JSON.stringify(legacyLevel1));
+                }
+                // Guardar en levelDataStore para que no se pierda
+                store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
+                store.initialLevels[index] = store.editorLevel.map(row => row.join(''));
+                console.log(`[Editor] ✅ Nivel ${index} estaba vacío, se cargó plantilla del nivel 1 de Legacy`);
+            } else {
+                console.error(`[Editor] ❌ No se pudo cargar el nivel ${index}. Nivel 1 de Legacy no encontrado.`);
+                store.editorLevel = [];
+            }
+        }
         // Centrar la cámara en el jugador si existe
         const canvas = store.dom.canvas;
         if (canvas && store.editorLevel.length > 0) {
@@ -6907,55 +6999,67 @@ const setupLevelData = (store: GameStore) => {
     // Cargar nivel automáticamente cuando cambia el selector
     store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
         loadLevelFromStore();
-        // Actualizar el número de nivel en el game-ui cuando cambia el selector
-        if (store.dom.ui.levelCountEl && store.dom.ui.levelSelectorEl) {
+        // Actualizar el nombre del nivel en el game-ui cuando cambia el selector
+        const levelCountEl = store.dom.ui.levelCountEl;
+        if (levelCountEl && store.dom.ui.levelSelectorEl) {
             const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
-            store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
+            import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices, getLevelNameFromCampaign }) => {
+                if (!levelCountEl) return;
+                // Intentar obtener el nombre del nivel desde la campaña
+                const levelName = getLevelNameFromCampaign(store, selectedIndex);
+                if (levelName) {
+                    levelCountEl.textContent = levelName;
+                } else {
+                    // Si no hay nombre, mostrar el número de orden en la campaña
+                    const campaign = getCurrentCampaign(store);
+                    if (campaign && campaign.levels.length > 0) {
+                        const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                        const positionInCampaign = levelIndices.findIndex(idx => idx === selectedIndex);
+                        if (positionInCampaign >= 0) {
+                            levelCountEl.textContent = `${positionInCampaign + 1}`;
+                        } else {
+                            levelCountEl.textContent = `${selectedIndex + 1}`;
+                        }
+                    } else {
+                        levelCountEl.textContent = `${selectedIndex + 1}`;
+                    }
+                }
+            }).catch(() => {
+                if (levelCountEl) {
+                    levelCountEl.textContent = `${selectedIndex + 1}`;
+                }
+            });
         }
     });
 
     store.dom.ui.addLevelBtn?.addEventListener('click', () => {
-        // Crear un nuevo nivel con el patrón por defecto
-        const canvas = store.dom.canvas;
-        if (!canvas) return;
+        // Crear un nuevo nivel como réplica del nivel 1 de Legacy
+        // Obtener el nivel 1 de Legacy (índice 0)
+        const legacyLevel1 = store.initialLevels[0] || store.levelDataStore[0];
         
-        // Calcular dimensiones del nivel basado en el canvas
-        const levelWidth = Math.floor(canvas.width / TILE_SIZE); // 1600 / 72 = ~22 tiles
-        const levelHeight = Math.floor(canvas.height / TILE_SIZE) + 5; // Extra altura para scroll
-        
-        // Patrón por defecto especificado por el usuario
-        const defaultPattern = [
-            "11111111111111111111",
-            "11000001000000001111",
-            "11000001000000001111",
-            "100P000C000000000111",
-            "1000000C000000000111",
-            "1000000C000000000111",
-            "11111111100111111111",
-            "11111111100111111111",
-            "11111111100111111111"
-        ];
-
-        // Crear nuevo nivel usando el patrón por defecto
-        const newLevel: string[][] = [];
-        
-        // Aplicar el patrón por defecto
-        for (let row = 0; row < defaultPattern.length; row++) {
-            newLevel.push(defaultPattern[row].split(''));
+        if (!legacyLevel1) {
+            console.error('[Editor] No se pudo encontrar el nivel 1 de Legacy');
+            showNotification(store, `❌ Error`, 'No se pudo crear el nivel. Nivel 1 de Legacy no encontrado.');
+            return;
         }
         
-        // Completar el resto del nivel con espacios vacíos
-        for (let row = defaultPattern.length; row < levelHeight; row++) {
-            const levelRow: string[] = [];
-            for (let col = 0; col < levelWidth; col++) {
-                levelRow.push('0'); // Espacio vacío
-            }
-            newLevel.push(levelRow);
+        // Crear una copia profunda del nivel 1 de Legacy
+        // Si legacyLevel1 es string[] (filas como strings), convertir a string[][]
+        let newLevel: string[][];
+        if (Array.isArray(legacyLevel1[0]) && typeof legacyLevel1[0] === 'string' && legacyLevel1[0].length > 0 && typeof legacyLevel1[0][0] === 'string') {
+            // Ya es string[][]
+            newLevel = JSON.parse(JSON.stringify(legacyLevel1));
+        } else if (typeof legacyLevel1[0] === 'string') {
+            // Es string[] (filas como strings), convertir a string[][]
+            newLevel = (legacyLevel1 as string[]).map(row => row.split(''));
+        } else {
+            // Fallback: usar levelDataStore[0] si está disponible
+            newLevel = store.levelDataStore[0] ? JSON.parse(JSON.stringify(store.levelDataStore[0])) : [];
         }
         
         // Agregar el nuevo nivel al final del array
         store.levelDataStore.push(JSON.parse(JSON.stringify(newLevel)));
-        store.initialLevels.push(JSON.parse(JSON.stringify(newLevel)));
+        store.initialLevels.push(newLevel.map((row: string[]) => row.join('')));
         
         // Cargar el nuevo nivel en el editor
         store.editorLevel = JSON.parse(JSON.stringify(newLevel));
@@ -6963,17 +7067,33 @@ const setupLevelData = (store: GameStore) => {
         // Seleccionar el nuevo nivel
         const newIndex = store.levelDataStore.length - 1;
         
-        // Centrar la cámara en el jugador
-        const playerCol = Math.floor(levelWidth / 2);
-        const playerRow = Math.floor(levelHeight / 2);
-        const desiredX = playerCol * TILE_SIZE - 2 * TILE_SIZE;
-        // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
-        const canvasInternalWidth = 1440; // 20 tiles * 72px
-        const desiredY = playerRow * TILE_SIZE - 3 * TILE_SIZE;
-        const maxCamX = Math.max(0, levelWidth * TILE_SIZE - canvasInternalWidth);
-        const maxCamY = Math.max(0, levelHeight * TILE_SIZE - canvas.height);
-        store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
-        store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
+        // Centrar la cámara en el jugador si existe
+        const canvas = store.dom.canvas;
+        if (canvas && newLevel.length > 0) {
+            let playerCol = 0;
+            let playerRow = 0;
+            // Buscar la posición del jugador en el nivel
+            outerLoop: for (let r = 0; r < newLevel.length; r++) {
+                const c = newLevel[r]?.indexOf('P') ?? -1;
+                if (c !== -1) {
+                    playerRow = r;
+                    playerCol = c;
+                    break outerLoop;
+                }
+            }
+            const levelCols = newLevel[0]?.length ?? 0;
+            const levelRows = newLevel.length;
+            const levelWidth = levelCols * TILE_SIZE;
+            const levelHeight = levelRows * TILE_SIZE;
+            // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+            const canvasInternalWidth = 1440; // 20 tiles * 72px
+            const desiredX = playerCol * TILE_SIZE - canvasInternalWidth / 2;
+            const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
+            const maxCamX = Math.max(0, levelWidth - canvasInternalWidth);
+            const maxCamY = Math.max(0, levelHeight - canvas.height);
+            store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+            store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
+        }
         
         // Reinicializar el editor avanzado
         initializeAdvancedEditor(store);
@@ -7470,10 +7590,19 @@ const setupLevelData = (store: GameStore) => {
         store.editorLevel = cleanedLevel;
         
         // Agregar el nivel a la campaña actual (o actualizar si ya existe)
+        // IMPORTANTE: Legacy es de solo lectura - no se pueden agregar niveles nuevos
+        // Solo se pueden actualizar los niveles existentes (0-19)
         const result = await addLevelToCampaign(store, currentCampaign.id, levelIndex);
         
         if (result.success) {
             const isLegacyCampaign = currentCampaign.isDefault === true;
+            
+            // Si es Legacy y el nivel está fuera del rango válido (0-19), mostrar error
+            if (isLegacyCampaign && (levelIndex < 0 || levelIndex >= 20)) {
+                showNotification(store, `❌ Error`, 'Legacy solo tiene 20 niveles fijos (0-19). No se pueden agregar niveles nuevos.');
+                ensureEditorVisible(store);
+                return;
+            }
             
             if (isLegacyCampaign) {
                 await saveAllLevelsToFile();
@@ -7492,8 +7621,41 @@ const setupLevelData = (store: GameStore) => {
                 ? 'Nivel actualizado en la campaña'
                 : 'Nivel agregado a la campaña';
             showNotification(store, `💾 ${message}`, `${message}: ${currentCampaign.name}`);
+            
+            // Asegurar que el editor permanezca visible y con el nivel cargado
+            ensureEditorVisible(store);
+            
+            // Si no estamos en el editor, iniciarlo
+            if (store.appState !== 'editing') {
+                startEditor(store, true);
+            } else {
+                // Guardar el índice del nivel actual antes de sincronizar
+                const currentLevelIndex = levelIndex;
+                
+                // Sincronizar el selector de niveles para la campaña actual
+                const { syncLevelSelectorForCampaign } = await import('./campaigns-ui');
+                syncLevelSelectorForCampaign(store);
+                
+                // IMPORTANTE: Después de sincronizar, volver a establecer el nivel que se estaba editando
+                if (store.dom.ui.levelSelectorEl) {
+                    store.dom.ui.levelSelectorEl.value = currentLevelIndex.toString();
+                }
+                // Sincronizar también el selector mobile
+                const levelSelectorMobile = document.getElementById('level-selector-mobile') as HTMLSelectElement | null;
+                if (levelSelectorMobile && store.dom.ui.levelSelectorEl) {
+                    levelSelectorMobile.value = store.dom.ui.levelSelectorEl.value;
+                }
+                
+                // Recargar el nivel en el editor para asegurar coherencia
+                const { updateEditorLevelFromSelector } = await import('./editor');
+                updateEditorLevelFromSelector(store);
+                
+                // Actualizar el nombre del nivel en level-count
+                updateUiBar(store);
+            }
         } else {
             showNotification(store, `❌ Error`, 'No se pudo guardar el nivel');
+            ensureEditorVisible(store);
         }
     });
 
@@ -7508,6 +7670,25 @@ const setupLevelData = (store: GameStore) => {
         
         // Guardar todos los niveles
         await saveAllLevelsToFile();
+        
+        // Asegurar que el editor permanezca visible y con el nivel cargado
+        ensureEditorVisible(store);
+        
+        // Si no estamos en el editor, iniciarlo
+        if (store.appState !== 'editing') {
+            startEditor(store, true);
+        } else {
+            // Asegurar que el selector esté sincronizado con el nivel actual
+            if (store.dom.ui.levelSelectorEl) {
+                store.dom.ui.levelSelectorEl.value = index.toString();
+            }
+            // Sincronizar el selector de niveles para la campaña actual
+            const { syncLevelSelectorForCampaign } = await import('./campaigns-ui');
+            syncLevelSelectorForCampaign(store);
+            // Recargar el nivel en el editor para asegurar coherencia
+            const { updateEditorLevelFromSelector } = await import('./editor');
+            updateEditorLevelFromSelector(store);
+        }
     });
 
     cancelSaveBtn?.addEventListener('click', () => {
@@ -7567,20 +7748,72 @@ const setupLevelData = (store: GameStore) => {
     // Sincronizar selectores cuando cambien
     store.dom.ui.levelSelectorEl?.addEventListener('change', () => {
         syncLevelSelectors(false);
-        // Actualizar el número de nivel en el game-ui cuando cambia el selector
-        if (store.dom.ui.levelCountEl && store.dom.ui.levelSelectorEl) {
+        // Actualizar el nombre del nivel en el game-ui cuando cambia el selector
+        const levelCountEl = store.dom.ui.levelCountEl;
+        if (levelCountEl && store.dom.ui.levelSelectorEl) {
             const selectedIndex = parseInt(store.dom.ui.levelSelectorEl.value ?? '0', 10);
-            store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
+            import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices, getLevelNameFromCampaign }) => {
+                if (!levelCountEl) return;
+                // Intentar obtener el nombre del nivel desde la campaña
+                const levelName = getLevelNameFromCampaign(store, selectedIndex);
+                if (levelName) {
+                    levelCountEl.textContent = levelName;
+                } else {
+                    // Si no hay nombre, mostrar el número de orden en la campaña
+                    const campaign = getCurrentCampaign(store);
+                    if (campaign && campaign.levels.length > 0) {
+                        const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                        const positionInCampaign = levelIndices.findIndex(idx => idx === selectedIndex);
+                        if (positionInCampaign >= 0) {
+                            levelCountEl.textContent = `${positionInCampaign + 1}`;
+                        } else {
+                            levelCountEl.textContent = `${selectedIndex + 1}`;
+                        }
+                    } else {
+                        levelCountEl.textContent = `${selectedIndex + 1}`;
+                    }
+                }
+            }).catch(() => {
+                if (levelCountEl) {
+                    levelCountEl.textContent = `${selectedIndex + 1}`;
+                }
+            });
         }
         // No actualizar el nombre de la campaña aquí, solo se actualiza al seleccionar la campaña
     });
     
     levelSelectorMobile?.addEventListener('change', () => {
         syncLevelSelectors(true);
-        // Actualizar el número de nivel en el game-ui cuando cambia el selector mobile
-        if (store.dom.ui.levelCountEl && levelSelectorMobile) {
+        // Actualizar el nombre del nivel en el game-ui cuando cambia el selector mobile
+        const levelCountEl = store.dom.ui.levelCountEl;
+        if (levelCountEl && levelSelectorMobile) {
             const selectedIndex = parseInt(levelSelectorMobile.value ?? '0', 10);
-            store.dom.ui.levelCountEl.textContent = `${selectedIndex + 1}`;
+            import('../utils/campaigns').then(({ getCurrentCampaign, getCampaignLevelIndices, getLevelNameFromCampaign }) => {
+                if (!levelCountEl) return;
+                // Intentar obtener el nombre del nivel desde la campaña
+                const levelName = getLevelNameFromCampaign(store, selectedIndex);
+                if (levelName) {
+                    levelCountEl.textContent = levelName;
+                } else {
+                    // Si no hay nombre, mostrar el número de orden en la campaña
+                    const campaign = getCurrentCampaign(store);
+                    if (campaign && campaign.levels.length > 0) {
+                        const levelIndices = getCampaignLevelIndices(store, campaign.id);
+                        const positionInCampaign = levelIndices.findIndex(idx => idx === selectedIndex);
+                        if (positionInCampaign >= 0) {
+                            levelCountEl.textContent = `${positionInCampaign + 1}`;
+                        } else {
+                            levelCountEl.textContent = `${selectedIndex + 1}`;
+                        }
+                    } else {
+                        levelCountEl.textContent = `${selectedIndex + 1}`;
+                    }
+                }
+            }).catch(() => {
+                if (levelCountEl) {
+                    levelCountEl.textContent = `${selectedIndex + 1}`;
+                }
+            });
         }
         // No actualizar el nombre de la campaña aquí, solo se actualiza al seleccionar la campaña
     });

@@ -13,15 +13,29 @@ export const DEFAULT_CAMPAIGN_ID = 'default';
 
 /**
  * Crea la campaña por defecto (Legacy) con los niveles originales desde levels.json
- * IMPORTANTE: Esta campaña siempre se sirve desde assets/levels.json y es editable
+ * IMPORTANTE: Legacy siempre tiene exactamente 20 niveles fijos (índices 0-19)
+ * Legacy es de solo lectura - no se pueden agregar o eliminar niveles
  */
 export const createDefaultCampaign = (totalLevels: number): Campaign => {
+    // Legacy siempre tiene exactamente 20 niveles fijos
+    const LEGACY_LEVEL_COUNT = 20;
     const levels: CampaignLevel[] = [];
-    for (let i = 0; i < totalLevels; i++) {
+    for (let i = 0; i < Math.min(totalLevels, LEGACY_LEVEL_COUNT); i++) {
         levels.push({
             levelIndex: i,
             order: i
         });
+    }
+    
+    // Si hay menos de 20 niveles, completar hasta 20 (aunque esto no debería pasar)
+    if (levels.length < LEGACY_LEVEL_COUNT) {
+        console.warn(`[Campaigns] ⚠️ Legacy tiene menos de 20 niveles (${levels.length}). Completando hasta 20.`);
+        for (let i = levels.length; i < LEGACY_LEVEL_COUNT; i++) {
+            levels.push({
+                levelIndex: i,
+                order: i
+            });
+        }
     }
     
     return {
@@ -83,25 +97,38 @@ export const initializeCampaigns = (store: GameStore, totalLevels: number): void
     } else {
         store.campaigns = loaded;
         
-        // Actualizar la campaña por defecto para que siempre refleje levels.json
-        // Si tiene menos niveles o más niveles, actualizarla para que coincida con levels.json
+        // Actualizar la campaña por defecto para que siempre tenga exactamente 20 niveles fijos
+        // Legacy siempre tiene exactamente 20 niveles (índices 0-19)
         const defaultCampaign = store.campaigns.find(c => c.id === DEFAULT_CAMPAIGN_ID);
         if (defaultCampaign) {
-            // Si la campaña por defecto tiene diferente cantidad de niveles, actualizarla
-            // Esto asegura que siempre refleje levels.json
-            if (defaultCampaign.levels.length !== totalLevels) {
-                // Crear una nueva campaña por defecto con todos los niveles desde levels.json
-                const updatedDefault = createDefaultCampaign(totalLevels);
+            // Si la campaña por defecto no tiene exactamente 20 niveles, corregirla
+            const LEGACY_LEVEL_COUNT = 20;
+            if (defaultCampaign.levels.length !== LEGACY_LEVEL_COUNT) {
+                console.warn(`[Campaigns] ⚠️ Legacy tiene ${defaultCampaign.levels.length} niveles, debe tener ${LEGACY_LEVEL_COUNT}. Corrigiendo...`);
+                // Crear una nueva campaña por defecto con exactamente 20 niveles
+                const updatedDefault = createDefaultCampaign(Math.max(totalLevels, LEGACY_LEVEL_COUNT));
                 // Reemplazar la campaña por defecto existente
                 const index = store.campaigns.findIndex(c => c.id === DEFAULT_CAMPAIGN_ID);
                 if (index >= 0) {
                     store.campaigns[index] = updatedDefault;
                     saveCampaigns(store.campaigns);
                 }
+            } else {
+                // Verificar que los índices sean correctos (0-19)
+                const hasInvalidIndices = defaultCampaign.levels.some(l => l.levelIndex < 0 || l.levelIndex >= LEGACY_LEVEL_COUNT);
+                if (hasInvalidIndices) {
+                    console.warn(`[Campaigns] ⚠️ Legacy tiene índices inválidos. Corrigiendo...`);
+                    const updatedDefault = createDefaultCampaign(Math.max(totalLevels, LEGACY_LEVEL_COUNT));
+                    const index = store.campaigns.findIndex(c => c.id === DEFAULT_CAMPAIGN_ID);
+                    if (index >= 0) {
+                        store.campaigns[index] = updatedDefault;
+                        saveCampaigns(store.campaigns);
+                    }
+                }
             }
         } else {
-            // Si no existe la campaña por defecto, agregarla desde levels.json
-            store.campaigns.unshift(createDefaultCampaign(totalLevels));
+            // Si no existe la campaña por defecto, crearla con exactamente 20 niveles
+            store.campaigns.unshift(createDefaultCampaign(Math.max(totalLevels, 20)));
             saveCampaigns(store.campaigns);
         }
     }
@@ -170,7 +197,8 @@ export const deleteCampaign = async (store: GameStore, campaignId: string): Prom
 
 /**
  * Agrega un nivel a una campaña
- * NOTA: Ahora se permite editar la campaña original
+ * NOTA: Legacy es de solo lectura - no se pueden agregar niveles nuevos a Legacy
+ * Legacy siempre tiene exactamente 20 niveles fijos (índices 0-19)
  * Si el nivel ya existe, retorna true (el nivel ya está en la campaña)
  */
 export const addLevelToCampaign = async (store: GameStore, campaignId: string, levelIndex: number): Promise<{ success: boolean; alreadyExists: boolean }> => {
@@ -179,6 +207,54 @@ export const addLevelToCampaign = async (store: GameStore, campaignId: string, l
         return { success: false, alreadyExists: false };
     }
     
+    // CRÍTICO: Legacy es de solo lectura - no se pueden agregar niveles nuevos
+    // Legacy siempre tiene exactamente 20 niveles fijos (índices 0-19)
+    if (campaign.isDefault === true) {
+        // Solo permitir actualizar niveles existentes en Legacy (índices 0-19)
+        if (levelIndex < 0 || levelIndex >= 20) {
+            console.warn(`[Campaigns] ❌ No se puede agregar nivel ${levelIndex} a Legacy. Legacy solo tiene 20 niveles fijos (0-19).`);
+            return { success: false, alreadyExists: false };
+        }
+        
+        // Verificar que el nivel ya esté en Legacy (debe estar en los primeros 20)
+        const exists = campaign.levels.some(l => l.levelIndex === levelIndex);
+        if (exists) {
+            // El nivel ya existe, solo actualizar la fecha de modificación
+            campaign.updatedAt = Date.now();
+            saveCampaigns(store.campaigns);
+            
+            // Sincronizar con el servidor
+            await syncCampaignsToServer(store).catch((error) => {
+                console.error('Error sincronizando después de actualizar campaña:', error);
+            });
+            
+            return { success: true, alreadyExists: true };
+        } else {
+            // El nivel no está en Legacy, pero está en el rango válido (0-19)
+            // Esto no debería pasar si Legacy está correctamente inicializada, pero lo agregamos por seguridad
+            console.warn(`[Campaigns] ⚠️ Nivel ${levelIndex} no está en Legacy pero está en rango válido. Agregándolo.`);
+            const maxOrder = campaign.levels.length > 0 
+                ? Math.max(...campaign.levels.map(l => l.order)) 
+                : -1;
+            
+            campaign.levels.push({
+                levelIndex,
+                order: maxOrder + 1
+            });
+            
+            campaign.updatedAt = Date.now();
+            saveCampaigns(store.campaigns);
+            
+            // Sincronizar con el servidor
+            await syncCampaignsToServer(store).catch((error) => {
+                console.error('Error sincronizando después de agregar nivel a campaña:', error);
+            });
+            
+            return { success: true, alreadyExists: false };
+        }
+    }
+    
+    // Para campañas NO Legacy: permitir agregar cualquier nivel
     // Verificar que el nivel no esté ya en la campaña
     const exists = campaign.levels.some(l => l.levelIndex === levelIndex);
     if (exists) {
@@ -364,6 +440,25 @@ export const getCampaignForLevel = (store: GameStore, levelIndex: number): Campa
     
     // Si no está en ninguna campaña, devolver la default como fallback
     return defaultCampaign || null;
+};
+
+/**
+ * Obtiene el nombre del nivel desde la campaña actual
+ * Si el nivel tiene un nombre personalizado en la campaña, lo devuelve
+ * Si no, devuelve null para que se use el número por defecto
+ */
+export const getLevelNameFromCampaign = (store: GameStore, levelIndex: number): string | null => {
+    const campaign = getCurrentCampaign(store);
+    if (!campaign) {
+        return null;
+    }
+    
+    const campaignLevel = campaign.levels.find(l => l.levelIndex === levelIndex);
+    if (campaignLevel?.name) {
+        return campaignLevel.name;
+    }
+    
+    return null;
 };
 
 /**

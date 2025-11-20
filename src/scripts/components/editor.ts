@@ -723,7 +723,61 @@ export const bindEditorCanvas = (store: GameStore) => {
 
 export const updateEditorLevelFromSelector = (store: GameStore) => {
     const index = parseInt(store.dom.ui.levelSelectorEl?.value ?? '0', 10);
-    store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index] ?? []));
+    
+    // Cargar el nivel desde levelDataStore
+    // Si el nivel está vacío o no existe, usar una copia del nivel 1 de Legacy
+    if (store.levelDataStore[index] && store.levelDataStore[index].length > 0) {
+        store.editorLevel = JSON.parse(JSON.stringify(store.levelDataStore[index]));
+    } else {
+        // Si el nivel está vacío, usar una copia del nivel 1 de Legacy
+        const legacyLevel1 = store.initialLevels[0] || store.levelDataStore[0];
+        if (legacyLevel1) {
+            if (typeof legacyLevel1[0] === 'string') {
+                // Es string[] (filas como strings), convertir a string[][]
+                store.editorLevel = (legacyLevel1 as string[]).map(row => row.split(''));
+            } else {
+                // Ya es string[][]
+                store.editorLevel = JSON.parse(JSON.stringify(legacyLevel1));
+            }
+            // Guardar en levelDataStore para que no se pierda
+            store.levelDataStore[index] = JSON.parse(JSON.stringify(store.editorLevel));
+            store.initialLevels[index] = store.editorLevel.map(row => row.join(''));
+            console.log(`[Editor] ✅ Nivel ${index} estaba vacío, se cargó plantilla del nivel 1 de Legacy`);
+        } else {
+            console.error(`[Editor] ❌ No se pudo cargar el nivel ${index}. Nivel 1 de Legacy no encontrado.`);
+            store.editorLevel = [];
+        }
+    }
+    
+    // Centrar la cámara en el jugador si existe
+    const canvas = store.dom.canvas;
+    if (canvas && store.editorLevel.length > 0) {
+        let playerCol = 0;
+        let playerRow = 0;
+        outerCenter: for (let r = 0; r < store.editorLevel.length; r++) {
+            const c = store.editorLevel[r]?.indexOf('P') ?? -1;
+            if (c !== -1) {
+                playerRow = r;
+                playerCol = c;
+                break outerCenter;
+            }
+        }
+        const levelCols = store.editorLevel[0]?.length ?? 0;
+        const levelRows = store.editorLevel.length;
+        const levelWidth = levelCols * TILE_SIZE;
+        const levelHeight = levelRows * TILE_SIZE;
+        // El canvas internamente tiene 1440px (20 tiles), así que usamos ese tamaño para la cámara
+        const canvasInternalWidth = 1440; // 20 tiles * 72px
+        const desiredX = playerCol * TILE_SIZE - canvasInternalWidth / 2;
+        const desiredY = playerRow * TILE_SIZE - (canvas?.height ?? 0) / 2;
+        const maxCamX = Math.max(0, levelWidth - canvasInternalWidth);
+        const maxCamY = Math.max(0, levelHeight - canvas.height);
+        store.cameraX = Math.max(0, Math.min(desiredX, maxCamX));
+        store.cameraY = Math.max(0, Math.min(desiredY, maxCamY));
+    } else {
+        store.cameraX = 0;
+        store.cameraY = 0;
+    }
 };
 
 const MINER_TOTAL_FRAMES = 6;
