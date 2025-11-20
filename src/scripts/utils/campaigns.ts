@@ -485,6 +485,26 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
         // La campaña original siempre se sirve desde levels.json
         const campaignsToSync = store.campaigns.filter(c => c.id !== DEFAULT_CAMPAIGN_ID);
         
+        // IMPORTANTE: Incluir los datos completos de los niveles en cada campaña
+        // Para cada campaña, agregar los datos de los niveles desde levelDataStore
+        const campaignsWithLevelData = campaignsToSync.map(campaign => {
+            const campaignWithLevels = {
+                ...campaign,
+                // Agregar los datos completos de los niveles
+                // levelData será un array de strings, donde cada string representa todas las filas del nivel
+                // separadas por '\n' para facilitar la reconstrucción
+                levelData: campaign.levels.map(level => {
+                    const levelData = store.levelDataStore[level.levelIndex];
+                    if (levelData && levelData.length > 0) {
+                        // Convertir string[][] a string único (filas separadas por \n)
+                        return levelData.map(row => row.join('')).join('\n');
+                    }
+                    return null;
+                }).filter(data => data !== null)
+            };
+            return campaignWithLevels;
+        });
+        
         const { getNetlifyBaseUrl } = await import('./device');
         const baseUrl = getNetlifyBaseUrl();
         const res = await fetch(`${baseUrl}/.netlify/functions/campaigns`, {
@@ -494,14 +514,15 @@ export const syncCampaignsToServer = async (store: GameStore): Promise<boolean> 
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                campaigns: campaignsToSync
+                campaigns: campaignsWithLevelData
             })
         });
         
         if (res.ok) {
-            console.log('[Campaigns] ✅ Campañas sincronizadas con el servidor');
+            console.log('[Campaigns] ✅ Campañas con datos de niveles sincronizadas con el servidor');
         } else {
-            console.error('[Campaigns] Error sincronizando campañas:', res.status, res.statusText);
+            const errorText = await res.text();
+            console.error('[Campaigns] Error sincronizando campañas:', res.status, res.statusText, errorText);
         }
         
         return res.ok;
@@ -570,6 +591,35 @@ export const loadCampaignsFromServer = async (store: GameStore): Promise<boolean
                 // Crear la campaña original desde levels.json (siempre usar levels.json)
                 const originalCount = store.initialLevels.length;
                 const defaultCampaign = createDefaultCampaign(originalCount);
+                
+                // IMPORTANTE: Cargar los datos de los niveles desde levelData de cada campaña
+                // Los datos vienen como string[] donde cada string contiene todas las filas del nivel separadas por \n
+                for (const campaign of campaignsWithoutDefault) {
+                    if (campaign.levelData && Array.isArray(campaign.levelData)) {
+                        // campaign.levelData es string[] donde cada string es un nivel completo (filas separadas por \n)
+                        for (let i = 0; i < campaign.levels.length && i < campaign.levelData.length; i++) {
+                            const level = campaign.levels[i];
+                            const levelDataString = campaign.levelData[i];
+                            if (levelDataString && typeof levelDataString === 'string') {
+                                // Dividir por \n para obtener las filas
+                                const levelDataArray = levelDataString.split('\n').filter(row => row.length > 0);
+                                if (levelDataArray.length > 0) {
+                                    // Convertir cada fila de string a array de caracteres
+                                    const levelData2D = levelDataArray.map(row => row.split(''));
+                                    // Guardar en levelDataStore usando el levelIndex
+                                    if (level.levelIndex !== undefined && level.levelIndex >= 0) {
+                                        // Asegurar que el array sea lo suficientemente grande
+                                        while (store.levelDataStore.length <= level.levelIndex) {
+                                            store.levelDataStore.push([]);
+                                        }
+                                        store.levelDataStore[level.levelIndex] = levelData2D;
+                                        console.log(`[Campaigns] ✅ Nivel ${level.levelIndex} (${levelData2D.length} filas) cargado desde campaña ${campaign.name}`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 // Agregar la campaña original al inicio (siempre desde levels.json)
                 campaignsWithoutDefault.unshift(defaultCampaign);

@@ -1197,7 +1197,7 @@ export const drawEditor = (store: GameStore) => {
     }
 
     // Grid gruesa (cada 20x18 tiles = tamaño de viewport 1200x1080)
-    // Origen definido por la posición del jugador: 2 tiles a la izquierda y 3 arriba
+    // Origen definido por la posición del jugador: 3 tiles a la izquierda y 3 arriba
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = Math.max(1, 2 * zoomScale); // Ajustar grosor según zoom
     const majorCols = 20;
@@ -1215,7 +1215,7 @@ export const drawEditor = (store: GameStore) => {
         }
     }
 
-    const originTileX = Math.max(0, playerCol - 2);
+    const originTileX = Math.max(0, playerCol - 3);
     const originTileY = Math.max(0, playerRow - 3);
 
     // Calcular primera línea mayor visible hacia la izquierda y arriba, restringida al viewport

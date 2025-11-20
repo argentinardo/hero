@@ -7389,50 +7389,26 @@ const setupLevelData = (store: GameStore) => {
             ensureEditorVisible(store);
         };
 
-        // Intentar obtener el token JWT del usuario de Netlify Identity
-        const ni: any = (window as any).netlifyIdentity;
-        let user = ni?.currentUser?.();
+        // Intentar obtener el token JWT del usuario de Auth0
+        const { Auth0Manager } = await import('../auth0-manager');
         let token: string | null = null;
         
-        // Si no hay usuario, esperar un momento e intentar de nuevo (por si Netlify Identity aún se está cargando)
-        if (!user && ni) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            user = ni?.currentUser?.();
-        }
-        
-        // Obtener el token JWT del usuario
-        if (user) {
-            try {
-                token = await user.jwt();
-                console.log('Token JWT obtenido exitosamente');
-            } catch (error) {
-                console.error('Error obteniendo token:', error);
-                // Intentar refrescar el usuario y obtener el token de nuevo
-                try {
-                    // Forzar refresco del usuario si es posible
-                    if (ni?.refresh && typeof ni.refresh === 'function') {
-                        await ni.refresh();
-                        user = ni?.currentUser?.();
-                        if (user) {
-                            token = await user.jwt();
-                            console.log('Token JWT obtenido después del refresh');
-                        }
-                    }
-                } catch (refreshError) {
-                    console.error('Error refrescando usuario:', refreshError);
-                }
+        try {
+            token = await Auth0Manager.getAccessToken();
+            if (token) {
+                console.log('[saveAllLevelsToFile] Token JWT de Auth0 obtenido exitosamente');
+            } else {
+                console.warn('[saveAllLevelsToFile] No se pudo obtener token de Auth0');
             }
+        } catch (error) {
+            console.error('[saveAllLevelsToFile] Error obteniendo token de Auth0:', error);
         }
 
-        // Si aún no hay token, mostrar mensaje y fallback
+        // Si aún no hay token, mostrar mensaje
         if (!token) {
-            console.warn('No se pudo obtener token JWT. El usuario puede no estar autenticado correctamente.');
-            if (!user) {
-                showNotification(store, `❌ ${t('modals.errors.notAuthenticated')}`, t('modals.errors.notAuthenticated'));
-            } else {
-                showNotification(store, `⚠️ ${t('modals.errors.tokenExpired')}`, t('modals.errors.tokenExpired'));
-                // Continuar con el intento de guardado incluso sin token válido
-            }
+            console.warn('[saveAllLevelsToFile] No se pudo obtener token JWT. El usuario puede no estar autenticado correctamente.');
+            showNotification(store, `❌ ${t('modals.errors.notAuthenticated')}`, t('modals.errors.notAuthenticated'));
+            return;
         }
 
         // Intentar guardar en Netlify SIEMPRE, incluso si no hay token (el servidor puede tener el usuario en el contexto)
@@ -7447,10 +7423,9 @@ const setupLevelData = (store: GameStore) => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            console.log('Intentando guardar niveles personalizados en Netlify:', {
+            console.log('[saveAllLevelsToFile] Intentando guardar niveles personalizados en Netlify:', {
                 baseUrl,
                 hasToken: !!token,
-                hasUser: !!user,
                 endpoint: `${baseUrl}/.netlify/functions/levels`,
                 originalLevels: originalCount,
                 customLevels: customLevels.length
@@ -7458,6 +7433,12 @@ const setupLevelData = (store: GameStore) => {
 
             // IMPORTANTE: Solo guardar niveles personalizados adicionales en la BD
             // Los niveles originales siempre se sirven desde levels.json
+            console.log('[saveAllLevelsToFile] Enviando payload a servidor:', {
+                format: customPayload.format,
+                levelsCount: customPayload.levels?.length || 0,
+                hasToken: !!token
+            });
+            
             const response = await fetch(`${baseUrl}/.netlify/functions/levels`, {
                 method: 'POST',
                 headers,
@@ -7466,41 +7447,40 @@ const setupLevelData = (store: GameStore) => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Error en respuesta de Netlify:', response.status, errorText);
+                console.error('[saveAllLevelsToFile] Error en respuesta de Netlify:', response.status, errorText);
                 
-                // Si es 401 y tenemos usuario, puede ser que el token haya expirado
-                if (response.status === 401 && user) {
-                    // Intentar refrescar y volver a intentar
+                // Si es 401, el token puede haber expirado
+                if (response.status === 401) {
+                    console.warn('[saveAllLevelsToFile] Token expirado, intentando obtener nuevo token...');
                     try {
-                        if (ni?.refresh && typeof ni.refresh === 'function') {
-                            await ni.refresh();
-                            user = ni?.currentUser?.();
-                            if (user) {
-                                token = await user.jwt();
-                                if (token) {
-                                    // Reintentar con el nuevo token (solo niveles personalizados)
-                                    const retryResponse = await fetch(`${baseUrl}/.netlify/functions/levels`, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Authorization': `Bearer ${token}`,
-                                        },
-                                        body: JSON.stringify(customPayload),
-                                    });
-                                    
-                                    if (retryResponse.ok) {
-                                        const retryResult = await retryResponse.json();
-                                        if (retryResult.ok) {
-                                            showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, t('modals.errors.saveSuccess'));
-                                            ensureEditorVisible(store);
-                                            return;
-                                        }
-                                    }
+                        const { Auth0Manager } = await import('../auth0-manager');
+                        const newToken = await Auth0Manager.getAccessToken();
+                        if (newToken) {
+                            // Reintentar con el nuevo token
+                            const retryResponse = await fetch(`${baseUrl}/.netlify/functions/levels`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${newToken}`,
+                                },
+                                body: JSON.stringify(customPayload),
+                            });
+                            
+                            if (retryResponse.ok) {
+                                const retryResult = await retryResponse.json();
+                                if (retryResult.ok) {
+                                    console.log('[saveAllLevelsToFile] Niveles guardados exitosamente después de refrescar token');
+                                    showNotification(store, `💾 ${t('modals.errors.saveSuccess')}`, t('modals.errors.saveSuccess'));
+                                    ensureEditorVisible(store);
+                                    return;
                                 }
+                            } else {
+                                const retryErrorText = await retryResponse.text();
+                                console.error('[saveAllLevelsToFile] Error en reintento:', retryResponse.status, retryErrorText);
                             }
                         }
                     } catch (retryError) {
-                        console.error('Error en reintento:', retryError);
+                        console.error('[saveAllLevelsToFile] Error en reintento:', retryError);
                     }
                 }
                 
@@ -7616,6 +7596,10 @@ const setupLevelData = (store: GameStore) => {
             
             // Para otras campañas: sincronizar con el servidor
             await syncCampaignsToServer(store);
+            
+            // IMPORTANTE: También guardar los niveles en la base de datos
+            // Esto asegura que los niveles se persistan en la tabla levels
+            await saveAllLevelsToFile();
             
             const message = result.alreadyExists 
                 ? 'Nivel actualizado en la campaña'
