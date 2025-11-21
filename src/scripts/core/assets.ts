@@ -22,6 +22,7 @@ import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splashSprite.jpg';
 import splashMobileSrc from '../../assets/sprites/splashSprite_mobile.jpg';
+import splashFixedSrc from '../../assets/sprites/splash-fixed.jpg';
 import baseSrc from '../../assets/sprites/base.png';
 import heroLogoSrc from '../../assets/sprites/hero-logo.png';
 import qrSrc from '../../assets/sprites/qr.png';
@@ -58,6 +59,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     L: lightSrc,
     background: backgroundSrc,
     splash: isMobile() ? splashMobileSrc : splashSrc,
+    'splash-fixed': splashFixedSrc,
     base: baseSrc,
     heroLogo: heroLogoSrc,
     qr: qrSrc,
@@ -132,7 +134,7 @@ export const loadSpritesLazy = async (store: GameStore, spriteKeys: string[] = [
 
 // Función para cargar sprites críticos primero
 export const preloadCriticalAssets = (store: GameStore, callback: () => void) => {
-    const criticalSprites = ['P_stand', 'P_walk', 'P_fire', '1', '2', 'background', 'splash', 'base'];
+    const criticalSprites = ['P_stand', 'P_walk', 'P_fire', '1', '2', 'background', 'splash-fixed', 'splash', 'base'];
     
     loadSpritesLazy(store, criticalSprites)
         .then(() => {

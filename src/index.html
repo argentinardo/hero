@@ -447,6 +447,14 @@
             </div>
         </div>
 
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center text-center" style="z-index: 10000; background-size: cover; background-position: center; background-repeat: no-repeat;">
+            <div class="mb-8">
+                <div class="loading-spinner" style="width: 60px; height: 60px; border: 6px solid rgba(255, 255, 255, 0.3); border-top: 6px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            </div>
+            <p id="loading-text" class="text-white text-xl font-bold" style="font-family: 'Press Start 2P', monospace; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);">Cargando...</p>
+        </div>
+
         <!-- Splash animado -->
         <div id="splash-container" style="z-index: 10;"></div>
 
@@ -562,6 +570,30 @@
                     </button>
                     <button id="level-complete-restart-btn" class="nes-btn is-warning" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
                         Reiniciar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Victoria de Campaña -->
+        <div id="campaign-victory-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 50;">
+            <!-- Canvas para confetti/partículas -->
+            <canvas id="victory-confetti" class="absolute inset-0 w-full h-full" style="z-index: 0; pointer-events: none;"></canvas>
+            
+            <!-- Contenido del modal -->
+            <div class="nes-container with-title is-dark max-w-lg mx-6 relative victory-container" style="z-index: 10;">
+                <h1 id="campaign-victory-title" class="title text-4xl md:text-5xl font-bold mb-4 text-yellow-400 victory-title" style="text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4); font-family: 'Press Start 2P', monospace; animation: victoryPulse 1.5s ease-in-out infinite;">
+                    ¡CAMPAÑA COMPLETADA!
+                </h1>
+                <div id="campaign-victory-message" class="mb-6 text-lg text-green-400 victory-message" style="font-family: 'Press Start 2P', monospace; font-size: 0.8rem;">
+                    ¡Felicitaciones! Has completado la campaña.
+                </div>
+                <div id="campaign-victory-score" class="mb-6 text-2xl font-bold text-yellow-400 victory-score" style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">
+                    Puntuación: <span id="victory-score-value">0</span>
+                </div>
+                <div class="flex flex-col gap-4">
+                    <button id="campaign-victory-mainmenu-btn" class="nes-btn is-success" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                        Menú Principal
                     </button>
                 </div>
             </div>

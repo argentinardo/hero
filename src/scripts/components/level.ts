@@ -633,7 +633,23 @@ export const loadLevel = (store: GameStore) => {
     store.levelEndSequence = null;
     store.levelEndTimer = 0;
 
-    parseLevel(store, store.levelDesigns[store.currentLevelIndex]);
+    // Validar que el nivel existe antes de parsearlo
+    const currentLevel = store.levelDesigns[store.currentLevelIndex];
+    if (!currentLevel || currentLevel.length === 0) {
+        console.error(`[loadLevel] Error: El nivel ${store.currentLevelIndex} no existe o está vacío`);
+        console.error(`[loadLevel] levelDesigns.length: ${store.levelDesigns.length}`);
+        // Intentar cargar el nivel 0 como fallback
+        if (store.levelDesigns[0] && store.levelDesigns[0].length > 0) {
+            store.currentLevelIndex = 0;
+            parseLevel(store, store.levelDesigns[0]);
+        } else {
+            console.error('[loadLevel] Error crítico: No hay niveles disponibles');
+            store.gameState = 'gameover';
+        }
+        return;
+    }
+
+    parseLevel(store, currentLevel);
     // La cámara ya se posiciona correctamente en parseLevel centrada en el jugador
     if (store.dom.ui.levelCountEl) {
         // Obtener nombre del nivel desde la campaña o posición en campaña

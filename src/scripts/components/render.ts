@@ -1457,31 +1457,52 @@ export const animateSplash = (store: GameStore) => {
     if (!splashContainer) return;
     
     const splashSprite = store.sprites.splash;
+    const splashFixed = store.sprites['splash-fixed'];
+    
+    // Verificar si el sprite está completamente cargado
+    const isSpriteLoaded = splashSprite && splashSprite.complete && splashSprite.naturalWidth > 0;
+    
+    // Si el sprite no está completamente cargado, mostrar splash-fixed
+    if (!isSpriteLoaded) {
+        // Mostrar splash-fixed hasta que el sprite se cargue
+        if (splashFixed && (!splashContainer.style.backgroundImage || splashContainer.dataset.imageSet !== 'fixed')) {
+            splashContainer.style.backgroundImage = `url(${splashFixed.src})`;
+            splashContainer.style.backgroundSize = 'cover';
+            splashContainer.style.backgroundPosition = 'center';
+            splashContainer.dataset.imageSet = 'fixed';
+        }
+        return; // No animar hasta que el sprite esté completamente cargado
+    }
+    
+    // El sprite está completamente cargado, cambiar a la animación
+    if (splashContainer.dataset.imageSet === 'fixed') {
+        // Cambiar de splash-fixed a splash animado
+        splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+        splashContainer.style.backgroundSize = '2000% 100%';
+        splashContainer.style.backgroundPosition = '0% 0%';
+        splashContainer.dataset.imageSet = 'animated';
+    }
     
     // En mobile, establecer el backgroundImage pero no animar - el CSS lo fija en 0% 0%
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                      (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
     if (isMobile) {
         // En mobile, solo establecer la imagen de fondo (splashSprite mobile ya está cargado en store.sprites.splash)
-        if (splashSprite && (!splashContainer.style.backgroundImage || !splashContainer.dataset.imageSet)) {
+        if (splashContainer.dataset.imageSet !== 'animated') {
             splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
-            splashContainer.dataset.imageSet = 'true';
+            splashContainer.style.backgroundSize = '2000% 100%';
+            splashContainer.style.backgroundPosition = '0% 0%';
+            splashContainer.dataset.imageSet = 'animated';
         }
         return;
     }
     
-    // Intentar establecer la imagen de fondo incluso si el sprite aún no está completamente cargado
-    // Esto asegura que la imagen aparezca tan pronto como sea posible
-    if (splashSprite) {
-        // Si el sprite existe, usar su src (funciona incluso si aún no está completamente cargado)
-        if (!splashContainer.style.backgroundImage || !splashContainer.dataset.imageSet) {
-            splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
-            splashContainer.dataset.imageSet = 'true';
-        }
-    } else {
-        // Si el sprite no existe aún, esperar a que se cargue
-        // No establecer background-image aquí ya que el sprite se cargará pronto
-        return;
+    // Establecer la imagen de fondo del sprite animado si aún no está establecida
+    if (splashContainer.dataset.imageSet !== 'animated') {
+        splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+        splashContainer.style.backgroundSize = '2000% 100%';
+        splashContainer.style.backgroundPosition = '0% 0%';
+        splashContainer.dataset.imageSet = 'animated';
     }
     
     // Continuar con la animación incluso si el sprite aún se está cargando

@@ -285,7 +285,7 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
     // OPTIMIZACIÓN: Combinar todos los efectos en una sola operación CSS cuando están activos
     const filterParts: string[] = [];
     if (settings.brightness) {
-        filterParts.push('brightness(1.9)');
+        filterParts.push('brightness(1.1)');
     }
     if (settings.contrast) {
         filterParts.push('contrast(0.9)');

@@ -403,3 +403,82 @@ iframe[src*="identity"] {
   visibility:visible !important;
   opacity:1 !important;
 }
+
+/* === Loading Screen === */
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #000;
+}
+
+#loading-screen.hidden {
+  display: none !important;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* === Animaciones de Victoria de Campaña === */
+@keyframes victoryPulse {
+  0%, 100% {
+    transform: scale(1);
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    text-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 215, 0, 0.6), 0 0 80px rgba(255, 215, 0, 0.4);
+  }
+}
+
+@keyframes victoryEntrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-50px);
+    filter: blur(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes scoreCountUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#campaign-victory-modal:not(.hidden) .victory-container {
+  animation: victoryEntrance 0.8s ease-out;
+}
+
+#campaign-victory-modal:not(.hidden) .victory-title {
+  animation: victoryPulse 1.5s ease-in-out infinite;
+}
+
+#campaign-victory-modal:not(.hidden) .victory-score {
+  animation: scoreCountUp 1s ease-out 0.5s both;
+}

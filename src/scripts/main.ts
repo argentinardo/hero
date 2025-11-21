@@ -746,6 +746,18 @@ const registerServiceWorker = async (): Promise<void> => {
 const bootstrap = async (): Promise<void> => {
     console.log('[Bootstrap] 🚀 Iniciando bootstrap...');
     
+    // Mostrar loading screen con splash-fixed como fondo
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        // Cargar splash-fixed inmediatamente para mostrarlo como fondo
+        const { SPRITE_SOURCES } = await import('./core/assets');
+        const splashFixedSrc = SPRITE_SOURCES['splash-fixed'];
+        if (splashFixedSrc) {
+            loadingScreen.style.backgroundImage = `url(${splashFixedSrc})`;
+        }
+        loadingScreen.classList.remove('hidden');
+    }
+    
     try {
         // CRÍTICO: Inicializar Auth0 PRIMERO para procesar callbacks temprano
         console.log('[Bootstrap] Paso 1: Inicializando Auth0...');
@@ -854,6 +866,12 @@ const bootstrap = async (): Promise<void> => {
         console.log('[Bootstrap] Paso 10: Cargando assets críticos...');
         preloadCriticalAssets(store, () => {
             console.log('[Bootstrap] ✅ Assets críticos cargados');
+            
+            // Ocultar loading screen cuando los assets críticos estén cargados
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+            }
+            
             try {
                 loadLevel(store);
                 lastFrameTime = performance.now();

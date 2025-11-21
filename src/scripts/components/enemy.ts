@@ -654,15 +654,15 @@ const handleLevelEndSequence = (store: GameStore) => {
                         // Avanzar al siguiente nivel en la campaña
                         store.currentLevelIndex = levelIndices[currentIndexInCampaign + 1];
                     } else {
-                        // Fin de campaña
+                        // Fin de campaña - mostrar modal de victoria
                         store.gameState = 'win';
                         store.lastRunScore = store.score;
-                        const { messageOverlay, messageText, messageTitle } = store.dom.ui;
-                        if (messageOverlay && messageText && messageTitle) {
-                            messageTitle.textContent = '¡HAS GANADO!';
-                            messageText.textContent = `Puntuación final: ${store.lastRunScore}. Presiona ENTER para volver al inicio.`;
-                            messageOverlay.style.display = 'flex';
-                        }
+                        
+                        // Importar y mostrar modal de victoria
+                        import('./ui').then(({ showCampaignVictoryModal }) => {
+                            showCampaignVictoryModal(store);
+                        });
+                        
                         return;
                     }
                 } else {

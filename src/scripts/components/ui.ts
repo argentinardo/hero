@@ -1770,12 +1770,59 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         store.levelDesigns = [levelOverride];
     } else {
         // Usar levelDataStore que contiene todos los niveles (incluyendo los nuevos)
-        store.levelDesigns = store.levelDataStore.map(level => 
-            level.map(row => row.join(''))
-        );
+        // Si hay una campaña seleccionada, asegurar que todos sus niveles estén disponibles
+        let maxLevelIndex = Math.max(store.levelDataStore.length - 1, store.initialLevels.length - 1);
+        
+        if (store.currentCampaignId) {
+            const { getCampaignLevelIndices } = require('../utils/campaigns');
+            const campaignLevelIndices = getCampaignLevelIndices(store, store.currentCampaignId);
+            if (campaignLevelIndices.length > 0) {
+                maxLevelIndex = Math.max(maxLevelIndex, ...campaignLevelIndices);
+            }
+        }
+        
+        if (startIndex !== undefined) {
+            maxLevelIndex = Math.max(maxLevelIndex, startIndex);
+        }
+        
+        // Construir levelDesigns asegurando que todos los índices necesarios existan
+        store.levelDesigns = [];
+        for (let i = 0; i <= maxLevelIndex; i++) {
+            if (store.levelDataStore[i] && store.levelDataStore[i].length > 0) {
+                // Usar nivel de levelDataStore
+                store.levelDesigns[i] = store.levelDataStore[i].map(row => row.join(''));
+            } else if (store.initialLevels[i]) {
+                // Usar nivel de initialLevels como fallback
+                // initialLevels es string[][], cada nivel es string[] (filas como strings)
+                const level = store.initialLevels[i];
+                // level ya es string[] (formato correcto para levelDesigns)
+                store.levelDesigns[i] = level;
+            } else {
+                // Si no hay nivel disponible, crear uno vacío como último recurso
+                console.warn(`[startGame] Nivel ${i} no encontrado en levelDataStore ni initialLevels`);
+                store.levelDesigns[i] = [];
+            }
+        }
     }
     // Establecer índice inicial
     store.currentLevelIndex = startIndex ?? 0;
+    
+    // Validar que el nivel existe antes de continuar
+    if (!store.levelDesigns[store.currentLevelIndex] || store.levelDesigns[store.currentLevelIndex].length === 0) {
+        console.error(`[startGame] Error: El nivel ${store.currentLevelIndex} no existe o está vacío`);
+        console.error(`[startGame] levelDesigns.length: ${store.levelDesigns.length}, levelDataStore.length: ${store.levelDataStore.length}, initialLevels.length: ${store.initialLevels.length}`);
+        // Intentar usar el nivel 0 como fallback
+        if (store.levelDesigns[0] && store.levelDesigns[0].length > 0) {
+            store.currentLevelIndex = 0;
+        } else {
+            // Si ni siquiera el nivel 0 existe, mostrar error y volver al menú
+            import('./ui').then(({ showNotification }) => {
+                showNotification(store, 'Error', 'No se pudo cargar el nivel. Por favor, intenta de nuevo.');
+                showMenu(store);
+            });
+            return;
+        }
+    }
     
     // Asegurar que levelNames tiene el tamaño correcto
     // Si los levelNames no coinciden con levelDesigns, generarlos
@@ -7899,6 +7946,141 @@ export const showLevelCompleteModal = (store: GameStore) => {
     const levelCompleteModal = document.getElementById('level-complete-modal');
     if (levelCompleteModal) {
         levelCompleteModal.classList.remove('hidden');
+    }
+};
+
+/**
+ * Muestra el modal de victoria de campaña con animación de confetti
+ */
+export const showCampaignVictoryModal = (store: GameStore) => {
+    const victoryModal = document.getElementById('campaign-victory-modal');
+    const victoryScoreValue = document.getElementById('victory-score-value');
+    const victoryMessage = document.getElementById('campaign-victory-message');
+    const mainMenuBtn = document.getElementById('campaign-victory-mainmenu-btn');
+    
+    if (!victoryModal) return;
+    
+    // Obtener nombre de la campaña actual
+    const { getCurrentCampaign } = require('../utils/campaigns');
+    const campaign = getCurrentCampaign(store);
+    const campaignName = campaign?.name || 'Campaña';
+    
+    // Actualizar mensaje con el nombre de la campaña
+    if (victoryMessage) {
+        victoryMessage.textContent = `¡Felicitaciones! Has completado la campaña "${campaignName}".`;
+    }
+    
+    // Mostrar el modal
+    victoryModal.classList.remove('hidden');
+    
+    // Mostrar la puntuación
+    const finalScore = store.lastRunScore || store.score;
+    if (victoryScoreValue) {
+        // Animación de conteo de puntos
+        let currentScore = 0;
+        const targetScore = finalScore;
+        const duration = 2000; // 2 segundos
+        const startTime = Date.now();
+        
+        const animateScore = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            currentScore = Math.floor(targetScore * progress);
+            if (victoryScoreValue) {
+                victoryScoreValue.textContent = currentScore.toLocaleString();
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(animateScore);
+            } else {
+                if (victoryScoreValue) {
+                    victoryScoreValue.textContent = targetScore.toLocaleString();
+                }
+            }
+        };
+        
+        requestAnimationFrame(animateScore);
+    }
+    
+    // Animación de confetti
+    const confettiCanvas = document.getElementById('victory-confetti') as HTMLCanvasElement;
+    if (confettiCanvas) {
+        const ctx = confettiCanvas.getContext('2d');
+        if (ctx) {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+            
+            const confetti: Array<{
+                x: number;
+                y: number;
+                vx: number;
+                vy: number;
+                color: string;
+                size: number;
+                rotation: number;
+                rotationSpeed: number;
+            }> = [];
+            
+            // Crear partículas de confetti (menos numerosas y más lentas)
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+            for (let i = 0; i < 50; i++) {
+                confetti.push({
+                    x: Math.random() * confettiCanvas.width,
+                    y: -Math.random() * confettiCanvas.height,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: Math.random() * 0.8 + 0.5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 8 + 4,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.1
+                });
+            }
+            
+            const animateConfetti = () => {
+                ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                
+                confetti.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.rotation += particle.rotationSpeed;
+                    // Sin gravedad - velocidad constante
+                    
+                    ctx.save();
+                    ctx.translate(particle.x, particle.y);
+                    ctx.rotate(particle.rotation);
+                    ctx.fillStyle = particle.color;
+                    ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+                    ctx.restore();
+                    
+                    // Reiniciar partícula si sale de la pantalla
+                    if (particle.y > confettiCanvas.height) {
+                        particle.y = -10;
+                        particle.x = Math.random() * confettiCanvas.width;
+                    }
+                });
+                
+                if (!victoryModal.classList.contains('hidden')) {
+                    requestAnimationFrame(animateConfetti);
+                }
+            };
+            
+            animateConfetti();
+        }
+    }
+    
+    // Configurar botón de menú principal
+    if (mainMenuBtn) {
+        // Remover cualquier listener previo
+        const newMainMenuBtn = mainMenuBtn.cloneNode(true) as HTMLButtonElement;
+        mainMenuBtn.parentNode?.replaceChild(newMainMenuBtn, mainMenuBtn);
+        
+        const handleMainMenu = () => {
+            victoryModal.classList.add('hidden');
+            // Usar la función showMenu para volver al menú inicial correctamente
+            showMenu(store);
+        };
+        
+        newMainMenuBtn.addEventListener('click', handleMainMenu);
     }
 };
 
