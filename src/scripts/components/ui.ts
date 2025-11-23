@@ -1760,6 +1760,9 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         }
     }
     
+    // Restaurar configuración de usuario al salir del menú (iniciar juego)
+    applySettings(store);
+    
     store.lives = 5;
     store.score = 0;
     store.scoreLifeMilestone = 0;

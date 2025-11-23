@@ -528,8 +528,25 @@ const gameLoop = (currentTime: number): void => {
                 renderEditor(store, drawEditorFn);
             }
         } else if (store.appState === 'menu') {
+            // Forzar estilo retro en el menú
+            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                               (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
+            
+            // Aplicar temporalmente estilo retro para el menú
+            applyGraphicsSettings({
+                ...store.settings.graphics,
+                style: 'retro',
+                scanline: true,
+                glow: true,
+                brightness: true,
+                contrast: true,
+                vignette: true,
+                blur: isMobileDevice ? 0.7 : 1.5,
+                showFps: false,
+            });
+
             // Animar splash también en mobile
-                animateSplash(store);
+            animateSplash(store);
             
             // Procesar gamepad para navegación en el menú (modo TV)
             // Solo procesar una vez por frame para evitar activaciones múltiples
