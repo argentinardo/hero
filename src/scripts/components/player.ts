@@ -287,6 +287,7 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
         isFrozen: false,
         floatWaveTime: 0,
         fireAnimationTimer: 0,
+        respawnSettledFrames: 0,
     });
     
     // Establecer referencias de respawn coherentes con la posición inicial global
@@ -338,6 +339,7 @@ const startFloatingEntry = (store: GameStore, targetX: number, targetY: number, 
     player.currentFrame = ANIMATION_DATA.P_fly.frames - 1;
     player.floatWaveTime = 0;
     player.canWake = false;
+    player.respawnSettledFrames = 0;
     
     store.gameState = 'floating';
 };
@@ -353,11 +355,15 @@ export const handlePlayerInput = (store: GameStore) => {
     // Si está flotando, despertar apenas esté en su posición de respawn
     if (store.gameState === 'floating' && player.isFloating) {
         // Permitir un margen de ±2px para detectar llegada (evita sobrepasos por redondeos)
-        const hasArrived = Math.abs(player.y - player.respawnY) <= 2 && player.vy === 0;
+        // También confiar en canWake si el sistema ya forzó el despertar
+        const hasArrived = (Math.abs(player.y - player.respawnY) <= 2 && player.vy === 0) || player.canWake;
+        
         if (hasArrived && player.canWake) {
-            // Ajustar posición exacta al respawnY si hay diferencia
-            player.y = player.respawnY;
-            player.hitbox.y = player.respawnY;
+            // Ajustar posición exacta al respawnY si hay diferencia (solo si está cerca)
+            if (Math.abs(player.y - player.respawnY) < TILE_SIZE) {
+                player.y = player.respawnY;
+                player.hitbox.y = player.respawnY;
+            }
             
             const anyKeyPressed = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.Space;
             if (anyKeyPressed) {
@@ -511,6 +517,39 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
     if (killedByEnemy && killedByEnemy.type !== 'tentacle') {
         killedByEnemy.isDead = true;
         killedByEnemy.isHidden = true;
+    }
+
+    // Si murió aplastado por paredes aplastantes, pausarlas
+    const walls = store.walls.filter(w => w.type === 'crushing');
+    if (walls.length > 0) {
+        walls.forEach(w => {
+            // Pausar movimiento y dejarla en su estado actual
+            w.isClosing = false; // Detener cierre
+            // Opcional: si queremos que se "congelen" visualmente podemos agregar un flag
+            // Por ahora con dejar de actualizarlas en updateWalls cuando isGameState === 'respawning' sería suficiente
+            // pero como updateWalls corre siempre, debemos modificar allí también.
+            // OJO: updateWalls se ejecuta en 'playing' y 'floating', pero NO en 'respawning'
+            // por lo que ya deberían detenerse solas.
+            // Sin embargo, al reaparecer queremos que estén abiertas o reseteadas.
+            
+            // Para asegurar que queden "fijas" en máxima apertura, las abrimos al máximo
+            // y las pausamos
+            w.currentWidth = w.maxWidth || w.minWidth || w.width;
+            w.width = w.currentWidth;
+            
+            // Recalcular posición X para que queden visualmente abiertas
+            if (w.side === 'left') {
+                w.x = w.originalX || w.x;
+            } else {
+                // Pared derecha
+                if (w.originalX !== undefined && w.minWidth !== undefined) {
+                    w.x = (w.originalX + w.minWidth) - (w.currentWidth || 0);
+                }
+            }
+            
+            // Resetear estado para que empiecen cerrando cuando el jugador reaparezca
+            w.isClosing = true;
+        });
     }
 
     // Guardar posición de muerte para respawn (acotada a los límites del nivel)
@@ -787,15 +826,19 @@ const findSafeRespawnTile = (store: GameStore, desiredX: number, desiredY: numbe
     }
     
     // Explorar vecindario alrededor (radio creciente) buscando posición segura
-    for (let radius = 1; radius <= 5; radius++) {
-        // Priorizar búsqueda horizontal primero, luego vertical
+    // Limitamos a un radio de 25 tiles (aprox una pantalla y media) para mantener al jugador en el cuadrante
+    const MAX_RADIUS = 25;
+    
+    for (let radius = 1; radius <= MAX_RADIUS; radius++) {
+        // Priorizar búsqueda horizontal cercana y vertical
         for (let dx = -radius; dx <= radius; dx++) {
             for (let dy = -radius; dy <= radius; dy++) {
-                // Saltar si está fuera del radio actual
+                // Optimización: Saltar si está dentro del radio anterior (ya verificado)
                 if (Math.abs(dx) < radius && Math.abs(dy) < radius) continue;
                 
                 const x = desiredX + dx;
                 const y = Math.max(0, desiredY + dy);
+                
                 if (isSafeRespawnPosition(store, x, y)) {
                     return { x, y };
                 }
@@ -803,17 +846,44 @@ const findSafeRespawnTile = (store: GameStore, desiredX: number, desiredY: numbe
         }
     }
     
-    // Fallback: buscar cualquier posición segura en el nivel
-    for (let y = 0; y < rows - 1; y++) {
-        for (let x = 0; x < cols; x++) {
-            if (isSafeRespawnPosition(store, x, y)) {
-                return { x, y };
+    // Fallback local con búsqueda horizontal: Si no hay posición ideal, buscar espacio vacío cercano
+    // Priorizar cercanía horizontal para evitar zonas peligrosas (columnas de lava, paredes aplastantes)
+    // Se acepta estar en el aire (sin suelo) para evitar resetear el nivel
+    const FALLBACK_RADIUS = 8;
+    
+    for (let radius = 0; radius <= FALLBACK_RADIUS; radius++) {
+        // Buscar izquierda/derecha alternadamente
+        for (let dx = -radius; dx <= radius; dx++) {
+            // Optimización: Solo el perímetro del radio actual
+            if (radius > 0 && Math.abs(dx) !== radius) continue;
+            
+            const x = desiredX + dx;
+            if (x < 0 || x >= cols) continue;
+            
+            // Barrido vertical hacia arriba desde la altura de muerte
+            // Buscamos un hueco de 2 tiles de alto (cabeza y pies)
+            for (let y = desiredY; y >= Math.max(0, desiredY - 15); y--) {
+                const tile = level[y]?.[x];
+                const tileAbove = y > 0 ? level[y - 1]?.[x] : undefined;
+                
+                // Verificar espacio vacío para el jugador
+                const isPassable = (t: string | undefined) => !t || t === '0' || t === 'L';
+                
+                if (isPassable(tile) && isPassable(tileAbove)) {
+                    // Verificar que no esté entre paredes aplastantes
+                    const left = x > 0 ? level[y]?.[x - 1] : undefined;
+                    const right = x < cols - 1 ? level[y]?.[x + 1] : undefined;
+                    
+                    if (!(left === 'H' && right === 'J')) {
+                        return { x, y };
+                    }
+                }
             }
         }
     }
     
-    // Último fallback: clamp dentro del nivel
-    return { x: Math.max(0, Math.min(desiredX, cols - 1)), y: Math.max(0, Math.min(desiredY, rows - 2)) };
+    // Último fallback: clamp dentro del nivel cerca de donde murió (elevado)
+    return { x: Math.max(0, Math.min(desiredX, cols - 1)), y: Math.max(0, Math.min(desiredY - 3, rows - 2)) };
 };
 
 const computeRespawnWorldPosition = (store: GameStore, tileX: number, tileY: number): { x: number; y: number } => {
@@ -1132,39 +1202,122 @@ export const updatePlayer = (store: GameStore) => {
             player.y = player.respawnY;
             player.vy = 0;
             
+            // Incrementar contador de frames estable
+            player.respawnSettledFrames = (player.respawnSettledFrames || 0) + 1;
+            
+            // Si lleva mucho tiempo intentando estabilizarse (evitar bucle infinito de reubicación), forzar despertar
+            if (player.respawnSettledFrames > 5) {
+                player.canWake = true;
+                updatePlayerAnimation(store);
+                return;
+            }
+            
             const footTileX = Math.floor((player.x + player.width / 2) / TILE_SIZE);
             const footTileY = Math.floor((player.y + player.height - 1) / TILE_SIZE);
             const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
             
             // Solo verificar posición segura si NO es el spawn inicial (respawn tras muerte)
             if (!player.isInitialSpawn && !isSafeRespawnPosition(store, footTileX, footTileY)) {
-                let searchY = footTileY + 1;
-                let foundSafe = false;
+                // Estrategia de recuperación mejorada:
+                // 1. Buscar arriba (hasta 3 tiles)
+                // 2. Buscar a los lados (hasta 2 tiles) en la misma altura o arriba
+                // 3. Solo entonces buscar abajo
                 
-                while (searchY < levelRows - 1) {
-                    if (isSafeRespawnPosition(store, footTileX, searchY)) {
-                        foundSafe = true;
+                let foundSafePos: {x: number, y: number} | null = null;
+                
+                // Intentar arriba primero
+                for (let dy = 1; dy <= 3; dy++) {
+                    const checkY = Math.max(0, footTileY - dy);
+                    if (isSafeRespawnPosition(store, footTileX, checkY)) {
+                        foundSafePos = {x: footTileX, y: checkY};
                         break;
                     }
-                    searchY++;
                 }
                 
-                if (foundSafe) {
-                    const respawnPos = computeRespawnWorldPosition(store, footTileX, searchY);
-                    player.respawnTileX = footTileX;
-                    player.respawnTileY = searchY;
-                    player.respawnX = respawnPos.x;
-                    player.respawnY = respawnPos.y;
-                    player.x = respawnPos.x;
-                    player.y = Math.max(0, respawnPos.y - TILE_SIZE);
-                    player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
-                    player.hitbox.y = player.y;
-                    player.vy = Math.max(player.vy, 6);
-                    player.canWake = false;
-                    return;
+                // Intentar costados (con ligera variación vertical)
+                if (!foundSafePos) {
+                    for (let dx of [-1, 1, -2, 2]) {
+                        for (let dy = -2; dy <= 2; dy++) {
+                             const checkX = footTileX + dx;
+                             const checkY = Math.max(0, footTileY + dy);
+                             const levelCols = store.levelDesigns[store.currentLevelIndex]?.[0]?.length ?? 0;
+                             
+                             if (checkX >= 0 && checkX < levelCols && isSafeRespawnPosition(store, checkX, checkY)) {
+                                foundSafePos = {x: checkX, y: checkY};
+                                break;
+                            }
+                        }
+                        if (foundSafePos) break;
+                    }
+                }
+                
+                // Fallback original: buscar hacia abajo (si no se encontró nada mejor)
+                if (!foundSafePos) {
+                    let searchY = footTileY + 1;
+                    while (searchY < levelRows - 1) {
+                        if (isSafeRespawnPosition(store, footTileX, searchY)) {
+                            foundSafePos = {x: footTileX, y: searchY};
+                            break;
+                        }
+                        searchY++;
+                    }
+                }
+                
+                if (foundSafePos) {
+                    const respawnPos = computeRespawnWorldPosition(store, foundSafePos.x, foundSafePos.y);
+                    
+                    // CRÍTICO: Verificar si la nueva posición propuesta es la misma que ya tenemos como objetivo
+                    // Si es así, significa que el sistema sigue eligiendo el mismo lugar (aunque isSafeRespawnPosition diga false)
+                    // En ese caso, aceptamos el lugar y permitimos despertar para evitar bucle infinito con canWake=false
+                    const isSameTarget = Math.abs(player.respawnX - respawnPos.x) < 1 && Math.abs(player.respawnY - respawnPos.y) < 1;
+                    
+                    if (isSameTarget) {
+                        player.canWake = true;
+                    } else {
+                        player.respawnTileX = foundSafePos.x;
+                        player.respawnTileY = foundSafePos.y;
+                        player.respawnX = respawnPos.x;
+                        player.respawnY = respawnPos.y;
+                        
+                        // Si la nueva posición está más arriba que la actual, subir al jugador inmediatamente
+                        // para evitar que siga bajando y atraviese cosas
+                        let didTeleport = false;
+                        if (respawnPos.y < player.y) {
+                            player.y = respawnPos.y;
+                            player.hitbox.y = player.y;
+                            didTeleport = true;
+                        }
+                        
+                        // Ajustar X si se movió lateralmente
+                        if (Math.abs(player.x - respawnPos.x) > 1) {
+                            player.x = respawnPos.x;
+                            player.hitbox.x = player.x + (TILE_SIZE - 60) / 2;
+                            didTeleport = true;
+                        }
+                        
+                        player.vy = 0;
+                        
+                        // Si hicimos un teleport directo a la posición segura, permitimos despertar inmediatamente
+                        // Esto evita bucles donde el siguiente frame vuelve a considerar la posición insegura
+                        if (didTeleport) {
+                            player.canWake = true;
+                            // Asegurar posición exacta
+                            player.y = player.respawnY;
+                        } else {
+                            player.canWake = false; // Esperar a que el jugador reaccione o se asiente
+                        }
+                        return;
+                    }
                 }
             }
             
+            // Si no se encontró nada mejor (o no hubo necesidad de buscar), permitir despertar
+            // Nota: Si foundSafePos existe pero entramos al 'else' de isSameTarget, retornamos antes de llegar aquí.
+            // Si foundSafePos existe y isSameTarget es true, canWake ya se puso en true arriba.
+            // Así que aquí solo manejamos el caso donde no se encontró nada nuevo.
+            // foundSafePos puede ser null o undefined si no se entró al if que lo define
+            // Para evitar error de linter, verificar si existe primero o simplemente poner canWake=true
+            // ya que si llegamos aquí es porque no se aplicó ninguna corrección que requiera espera
             player.canWake = true;
         }
         

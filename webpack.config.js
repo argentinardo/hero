@@ -4,12 +4,16 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 const fs = require('fs');
 const express = require('express');
+const TerserPlugin = require('terser-webpack-plugin');
 
-module.exports = {
-  mode: 'development',
-  entry: './src/scripts/main.ts',
-  devtool: 'inline-source-map',
-  devServer: {
+module.exports = (env, argv) => {
+  const isProduction = argv.mode === 'production';
+
+  return {
+    mode: 'development', // Fallback default if not specified
+    entry: './src/scripts/main.ts',
+    devtool: isProduction ? false : 'inline-source-map', // Disable source maps in production
+    devServer: {
     static: [
       {
         directory: './dist',
@@ -128,7 +132,16 @@ module.exports = {
         optimization: {
             usedExports: true,
             sideEffects: false,
-            minimize: true,
+            minimize: isProduction, // Minimize only in production (or if passed manually)
+            minimizer: [
+                new TerserPlugin({
+                    terserOptions: {
+                        compress: {
+                            drop_console: true, // Eliminar todos los console.log
+                        },
+                    },
+                }),
+            ],
             splitChunks: {
                 chunks: 'all',
                 maxInitialRequests: 20,
@@ -180,8 +193,9 @@ module.exports = {
     // maxAssetSize: 1.5 * 1024 * 1024, // 1.5 MB
     // maxEntrypointSize: 1.5 * 1024 * 1024, // 1.5 MB
   },
-  watchOptions: {
-    poll: 1000, // Check for changes every second
-    ignored: /node_modules/,
-  },
+    watchOptions: {
+      poll: 1000, // Check for changes every second
+      ignored: /node_modules/,
+    },
+  };
 };

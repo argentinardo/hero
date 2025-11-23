@@ -1034,6 +1034,8 @@ body.state-menu {
     
     .title {
         color: #d4a574 !important; /* Título en amarillo mostaza apagado */
+        line-height: 0.5rem;
+        font-size: 1rem; /* Tamaño base para mobile y desktop */
     }
 }
 

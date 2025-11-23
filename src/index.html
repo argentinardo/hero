@@ -322,9 +322,9 @@
 
         <!-- Menú flotante (pausa) -->
         <div id="pause-menu-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 100;">
-            <div class="nes-container with-title is-dark max-w-sm w-80 max-h-[80vh] overflow-y-auto overflow-x-hidden">
-                <p class="title">Menú</p>
-                <div class="flex flex-col gap-3">
+            <div class="nes-container with-title is-dark max-w-sm w-80 overflow-visible" style="max-height: 80vh; display: flex; flex-direction: column;">
+                <p class="title" style="background-color: #3a2d23;">Menú</p>
+                <div class="flex flex-col gap-3 overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
                     <button id="pause-resume-btn" class="nes-btn is-success">Continuar</button>
                     <button id="pause-settings-btn" class="nes-btn is-primary">Configuración</button>
                     <button id="pause-mainmenu-btn" class="nes-btn is-error">Menú Inicial</button>
@@ -397,11 +397,12 @@
 
         <!-- Modal de Campañas -->
         <div id="campaigns-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-2xl mx-6 max-h-[90vh] overflow-y-auto">
-                <h1 id="campaigns-modal-title" class="title text-2xl md:text-3xl font-bold mb-4" style="font-family: 'Press Start 2P', monospace;">
+            <div class="nes-container with-title is-dark max-w-2xl mx-6 overflow-visible" style="max-height: 90vh; display: flex; flex-direction: column;">
+                <h1 id="campaigns-modal-title" class="title text-2xl md:text-3xl font-bold mb-4" style="font-family: 'Press Start 2P', monospace; background-color: #3a2d23;">
                     Gestionar Campañas
                 </h1>
-                    
+                
+                <div class="overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
                     <!-- Lista de campañas -->
                     <div id="campaigns-list" class="mb-4">
                         <!-- Se llenará dinámicamente -->
@@ -413,8 +414,8 @@
                         <button id="create-campaign-btn" class="nes-btn is-primary w-full">Crear Campaña</button>
                     </div>
                 </div>
-
-                <div class="flex justify-center gap-4">
+                
+                <div class="flex justify-center gap-4 mt-4">
                     <button id="campaigns-modal-close-btn" class="nes-btn">Cerrar</button>
                 </div>
             </div>
@@ -620,11 +621,12 @@
 
         <!-- Modal de Configuración -->
         <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-lg mx-6 max-h-[90vh] overflow-y-auto overflow-x-hidden">
-                <p id="settings-modal-title" class="title">Configuración</p>
+            <div class="nes-container with-title is-dark max-w-lg mx-6 overflow-visible" style="max-height: 90vh; display: flex; flex-direction: column;">
+                <p id="settings-modal-title" class="title" style="background-color: #3a2d23;">Configuración</p>
                 
-                <!-- Sección Audio -->
-                <div class="mb-6 text-left">
+                <div class="overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
+                    <!-- Sección Audio -->
+                    <div class="mb-6 text-left">
                     <h3 id="settings-sound-title" class="text-xl mb-4 border-b-2 border-gray-600 pb-2">Sonido</h3>
                     
                     <!-- Volumen Música -->
@@ -755,6 +757,7 @@
                         </select>
                     </div>
                 </div>
+                </div> <!-- Cierre del div con scroll -->
                 
             </div>
         </div>
