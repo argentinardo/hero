@@ -10,13 +10,13 @@
   "background_color": "#111827",
   "icons": [
     {
-      "src": "/assets/hero-logo.png",
+      "src": "/hero-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/hero-logo.png",
+      "src": "/hero-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -25,7 +25,7 @@
   "categories": ["games"],
   "screenshots": [
     {
-      "src": "/assets/hero-logo.png",
+      "src": "/hero-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow"
@@ -40,7 +40,7 @@
       "url": "/?action=play",
       "icons": [
         {
-          "src": "/assets/hero-logo.png",
+          "src": "/hero-logo.png",
           "sizes": "192x192",
           "type": "image/png"
         }
