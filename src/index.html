@@ -74,11 +74,16 @@
         <script>
             // Bloquear orientación vía JavaScript (si el navegador lo permite)
             if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock("landscape").catch(err => console.log(err));
+                screen.orientation.lock("landscape").catch(err => {
+                    // Ignorar error si no es compatible (común en desktop o iframes)
+                    if (err.name !== 'NotSupportedError') {
+                        console.log(err);
+                    }
+                });
             }
         </script>
     </head>
-<body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden loading-styles">
+    <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden loading-styles">
 
     <div id="main-container">
         <div id="editor-dpad" class="editor-dpad mb-4" style="display: none;">
@@ -851,23 +856,23 @@
     
     <!-- Registrar Service Worker para PWA -->
     <script>
-        console.log('[PWA] Inicializando PWA...');
+        // console.log('[PWA] Inicializando PWA...');
         
         // Verificar soporte de Service Worker
         if ('serviceWorker' in navigator) {
-            console.log('[PWA] Service Workers soportados');
+            // console.log('[PWA] Service Workers soportados');
             
             window.addEventListener('load', () => {
-                console.log('[PWA] Registrando Service Worker desde: /sw.js');
+                // console.log('[PWA] Registrando Service Worker desde: /sw.js');
                 
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then((registration) => {
-                        console.log('[PWA] ✅ Service Worker registrado:', registration);
-                        console.log('[PWA] Scope:', registration.scope);
+                        // console.log('[PWA] ✅ Service Worker registrado:', registration);
+                        // console.log('[PWA] Scope:', registration.scope);
                         
                         // Verificar si hay actualizaciones disponibles
                         registration.addEventListener('updatefound', () => {
-                            console.log('[PWA] Actualizando Service Worker...');
+                            // console.log('[PWA] Actualizando Service Worker...');
                             const newWorker = registration.installing;
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
@@ -879,24 +884,22 @@
                         
                         // Permitir instalación de PWA
                         window.addEventListener('beforeinstallprompt', (e) => {
-                            console.log('[PWA] beforeinstallprompt disparado - PWA puede ser instalada');
+                            // console.log('[PWA] beforeinstallprompt disparado - PWA puede ser instalada');
                             e.preventDefault();
                             window.deferredPrompt = e;
                         });
                     })
                     .catch((error) => {
                         console.error('[PWA] ❌ Error registrando Service Worker:', error);
-                        console.error('[PWA] URL del SW:', '/sw.js');
-                        console.error('[PWA] Scope:', '/');
                     });
                 
                 // Verificar si hay un Service Worker activo
                 navigator.serviceWorker.ready.then(() => {
-                    console.log('[PWA] ✅ Service Worker está listo');
+                    // console.log('[PWA] ✅ Service Worker está listo');
                 });
                 
                 if (navigator.serviceWorker.controller) {
-                    console.log('[PWA] ✅ Service Worker ya está activo');
+                    // console.log('[PWA] ✅ Service Worker ya está activo');
                 }
             });
         } else {
@@ -904,6 +907,7 @@
         }
         
         // Log de manifestación
+        /*
         fetch('/manifest.json')
             .then(r => r.json())
             .then(manifest => {
@@ -912,11 +916,12 @@
             .catch(e => {
                 console.error('[PWA] ❌ Error cargando manifest:', e);
             });
+        */
         
         // Marcar cuando los estilos están cargados
         window.addEventListener('load', function() {
             document.body.classList.add('styles-loaded');
-            console.log('[Index] ✅ Estilos cargados');
+            // console.log('[Index] ✅ Estilos cargados');
         });
         
         // Fallback: si los estilos no cargan en 2 segundos, mostrar contenido de todas formas
