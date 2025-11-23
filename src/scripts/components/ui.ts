@@ -2232,6 +2232,8 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         if (isLoggedIn) {
             await tryLoadUserLevels(store);
         }
+    } else {
+        console.log('[startEditor] ℹ️ Campaña Legacy activa: Omitiendo carga de niveles remotos (usando levels.json)');
     }
     // Legacy: NO cargar cambios desde localStorage - siempre usar niveles originales de assets/levels.json
     
@@ -4080,6 +4082,15 @@ export const setupUI = (store: GameStore) => {
 // IMPORTANTE: Los niveles originales siempre se sirven desde levels.json
 // Esta función solo carga niveles personalizados adicionales, NO sobrescribe los originales
 export const tryLoadUserLevels = async (store: GameStore) => {
+    // VERIFICACIÓN CRÍTICA: Si la campaña actual es Legacy, NO cargar nada remoto
+    // Legacy debe ser 100% estática desde levels.json
+    const { getCurrentCampaign } = await import('../utils/campaigns');
+    const currentCampaign = getCurrentCampaign(store);
+    if (currentCampaign?.isDefault === true) {
+        console.log('[tryLoadUserLevels] 🛑 Abortando carga: Campaña Legacy es estática (levels.json)');
+        return;
+    }
+
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (!isLoggedIn) {
         // Intentar cargar desde localStorage como respaldo (solo niveles personalizados)
