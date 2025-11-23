@@ -366,11 +366,12 @@ const drawEnemy = (store: GameStore, enemy: Enemy) => {
             const col = frameIndex % framesPerRow;
             
             const sourceX = col * frameWidth;
-            const sourceY = row * frameHeight;
+            // Fix: Ajustar offset Y por 1 pixel para evitar sangrado del frame superior
+            const sourceY = row * frameHeight + 1;
             
             ctx.drawImage(
                 sprite, 
-                sourceX, sourceY, frameWidth, frameHeight,
+                sourceX, sourceY, frameWidth, frameHeight - 2,
                 0, 0, enemy.width, enemy.height
             );
         } else {
@@ -454,9 +455,10 @@ const drawFallingEntity = (store: GameStore, entity: FallingEntity) => {
         const col = frameIndex % framesPerRow;
         
         const sourceX = col * frameWidth;
-        const sourceY = row * frameHeight;
+        // Fix: Ajustar offset Y por 1 pixel para evitar sangrado del frame superior
+        const sourceY = row * frameHeight + 1;
         
-        ctx.drawImage(sprite, sourceX, sourceY, frameWidth, frameHeight, -width / 2, -height / 2, width, height);
+        ctx.drawImage(sprite, sourceX, sourceY, frameWidth, frameHeight - 2, -width / 2, -height / 2, width, height);
     } else if (anim && anim.frames > 1) {
         const frameWidth = sprite.width / anim.frames;
         ctx.drawImage(sprite, 0, 0, frameWidth, sprite.height, -width / 2, -height / 2, width, height);

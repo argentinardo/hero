@@ -1154,11 +1154,12 @@ export const drawEditor = (store: GameStore) => {
                     const col = frameIndex % framesPerRow;
                     
                     const sourceX = col * frameWidth;
-                    const sourceY = row * frameHeight;
+                    // Fix: Ajustar offset Y por 1 pixel para evitar sangrado del frame superior
+                    const sourceY = row * frameHeight + 1;
                     
                     ctx.drawImage(
                         tentacleSprite,
-                        sourceX, sourceY, frameWidth, frameHeight,
+                        sourceX, sourceY, frameWidth, frameHeight - 2,
                         colIndex * scaledTileSize,
                         (rowIndex - 1) * scaledTileSize, // Un tile arriba para ser vertical
                         scaledTileSize, // Ancho del sprite

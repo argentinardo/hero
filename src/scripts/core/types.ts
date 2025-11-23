@@ -56,6 +56,8 @@ export interface Player extends GameObject {
     isInWater?: boolean;
     waterSubmersionLevel?: number; // 0 = no sumergido, 1 = completamente sumergido
     waterResistance?: number; // Resistencia al movimiento en agua
+    // Respawn seguro
+    isInitialSpawn?: boolean; // Si es true, no se verifica posición segura de respawn
 }
 
 export type EnemyType = 'bat' | 'viper' | 'spider' | 'tentacle' | 'miner';

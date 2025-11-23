@@ -39,7 +39,7 @@ import { vibrate } from '../utils/device';
 
 const SHOOT_ANIMATION_DURATION_FRAMES = 12;
 const FLOAT_ENTRY_OFFSET_TILES = 4;
-const FLOAT_ENTRY_SPEED = 8;
+const FLOAT_ENTRY_SPEED = 6; // Reducido para bajada más lenta
 
 const handleWaterCollision = (store: GameStore, wall: Wall) => {
     const { player } = store;
@@ -306,16 +306,20 @@ export const resetPlayer = (store: GameStore, startX = TILE_SIZE * 1.5, startY =
     store.energyDecrementRate = calculateEnergyDecrementRate(levelLength);
     
     // Iniciar en estado floating - el héroe desciende desde arriba
-    startFloatingEntry(store, startX, startY);
+    startFloatingEntry(store, startX, startY, true);
 };
 
 // Función para iniciar el estado floating al comenzar el juego/nivel
-const startFloatingEntry = (store: GameStore, targetX: number, targetY: number) => {
+const startFloatingEntry = (store: GameStore, targetX: number, targetY: number, isInitial: boolean = false) => {
     const { player } = store;
     
-    const floatTargetY = Math.max(0, targetY - TILE_SIZE);
+    // Guardar flag de spawn inicial
+    player.isInitialSpawn = isInitial;
+    
+    // Flotar 1 tile más arriba (valor fijo para consistencia visual)
+    const floatTargetY = targetY - TILE_SIZE;
     const entryOffset = FLOAT_ENTRY_OFFSET_TILES * TILE_SIZE;
-    const entryStartY = Math.max(0, floatTargetY - entryOffset);
+    const entryStartY = floatTargetY - entryOffset;
     
     player.respawnX = targetX;
     player.respawnY = floatTargetY;
@@ -360,6 +364,8 @@ export const handlePlayerInput = (store: GameStore) => {
                 player.isFloating = false;
                 player.animationState = 'fly';
                 store.gameState = 'playing';
+                // Resetear flag de spawn inicial al tomar control
+                player.isInitialSpawn = false;
                 // Evitar disparo fantasma al despertar
                 if (keys.Space) keys.Space = false;
             }
@@ -484,6 +490,9 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
 
     const { player } = store;
     player.fireAnimationTimer = 0;
+    
+    // Marcar que NO es un spawn inicial (venimos de una muerte)
+    player.isInitialSpawn = false;
     
     // Reproducir sonido de perder vida y silenciar el resto
     stopAllSfxExceptLifedown();
@@ -637,7 +646,7 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
         player.animationTick = 0;
         player.isFloating = true;
         player.isGrounded = false;
-        player.vy = 3; // Velocidad de descenso controlada (reducida de 6 para evitar sobrepaso)
+        player.vy = FLOAT_ENTRY_SPEED; // Velocidad unificada
         player.vx = 0;
         player.deathTimer = 0;
         player.floatWaveTime = 0; // Resetear tiempo de onda
@@ -666,8 +675,13 @@ export const playerDie = (store: GameStore, killedByEnemy?: Enemy, killedByLava?
                     }
                 }
                 
-                if (verticalClearance > tilesNeeded) {
-                    player.respawnY = player.respawnY - TILE_SIZE;
+                // Intentar flotar más arriba si hay espacio
+                // IMPORTANTE: Solo ajustar altura si NO es el spawn inicial (el spawn inicial ya tiene su altura fija correcta)
+                // Usar player.isInitialSpawn que ya fue seteado antes
+                if (!player.isInitialSpawn) {
+                    if (verticalClearance > tilesNeeded + 1) {
+                        player.respawnY = player.respawnY - TILE_SIZE; // Ya restamos 1 antes, aquí restamos otro más
+                    }
                 }
             }
         }
@@ -1122,7 +1136,8 @@ export const updatePlayer = (store: GameStore) => {
             const footTileY = Math.floor((player.y + player.height - 1) / TILE_SIZE);
             const levelRows = store.levelDesigns[store.currentLevelIndex]?.length ?? 0;
             
-            if (!isSafeRespawnPosition(store, footTileX, footTileY)) {
+            // Solo verificar posición segura si NO es el spawn inicial (respawn tras muerte)
+            if (!player.isInitialSpawn && !isSafeRespawnPosition(store, footTileX, footTileY)) {
                 let searchY = footTileY + 1;
                 let foundSafe = false;
                 
@@ -1157,18 +1172,24 @@ export const updatePlayer = (store: GameStore) => {
         player.hitbox.y = player.y;
         
         // Generar partículas de chispas del propulsor (menos intensas en mobile)
+        // Ajuste: Las partículas deben salir desde una posición más alta (jetpack) y bajar
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                         (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
-        const particleChance = isMobile ? 0.05 : 0.15; // Menos partículas en mobile
+        const particleChance = isMobile ? 0.1 : 0.3; // Aumentado de 0.05/0.15 para más humo/fuego al flotar
         if (Math.random() < particleChance) {
+            // Calcular posición X del jetpack según la dirección (aunque al flotar suele mirar al frente/derecha)
+            const baseOffsetX = player.direction === 1 ? player.width / 10 : player.width - player.width / 10;
+            // Ajustar Y para que salgan del jetpack (aprox 42px desde abajo)
+            const jetY = player.y + player.height - 42; 
+            
             store.particles.push({
-                x: player.x + player.width / 2 + (Math.random() - 0.5) * 10,
-                y: player.y + player.height - 5,
-                vx: (Math.random() - 0.5) * 1.5,
-                vy: Math.random() * 2 + 1, // Caen hacia abajo
+                x: player.x + baseOffsetX + (Math.random() - 0.5) * 6, // Variación horizontal pequeña
+                y: jetY,
+                vx: (Math.random() - 0.5) * 1, // Poca dispersión horizontal
+                vy: Math.random() * 3 + 2, // Caen hacia abajo más rápido (2-5px/frame)
                 life: 15 + Math.random() * 10, // Vida más corta
-                color: Math.random() > 0.5 ? '#ff8800' : '#ffaa00',
-                size: 1 + Math.random() * 1.5, // Más pequeñas
+                color: Math.random() > 0.5 ? '#ff8800' : '#ffff00', // Naranja o amarillo
+                size: 2 + Math.random() * 2, // Tamaño visible
             });
         }
         

@@ -2777,20 +2777,21 @@ const drawPaletteEntry = (store: GameStore, tile: string, canvas: HTMLCanvasElem
             const col = frameIndex % framesPerRow;
             
             const sourceX = col * frameWidth;
-            const sourceY = row * frameHeight;
+            // Fix: Ajustar offset Y por 1 pixel para evitar sangrado del frame superior
+            const sourceY = row * frameHeight + 1;
             
             // Escalar para que quepa en el canvas de la paleta
             const scaleX = canvas.width / frameWidth;
-            const scaleY = canvas.height / frameHeight;
+            const scaleY = canvas.height / (frameHeight - 2); // Usar altura corregida
             const scale = Math.min(scaleX, scaleY);
             const scaledWidth = frameWidth * scale;
-            const scaledHeight = frameHeight * scale;
+            const scaledHeight = (frameHeight - 2) * scale;
             const offsetX = (canvas.width - scaledWidth) / 2;
             const offsetY = (canvas.height - scaledHeight) / 2;
             
             ctx.drawImage(
                 tentacleSprite,
-                sourceX, sourceY, frameWidth, frameHeight,
+                sourceX, sourceY, frameWidth, frameHeight - 2,
                 offsetX, offsetY, scaledWidth, scaledHeight
             );
         } else {
