@@ -91,6 +91,9 @@ const DEFAULT_MOBILE_SETTINGS: GameSettings = {
 
 const SETTINGS_KEY = 'hero_game_settings';
 
+// Bandera para evitar loops infinitos al aplicar configuración
+let isApplyingGraphicsSettings = false;
+
 /**
  * Carga la configuración desde la base de datos (si el usuario está logueado) o desde localStorage
  * 
@@ -272,14 +275,25 @@ export const resetSettings = async (): Promise<GameSettings> => {
  * @param settings - Configuración de gráficos a aplicar
  */
 export const applyGraphicsSettings = (settings: GameSettings['graphics']): void => {
-    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-    const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
-    const gameUi = document.getElementById('game-ui') as HTMLElement;
-    const bottomUi = document.getElementById('bottom-ui') as HTMLElement;
-    const splashContainer = document.getElementById('splash-container') as HTMLElement;
-    const body = document.body;
+    // Protección contra loops infinitos
+    if (isApplyingGraphicsSettings) {
+        return;
+    }
     
-    if (!canvas || !canvasWrapper) return;
+    isApplyingGraphicsSettings = true;
+    
+    try {
+        const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+        const canvasWrapper = document.querySelector('.canvas-wrapper') as HTMLElement;
+        const gameUi = document.getElementById('game-ui') as HTMLElement;
+        const bottomUi = document.getElementById('bottom-ui') as HTMLElement;
+        const splashContainer = document.getElementById('splash-container') as HTMLElement;
+        const body = document.body;
+        
+        if (!canvas || !canvasWrapper) {
+            isApplyingGraphicsSettings = false;
+            return;
+        }
     
     // Aplicar brightness, contrast y blur al canvas
     // OPTIMIZACIÓN: Combinar todos los efectos en una sola operación CSS cuando están activos
@@ -342,14 +356,20 @@ export const applyGraphicsSettings = (settings: GameSettings['graphics']): void 
         fpsCounter.style.display = settings.showFps ? 'block' : 'none';
     }
     
-    // Aplicar clase mobile-fullwidth al canvas para remover el max-width en mobile
-    // El CSS media query ya se encarga de que solo se aplique en mobile landscape
-    if (settings.mobileFullWidth) {
-        canvas.classList.add('mobile-fullwidth');
-        console.log('Clase mobile-fullwidth agregada al canvas, mobileFullWidth:', settings.mobileFullWidth);
-    } else {
-        canvas.classList.remove('mobile-fullwidth');
-        console.log('Clase mobile-fullwidth removida del canvas, mobileFullWidth:', settings.mobileFullWidth);
+        // Aplicar clase mobile-fullwidth al canvas para remover el max-width en mobile
+        // El CSS media query ya se encarga de que solo se aplique en mobile landscape
+        // Verificar el estado actual antes de cambiar para evitar loops infinitos
+        const hasMobileFullWidth = canvas.classList.contains('mobile-fullwidth');
+        if (settings.mobileFullWidth && !hasMobileFullWidth) {
+            canvas.classList.add('mobile-fullwidth');
+        } else if (!settings.mobileFullWidth && hasMobileFullWidth) {
+            canvas.classList.remove('mobile-fullwidth');
+        }
+    } finally {
+        // Usar setTimeout para permitir que los cambios se apliquen antes de permitir otra llamada
+        setTimeout(() => {
+            isApplyingGraphicsSettings = false;
+        }, 50);
     }
 };
 

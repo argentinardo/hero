@@ -42,6 +42,29 @@ let currentGalleryLevels: GalleryLevel[] = [];
 let currentSort: 'likes' | 'newest' | 'downloads' = 'likes';
 
 /**
+ * Activa el modo pantalla completa (equivalente a presionar F11)
+ * Compatible con todos los navegadores modernos
+ */
+const requestFullscreen = (): void => {
+    const element = document.documentElement;
+    
+    if (element.requestFullscreen) {
+        element.requestFullscreen().catch((err) => {
+            console.warn('Error al activar pantalla completa:', err);
+        });
+    } else if ((element as any).webkitRequestFullscreen) {
+        // Safari
+        (element as any).webkitRequestFullscreen();
+    } else if ((element as any).msRequestFullscreen) {
+        // IE/Edge antiguo
+        (element as any).msRequestFullscreen();
+    } else if ((element as any).mozRequestFullScreen) {
+        // Firefox antiguo
+        (element as any).mozRequestFullScreen();
+    }
+};
+
+/**
  * Configura los event listeners y la inicialización de la galería de niveles
  * Se conecta a los botones de la interfaz y maneja la carga/ordenamiento de niveles
  * 
@@ -63,6 +86,7 @@ export const setupGallery = (store: GameStore) => {
 
     // Abrir galería
     galleryBtn?.addEventListener('click', async () => {
+        requestFullscreen();
         galleryModal?.classList.remove('hidden');
         await loadGalleryLevels(store, 'likes');
     });

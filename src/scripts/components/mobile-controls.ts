@@ -76,7 +76,10 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
     switch (mode) {
         case 'hybrid':
             // Mostrar control fijo y botón bomba, resetear posición de action-zone
-            if (directionalButtons) directionalButtons.style.display = 'flex';
+            if (directionalButtons) {
+                directionalButtons.style.display = 'flex';
+                // La posición se establece en setupHybridMode
+            }
             if (bombBtn) bombBtn.style.display = '';
             if (shootBtn) {
                 shootBtn.style.display = '';
@@ -88,7 +91,14 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             
         case 'onehand':
             // Ocultar control fijo y botón bomba, mover action-zone abajo derecha con flex-direction row
-            if (directionalButtons) directionalButtons.style.display = 'none';
+            if (directionalButtons) {
+                directionalButtons.style.display = 'none';
+                // Resetear posición para otros modos
+                directionalButtons.style.left = '';
+                directionalButtons.style.bottom = '';
+                directionalButtons.style.top = '';
+                directionalButtons.style.transform = '';
+            }
             if (bombBtn) bombBtn.style.display = 'none';
             if (shootBtn) {
                 shootBtn.style.display = '';
@@ -112,7 +122,14 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             
         case 'virtual':
             // Ocultar control fijo, mostrar solo joystick virtual + botones
-            if (directionalButtons) directionalButtons.style.display = 'none';
+            if (directionalButtons) {
+                directionalButtons.style.display = 'none';
+                // Resetear posición para otros modos
+                directionalButtons.style.left = '';
+                directionalButtons.style.bottom = '';
+                directionalButtons.style.top = '';
+                directionalButtons.style.transform = '';
+            }
             if (bombBtn) bombBtn.style.display = '';
             if (shootBtn) {
                 shootBtn.style.display = '';
@@ -124,7 +141,14 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
             
         case 'fixed':
             // Solo control fijo, sin joystick virtual
-            if (directionalButtons) directionalButtons.style.display = 'flex';
+            if (directionalButtons) {
+                directionalButtons.style.display = 'flex';
+                // Resetear posición para modo fixed (usar posición por defecto del CSS)
+                directionalButtons.style.left = '';
+                directionalButtons.style.bottom = '';
+                directionalButtons.style.top = '';
+                directionalButtons.style.transform = '';
+            }
             if (bombBtn) bombBtn.style.display = '';
             if (shootBtn) {
                 shootBtn.style.display = '';
@@ -142,6 +166,23 @@ export const applyControlMode = (store: GameStore, mode: ControlMode) => {
 const setupHybridMode = (store: GameStore) => {
     const { joystickZoneEl } = store.dom.ui;
     if (!joystickZoneEl) return;
+    
+    // Prevenir menú contextual en la zona del joystick
+    const preventContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    joystickZoneEl.addEventListener('contextmenu', preventContextMenu);
+    
+    // Posicionar botones direccionales en el centro de la pantalla
+    const directionalButtons = document.getElementById('directional-buttons');
+    if (directionalButtons) {
+        directionalButtons.style.opacity= '0.15';
+        directionalButtons.style.left = '10%';
+        directionalButtons.style.bottom = 'auto';
+        directionalButtons.style.top = '50%';
+        directionalButtons.style.transform = 'translate(-50%, -50%)';
+    }
     
     // Crear joystick virtual flotante
     store.joystickManager = nipplejs.create({
@@ -194,6 +235,13 @@ const setupHybridMode = (store: GameStore) => {
 const setupOneHandMode = (store: GameStore) => {
     const { joystickZoneEl } = store.dom.ui;
     if (!joystickZoneEl) return;
+    
+    // Prevenir menú contextual en la zona del joystick
+    const preventContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    joystickZoneEl.addEventListener('contextmenu', preventContextMenu);
     
     // Crear joystick virtual flotante
     store.joystickManager = nipplejs.create({
@@ -258,6 +306,13 @@ const setupFixedMode = (store: GameStore) => {
 const setupVirtualMode = (store: GameStore) => {
     const { joystickZoneEl } = store.dom.ui;
     if (!joystickZoneEl) return;
+    
+    // Prevenir menú contextual en la zona del joystick
+    const preventContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    joystickZoneEl.addEventListener('contextmenu', preventContextMenu);
     
     // Crear joystick virtual flotante
     store.joystickManager = nipplejs.create({
@@ -328,9 +383,16 @@ const setupDirectionalButton = (store: GameStore, buttonId: string, keys: string
         button.classList.remove('active');
     };
     
+    // Prevenir menú contextual (botón derecho del mouse) en móvil
+    const preventContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    
     button.addEventListener('touchstart', handleStart, { passive: true });
     button.addEventListener('touchend', handleEnd, { passive: true });
     button.addEventListener('touchcancel', handleEnd, { passive: true });
+    button.addEventListener('contextmenu', preventContextMenu);
     button.addEventListener('mousedown', handleStart);
     button.addEventListener('mouseup', handleEnd);
     button.addEventListener('mouseleave', handleEnd);
@@ -395,6 +457,12 @@ const setupActionButtons = (store: GameStore, showBomb: boolean = true, fireAsSw
     }
     
     if (showBomb && bombBtn) {
+        // Prevenir menú contextual en el botón de bomba
+        bombBtn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        
         bombTouchStartHandler = (event: TouchEvent) => {
             event.preventDefault();
             store.keys.ArrowDown = true;
@@ -408,6 +476,12 @@ const setupActionButtons = (store: GameStore, showBomb: boolean = true, fireAsSw
     }
     
     if (shootBtn) {
+        // Prevenir menú contextual en el botón de disparo
+        shootBtn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        
         if (fireAsSwitch) {
             // Modo switch: un click activa/desactiva
             shootTouchStartHandler = (event: TouchEvent) => {

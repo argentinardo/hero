@@ -109,6 +109,7 @@ const setupQRCodeModal = (): void => {
 
     // Abrir modal cuando se presiona el botón mobile
     mobileQrBtn.addEventListener('click', () => {
+        requestFullscreen();
         qrModal.classList.remove('hidden');
     });
 };
@@ -142,6 +143,29 @@ const requestLegacyPasswordUnlock = async (store: GameStore): Promise<boolean> =
 };
 
 registerLegacyUnlockHandler(requestLegacyPasswordUnlock);
+
+/**
+ * Activa el modo pantalla completa (equivalente a presionar F11)
+ * Compatible con todos los navegadores modernos
+ */
+const requestFullscreen = (): void => {
+    const element = document.documentElement;
+    
+    if (element.requestFullscreen) {
+        element.requestFullscreen().catch((err) => {
+            console.warn('Error al activar pantalla completa:', err);
+        });
+    } else if ((element as any).webkitRequestFullscreen) {
+        // Safari
+        (element as any).webkitRequestFullscreen();
+    } else if ((element as any).msRequestFullscreen) {
+        // IE/Edge antiguo
+        (element as any).msRequestFullscreen();
+    } else if ((element as any).mozRequestFullScreen) {
+        // Firefox antiguo
+        (element as any).mozRequestFullScreen();
+    }
+};
 
 type PrimaryUserAction = 'login' | 'logout' | 'editor';
 
@@ -5536,6 +5560,7 @@ const setupMenuButtons = (store: GameStore) => {
     updateEditorButton();
 
     startGameBtn?.addEventListener('click', async () => {
+        requestFullscreen();
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
         
         if (!isLoggedIn) {
@@ -5558,6 +5583,7 @@ const setupMenuButtons = (store: GameStore) => {
         }
     });
     levelEditorBtn?.addEventListener('click', async () => {
+        requestFullscreen();
         const { isLoggedIn } = await checkLoginStatus();
         if (!isLoggedIn) {
             // Mostrar modal de elección
@@ -5676,11 +5702,13 @@ const setupMenuButtons = (store: GameStore) => {
     // Compartir Juego
     const shareGameBtn = document.getElementById('share-game-btn') as HTMLButtonElement | null;
     shareGameBtn?.addEventListener('click', () => {
+        requestFullscreen();
         shareGameOnSocialMedia();
     });
     
     // Créditos - NO iniciar partículas automáticamente
     creditsBtn?.addEventListener('click', () => {
+        requestFullscreen();
         creditsModal?.classList.remove('hidden');
         // Remover clase de activación al abrir para resetear animaciones
         creditsModal?.classList.remove('paolo-activated');
@@ -6350,6 +6378,7 @@ const setupMenuButtons = (store: GameStore) => {
     
     // Manejar clic en botón español
     langEsBtn?.addEventListener('click', () => {
+        requestFullscreen();
         setLanguage('es');
         updateAllTexts(store);
         updateLanguageButtons();
@@ -6362,6 +6391,7 @@ const setupMenuButtons = (store: GameStore) => {
     
     // Manejar clic en botón inglés
     langEnBtn?.addEventListener('click', () => {
+        requestFullscreen();
         setLanguage('en');
         updateAllTexts(store);
         updateLanguageButtons();
@@ -6374,6 +6404,7 @@ const setupMenuButtons = (store: GameStore) => {
     
     // Manejar clic en botón catalán
     langCaBtn?.addEventListener('click', () => {
+        requestFullscreen();
         setLanguage('ca');
         updateAllTexts(store);
         updateLanguageButtons();
