@@ -376,7 +376,7 @@ export const bindEditorCanvas = (store: GameStore) => {
 
             // Calcular movimiento relativo desde la última posición
             const deltaY = lastTwoFingerY - currentTwoFingerY; // Movimiento positivo hacia arriba = scroll hacia abajo
-            const scrollAmount = deltaY * 1.5; // Factor de sensibilidad
+            const scrollAmount = deltaY * 0.75; // Factor de sensibilidad (reducido a la mitad para hacer el pan 2x más lento)
 
             // Actualizar posición de la cámara
             if (store.editorLevel.length > 0) {
@@ -611,7 +611,7 @@ export const bindEditorCanvas = (store: GameStore) => {
         
         const zoomScale = store.dom.zoomScale ?? 1.0;
         const scaledTileSize = TILE_SIZE * zoomScale;
-        const scrollSpeed = 10; // Píxeles por frame
+        const scrollSpeed = 5; // Píxeles por frame (reducido a la mitad para hacer el pan 2x más lento)
         
         // Scroll horizontal (A/D o flechas izquierda/derecha)
         if (editorKeys['ArrowLeft']) {
@@ -689,7 +689,7 @@ export const bindEditorCanvas = (store: GameStore) => {
     
     // ===== MOVER CANVAS CON BOTONES DIRECCIONALES =====
     const moveCanvasWithArrows = () => {
-        const panSpeed = 15; // píxeles por frame
+        const panSpeed = 7.5; // píxeles por frame (reducido a la mitad para hacer el pan 2x más lento)
         
         if (store.keys.ArrowUp) {
             store.cameraY = Math.max(0, store.cameraY - panSpeed);

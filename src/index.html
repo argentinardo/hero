@@ -188,7 +188,7 @@
                 <!-- Área de user (duplicada del editor para mobile) -->
                 <div id="user-area-mobile" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
                     <button id="user-profile-btn-mobile" class="nes-btn is-primary w-full text-xs mb-2">👤 Mi Área</button>
-                    <button id="logout-btn-mobile" class="nes-btn is-error w-full text-xs">Cerrar sesión</button>
+                    <!-- Botón de cerrar sesión movido al modal de "Mi Área" -->
                 </div>
             
             <!-- Botón Jugar Nivel -->
@@ -223,7 +223,7 @@
                 <div id="user-area" class="user-area-desktop mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
                     <button id="user-profile-btn" class="nes-btn is-primary w-full text-xs mb-2">Mi Área</button>
                     <p id="user-greeting" class="text-xs mb-2"><span id="username-display">user</span></p>
-                    <button id="logout-btn" class="nes-btn is-error w-full text-xs">Cerrar sesión</button>
+                    <!-- Botón de cerrar sesión movido al modal de "Mi Área" -->
                 </div>
                 
                 <!-- Sección Campaña (colapsable) - Oculto en mobile -->
@@ -476,6 +476,17 @@
                 </button>
                 <button id="lang-en-btn" class="language-btn nes-btn" data-lang="en" title="English" style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 1.2rem;">
                     ENG
+                </button>
+            </div>
+            
+            <!-- Usuario logueado (debajo del selector de idioma) -->
+            <div id="user-header-info" class="hidden mt-4" style="font-family: 'Press Start 2P', monospace;">
+                <button id="user-header-btn" class="flex flex-row items-center gap-2 cursor-pointer bg-gray-800 border-2 border-gray-600 rounded px-3 py-2 hover:bg-gray-700 transition-colors w-full">
+                    <canvas id="user-header-avatar" width="48" height="48" class="avatar-canvas"></canvas>
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="text-xs text-gray-300">HOLA</span>
+                        <span id="user-header-nickname" class="text-xs text-white uppercase"></span>
+                    </div>
                 </button>
             </div>
         </div>
@@ -845,9 +856,14 @@
                     </div>
                     
                     <!-- Botones -->
-                    <div class="flex gap-4 justify-end">
+                    <div class="flex gap-4 justify-end mb-4">
                         <button id="profile-cancel-btn" class="nes-btn">Cancelar</button>
                         <button id="profile-save-btn" class="nes-btn is-success">Guardar</button>
+                    </div>
+                    
+                    <!-- Botón Cerrar Sesión dentro del modal -->
+                    <div class="border-t-2 border-gray-600 pt-4">
+                        <button id="profile-logout-btn" class="nes-btn is-error w-full">Cerrar sesión</button>
                     </div>
                 </div>
             </div>

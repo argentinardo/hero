@@ -1061,6 +1061,46 @@ export const showMenu = (store: GameStore) => {
     // Cargar nickname desde la base de datos al volver al menú
     loadUserNicknameFromDB().catch(err => console.warn('[Nickname] Error en showMenu:', err));
     
+    // Actualizar componente de usuario en el header si está logueado
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+        // Usar setTimeout para asegurar que setupMenuButtons ya se ejecutó
+        setTimeout(async () => {
+            try {
+                const userHeaderInfo = document.getElementById('user-header-info');
+                if (userHeaderInfo) {
+                    // Verificar login directamente desde localStorage (más simple)
+                    const loggedIn = localStorage.getItem('isLoggedIn') === 'true';
+                    if (loggedIn) {
+                        await nicknameManager.updateAllUI();
+                        const { getUserStorage } = await import('../utils/storage');
+                        const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
+                        const userHeaderNickname = document.getElementById('user-header-nickname');
+                        const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
+                        if (userHeaderNickname) {
+                            userHeaderNickname.textContent = displayName.toUpperCase();
+                            userHeaderInfo.classList.remove('hidden');
+                        }
+                        if (userHeaderAvatar) {
+                            const savedAvatar = getUserStorage('avatar') || 'P';
+                            // drawAvatar está definido en este mismo archivo, no necesita import
+                            drawAvatar(store, savedAvatar, userHeaderAvatar, performance.now());
+                            // Registrar para animación continua (avatarCanvases está definido a nivel de módulo)
+                            const existingIndex = avatarCanvases.findIndex(a => a.canvas === userHeaderAvatar);
+                            if (existingIndex >= 0) {
+                                avatarCanvases[existingIndex].code = savedAvatar;
+                            } else {
+                                avatarCanvases.push({ code: savedAvatar, canvas: userHeaderAvatar });
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('[showMenu] Error actualizando componente de usuario:', error);
+            }
+        }, 200);
+    }
+    
     // Ocultar modal de game over si está visible
     if (store.dom.ui.gameoverModal) {
         store.dom.ui.gameoverModal.classList.add('hidden');
@@ -1359,9 +1399,13 @@ const setupPinchZoom = (store: GameStore) => {
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     
-    // Resetear zoom/pan con doble tap
+    // Resetear zoom/pan con doble tap (solo en modo juego, no en editor)
     let lastTapTime = 0;
     canvas.addEventListener('touchend', (e: TouchEvent) => {
+        // No hacer nada si estamos en modo editor (el paneo se maneja con el joystick)
+        if (store.appState === 'editing') {
+            return;
+        }
         if (e.touches.length === 0 && e.changedTouches.length === 1) {
             const now = Date.now();
             if (now - lastTapTime < 300) {
@@ -5485,6 +5529,42 @@ const setupMenuButtons = (store: GameStore) => {
         refreshPauseDynamicButton();
     };
 
+    // Función para actualizar el componente de usuario debajo del selector de idiomas
+    const updateUserHeaderInfo = async () => {
+        const { isLoggedIn } = await checkLoginStatus();
+        const userHeaderInfo = document.getElementById('user-header-info');
+        const userHeaderNickname = document.getElementById('user-header-nickname');
+        const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
+        
+        if (!userHeaderInfo || !userHeaderNickname) return;
+        
+        if (isLoggedIn) {
+            // Cargar nickname desde la BD si es necesario
+            await nicknameManager.updateAllUI();
+            const { getUserStorage } = await import('../utils/storage');
+            const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
+            
+            // Mostrar solo el nombre (sin "HOLA:" ya que está en el HTML)
+            userHeaderNickname.textContent = displayName.toUpperCase();
+            userHeaderInfo.classList.remove('hidden');
+            
+            // Actualizar avatar
+            if (userHeaderAvatar) {
+                const savedAvatar = getUserStorage('avatar') || 'P';
+                drawAvatar(store, savedAvatar, userHeaderAvatar, performance.now());
+                // Registrar para animación continua
+                const existingIndex = avatarCanvases.findIndex(a => a.canvas === userHeaderAvatar);
+                if (existingIndex >= 0) {
+                    avatarCanvases[existingIndex].code = savedAvatar;
+                } else {
+                    avatarCanvases.push({ code: savedAvatar, canvas: userHeaderAvatar });
+                }
+            }
+        } else {
+            userHeaderInfo.classList.add('hidden');
+        }
+    };
+    
     // Función para actualizar el área de usuario en el editor (desktop y mobile)
     const updateUserArea = async () => {
         const { isLoggedIn, username } = await checkLoginStatus();
@@ -5497,6 +5577,9 @@ const setupMenuButtons = (store: GameStore) => {
             // Si no está logueado, solo actualizar la UI con valores por defecto
             await nicknameManager.updateAllUI('Usuario');
         }
+        
+        // Actualizar también el componente de usuario en la esquina superior derecha
+        await updateUserHeaderInfo();
         
         // Asegurar que usamos nickname si está disponible (con namespace)
         const { getUserStorage } = await import('../utils/storage');
@@ -5870,15 +5953,21 @@ const setupMenuButtons = (store: GameStore) => {
     });
 
     // Handler del botón de cerrar sesión
-    const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement | null;
-    logoutBtn?.addEventListener('click', () => {
+    // Handler del botón de cerrar sesión dentro del modal de "Mi Área"
+    const profileLogoutBtn = document.getElementById('profile-logout-btn') as HTMLButtonElement | null;
+    profileLogoutBtn?.addEventListener('click', () => {
+        const profileModal = document.getElementById('profile-modal');
+        if (profileModal) {
+            profileModal.classList.add('hidden');
+        }
+        
         openExitModal(t('modals.logoutConfirm'), t('modals.logoutMessage'), async () => {
             try {
                 // Cerrar sesión en Auth0
                 const { Auth0Manager } = await import('../auth0-manager');
                 await Auth0Manager.logout();
             } catch (error) {
-                console.error('[logoutBtn] Error cerrando sesión con Auth0:', error);
+                console.error('[profileLogoutBtn] Error cerrando sesión con Auth0:', error);
             }
             
             // Usar authManager para limpiar (pasar store para cerrar editor si está abierto)
@@ -5893,22 +5982,18 @@ const setupMenuButtons = (store: GameStore) => {
         });
     });
     
-    // Handler del botón Mi Área
-    const profileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
-    const profileModal = document.getElementById('profile-modal');
-    const profileCloseBtn = document.getElementById('profile-close-btn');
-    const profileSaveBtn = document.getElementById('profile-save-btn');
-    const profileCancelBtn = document.getElementById('profile-cancel-btn');
-    const profileNicknameInput = document.getElementById('profile-nickname-input') as HTMLInputElement | null;
-    const profileEmailDisplay = document.getElementById('profile-email-display') as HTMLInputElement | null;
-    
-    profileBtn?.addEventListener('click', async () => {
+    // Función para abrir el modal de "Mi Área"
+    const openProfileModal = async () => {
+        const profileModal = document.getElementById('profile-modal');
+        if (!profileModal) return;
+        
         console.log('[Profile Modal Open] Abriendo modal de perfil');
         // Cerrar paneles del editor cuando se abre el modal
         closeEditorPanels(store);
-        profileModal?.classList.remove('hidden');
+        profileModal.classList.remove('hidden');
         
         // Cargar datos del usuario desde Auth0
+        const profileEmailDisplay = document.getElementById('profile-email-display') as HTMLInputElement | null;
         try {
             const { Auth0Manager } = await import('../auth0-manager');
             const user = await Auth0Manager.getUser();
@@ -5945,6 +6030,7 @@ const setupMenuButtons = (store: GameStore) => {
         await nicknameManager.updateAllUI();
         
         // Actualizar el input con el nickname del manager
+        const profileNicknameInput = document.getElementById('profile-nickname-input') as HTMLInputElement | null;
         if (profileNicknameInput) {
             profileNicknameInput.value = nicknameManager.currentNickname || '';
             console.log('[Profile Modal Open] ✅ profile-nickname-input actualizado con:', nicknameManager.currentNickname);
@@ -5963,6 +6049,25 @@ const setupMenuButtons = (store: GameStore) => {
                 avatarCanvases.push({ code: savedAvatar, canvas: profileAvatarPreview });
             }
         }
+    };
+    
+    // Handler del botón Mi Área
+    const profileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
+    const profileModal = document.getElementById('profile-modal');
+    const profileCloseBtn = document.getElementById('profile-close-btn');
+    const profileSaveBtn = document.getElementById('profile-save-btn');
+    const profileCancelBtn = document.getElementById('profile-cancel-btn');
+    const profileNicknameInput = document.getElementById('profile-nickname-input') as HTMLInputElement | null;
+    const profileEmailDisplay = document.getElementById('profile-email-display') as HTMLInputElement | null;
+    
+    // Handler del botón de usuario en la esquina superior derecha
+    const userHeaderBtn = document.getElementById('user-header-btn') as HTMLButtonElement | null;
+    userHeaderBtn?.addEventListener('click', async () => {
+        await openProfileModal();
+    });
+    
+    profileBtn?.addEventListener('click', async () => {
+        await openProfileModal();
     });
     
     // Handler del botón Cambiar Avatar

@@ -348,7 +348,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     /* Eliminar todos los márgenes y espaciado entre botones del menú inicial en mobile */
     #message-overlay {
         position: fixed;
-        z-index: 10 !important; /* Debajo de modales pero visible */
+        z-index: 16 !important; /* Debajo de modales pero visible */
         top: auto;
         bottom:30px;        
         p {

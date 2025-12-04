@@ -809,14 +809,121 @@ const isSafeRespawnPosition = (store: GameStore, tileX: number, tileY: number): 
     return true;
 };
 
+// Verificar si un área de 3x3 tiles está vacía y es segura para respawn
+const is3x3AreaSafe = (store: GameStore, centerX: number, centerY: number): boolean => {
+    const level = store.levelDesigns[store.currentLevelIndex];
+    const rows = level.length;
+    const cols = level[0]?.length ?? 0;
+    
+    // Verificar que el área de 3x3 esté dentro de los límites
+    if (centerX - 1 < 0 || centerX + 1 >= cols || centerY - 1 < 0 || centerY + 1 >= rows) {
+        return false;
+    }
+    
+    // Verificar que todos los tiles en el área de 3x3 estén vacíos
+    const isEmpty = (t: string | undefined) => (t ?? '0') === '0';
+    const isDangerous = (t: string | undefined) => t === '2' || t === '3' || t === 'K'; // Agua, lava, columna lava
+    
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const x = centerX + dx;
+            const y = centerY + dy;
+            const tile = level[y]?.[x];
+            
+            // Verificar que el tile esté vacío y no sea peligroso
+            if (!isEmpty(tile) || isDangerous(tile)) {
+                return false;
+            }
+        }
+    }
+    
+    // Verificar que el centro tenga suelo sólido debajo
+    const below = level[centerY + 1]?.[centerX];
+    const isSolid = (t: string | undefined) => !!t && t !== '0' && t !== '2' && t !== '3' && t !== 'K';
+    if (!isSolid(below)) {
+        return false;
+    }
+    
+    // Verificar que no haya enemigos en el área
+    const playerWidth = TILE_SIZE;
+    const playerHeight = TILE_SIZE * 2;
+    const testX = centerX * TILE_SIZE;
+    const testY = centerY * TILE_SIZE;
+    const testHitbox = {
+        x: testX + playerWidth / 4,
+        y: testY,
+        width: playerWidth / 2,
+        height: playerHeight,
+    };
+    
+    for (const enemy of store.enemies) {
+        if (!enemy.isDead && !enemy.isHidden) {
+            if (checkCollision(testHitbox, enemy)) {
+                return false;
+            }
+        }
+    }
+    
+    // Verificar que no haya paredes aplastantes
+    for (const wall of store.walls) {
+        if (wall.type === 'crushing') {
+            if (checkCollision(testHitbox, wall)) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+};
+
 // Buscar un tile seguro para respawn: vacío con suelo sólido (no lava ni agua) debajo
 // y sin peligros adyacentes (paredes aplastantes, enemigos, lava, etc.)
+// PRIORIDAD: Buscar primero un área de 3x3 tiles vacíos cerca del lugar donde murió
 const findSafeRespawnTile = (store: GameStore, desiredX: number, desiredY: number): { x: number; y: number } => {
     const level = store.levelDesigns[store.currentLevelIndex];
     const rows = level.length;
     const cols = level[0]?.length ?? 0;
     
-    // Primero probar el deseado y hacia arriba algunas filas
+    // PRIORIDAD 1: Buscar un área de 3x3 tiles vacíos cerca del lugar donde murió
+    // Priorizar búsqueda hacia arriba primero, luego a los lados
+    const SEARCH_RADIUS = 2;
+    
+    // Primero buscar hacia arriba (más común que haya espacio arriba)
+    for (let dy = 0; dy <= SEARCH_RADIUS; dy++) {
+        for (let dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++) {
+            const centerX = desiredX + dx;
+            const centerY = Math.max(1, desiredY - dy);
+            
+            // Verificar que el centro esté dentro de los límites (necesitamos 1 tile de margen para el área 3x3)
+            if (centerX >= 1 && centerX < cols - 1 && centerY >= 1 && centerY < rows - 1) {
+                if (is3x3AreaSafe(store, centerX, centerY)) {
+                    // Encontramos un área de 3x3 segura, usar el centro
+                    return { x: centerX, y: centerY };
+                }
+            }
+        }
+    }
+    
+    // Si no se encontró hacia arriba, buscar en todas las direcciones
+    for (let dy = -SEARCH_RADIUS; dy <= SEARCH_RADIUS; dy++) {
+        for (let dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++) {
+            // Saltar si ya lo verificamos en el bucle anterior (dy >= 0)
+            if (dy >= 0) continue;
+            
+            const centerX = desiredX + dx;
+            const centerY = Math.max(1, desiredY + dy);
+            
+            // Verificar que el centro esté dentro de los límites
+            if (centerX >= 1 && centerX < cols - 1 && centerY >= 1 && centerY < rows - 1) {
+                if (is3x3AreaSafe(store, centerX, centerY)) {
+                    // Encontramos un área de 3x3 segura, usar el centro
+                    return { x: centerX, y: centerY };
+                }
+            }
+        }
+    }
+    
+    // PRIORIDAD 2: Si no se encontró un área de 3x3, buscar el tile deseado y hacia arriba
     for (let dy = 0; dy <= 5; dy++) {
         const y = Math.max(0, desiredY - dy);
         const x = desiredX;
@@ -1205,6 +1312,15 @@ export const updatePlayer = (store: GameStore) => {
             // Incrementar contador de frames estable
             player.respawnSettledFrames = (player.respawnSettledFrames || 0) + 1;
             
+            // Si el jugador está intentando moverse (presionando teclas), permitir despertar inmediatamente
+            // Esto evita que quede atrapado cuando hay peligro por debajo
+            const anyKeyPressed = store.keys.ArrowLeft || store.keys.ArrowRight || store.keys.ArrowUp || store.keys.ArrowDown || store.keys.Space;
+            if (anyKeyPressed && player.respawnSettledFrames >= 2) {
+                player.canWake = true;
+                updatePlayerAnimation(store);
+                return;
+            }
+            
             // Si lleva mucho tiempo intentando estabilizarse (evitar bucle infinito de reubicación), forzar despertar
             if (player.respawnSettledFrames > 5) {
                 player.canWake = true;
@@ -1304,8 +1420,27 @@ export const updatePlayer = (store: GameStore) => {
                             // Asegurar posición exacta
                             player.y = player.respawnY;
                         } else {
-                            player.canWake = false; // Esperar a que el jugador reaccione o se asiente
+                            // Si el jugador está intentando moverse, permitir despertar para evitar quedar atrapado
+                            const anyKeyPressed = store.keys.ArrowLeft || store.keys.ArrowRight || store.keys.ArrowUp || store.keys.ArrowDown || store.keys.Space;
+                            if (anyKeyPressed && player.respawnSettledFrames >= 2) {
+                                player.canWake = true;
+                            } else {
+                                player.canWake = false; // Esperar a que el jugador reaccione o se asiente
+                            }
                         }
+                        return;
+                    }
+                } else {
+                    // No se encontró una posición mejor: si el jugador está intentando moverse, permitir despertar
+                    // Esto evita quedar atrapado cuando está al lado de una pared aplastante
+                    const anyKeyPressed = store.keys.ArrowLeft || store.keys.ArrowRight || store.keys.ArrowUp || store.keys.ArrowDown || store.keys.Space;
+                    if (anyKeyPressed && player.respawnSettledFrames >= 3) {
+                        player.canWake = true;
+                        return;
+                    }
+                    // Si no está intentando moverse pero lleva mucho tiempo, también permitir despertar
+                    if (player.respawnSettledFrames > 8) {
+                        player.canWake = true;
                         return;
                     }
                 }
