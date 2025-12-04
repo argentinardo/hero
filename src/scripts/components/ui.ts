@@ -1076,7 +1076,11 @@ export const showMenu = (store: GameStore) => {
                         const { getUserStorage } = await import('../utils/storage');
                         const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
                         const userHeaderNickname = document.getElementById('user-header-nickname');
+                        const userHeaderHello = document.getElementById('user-header-hello');
                         const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
+                        if (userHeaderHello) {
+                            userHeaderHello.textContent = t('user.hello');
+                        }
                         if (userHeaderNickname) {
                             userHeaderNickname.textContent = displayName.toUpperCase();
                             userHeaderInfo.classList.remove('hidden');
@@ -4788,10 +4792,59 @@ const updateSettingsUI = (store: GameStore) => {
 };
 
 /**
+ * Función para actualizar el componente de usuario debajo del selector de idiomas
+ */
+const updateUserHeaderInfo = async (store?: GameStore) => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const userHeaderInfo = document.getElementById('user-header-info');
+    const userHeaderNickname = document.getElementById('user-header-nickname');
+    const userHeaderHello = document.getElementById('user-header-hello');
+    const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
+    
+    if (!userHeaderInfo || !userHeaderNickname) return;
+    
+    if (isLoggedIn) {
+        // Cargar nickname desde la BD si es necesario
+        try {
+            await nicknameManager.updateAllUI();
+        } catch (err) {
+            console.warn('[updateUserHeaderInfo] Error actualizando UI:', err);
+        }
+        const { getUserStorage } = await import('../utils/storage');
+        const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
+        
+        // Actualizar "HOLA" con traducción
+        if (userHeaderHello) {
+            userHeaderHello.textContent = t('user.hello');
+        }
+        // Mostrar solo el nombre
+        userHeaderNickname.textContent = displayName.toUpperCase();
+        userHeaderInfo.classList.remove('hidden');
+        
+        // Actualizar avatar (solo si tenemos store)
+        if (userHeaderAvatar && store) {
+            const savedAvatar = getUserStorage('avatar') || 'P';
+            drawAvatar(store, savedAvatar, userHeaderAvatar, performance.now());
+            // Registrar para animación continua
+            const existingIndex = avatarCanvases.findIndex(a => a.canvas === userHeaderAvatar);
+            if (existingIndex >= 0) {
+                avatarCanvases[existingIndex].code = savedAvatar;
+            } else {
+                avatarCanvases.push({ code: savedAvatar, canvas: userHeaderAvatar });
+            }
+        }
+    } else {
+        userHeaderInfo.classList.add('hidden');
+    }
+};
+
+/**
  * Actualiza todos los textos del juego según el idioma actual
  */
 const updateAllTexts = (store: GameStore) => {
     updateEditorTexts(store);
+    // Actualizar componente de usuario (incluye "HOLA")
+    updateUserHeaderInfo(store);
     // Menú principal
     const startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
@@ -5529,41 +5582,6 @@ const setupMenuButtons = (store: GameStore) => {
         refreshPauseDynamicButton();
     };
 
-    // Función para actualizar el componente de usuario debajo del selector de idiomas
-    const updateUserHeaderInfo = async () => {
-        const { isLoggedIn } = await checkLoginStatus();
-        const userHeaderInfo = document.getElementById('user-header-info');
-        const userHeaderNickname = document.getElementById('user-header-nickname');
-        const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
-        
-        if (!userHeaderInfo || !userHeaderNickname) return;
-        
-        if (isLoggedIn) {
-            // Cargar nickname desde la BD si es necesario
-            await nicknameManager.updateAllUI();
-            const { getUserStorage } = await import('../utils/storage');
-            const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
-            
-            // Mostrar solo el nombre (sin "HOLA:" ya que está en el HTML)
-            userHeaderNickname.textContent = displayName.toUpperCase();
-            userHeaderInfo.classList.remove('hidden');
-            
-            // Actualizar avatar
-            if (userHeaderAvatar) {
-                const savedAvatar = getUserStorage('avatar') || 'P';
-                drawAvatar(store, savedAvatar, userHeaderAvatar, performance.now());
-                // Registrar para animación continua
-                const existingIndex = avatarCanvases.findIndex(a => a.canvas === userHeaderAvatar);
-                if (existingIndex >= 0) {
-                    avatarCanvases[existingIndex].code = savedAvatar;
-                } else {
-                    avatarCanvases.push({ code: savedAvatar, canvas: userHeaderAvatar });
-                }
-            }
-        } else {
-            userHeaderInfo.classList.add('hidden');
-        }
-    };
     
     // Función para actualizar el área de usuario en el editor (desktop y mobile)
     const updateUserArea = async () => {
@@ -5579,7 +5597,7 @@ const setupMenuButtons = (store: GameStore) => {
         }
         
         // Actualizar también el componente de usuario en la esquina superior derecha
-        await updateUserHeaderInfo();
+        await updateUserHeaderInfo(store);
         
         // Asegurar que usamos nickname si está disponible (con namespace)
         const { getUserStorage } = await import('../utils/storage');

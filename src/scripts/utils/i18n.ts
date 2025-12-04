@@ -103,6 +103,7 @@ export interface Translations {
             profileTitle: string;
             save: string;
             changeAvatar: string;
+            hello: string;
         };
     // Modales
         modals: {
@@ -339,6 +340,7 @@ const translations: Record<Language, Translations> = {
             profileTitle: 'MI ÁREA',
             save: 'Guardar',
             changeAvatar: 'Cambiar Avatar',
+            hello: 'HOLA',
         },
         modals: {
             confirm: 'Confirmar',
@@ -566,6 +568,7 @@ const translations: Record<Language, Translations> = {
             profileTitle: 'MY AREA',
             save: 'Save',
             changeAvatar: 'Change Avatar',
+            hello: 'HELLO',
         },
         modals: {
             confirm: 'Confirm',
@@ -793,6 +796,7 @@ const translations: Record<Language, Translations> = {
             profileTitle: 'LA MEVA ÀREA',
             save: 'Guardar',
             changeAvatar: 'Canviar Avatar',
+            hello: 'HOLA',
         },
         modals: {
             confirm: 'Confirmar',

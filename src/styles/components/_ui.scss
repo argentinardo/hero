@@ -1032,10 +1032,28 @@ body.state-menu {
     border-color: #5c4a3a !important; /* Marrón medio */
     color: #d4c4b4 !important; /* Texto claro apagado */
     
+    /* Asegurar que los contenedores con título tengan espacio suficiente arriba */
+    &.with-title {
+        padding-top: 1.5rem !important; /* Espacio para el título */
+        overflow: visible !important; /* Permitir que el título se vea completo */
+        position: relative; /* Necesario para el posicionamiento del título */
+    }
+    
     .title {
         color: #d4a574 !important; /* Título en amarillo mostaza apagado */
-        line-height: 0.5rem;
-        font-size: 1rem; /* Tamaño base para mobile y desktop */
+        line-height: 1.8 !important; /* Line-height normal para evitar cortes */
+        font-size: 1rem !important; /* Tamaño base para mobile y desktop - importante para sobrescribir estilos de mobile */
+        padding: 0.25rem 0.75rem !important; /* Padding horizontal y vertical para evitar que se corte */
+        margin: 0 !important;
+        white-space: nowrap; /* Evitar que el texto se divida en múltiples líneas */
+        display: inline-block; /* Para que el padding funcione correctamente */
+        position: absolute; /* Posicionamiento absoluto como en NES CSS original */
+        top: -0.75rem !important; /* Ajustar posición vertical para que quede centrado en el borde */
+        left: 1rem; /* Alinear con el borde izquierdo del contenedor */
+        background-color: #3a2d23 !important; /* Fondo para que se vea sobre el borde */
+        z-index: 1; /* Asegurar que esté por encima del borde */
+        max-height: none !important; /* Evitar que se corte por altura */
+        overflow: visible !important; /* Permitir que el texto se vea completo */
     }
 }
 
