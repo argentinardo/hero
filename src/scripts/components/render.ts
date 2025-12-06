@@ -1453,10 +1453,21 @@ const drawGameWorld = (store: GameStore) => {
     }
 };
 
+// Función auxiliar para actualizar el estilo de un contenedor de splash
+const updateSplashContainer = (container: HTMLElement, bgImage: string, bgSize: string, bgPosition: string) => {
+    container.style.backgroundImage = bgImage;
+    container.style.backgroundSize = bgSize;
+    container.style.backgroundPosition = bgPosition;
+};
+
 // Animar splash en div con background (tira horizontal de 20 frames, animación ping-pong a 8 fps)
 export const animateSplash = (store: GameStore) => {
     const splashContainer = document.getElementById('splash-container');
-    if (!splashContainer) return;
+    const crtScreenContent = document.querySelector('.crt-screen-content') as HTMLElement;
+    
+    // Usar el contenedor dentro del TV si existe, sino usar el antiguo
+    const activeContainer = crtScreenContent || splashContainer;
+    if (!activeContainer) return;
     
     const splashSprite = store.sprites.splash;
     const splashFixed = store.sprites['splash-fixed'];
@@ -1467,22 +1478,32 @@ export const animateSplash = (store: GameStore) => {
     // Si el sprite no está completamente cargado, mostrar splash-fixed
     if (!isSpriteLoaded) {
         // Mostrar splash-fixed hasta que el sprite se cargue
-        if (splashFixed && (!splashContainer.style.backgroundImage || splashContainer.dataset.imageSet !== 'fixed')) {
-            splashContainer.style.backgroundImage = `url(${splashFixed.src})`;
-            splashContainer.style.backgroundSize = 'cover';
-            splashContainer.style.backgroundPosition = 'center';
-            splashContainer.dataset.imageSet = 'fixed';
+        if (splashFixed && (!activeContainer.style.backgroundImage || activeContainer.dataset.imageSet !== 'fixed')) {
+            const bgImage = `url(${splashFixed.src})`;
+            updateSplashContainer(activeContainer, bgImage, 'cover', 'center');
+            activeContainer.dataset.imageSet = 'fixed';
+            
+            // También actualizar el contenedor antiguo si existe y es diferente
+            if (splashContainer && splashContainer !== activeContainer) {
+                updateSplashContainer(splashContainer, bgImage, 'cover', 'center');
+                splashContainer.dataset.imageSet = 'fixed';
+            }
         }
         return; // No animar hasta que el sprite esté completamente cargado
     }
     
     // El sprite está completamente cargado, cambiar a la animación
-    if (splashContainer.dataset.imageSet === 'fixed') {
+    if (activeContainer.dataset.imageSet === 'fixed') {
         // Cambiar de splash-fixed a splash animado
-        splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
-        splashContainer.style.backgroundSize = '2000% 100%';
-        splashContainer.style.backgroundPosition = '0% 0%';
-        splashContainer.dataset.imageSet = 'animated';
+        const bgImage = `url(${splashSprite.src})`;
+        updateSplashContainer(activeContainer, bgImage, '2000% 100%', '0% 0%');
+        activeContainer.dataset.imageSet = 'animated';
+        
+        // También actualizar el contenedor antiguo si existe y es diferente
+        if (splashContainer && splashContainer !== activeContainer) {
+            updateSplashContainer(splashContainer, bgImage, '2000% 100%', '0% 0%');
+            splashContainer.dataset.imageSet = 'animated';
+        }
     }
     
     // En mobile, establecer el backgroundImage pero no animar - el CSS lo fija en 0% 0%
@@ -1490,21 +1511,31 @@ export const animateSplash = (store: GameStore) => {
                      (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
     if (isMobile) {
         // En mobile, solo establecer la imagen de fondo (splashSprite mobile ya está cargado en store.sprites.splash)
-        if (splashContainer.dataset.imageSet !== 'animated') {
-            splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
-            splashContainer.style.backgroundSize = '2000% 100%';
-            splashContainer.style.backgroundPosition = '0% 0%';
-            splashContainer.dataset.imageSet = 'animated';
+        if (activeContainer.dataset.imageSet !== 'animated') {
+            const bgImage = `url(${splashSprite.src})`;
+            updateSplashContainer(activeContainer, bgImage, '2000% 100%', '0% 0%');
+            activeContainer.dataset.imageSet = 'animated';
+            
+            // También actualizar el contenedor antiguo si existe y es diferente
+            if (splashContainer && splashContainer !== activeContainer) {
+                updateSplashContainer(splashContainer, bgImage, '2000% 100%', '0% 0%');
+                splashContainer.dataset.imageSet = 'animated';
+            }
         }
         return;
     }
     
     // Establecer la imagen de fondo del sprite animado si aún no está establecida
-    if (splashContainer.dataset.imageSet !== 'animated') {
-        splashContainer.style.backgroundImage = `url(${splashSprite.src})`;
-        splashContainer.style.backgroundSize = '2000% 100%';
-        splashContainer.style.backgroundPosition = '0% 0%';
-        splashContainer.dataset.imageSet = 'animated';
+    if (activeContainer.dataset.imageSet !== 'animated') {
+        const bgImage = `url(${splashSprite.src})`;
+        updateSplashContainer(activeContainer, bgImage, '2000% 100%', '0% 0%');
+        activeContainer.dataset.imageSet = 'animated';
+        
+        // También actualizar el contenedor antiguo si existe y es diferente
+        if (splashContainer && splashContainer !== activeContainer) {
+            updateSplashContainer(splashContainer, bgImage, '2000% 100%', '0% 0%');
+            splashContainer.dataset.imageSet = 'animated';
+        }
     }
     
     // Continuar con la animación incluso si el sprite aún se está cargando
@@ -1535,9 +1566,15 @@ export const animateSplash = (store: GameStore) => {
     // Calcular porcentaje de background-position en el eje X
     // Para 20 frames: cada frame ocupa 100% / 19 espacios entre frames (0% a 100%)
     const bgXPercent = (store.splashAnimationFrame / (totalFrames - 1)) * 100;
+    const bgPosition = `${bgXPercent}% 0%`;
     
     // Actualizar solo background-position-x (mantener Y en 0%)
-    splashContainer.style.backgroundPosition = `${bgXPercent}% 0%`;
+    activeContainer.style.backgroundPosition = bgPosition;
+    
+    // También actualizar el contenedor antiguo si existe y es diferente
+    if (splashContainer && splashContainer !== activeContainer) {
+        splashContainer.style.backgroundPosition = bgPosition;
+    }
 };
 
 export const renderGame = (store: GameStore) => {

@@ -42,10 +42,34 @@ let currentGalleryLevels: GalleryLevel[] = [];
 let currentSort: 'likes' | 'newest' | 'downloads' = 'likes';
 
 /**
+ * Detecta si el dispositivo es móvil
+ */
+const isMobileDevice = (): boolean => {
+    // Verificar ancho de pantalla (móvil típicamente < 768px)
+    const isSmallScreen = window.innerWidth < 768;
+    
+    // Verificar si tiene capacidades táctiles
+    const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    // Verificar user agent para dispositivos móviles
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+    
+    // Es móvil si cumple alguna de estas condiciones
+    return isSmallScreen || (hasTouchScreen && isMobileUserAgent);
+};
+
+/**
  * Activa el modo pantalla completa (equivalente a presionar F11)
+ * Solo funciona en dispositivos móviles, no en desktop
  * Compatible con todos los navegadores modernos
  */
 const requestFullscreen = (): void => {
+    // Solo activar pantalla completa en dispositivos móviles
+    if (!isMobileDevice()) {
+        return;
+    }
+    
     const element = document.documentElement;
     
     if (element.requestFullscreen) {

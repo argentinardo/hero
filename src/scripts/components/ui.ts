@@ -145,10 +145,34 @@ const requestLegacyPasswordUnlock = async (store: GameStore): Promise<boolean> =
 registerLegacyUnlockHandler(requestLegacyPasswordUnlock);
 
 /**
+ * Detecta si el dispositivo es móvil
+ */
+const isMobileDevice = (): boolean => {
+    // Verificar ancho de pantalla (móvil típicamente < 768px)
+    const isSmallScreen = window.innerWidth < 768;
+    
+    // Verificar si tiene capacidades táctiles
+    const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    // Verificar user agent para dispositivos móviles
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+    
+    // Es móvil si cumple alguna de estas condiciones
+    return isSmallScreen || (hasTouchScreen && isMobileUserAgent);
+};
+
+/**
  * Activa el modo pantalla completa (equivalente a presionar F11)
+ * Solo funciona en dispositivos móviles, no en desktop
  * Compatible con todos los navegadores modernos
  */
 const requestFullscreen = (): void => {
+    // Solo activar pantalla completa en dispositivos móviles
+    if (!isMobileDevice()) {
+        return;
+    }
+    
     const element = document.documentElement;
     
     if (element.requestFullscreen) {
@@ -206,6 +230,19 @@ const applyHamburgerLabel = (label: string) => {
 
 const updateHamburgerButtonLabel = (_store: GameStore) => {
     applyHamburgerLabel('MENU');
+};
+
+// Función auxiliar para actualizar texto de botones old-button
+const updateOldButtonTextById = (buttonId: string, text: string) => {
+    const button = document.getElementById(buttonId) as HTMLButtonElement | null;
+    if (!button) return;
+    const buttonTop = button.querySelector('.old-button-top');
+    if (buttonTop) {
+        buttonTop.textContent = text;
+    } else {
+        // Fallback si no tiene la estructura old-button
+        button.textContent = text;
+    }
 };
 
 // Función para ajustar el ancho de las barras UI al tamaño real del canvas
@@ -913,22 +950,7 @@ const setTvMenuFocus = (targetIndex: number, options: { programmatic?: boolean }
     
     tvMenuFocusIndex = normalizedIndex;
 
-    tvMenuButtons.forEach((btn, idx) => {
-        if (idx === normalizedIndex) {
-            btn.classList.add('tv-focused');
-            btn.classList.add('highlighted');
-            if (programmatic && document.activeElement !== btn) {
-                try {
-                    (btn as any).focus({ preventScroll: true });
-                } catch {
-                    btn.focus();
-                }
-            }
-        } else {
-            btn.classList.remove('tv-focused');
-            btn.classList.remove('highlighted');
-        }
-    });
+
 };
 const initializeTvMenuNavigation = (store: GameStore) => {
     teardownTvMenuNavigation();
@@ -959,9 +981,13 @@ const initializeTvMenuNavigation = (store: GameStore) => {
         return;
     }
 
+    // IDs de botones que NO deben recibir la clase menu-item (tienen estructura old-button)
+    const buttonsWithoutMenuItem = ['start-game-btn', 'level-editor-btn', 'gallery-btn', 'credits-btn'];
+    
     tvMenuButtons.forEach((btn, index) => {
         btn.setAttribute('tabindex', '0');
-        if (!btn.classList.contains('menu-item')) {
+        // Solo agregar menu-item si el botón no está en la lista de exclusiones
+        if (!buttonsWithoutMenuItem.includes(btn.id) && !btn.classList.contains('menu-item')) {
             btn.classList.add('menu-item');
         }
         const handleFocus = () => {
@@ -1170,9 +1196,23 @@ export const showMenu = (store: GameStore) => {
     
     const { messageOverlay, messageTitle, messageText, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, mobileControlsEl, retryBtn, heroLogoEl } = store.dom.ui;
     const splashContainer = document.getElementById('splash-container');
-    if (splashContainer) {
-        splashContainer.style.display = 'block';
+    const crtScreenContent = document.querySelector('.crt-screen-content') as HTMLElement;
+    const activeSplashContainer = crtScreenContent || splashContainer;
+    
+    if (activeSplashContainer) {
+        activeSplashContainer.style.display = 'block';
         // Asegurar que la imagen de fondo se establezca cuando se muestra el menú
+        const splashSprite = store.sprites.splash;
+        if (splashSprite && splashSprite.src) {
+            if (!activeSplashContainer.style.backgroundImage) {
+                activeSplashContainer.style.backgroundImage = `url(${splashSprite.src})`;
+            }
+        }
+    }
+    
+    // También actualizar el contenedor antiguo si existe y es diferente
+    if (splashContainer && splashContainer !== activeSplashContainer) {
+        splashContainer.style.display = 'block';
         const splashSprite = store.sprites.splash;
         if (splashSprite && splashSprite.src) {
             if (!splashContainer.style.backgroundImage) {
@@ -1244,10 +1284,7 @@ export const showMenu = (store: GameStore) => {
     // Actualizar botón de editor según estado de login
     const updateEditorButton = () => {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-        if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
-        }
+        updateOldButtonTextById('level-editor-btn', isLoggedIn ? t('menu.editor') : t('menu.login'));
         updateHamburgerButtonLabel(store);
     };
     updateEditorButton();
@@ -1688,7 +1725,12 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
         qrCodeController = null;
     }
     const splashContainer = document.getElementById('splash-container');
-    if (splashContainer) {
+    const crtScreenContent = document.querySelector('.crt-screen-content') as HTMLElement;
+    
+    if (crtScreenContent) {
+        crtScreenContent.style.display = 'none';
+    }
+    if (splashContainer && splashContainer !== crtScreenContent) {
         splashContainer.style.display = 'none';
     }
     const { messageOverlay, gameUiEl, rightUiEl, bottomUiEl, editorPanelEl, heroLogoEl } = store.dom.ui;
@@ -2171,10 +2213,7 @@ const authManager = {
             }
             
             // Actualizar botón del editor
-            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-            if (levelEditorBtn) {
-                levelEditorBtn.textContent = t('menu.login');
-            }
+            updateOldButtonTextById('level-editor-btn', t('menu.login'));
             
             // Actualizar hamburger button
             if (store) {
@@ -2360,6 +2399,11 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
         qrCodeController = null;
     }
     const splashContainer = document.getElementById('splash-container');
+    const crtScreenContent = document.querySelector('.crt-screen-content') as HTMLElement;
+    
+    if (crtScreenContent) {
+        crtScreenContent.style.display = 'none';
+    }
     if (splashContainer) {
         splashContainer.style.display = 'none';
     }
@@ -3804,10 +3848,7 @@ const setupAuthDeepLink = (store: GameStore) => {
                             await authManager.handleLoginSuccess(user, store);
                             
                             // Actualizar UI
-                            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-                            if (levelEditorBtn) {
-                                levelEditorBtn.textContent = t('menu.editor');
-                            }
+                            updateOldButtonTextById('level-editor-btn', t('menu.editor'));
                             updateHamburgerButtonLabel(store);
                             
                             // Cargar niveles del usuario
@@ -3874,10 +3915,7 @@ const setupAuthDeepLink = (store: GameStore) => {
                                             await authManager.handleLoginSuccess(user, store);
                                             
                                             // Actualizar UI
-                                            const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-                                            if (levelEditorBtn) {
-                                                levelEditorBtn.textContent = t('menu.editor');
-                                            }
+                                            updateOldButtonTextById('level-editor-btn', t('menu.editor'));
                                             updateHamburgerButtonLabel(store);
                                             
                                             // Cargar niveles del usuario
@@ -4075,10 +4113,7 @@ export const setupUI = (store: GameStore) => {
         await authManager.handleLoginSuccess(user, store);
         
         // Actualizar UI
-        const levelEditorBtn = document.getElementById('level-editor-btn') as HTMLButtonElement | null;
-        if (levelEditorBtn) {
-            levelEditorBtn.textContent = 'INGRESAR';
-        }
+        updateOldButtonTextById('level-editor-btn', 'INGRESAR');
         updateHamburgerButtonLabel(store);
         
         // Cargar niveles del usuario
@@ -4845,6 +4880,18 @@ const updateAllTexts = (store: GameStore) => {
     updateEditorTexts(store);
     // Actualizar componente de usuario (incluye "HOLA")
     updateUserHeaderInfo(store);
+    // Función auxiliar para actualizar texto de botones old-button
+    const updateOldButtonText = (button: HTMLButtonElement | null, text: string) => {
+        if (!button) return;
+        const buttonTop = button.querySelector('.old-button-top');
+        if (buttonTop) {
+            buttonTop.textContent = text;
+        } else {
+            // Fallback si no tiene la estructura old-button
+            button.textContent = text;
+        }
+    };
+    
     // Menú principal
     const startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement | null;
     const galleryBtn = document.getElementById('gallery-btn') as HTMLButtonElement | null;
@@ -4852,13 +4899,13 @@ const updateAllTexts = (store: GameStore) => {
     const creditsBtn = document.getElementById('credits-btn') as HTMLButtonElement | null;
     const retryBtn = document.getElementById('retry-btn') as HTMLButtonElement | null;
     
-    if (startGameBtn) startGameBtn.textContent = t('menu.play');
-    if (galleryBtn) galleryBtn.textContent = t('menu.gallery');
+    updateOldButtonText(startGameBtn, t('menu.play'));
+    updateOldButtonText(galleryBtn, t('menu.gallery'));
     if (levelEditorBtn) {
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
+        updateOldButtonText(levelEditorBtn, isLoggedIn ? t('menu.editor') : t('menu.login'));
     }
-    if (creditsBtn) creditsBtn.textContent = t('menu.credits');
+    updateOldButtonText(creditsBtn, t('menu.credits'));
     if (retryBtn) retryBtn.textContent = t('game.retry');
     
     // Botón de configuración en menú hamburger
@@ -5575,9 +5622,7 @@ const setupMenuButtons = (store: GameStore) => {
 
     const updateEditorButton = async () => {
         const { isLoggedIn } = await checkLoginStatus();
-        if (levelEditorBtn) {
-            levelEditorBtn.textContent = isLoggedIn ? t('menu.editor') : t('menu.login');
-        }
+        updateOldButtonTextById('level-editor-btn', isLoggedIn ? t('menu.editor') : t('menu.login'));
         updateHamburgerButtonLabel(store);
         refreshPauseDynamicButton();
     };

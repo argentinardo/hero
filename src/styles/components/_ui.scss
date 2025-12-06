@@ -1,26 +1,38 @@
-/* Selector de Idioma con Banderas */
+/* Selector de Idioma con Banderas - Sucio y gastado */
 #language-selector-container {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 49;
-    
     .language-btn {
         transition: all 0.3s ease;
         cursor: pointer;
         min-width: 60px;
         
         &:hover:not(.is-disabled) {
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
         
         &.active {
             opacity: 1;
-            box-shadow: 0 0 10px rgba(116, 185, 255, 0.5);
+            box-shadow: 0 0 8px rgba(139, 90, 43, 0.4);
         }
         
         &.is-disabled {
             opacity: 0.5;
+        }
+    }
+    
+    /* Estilos para old-button dentro del selector de idioma */
+    .old-button {
+        &.active {
+            .old-button-top::after {
+                background: 
+                    repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(139, 90, 43, 0.3) 1px, rgba(139, 90, 43, 0.3) 3px),
+                    radial-gradient(circle at 30% 30%, #9b5a4a 0%, #7b3a2a 40%, #6a2d1f 100%),
+                    linear-gradient(135deg, #8a4d3d 0%, #6a2d1f 50%, #8a4d3d 100%);
+                box-shadow: 
+                    inset 0 0 0px 1px rgba(139, 90, 43, 0.4),
+                    0 1px 2px 1px rgba(0, 0, 0, 0.5),
+                    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+                    0 0 8px rgba(139, 90, 43, 0.3);
+            }
         }
     }
 }
@@ -355,7 +367,7 @@ body {
     }
 }
 
-/* Panel de Usuario (izquierda) - Desktop y Mobile */
+/* Panel de Usuario (izquierda) - Desktop y Mobile - Sucio y gastado */
 #user-panel {
     position: fixed;
     top: 0;
@@ -363,6 +375,10 @@ body {
     width: 15%;
     height: 100vh;
     flex-direction: column;
+    background: 
+        linear-gradient(135deg, #2a1f15 0%, #1f1a12 25%, #1a1510 50%, #1f1a12 75%, #2a1f15 100%),
+        radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 67, 33, 0.3) 0%, transparent 50%);
     background-color: rgba(0, 0, 0, 0.95);
     padding: 10px;
     z-index: 20;
@@ -372,6 +388,29 @@ body {
     display: none; /* Se mostrará cuando esté en modo editor */
     transform: translateX(0);
     transition: transform 200ms ease-in-out;
+    
+    /* Efecto de polvo y suciedad - menos intrusivo */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 90, 43, 0.1) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(101, 67, 33, 0.12) 0%, transparent 40%),
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+        pointer-events: none;
+        z-index: 0; /* Debajo del contenido */
+        opacity: 0.3;
+    }
+    
+    /* Asegurar que el contenido esté por encima de los efectos */
+    > * {
+        position: relative;
+        z-index: 1;
+    }
     
     /* Título sticky */
     #user-panel-title {
@@ -383,7 +422,7 @@ body {
         margin-bottom: 0.5rem;
     }
     
-    /* Bordes de color #666 para botones y elementos dentro del panel */
+    /* Bordes sucios y gastados para botones y elementos dentro del panel */
     .nes-btn {
         border-color: #666 !important;
     }
@@ -401,7 +440,7 @@ body {
     transform: translateX(-100%);
 }
 
-/* Panel del editor - drawer derecho con transición */
+/* Panel del editor - drawer derecho con transición - Sucio y gastado */
 #editor-panel {
     position: fixed;
     right: 0;
@@ -413,6 +452,30 @@ body {
     z-index: 20;
     transform: translateX(0);
     transition: transform 200ms ease-in-out;
+    background-color: rgba(0, 0, 0, 0.95);
+    
+    /* Efecto de polvo y suciedad - menos intrusivo */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 90, 43, 0.1) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(101, 67, 33, 0.12) 0%, transparent 40%),
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.04) 2px, rgba(0, 0, 0, 0.04) 4px);
+        pointer-events: none;
+        z-index: 0; /* Debajo del contenido */
+        opacity: 0.3;
+    }
+    
+    /* Asegurar que el contenido esté por encima de los efectos */
+    > * {
+        position: relative;
+        z-index: 1;
+    }
     
     /* Ocultar elementos duplicados que están en user-panel */
     .user-area-desktop,
@@ -435,7 +498,7 @@ body {
         padding-top: 0.5rem;
     }
     
-    /* Bordes de color #666 para botones y elementos dentro del panel */
+    /* Bordes sucios y gastados para botones y elementos dentro del panel */
     .nes-btn {
         border-color: #666 !important;
     }
@@ -461,7 +524,7 @@ body {
 #user-panel-toggle {
     position: fixed !important;
     left: 0 !important;
-    top: 12px !important;
+    top: 100px !important;
     z-index: 20 !important;
     transition: opacity 0.2s ease-in-out;
     
@@ -499,9 +562,22 @@ body.state-editing {
         touch-action: pan-y;
     }
     
-    /* Mostrar panel de usuario */
+    /* Mostrar panel de usuario - Desktop */
     #user-panel {
         display: flex !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 15% !important;
+    }
+    
+    /* Mostrar panel del editor - Desktop */
+    #editor-panel {
+        display: flex !important;
+        position: fixed !important;
+        right: 0 !important;
+        top: 0 !important;
+        width: 15% !important;
     }
     
     /* Ocultar credit-bar en modo editor */
@@ -514,7 +590,7 @@ body.state-editing {
 #editor-toggle {
     position: fixed !important;
     right: 0 !important;
-    top: 12px !important;
+    top: 100px !important;
     z-index: 20 !important;
     transition: opacity 0.2s ease-in-out;
     
@@ -547,7 +623,7 @@ body.state-editing {
     }
 }
 
-/* Botón Hamburguesa */
+/* Botón Hamburguesa - Sucio y gastado */
 .hamburger-btn,
 .hamburger-btn-mobile {
     cursor: pointer;
@@ -559,18 +635,48 @@ body.state-editing {
     height: 40px;
     z-index: 101;
     font-size: 14px;
-    color: white;
+    color: #c49a64;
     font-family: 'Press Start 2P', monospace;
-    box-shadow: inset 2px 2px 2px 2px #f29c93;
-    background: linear-gradient(to bottom, #7b3a24 5%, #d34718 100%);
-    background-color: #c33f12;
-    border: 1px solid #d83526;
+    background: 
+        linear-gradient(135deg, #5a3a2a 0%, #4a2d1f 25%, #3a1f15 50%, #4a2d1f 75%, #5a3a2a 100%),
+        radial-gradient(ellipse at top left, rgba(139, 70, 30, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 50, 20, 0.4) 0%, transparent 50%);
+    background-color: #4a2d1f;
+    border: 2px solid #3a1f15;
     font-weight: bold;
     text-decoration: none;
-    text-shadow: 0px 0px 0px #b23e35;
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.5);
     border-radius: 10px;
     position: relative;
     text-transform: none;
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+        inset -2px -2px 4px rgba(139, 90, 43, 0.2),
+        0 2px 4px rgba(0, 0, 0, 0.6);
+    
+    /* Efecto de óxido y desgaste */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 25% 35%, rgba(139, 60, 20, 0.3) 0%, transparent 40%),
+            radial-gradient(circle at 75% 65%, rgba(101, 40, 15, 0.25) 0%, transparent 40%),
+            repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px);
+        border-radius: 10px;
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.6;
+    }
+    
+    &:hover {
+        background-color: #5a3a2a;
+        border-color: #4a2d1f;
+        color: #d4a574;
+    }
 }
 
 .hamburger-label {
@@ -669,49 +775,82 @@ body.scanline-enabled .hamburger-btn-mobile .hamburger-label,
 
 
 
-/* Menú Hamburguesa Desplegable */
+/* Menú Hamburguesa Desplegable - Sucio y gastado */
 .hamburger-menu {
     position: absolute;
     top: 10vh;
     right: 0;
-    background-color: rgba(0, 0, 0, 0.95);
-    border: 2px solid white;
+    background: 
+        linear-gradient(135deg, #2a1f15 0%, #1f1a12 25%, #1a1510 50%, #1f1a12 75%, #2a1f15 100%),
+        radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 67, 33, 0.3) 0%, transparent 50%);
+    background-color: #1f1a12 !important;
+    border: 2px solid #3a2d1f;
     border-radius: 4px;
     padding: 8px;
     z-index: 150;
     min-width: 200px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(0, 0, 0, 0.6),
+        inset 0 0 40px rgba(101, 67, 33, 0.2);
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
+    position: relative;
+    
+    /* Efecto de polvo y suciedad */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 30% 40%, rgba(139, 90, 43, 0.2) 0%, transparent 40%),
+            radial-gradient(circle at 70% 60%, rgba(101, 67, 33, 0.25) 0%, transparent 40%),
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.08) 2px, rgba(0, 0, 0, 0.08) 4px);
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.5;
+    }
     
     &.hidden {
         display: none;
     }
     
-    .menu-item {
+        .menu-item {
         display: block;
         width: 100%;
         padding: 12px 16px;
+        background: 
+            linear-gradient(135deg, rgba(42, 31, 21, 0.3) 0%, rgba(31, 26, 18, 0.2) 50%, rgba(42, 31, 21, 0.3) 100%);
         background-color: transparent;
         border: none;
-        color: white;
+        color: #c4b4a4;
         text-align: left;
         font-size: 14px;
         cursor: pointer;
         transition: all 0.2s ease;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(90, 69, 53, 0.3);
         font-family: 'Press Start 2P', monospace;
         user-select: none;
         -webkit-user-select: none;
+        position: relative;
+        z-index: 2;
         
         &:last-child {
             border-bottom: none;
         }
         
         &:hover {
-            background-color: rgba(251, 191, 36, 0.2);
-            color: #fbbf24;
+            background: 
+                linear-gradient(135deg, rgba(90, 69, 53, 0.4) 0%, rgba(74, 58, 42, 0.3) 50%, rgba(90, 69, 53, 0.4) 100%);
+            background-color: rgba(90, 69, 53, 0.3);
+            color: #d4a574;
+            box-shadow: inset 0 0 10px rgba(101, 67, 33, 0.2);
         }
         
         &.hidden {
@@ -720,7 +859,542 @@ body.scanline-enabled .hamburger-btn-mobile .hamburger-label,
     }
 }
 
-/* Splash animado - fondo del menú */
+/* Layout principal del menú con TV y botones */
+
+
+/* Contenedor del TV CRT */
+.crt-tv-container {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch; /* Hace que ambos hijos tengan la misma altura */
+    justify-content: flex-start;
+    gap: 0;
+    box-shadow: 
+    0 0 0 8px #0f0f0f,
+    0 0 0 12px #2a2a2a,
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    inset 0 0 30px rgba(0, 0, 0, 0.5);
+    padding: 0px;
+    background: #2a2418; /* Marrón oscuro sucio */
+    border-radius: 50px;
+    position: relative;
+    
+    /* Efecto de polvo y suciedad */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 90, 43, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(101, 67, 33, 0.4) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(60, 40, 20, 0.2) 0%, transparent 60%),
+            linear-gradient(45deg, transparent 30%, rgba(139, 90, 43, 0.1) 50%, transparent 70%);
+        border-radius: 50px;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    /* Efecto de arañazos y desgaste */
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, 0.08) 2px, rgba(0, 0, 0, 0.08) 4px);
+        border-radius: 50px;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0.6;
+    }
+}
+
+
+/* Marco del TV CRT */
+.crt-tv-frame {
+    position: relative;
+    width: 60vw;
+    aspect-ratio: 4 / 3;
+    box-shadow: 
+        inset 0 0 0 8px #1a1610,
+        inset 0 0 0 12px #2a2418,
+        inset 0 20px 60px rgba(0, 0, 0, 1),
+        inset 0 0 30px rgba(0, 0, 0, 0.9),
+        0 4px 8px rgba(0, 0, 0, 0.6),
+        inset 0 0 100px rgba(101, 67, 33, 0.2);
+    padding: 25px;
+    box-sizing: border-box;
+    z-index: 10000;
+    background: 
+        linear-gradient(135deg, #3d2f1f 0%, #2a2418 25%, #1f1a12 50%, #2a2418 75%, #3d2f1f 100%),
+        radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 67, 33, 0.4) 0%, transparent 50%);
+    border-radius: 50px;
+    border: 8px solid #1a1610;
+    flex: 0 0 auto; /* No crecer ni encoger, mantener tamaño basado en aspect-ratio */
+    
+    /* Efecto de óxido y manchas */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 15% 20%, rgba(139, 69, 19, 0.4) 0%, transparent 40%),
+            radial-gradient(circle at 85% 80%, rgba(101, 50, 15, 0.3) 0%, transparent 40%),
+            radial-gradient(circle at 50% 10%, rgba(160, 82, 45, 0.2) 0%, transparent 30%),
+            linear-gradient(90deg, rgba(60, 30, 10, 0.1) 0%, transparent 20%, transparent 80%, rgba(60, 30, 10, 0.1) 100%);
+        border-radius: 42px;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    /* Efecto de desgaste y arañazos */
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.15) 3px, rgba(0, 0, 0, 0.15) 6px),
+            repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(139, 90, 43, 0.1) 4px, rgba(139, 90, 43, 0.1) 8px);
+        border-radius: 42px;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0.5;
+    }
+}
+
+
+
+/* Pantalla del TV */
+.crt-tv-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    border-radius: 10%;
+    overflow: hidden;
+    box-shadow: 
+        0 0 50px rgba(0, 0, 0, 0.8),
+        0 0 100px rgba(0, 0, 0, 0.5),
+        inset 0 0 20px rgba(101, 67, 33, 0.2);
+    border: 2px solid #1a1610;
+    
+    /* Efecto de polvo en los bordes de la pantalla */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.15) 0%, transparent 30%),
+            radial-gradient(ellipse at bottom right, rgba(101, 67, 33, 0.2) 0%, transparent 30%),
+            linear-gradient(to bottom, rgba(60, 40, 20, 0.1) 0%, transparent 10%, transparent 90%, rgba(60, 40, 20, 0.1) 100%);
+        border-radius: 10%;
+        pointer-events: none;
+        z-index: 4;
+    }
+}
+
+/* Contenido de la pantalla (splash animado) */
+.crt-screen-content {
+    position: absolute !important; /* Forzar absolute dentro del TV */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: 2000% 100%; /* 20 frames horizontales: ancho = 20 * 100% */
+    background-repeat: no-repeat;
+    background-position: 0% 0%;
+    z-index: 0 !important; /* Debajo del reflejo (z-index: 3) */
+    display: none; /* Oculto por defecto, se muestra en el menú */
+    box-shadow: 
+    inset 0 0 90px rgb(0, 0, 0),
+    inset 0 0 100px rgba(255, 255, 255, 0),
+    inset 0 0  110px rgba(255, 255, 255, 1),
+    inset 0 0  120px rgba(255, 255, 255, 0);
+    
+    /* Overlay base (sin background por defecto) */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+    }
+    
+    /* Efecto Vignette (oscurecimiento en los bordes) - Solo si está habilitado - Más oscuro */
+    &.vignette-enabled::before {
+        background: radial-gradient(
+            ellipse at center,
+            transparent 0%,
+            transparent 40%,
+            rgba(0, 0, 0, 0.8) 100%
+        );
+    }
+    
+    /* Efecto CRT Scanlines - Solo si está habilitado - Líneas de 2px */
+    &.scanline-enabled::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0px, rgba(0, 0, 0, 0.5) 2px,transparent 2px,transparent 4px
+        );
+        pointer-events: none;
+        z-index: 2;
+    }
+}
+
+/* Cuando splash-container está dentro del TV, sobrescribir estilos fixed */
+.crt-tv-screen #splash-container {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 0 !important;
+}
+
+/* Efecto de reflejo del vidrio del TV */
+.crt-screen-reflection {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        transparent 30%,
+        transparent 70%,
+        rgba(0, 0, 0, 0.3) 100%
+    );
+    pointer-events: none;
+    z-index: 3;
+    mix-blend-mode: overlay;
+}
+
+
+
+/* Panel de botones a la derecha */
+.menu-buttons-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+    min-width: 280px;
+    max-width: 350px;
+    padding: 1.5rem;
+    z-index: 10;
+    margin: 1rem 2rem 1rem 2rem;
+    background: 
+        linear-gradient(135deg, #2a2418 0%, #1f1a12 50%, #2a2418 100%),
+        radial-gradient(ellipse at top, rgba(139, 90, 43, 0.2) 0%, transparent 50%);
+    border-radius: 10px 45px 45px 10px;
+    border: 3px solid #1a1610;
+    box-shadow: 
+        rgba(0, 0, 0, 0.8) 0 0 10px,
+        inset rgba(0, 0, 0, 0.6) 0 0 20px,
+        inset rgba(101, 67, 33, 0.3) 0 0 30px;
+    box-sizing: border-box;
+    position: relative;
+    
+    /* Efecto de polvo y suciedad */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 30% 40%, rgba(139, 90, 43, 0.25) 0%, transparent 40%),
+            radial-gradient(circle at 70% 60%, rgba(101, 67, 33, 0.3) 0%, transparent 40%),
+            linear-gradient(45deg, transparent 40%, rgba(60, 40, 20, 0.15) 50%, transparent 60%);
+        border-radius: 10px 45px 45px 10px;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    /* Efecto de desgaste */
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px);
+        border-radius: 10px 45px 45px 10px;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0.4;
+    }
+    
+    /* Logo del hero en el menú */
+    #hero-logo-menu {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        margin: 0 auto 1rem;
+        display: block;
+        image-rendering: pixelated;
+        -webkit-image-rendering: pixelated;
+        user-select: none;
+        -webkit-user-select: none;
+        pointer-events: none;
+    }
+    
+    .old-button {
+        position: relative;
+        padding: 0 8px 12px;
+        min-width: 10em;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-family: 'Press Start 2P', monospace;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        outline: none;
+        
+        .old-button-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 0;
+            padding: 12px 20px;
+            transform: translateY(0);
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 -1px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s ease;
+            -webkit-user-select: none;
+            user-select: none;
+            font-size: 0.9rem;
+            min-height: 50px;
+            
+            // button-top background - aspecto sucio y gastado
+            &::after {
+                content: '';
+                position: absolute;
+                z-index: -1;
+                top: 0;
+                left: 0;
+                border-radius: 4px;
+                width: 100%;
+                height: 100%;
+                box-sizing: border-box;
+                background: 
+                    radial-gradient(circle at 30% 30%, #8b4a3a 0%, #6b3a2a 40%, #5a2d1f 100%),
+                    linear-gradient(135deg, #7a3d2d 0%, #5a2d1f 50%, #7a3d2d 100%),
+                    radial-gradient(circle at 70% 70%, rgba(101, 50, 25, 0.4) 0%, transparent 50%);
+                box-shadow: 
+                    inset 0 0 0px 1px rgba(139, 90, 43, 0.3),
+                    0 1px 2px 1px rgba(0, 0, 0, 0.4),
+                    inset 0 2px 4px rgba(0, 0, 0, 0.3);
+                transition: border-radius 0.2s ease, padding 0.2s ease;
+                
+                /* Efecto de desgaste en el botón */
+                background-image: 
+                    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px),
+                    radial-gradient(circle at 30% 30%, #8b4a3a 0%, #6b3a2a 40%, #5a2d1f 100%),
+                    linear-gradient(135deg, #7a3d2d 0%, #5a2d1f 50%, #7a3d2d 100%);
+            }
+        }
+        
+        .old-button-bottom {
+            position: absolute;
+            z-index: -1;
+            bottom: 4px;
+            left: 4px;
+            border-radius: 8px / 16px 16px 8px 8px;
+            padding-top: 6px;
+            width: calc(100% - 8px);
+            height: calc(100% - 10px);
+            box-sizing: border-box;
+            background: 
+                linear-gradient(135deg, #4a1f15 0%, #3a1810 50%, #4a1f15 100%),
+                radial-gradient(ellipse at bottom, rgba(101, 50, 25, 0.4) 0%, transparent 60%);
+            background-image: 
+                radial-gradient(4px 8px at 4px calc(100% - 8px), rgba(139, 90, 43, 0.2), transparent),
+                radial-gradient(4px 8px at calc(100% - 4px) calc(100% - 8px), rgba(139, 90, 43, 0.2), transparent),
+                radial-gradient(16px at -4px 0, rgba(101, 67, 33, 0.3), transparent),
+                radial-gradient(16px at calc(100% + 4px) 0, rgba(101, 67, 33, 0.3), transparent),
+                repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0, 0, 0, 0.1) 3px, rgba(0, 0, 0, 0.1) 6px);
+            box-shadow: 
+                0px 2px 3px 0px rgba(0, 0, 0, 0.7),
+                inset 0px -1px 3px 3px rgba(0, 0, 0, 0.6),
+                inset 0px 1px 2px rgba(139, 90, 43, 0.2);
+            transition: border-radius 0.2s ease, padding-top 0.2s ease;
+        }
+        
+        .old-button-base {
+            position: absolute;
+            z-index: -2;
+            top: 4px;
+            left: 0;
+            border-radius: 12px;
+            width: 100%;
+            height: calc(100% - 4px);
+            background: 
+                linear-gradient(135deg, rgba(26, 22, 16, 0.4) 0%, rgba(31, 26, 18, 0.3) 50%, rgba(26, 22, 16, 0.4) 100%),
+                radial-gradient(ellipse at center, rgba(101, 67, 33, 0.2) 0%, transparent 70%);
+            box-shadow: 
+                0 1px 1px 0 rgba(139, 90, 43, 0.3),
+                inset 0 2px 2px rgba(0, 0, 0, 0.4),
+                inset 0 0 10px rgba(60, 40, 20, 0.3);
+        }
+        
+        // Estados activos
+        &:active,
+        &.active {
+            .old-button-top {
+                transform: translateY(6px);
+                
+                &::after {
+                    border-radius: 6px;
+                }
+            }
+            
+            .old-button-bottom {
+                border-radius: 10px 10px 8px 8px / 8px;
+                padding-top: 0;
+            }
+        }
+        
+        // Hover effect - más sucio y gastado
+        &:hover:not(:active) {
+            .old-button-top::after {
+                background: 
+                    radial-gradient(circle at 30% 30%, #9b5a4a 0%, #7b4a3a 40%, #6a3d2f 100%),
+                    linear-gradient(135deg, #8a4d3d 0%, #6a3d2f 50%, #8a4d3d 100%);
+            }
+        }
+        
+        // Focus visible para accesibilidad
+        &:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+            outline-offset: 2px;
+        }
+    }
+    .old-button--small {
+        padding: 0 4px 6px;
+        min-width: 5em;
+        
+        // Estados activos
+        &:active,
+        &.active {
+            .old-button-top {
+                transform: translateY(3px);
+            }
+        }
+        
+        // Efecto de óxido más intenso en botones pequeños
+        .old-button-top::after {
+            background: 
+                repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(0, 0, 0, 0.12) 1px, rgba(0, 0, 0, 0.12) 3px),
+                radial-gradient(circle at 30% 30%, #7b3a2a 0%, #5a2d1f 40%, #4a1f15 100%),
+                linear-gradient(135deg, #6a3d2d 0%, #4a1f15 50%, #6a3d2d 100%);
+        }
+    }
+}
+
+
+/* Botón principal (JUGAR) */
+.menu-btn-primary {
+    width: 100%;
+    font-size: 1.2rem !important;
+    padding: 1.2rem 2rem !important;
+    min-height: 60px;
+}
+
+/* Botones secundarios */
+.menu-btn-secondary {
+    width: 100%;
+    font-size: 0.9rem !important;
+    padding: 0.8rem 1.5rem !important;
+    min-height: 50px;
+}
+
+/* Botones de instalación */
+.menu-install-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Estilos responsivos para móviles */
+@media (max-width: 1024px) {
+    .main-menu-layout {
+        flex-direction: column;
+        gap: 2rem;
+        padding: 1rem;
+    }
+    
+    .crt-tv-frame {
+        width: 90vw;
+        max-width: 600px;
+        min-width: 300px;
+    }
+    
+    .menu-buttons-panel {
+        width: 100%;
+        max-width: 90vw;
+        min-width: auto;
+    }
+    
+    .menu-btn-primary {
+        font-size: 1rem !important;
+        padding: 1rem 1.5rem !important;
+        min-height: 50px;
+    }
+    
+    .menu-btn-secondary {
+        font-size: 0.8rem !important;
+        padding: 0.7rem 1.2rem !important;
+        min-height: 45px;
+    }
+}
+
+/* Ajustes para pantallas muy pequeñas */
+@media (max-width: 640px) {
+    .crt-tv-frame {
+        width: 95vw;
+        min-width: 280px;
+        padding: 15px;
+        border-width: 15px;
+    }
+    
+    .menu-buttons-panel {
+        gap: 0.8rem;
+        padding: 0.5rem;
+    }
+}
+
+/* Splash animado - fondo del menú (mantener compatibilidad) */
 #splash-container {
     position: fixed;
     top: 0;
@@ -732,6 +1406,16 @@ body.scanline-enabled .hamburger-btn-mobile .hamburger-label,
     background-position: 0% 0%;
     z-index: 0; /* Detrás del message-overlay pero por encima del canvas */
     display: none; /* Oculto por defecto, se muestra en el menú */
+    
+    /* Cuando está dentro del TV, cambiar a absolute y z-index bajo */
+    .crt-tv-screen & {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 0 !important;
+    }
     
     /* Overlay base (sin background por defecto) */
     &::before {
@@ -772,9 +1456,22 @@ body.scanline-enabled .hamburger-btn-mobile .hamburger-label,
 
 /* Ocultar game-ui y credit-bar cuando está en el menú para que no se vean sobre el splash */
 body.state-menu {
-    /* Asegurar que el splash sea visible */
+    /* Asegurar que el splash sea visible dentro del TV */
+    .crt-screen-content {
+        display: block !important;
+        position: absolute !important;
+        z-index: 0 !important;
+    }
+    
+    /* También mantener compatibilidad con el splash-container antiguo */
     #splash-container {
         display: block !important;
+        z-index: 0 !important;
+    }
+    
+    /* Asegurar que splash-container dentro del TV tenga posición correcta */
+    .crt-tv-screen #splash-container {
+        position: absolute !important;
         z-index: 0 !important;
     }
     
@@ -817,15 +1514,19 @@ body.state-menu {
 #message-overlay {
     z-index: 10 !important; /* Debajo de modales pero visible */
     align-items: center;
+    justify-content: center;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
     position: fixed;
-    top: auto;
-    bottom:30px; 
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
     width: 100%;
+    height: 100%;
     
     p, span, button, div {
         user-select: none;
@@ -911,126 +1612,355 @@ body.state-menu {
    que refleja el ambiente de una mina.
 */
 
-/* Botón primario - Marrón oscuro/óxido (como TOOLS de minero) */
+/* Botón primario - Marrón oscuro/óxido (como TOOLS de minero) - Sucio y gastado */
 .nes-btn.is-primary {
-    color: #d4a574 !important; /* Amarillo mostaza apagado */
-    background-color: #5c4a3a !important; /* Marrón oscuro */
-    border-color: #8b7355 !important; /* Marrón medio */
+    color: #c49a64 !important; /* Amarillo mostaza más apagado y sucio */
+    background: 
+        linear-gradient(135deg, #4a3a2a 0%, #3a2d1f 25%, #2a1f15 50%, #3a2d1f 75%, #4a3a2a 100%),
+        radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 67, 33, 0.4) 0%, transparent 50%) !important;
+    background-color: #3a2d1f !important; /* Marrón oscuro sucio */
+    border-color: #5a4535 !important; /* Marrón medio sucio */
     box-shadow: 
-        inset -4px -4px #4a3a2d,
-        inset 4px 4px #6e5a4a !important;
+        inset -4px -4px #2a1f15,
+        inset 4px 4px #4a3a2a,
+        inset 0 0 10px rgba(101, 67, 33, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+    
+    /* Efecto de desgaste y óxido */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 69, 19, 0.3) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(101, 50, 15, 0.25) 0%, transparent 40%),
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.1) 3px, rgba(0, 0, 0, 0.1) 6px);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.6;
+    }
     
     &:hover,
     &:focus {
-        color: #e6c594 !important;
-        background-color: #6d5a4a !important;
-        border-color: #9b8365 !important;
+        color: #d4a574 !important;
+        background-color: #4a3a2a !important;
+        border-color: #6a5545 !important;
     }
     
     &:active {
         box-shadow: 
-            inset 4px 4px #4a3a2d,
-            inset -4px -4px #6e5a4a !important;
+            inset 4px 4px #2a1f15,
+            inset -4px -4px #4a3a2a,
+            inset 0 0 15px rgba(101, 67, 33, 0.4) !important;
     }
 }
 
-/* Botón success - Verde oliva apagado (como musgo en rocas) */
+/* Botón success - Verde oliva apagado (como musgo en rocas) - Sucio y gastado */
 .nes-btn.is-success {
-    color: #9fb896 !important; /* Verde apagado */
-    background-color: #4a5c3a !important; /* Verde oliva oscuro */
-    border-color: #6b7d5a !important; /* Verde oliva medio */
+    color: #8fa686 !important; /* Verde más apagado y sucio */
+    background: 
+        linear-gradient(135deg, #3a4c2a 0%, #2a3c1f 25%, #1a2c15 50%, #2a3c1f 75%, #3a4c2a 100%),
+        radial-gradient(ellipse at top left, rgba(101, 120, 80, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(80, 100, 60, 0.4) 0%, transparent 50%) !important;
+    background-color: #2a3c1f !important; /* Verde oliva oscuro sucio */
+    border-color: #4a5c3a !important; /* Verde oliva medio sucio */
     box-shadow: 
-        inset -4px -4px #3a4c2d,
-        inset 4px 4px #5a6c4a !important;
+        inset -4px -4px #1a2c15,
+        inset 4px 4px #3a4c2a,
+        inset 0 0 10px rgba(80, 100, 60, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+    
+    /* Efecto de desgaste y musgo */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 30% 40%, rgba(80, 100, 60, 0.3) 0%, transparent 40%),
+            radial-gradient(circle at 70% 60%, rgba(60, 80, 45, 0.25) 0%, transparent 40%),
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.1) 3px, rgba(0, 0, 0, 0.1) 6px);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.6;
+    }
     
     &:hover,
     &:focus {
-        color: #afc8a6 !important;
-        background-color: #5a6c4a !important;
-        border-color: #7b8d6a !important;
+        color: #9fb896 !important;
+        background-color: #3a4c2a !important;
+        border-color: #5a6c4a !important;
     }
     
     &:active {
         box-shadow: 
-            inset 4px 4px #3a4c2d,
-            inset -4px -4px #5a6c4a !important;
+            inset 4px 4px #1a2c15,
+            inset -4px -4px #3a4c2a,
+            inset 0 0 15px rgba(80, 100, 60, 0.4) !important;
     }
 }
 
-/* Botón warning - Naranja/amarillo oscuro (como luz de lámpara de minero) */
+/* Botón warning - Naranja/amarillo oscuro (como luz de lámpara de minero) - Sucio y gastado */
 .nes-btn.is-warning {
-    color: #d4a574 !important; /* Amarillo mostaza */
-    background-color: #6c5a3a !important; /* Marrón anaranjado oscuro */
-    border-color: #8b7355 !important; /* Marrón anaranjado medio */
+    color: #c49564 !important; /* Amarillo mostaza más apagado */
+    background: 
+        linear-gradient(135deg, #5a4a2a 0%, #4a3a1f 25%, #3a2a15 50%, #4a3a1f 75%, #5a4a2a 100%),
+        radial-gradient(ellipse at top left, rgba(139, 100, 43, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 77, 33, 0.4) 0%, transparent 50%) !important;
+    background-color: #4a3a1f !important; /* Marrón anaranjado oscuro sucio */
+    border-color: #6a5a3a !important; /* Marrón anaranjado medio sucio */
     box-shadow: 
-        inset -4px -4px #5a4a2d,
-        inset 4px 4px #7c6a4a !important;
+        inset -4px -4px #3a2a15,
+        inset 4px 4px #5a4a2a,
+        inset 0 0 10px rgba(101, 77, 33, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+    
+    /* Efecto de desgaste y óxido */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 25% 35%, rgba(139, 90, 30, 0.3) 0%, transparent 40%),
+            radial-gradient(circle at 75% 65%, rgba(101, 70, 20, 0.25) 0%, transparent 40%),
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.1) 3px, rgba(0, 0, 0, 0.1) 6px);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.6;
+    }
     
     &:hover,
     &:focus {
-        color: #e6b584 !important;
-        background-color: #7c6a4a !important;
-        border-color: #9b8365 !important;
+        color: #d4a574 !important;
+        background-color: #5a4a2a !important;
+        border-color: #7a6a4a !important;
     }
     
     &:active {
         box-shadow: 
-            inset 4px 4px #5a4a2d,
-            inset -4px -4px #7c6a4a !important;
+            inset 4px 4px #3a2a15,
+            inset -4px -4px #5a4a2a,
+            inset 0 0 15px rgba(101, 77, 33, 0.4) !important;
     }
 }
 
-/* Botón error - Rojo oscuro/óxido (como metal oxidado o peligro) */
+/* Botón error - Rojo oscuro/óxido (como metal oxidado o peligro) - Sucio y gastado */
 .nes-btn.is-error {
-    color: #c89696 !important; /* Rojo apagado */
-    background-color: #5c3a3a !important; /* Rojo oscuro */
-    border-color: #7b5555 !important; /* Rojo medio oscuro */
+    color: #b88686 !important; /* Rojo más apagado y sucio */
+    background: 
+        linear-gradient(135deg, #4a2d2d 0%, #3a1f1f 25%, #2a1515 50%, #3a1f1f 75%, #4a2d2d 100%),
+        radial-gradient(ellipse at top left, rgba(139, 50, 30, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 35, 20, 0.4) 0%, transparent 50%) !important;
+    background-color: #3a1f1f !important; /* Rojo oscuro sucio */
+    border-color: #5a3535 !important; /* Rojo medio oscuro sucio */
     box-shadow: 
-        inset -4px -4px #4a2d2d,
-        inset 4px 4px #6c4a4a !important;
+        inset -4px -4px #2a1515,
+        inset 4px 4px #4a2d2d,
+        inset 0 0 10px rgba(101, 35, 20, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+    
+    /* Efecto de óxido intenso */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 50, 20, 0.4) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(101, 35, 15, 0.35) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(160, 60, 30, 0.2) 0%, transparent 30%),
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.15) 3px, rgba(0, 0, 0, 0.15) 6px);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.7;
+    }
     
     &:hover,
     &:focus {
-        color: #d8a6a6 !important;
-        background-color: #6c4a4a !important;
-        border-color: #8b6565 !important;
+        color: #c89696 !important;
+        background-color: #4a2d2d !important;
+        border-color: #6a4545 !important;
     }
     
     &:active {
         box-shadow: 
-            inset 4px 4px #4a2d2d,
-            inset -4px -4px #6c4a4a !important;
+            inset 4px 4px #2a1515,
+            inset -4px -4px #4a2d2d,
+            inset 0 0 15px rgba(101, 35, 20, 0.4) !important;
     }
 }
 
-/* Botón normal/default - Gris oscuro (como roca) */
+/* Botón normal/default - Gris oscuro (como roca) - Sucio y gastado */
 .nes-btn:not(.is-primary):not(.is-success):not(.is-warning):not(.is-error) {
-    color: #b8b8b8 !important; /* Gris claro apagado */
-    background-color: #4a4a4a !important; /* Gris oscuro */
-    border-color: #6b6b6b !important; /* Gris medio */
+    color: #a8a8a8 !important; /* Gris más apagado y sucio */
+    background: 
+        linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #3a3a3a 100%),
+        radial-gradient(ellipse at top left, rgba(80, 80, 80, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(60, 60, 60, 0.4) 0%, transparent 50%) !important;
+    background-color: #2a2a2a !important; /* Gris oscuro sucio */
+    border-color: #4a4a4a !important; /* Gris medio sucio */
     box-shadow: 
-        inset -4px -4px #3a3a3a,
-        inset 4px 4px #5a5a5a !important;
+        inset -4px -4px #1a1a1a,
+        inset 4px 4px #3a3a3a,
+        inset 0 0 10px rgba(60, 60, 60, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+    
+    /* Efecto de polvo y desgaste */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 30% 40%, rgba(100, 80, 60, 0.2) 0%, transparent 40%),
+            radial-gradient(circle at 70% 60%, rgba(80, 60, 40, 0.25) 0%, transparent 40%),
+            repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0, 0, 0, 0.1) 3px, rgba(0, 0, 0, 0.1) 6px);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.6;
+    }
     
     &:hover,
     &:focus {
-        color: #c8c8c8 !important;
-        background-color: #5a5a5a !important;
-        border-color: #7b7b7b !important;
+        color: #b8b8b8 !important;
+        background-color: #3a3a3a !important;
+        border-color: #5a5a5a !important;
     }
     
     &:active {
         box-shadow: 
-            inset 4px 4px #3a3a3a,
-            inset -4px -4px #5a5a5a !important;
+            inset 4px 4px #1a1a1a,
+            inset -4px -4px #3a3a3a,
+            inset 0 0 15px rgba(60, 60, 60, 0.4) !important;
     }
 }
 
-/* Container NES oscuro - mantener el tema de mina */
+/* Inputs, selects y textareas - Sucio y gastado */
+.nes-input,
+.nes-select,
+.nes-textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+    background: 
+        linear-gradient(135deg, #2a1f15 0%, #1f1a12 25%, #1a1510 50%, #1f1a12 75%, #2a1f15 100%),
+        radial-gradient(ellipse at center, rgba(101, 67, 33, 0.2) 0%, transparent 70%) !important;
+    background-color: #1f1a12 !important;
+    border-color: #3a2d1f !important;
+    color: #c4b4a4 !important;
+    box-shadow: 
+        inset 0 0 10px rgba(0, 0, 0, 0.5),
+        inset 0 0 20px rgba(101, 67, 33, 0.2),
+        0 2px 4px rgba(0, 0, 0, 0.4) !important;
+    position: relative;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 90, 43, 0.15) 0%, transparent 40%),
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.05) 2px, rgba(0, 0, 0, 0.05) 4px);
+        pointer-events: none;
+        z-index: 1;
+        opacity: 0.4;
+    }
+    
+    &:focus {
+        border-color: #5a4535 !important;
+        box-shadow: 
+            inset 0 0 15px rgba(0, 0, 0, 0.6),
+            inset 0 0 30px rgba(101, 67, 33, 0.3),
+            0 2px 6px rgba(0, 0, 0, 0.5) !important;
+    }
+}
+
+/* Botones de usuario y elementos de header - Sucio y gastado */
+#user-header-btn,
+#user-header-info {
+    background: 
+        linear-gradient(135deg, #3a2d1f 0%, #2a1f15 50%, #3a2d1f 100%),
+        radial-gradient(ellipse at center, rgba(101, 67, 33, 0.2) 0%, transparent 70%) !important;
+    background-color: #2a1f15 !important;
+    border-color: #3a2d1f !important;
+    color: #c4b4a4 !important;
+    
+    &:hover {
+        background-color: #3a2d1f !important;
+        border-color: #4a3d2f !important;
+    }
+}
+
+/* Container NES oscuro - mantener el tema de mina - Sucio y gastado */
 .nes-container.is-dark {
-    background-color: #3a2d23 !important; /* Marrón muy oscuro */
-    border-color: #5c4a3a !important; /* Marrón medio */
-    color: #d4c4b4 !important; /* Texto claro apagado */
+    background: 
+        linear-gradient(135deg, #2a1f15 0%, #1f1a12 25%, #1a1510 50%, #1f1a12 75%, #2a1f15 100%),
+        radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(101, 67, 33, 0.3) 0%, transparent 50%) !important;
+    background-color: #1f1a12 !important; /* Marrón muy oscuro sucio */
+    border-color: #3a2d1f !important; /* Marrón medio sucio */
+    color: #c4b4a4 !important; /* Texto claro más apagado */
+    position: relative;
+    box-shadow: 
+        inset 0 0 20px rgba(0, 0, 0, 0.6),
+        inset 0 0 40px rgba(101, 67, 33, 0.2),
+        0 4px 8px rgba(0, 0, 0, 0.5) !important;
+    
+    /* Efecto de polvo y suciedad */
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(139, 90, 43, 0.25) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(101, 67, 33, 0.3) 0%, transparent 40%),
+            radial-gradient(circle at 50% 50%, rgba(60, 40, 20, 0.15) 0%, transparent 50%),
+            linear-gradient(45deg, transparent 30%, rgba(139, 90, 43, 0.1) 50%, transparent 70%);
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    /* Efecto de arañazos y desgaste */
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, 0.08) 2px, rgba(0, 0, 0, 0.08) 4px);
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0.5;
+    }
     
     /* Asegurar que los contenedores con título tengan espacio suficiente arriba */
     &.with-title {
@@ -1040,7 +1970,7 @@ body.state-menu {
     }
     
     .title {
-        color: #d4a574 !important; /* Título en amarillo mostaza apagado */
+        color: #b49564 !important; /* Título en amarillo mostaza más apagado y sucio */
         line-height: 1.8 !important; /* Line-height normal para evitar cortes */
         font-size: 1rem !important; /* Tamaño base para mobile y desktop - importante para sobrescribir estilos de mobile */
         padding: 0.25rem 0.75rem !important; /* Padding horizontal y vertical para evitar que se corte */
@@ -1050,10 +1980,14 @@ body.state-menu {
         position: absolute; /* Posicionamiento absoluto como en NES CSS original */
         top: -0.75rem !important; /* Ajustar posición vertical para que quede centrado en el borde */
         left: 1rem; /* Alinear con el borde izquierdo del contenedor */
-        background-color: #3a2d23 !important; /* Fondo para que se vea sobre el borde */
-        z-index: 1; /* Asegurar que esté por encima del borde */
+        background: 
+            linear-gradient(135deg, #2a1f15 0%, #1f1a12 50%, #2a1f15 100%),
+            radial-gradient(ellipse at center, rgba(101, 67, 33, 0.2) 0%, transparent 70%) !important;
+        background-color: #1f1a12 !important; /* Fondo para que se vea sobre el borde */
+        z-index: 3; /* Asegurar que esté por encima del borde y efectos */
         max-height: none !important; /* Evitar que se corte por altura */
         overflow: visible !important; /* Permitir que el texto se vea completo */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
     }
 }
 
