@@ -98,6 +98,49 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
   }
 }
 
+/* Mensaje de agradecimiento cuando se gira a landscape */
+#orientation-thanks-modal {
+  z-index: 10060 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: none !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  background-color: rgba(0, 0, 0, 0.95) !important;
+  
+  &:not(.hidden) {
+    display: flex !important;
+  }
+  
+  &.hidden {
+    display: none !important;
+  }
+  
+  .old-button {
+    min-width: 200px;
+    margin-top: 2rem;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    
+    .old-button-top {
+      font-size: 1rem !important;
+      padding: 15px 30px !important;
+      min-height: 50px !important;
+    }
+  }
+  
+  p {
+    color: white !important;
+    pointer-events: none;
+  }
+}
+
 @media (max-width: 1024px) and (orientation: landscape) {
   /* Layout base */
   body,
@@ -1266,6 +1309,24 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
     pointer-events: none;
+  }
+}
+
+/* Mantener el mensaje de portrait visible incluso en landscape hasta que se presione el botón */
+@media (max-width: 1024px) and (orientation: landscape) {
+  /* Ocultar el mensaje de portrait cuando se muestra el modal de agradecimiento */
+  body.orientation-thanks-shown {
+    &::before,
+    &::after {
+      display: none !important;
+    }
+  }
+  
+  /* Asegurar que el modal de agradecimiento sea visible */
+  #orientation-thanks-modal:not(.hidden) {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 }
 

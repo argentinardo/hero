@@ -283,185 +283,129 @@ const setupMobileLongPressPrevention = (): void => {
 };
 
 /**
- * Muestra la pantalla de bienvenida al girar el móvil a landscape
- */
-const showWelcomeScreen = (): void => {
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const mainContainer = document.getElementById('main-container');
-    
-    if (welcomeScreen) {
-        welcomeScreen.classList.remove('hidden');
-        console.log('[setupOrientationFullscreen] Mostrando pantalla de bienvenida');
-    }
-    
-    // Ocultar el menú principal mientras se muestra la pantalla de bienvenida
-    if (mainContainer) {
-        mainContainer.style.display = 'none';
-    }
-};
-
-/**
- * Oculta la pantalla de bienvenida y muestra el menú principal
- */
-const hideWelcomeScreen = (store?: GameStore): void => {
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const mainContainer = document.getElementById('main-container');
-    const messageOverlay = document.getElementById('message-overlay');
-    
-    if (welcomeScreen) {
-        welcomeScreen.classList.add('hidden');
-        console.log('[setupOrientationFullscreen] Ocultando pantalla de bienvenida');
-    }
-    
-    // Mostrar el menú principal
-    if (mainContainer) {
-        mainContainer.style.display = 'flex';
-    }
-    
-    // Asegurar que el message-overlay (que contiene el menú) esté visible
-    if (messageOverlay) {
-        messageOverlay.style.display = 'flex';
-    }
-    
-    // Si tenemos el store, asegurar que el estado del menú esté correcto
-    if (store && store.appState !== 'menu') {
-        // No cambiar el estado si ya estamos en otro estado (ej: jugando)
-        return;
-    }
-};
-
-/**
- * Configura el listener para mostrar la pantalla de bienvenida
+ * Configura el listener para mostrar mensaje de agradecimiento y botón "Comenzar"
  * cuando el usuario gira el dispositivo de portrait a landscape en mobile
  */
-const setupOrientationFullscreen = (store?: GameStore): void => {
+const setupOrientationFullscreen = (): void => {
     // Solo configurar en dispositivos móviles
     if (!isMobileDevice()) {
         return;
     }
     
     let wasPortrait = window.matchMedia('(orientation: portrait)').matches;
-    let orientationTimeout: number | null = null;
-    let resizeTimeout: number | null = null;
-    let welcomeScreenShown = false;
+    let hasShownThanks = false; // Flag para evitar mostrar múltiples veces
     
     const handleOrientationChange = () => {
-        // Limpiar timeout anterior si existe
-        if (orientationTimeout) {
-            clearTimeout(orientationTimeout);
-            orientationTimeout = null;
-        }
-        
         // Esperar un momento para que el cambio de orientación se complete
-        orientationTimeout = window.setTimeout(() => {
+        setTimeout(() => {
+            const thanksModal = document.getElementById('orientation-thanks-modal');
+            
+            if (!thanksModal) {
+                console.warn('[setupOrientationFullscreen] Modal de agradecimiento no encontrado');
+                return;
+            }
+            
             const isPortrait = window.matchMedia('(orientation: portrait)').matches;
             const isLandscape = window.matchMedia('(orientation: landscape)').matches;
             
-            console.log('[setupOrientationFullscreen] Estado - wasPortrait:', wasPortrait, 'isPortrait:', isPortrait, 'isLandscape:', isLandscape);
+            console.log('[setupOrientationFullscreen] Orientación cambiada:', { wasPortrait, isPortrait, isLandscape, hasShownThanks });
             
-            // Si cambió de portrait a landscape y aún no se ha mostrado la pantalla de bienvenida
-            if (wasPortrait && isLandscape && !welcomeScreenShown) {
-                showWelcomeScreen();
-                welcomeScreenShown = true;
+            // Si cambió de portrait a landscape y aún no se ha mostrado el mensaje
+            if (wasPortrait && isLandscape && !hasShownThanks) {
+                console.log('[setupOrientationFullscreen] Cambio a landscape detectado, mostrando mensaje de agradecimiento...');
+                
+                // Mostrar el modal con múltiples métodos para asegurar visibilidad
+                thanksModal.classList.remove('hidden');
+                thanksModal.style.display = 'flex';
+                thanksModal.style.visibility = 'visible';
+                thanksModal.style.opacity = '1';
+                thanksModal.style.zIndex = '10060';
+                
+                // Agregar clase al body para ocultar el mensaje de portrait
+                document.body.classList.add('orientation-thanks-shown');
+                
+                hasShownThanks = true;
+                
+                // Verificar que el modal esté visible después de un delay
+                setTimeout(() => {
+                    const computedStyle = window.getComputedStyle(thanksModal);
+                    const isVisible = thanksModal.offsetParent !== null && 
+                                     computedStyle.display !== 'none' &&
+                                     computedStyle.visibility !== 'hidden' &&
+                                     computedStyle.opacity !== '0';
+                    console.log('[setupOrientationFullscreen] Modal visible:', isVisible);
+                    console.log('[setupOrientationFullscreen] Modal styles:', {
+                        display: computedStyle.display,
+                        visibility: computedStyle.visibility,
+                        opacity: computedStyle.opacity,
+                        zIndex: computedStyle.zIndex,
+                        offsetParent: thanksModal.offsetParent !== null
+                    });
+                    
+                    // Si no está visible, forzar visibilidad
+                    if (!isVisible) {
+                        console.warn('[setupOrientationFullscreen] Modal no visible, forzando visibilidad...');
+                        thanksModal.style.display = 'flex !important';
+                        thanksModal.style.visibility = 'visible !important';
+                        thanksModal.style.opacity = '1 !important';
+                    }
+                }, 200);
             }
             
-            // Si vuelve a portrait, ocultar la pantalla de bienvenida y resetear
-            if (isPortrait && wasPortrait === false) {
-                hideWelcomeScreen();
-                welcomeScreenShown = false;
-                console.log('[setupOrientationFullscreen] Vuelta a portrait, ocultando pantalla de bienvenida');
+            // Si vuelve a portrait, ocultar el mensaje de agradecimiento
+            if (isPortrait) {
+                if (thanksModal) {
+                    thanksModal.classList.add('hidden');
+                    thanksModal.style.display = 'none';
+                }
+                document.body.classList.remove('orientation-thanks-shown');
+                hasShownThanks = false; // Resetear para poder mostrarlo de nuevo
             }
             
             // Actualizar el estado de orientación
             wasPortrait = isPortrait;
-        }, 500); // Delay de 500ms después del cambio a landscape
+        }, 500); // Aumentar delay para asegurar que el cambio de orientación se complete
     };
     
-    // Configurar el botón "Comenzar" - usar delegación de eventos para asegurar que funcione
-    const setupWelcomeButton = () => {
-        const welcomeStartBtn = document.getElementById('welcome-start-btn');
-        if (welcomeStartBtn) {
-            // Remover listener anterior si existe para evitar duplicados
-            const newBtn = welcomeStartBtn.cloneNode(true) as HTMLButtonElement;
-            welcomeStartBtn.parentNode?.replaceChild(newBtn, welcomeStartBtn);
+    // Configurar el botón "Comenzar" - usar delegación de eventos para elementos dinámicos
+    document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.id === 'orientation-start-btn' || target.closest('#orientation-start-btn')) {
+            const thanksModal = document.getElementById('orientation-thanks-modal');
+            console.log('[setupOrientationFullscreen] Botón Comenzar presionado, activando pantalla completa...');
             
-            // Asegurar que el botón sea clickeable
-            newBtn.style.pointerEvents = 'auto';
-            newBtn.style.cursor = 'pointer';
-            newBtn.style.position = 'relative';
-            newBtn.style.zIndex = '10061';
-            
-            const handleClick = (e: Event) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[setupOrientationFullscreen] Botón Comenzar presionado, activando pantalla completa...');
-                // Activar pantalla completa (igual que botón Jugar)
-                requestFullscreen();
-                // Ocultar pantalla de bienvenida y mostrar menú
-                hideWelcomeScreen(store);
-                welcomeScreenShown = false;
-            };
-            
-            newBtn.addEventListener('click', handleClick, { passive: false });
-            newBtn.addEventListener('touchstart', handleClick, { passive: false });
-            
-            console.log('[setupOrientationFullscreen] Botón Comenzar configurado correctamente');
-        } else {
-            console.warn('[setupOrientationFullscreen] Botón welcome-start-btn no encontrado');
-        }
-    };
-    
-    // Configurar el botón inmediatamente
-    setupWelcomeButton();
-    
-    // También configurar cuando se muestre la pantalla de bienvenida (por si se crea dinámicamente)
-    const welcomeScreen = document.getElementById('welcome-screen');
-    if (welcomeScreen) {
-        const observer = new MutationObserver(() => {
-            if (!welcomeScreen.classList.contains('hidden')) {
-                setupWelcomeButton();
+            // Ocultar el mensaje de agradecimiento
+            if (thanksModal) {
+                thanksModal.classList.add('hidden');
+                thanksModal.style.display = 'none';
             }
-        });
-        observer.observe(welcomeScreen, {
-            attributes: true,
-            attributeFilter: ['class']
-        });
-    }
-    
-    // Listener para cambios de orientación
-    window.addEventListener('orientationchange', () => {
-        console.log('[setupOrientationFullscreen] Evento orientationchange disparado');
-        handleOrientationChange();
+            
+            // Remover la clase del body para ocultar definitivamente el mensaje de portrait
+            document.body.classList.remove('orientation-thanks-shown');
+            
+            // Activar pantalla completa
+            requestFullscreen();
+        }
     });
     
+    // Listener para cambios de orientación
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
     // También escuchar cambios de resize (algunos navegadores no disparan orientationchange)
+    let resizeTimeout: number | null = null;
     window.addEventListener('resize', () => {
         if (resizeTimeout) {
             clearTimeout(resizeTimeout);
         }
         resizeTimeout = window.setTimeout(() => {
-            const isPortrait = window.matchMedia('(orientation: portrait)').matches;
-            const isLandscape = window.matchMedia('(orientation: landscape)').matches;
-            
-            // Solo procesar si realmente cambió la orientación
-            if ((wasPortrait && isLandscape) || (!wasPortrait && isPortrait)) {
-                console.log('[setupOrientationFullscreen] Cambio de orientación detectado en resize');
-                handleOrientationChange();
-            }
-        }, 300);
+            handleOrientationChange();
+        }, 500);
     });
     
     // Verificar orientación inicial
     if (wasPortrait) {
-        // Si inicia en portrait, configurar para mostrar pantalla de bienvenida cuando cambie a landscape
+        // Si inicia en portrait, configurar para mostrar mensaje cuando cambie a landscape
         console.log('[setupOrientationFullscreen] Dispositivo en portrait, esperando cambio a landscape...');
-    } else {
-        // Si inicia en landscape, mostrar pantalla de bienvenida después de un delay
-        console.log('[setupOrientationFullscreen] Dispositivo ya en landscape, mostrando pantalla de bienvenida...');
-        setTimeout(() => {
-            showWelcomeScreen();
-            welcomeScreenShown = true;
-        }, 1000); // Delay inicial de 1 segundo
     }
 };
 
@@ -4374,12 +4318,8 @@ export const setupUI = (store: GameStore) => {
     syncLevelSelector(store);
     setupLevelData(store);
     
-    // Detectar cambio de orientación y mostrar pantalla de bienvenida en mobile
-    setupOrientationFullscreen(store);
-    
-    // Prevenir long press en todos los botones móviles
-    setupMobileLongPressPrevention();
-    
+    // Detectar cambio de orientación y activar pantalla completa automáticamente en mobile
+    setupOrientationFullscreen();
     setupMenuButtons(store);
     setupGallery(store);
     setupKeyboardShortcuts(store);
