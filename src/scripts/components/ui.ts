@@ -191,6 +191,66 @@ const requestFullscreen = (): void => {
     }
 };
 
+/**
+ * Configura el listener para activar pantalla completa automáticamente
+ * cuando el usuario gira el dispositivo de portrait a landscape en mobile
+ */
+const setupOrientationFullscreen = (): void => {
+    // Solo configurar en dispositivos móviles
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    let wasPortrait = window.matchMedia('(orientation: portrait)').matches;
+    let fullscreenRequested = false;
+    
+    const handleOrientationChange = () => {
+        // Esperar un momento para que el cambio de orientación se complete
+        setTimeout(() => {
+            const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+            const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+            
+            // Si cambió de portrait a landscape y aún no se ha solicitado pantalla completa
+            if (wasPortrait && isLandscape && !fullscreenRequested) {
+                // Verificar si ya está en pantalla completa
+                const isFullscreen = !!(document.fullscreenElement || 
+                                       (document as any).webkitFullscreenElement || 
+                                       (document as any).mozFullScreenElement || 
+                                       (document as any).msFullscreenElement);
+                
+                if (!isFullscreen) {
+                    console.log('[setupOrientationFullscreen] Cambio a landscape detectado, activando pantalla completa...');
+                    requestFullscreen();
+                    fullscreenRequested = true;
+                }
+            }
+            
+            // Actualizar el estado de orientación
+            wasPortrait = isPortrait;
+        }, 300); // Delay para asegurar que el cambio de orientación se complete
+    };
+    
+    // Listener para cambios de orientación
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    // También escuchar cambios de resize (algunos navegadores no disparan orientationchange)
+    let resizeTimeout: number | null = null;
+    window.addEventListener('resize', () => {
+        if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+        }
+        resizeTimeout = window.setTimeout(() => {
+            handleOrientationChange();
+        }, 500);
+    });
+    
+    // Verificar orientación inicial
+    if (wasPortrait) {
+        // Si inicia en portrait, configurar para activar cuando cambie a landscape
+        console.log('[setupOrientationFullscreen] Dispositivo en portrait, esperando cambio a landscape...');
+    }
+};
+
 type PrimaryUserAction = 'login' | 'logout' | 'editor';
 
 const resolvePrimaryAction = (store: GameStore): { action: PrimaryUserAction; label: string } => {
@@ -1110,6 +1170,12 @@ export const showMenu = (store: GameStore) => {
                         if (userHeaderNickname) {
                             userHeaderNickname.textContent = displayName.toUpperCase();
                             userHeaderInfo.classList.remove('hidden');
+                            
+                            // Iniciar animación de marquesina si el texto es más largo que el contenedor
+                            const marqueeEl = document.getElementById('user-header-marquee');
+                            if (marqueeEl) {
+                                startMarqueeAnimation(marqueeEl);
+                            }
                         }
                         if (userHeaderAvatar) {
                             const savedAvatar = getUserStorage('avatar') || 'P';
@@ -4093,6 +4159,9 @@ export const setupUI = (store: GameStore) => {
     updateHamburgerButtonLabel(store);
     syncLevelSelector(store);
     setupLevelData(store);
+    
+    // Detectar cambio de orientación y activar pantalla completa automáticamente en mobile
+    setupOrientationFullscreen();
     setupMenuButtons(store);
     setupGallery(store);
     setupKeyboardShortcuts(store);
@@ -4864,13 +4933,19 @@ const updateUserHeaderInfo = async (store?: GameStore) => {
         const { getUserStorage } = await import('../utils/storage');
         const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
         
-        // Actualizar "HOLA" con traducción
+        // Actualizar "Bienvenido" con traducción
         if (userHeaderHello) {
             userHeaderHello.textContent = t('user.hello');
         }
-        // Mostrar solo el nombre
+        // Mostrar el nombre completo
         userHeaderNickname.textContent = displayName.toUpperCase();
         userHeaderInfo.classList.remove('hidden');
+        
+        // Iniciar animación de marquesina si el texto es más largo que el contenedor
+        const marqueeEl = document.getElementById('user-header-marquee');
+        if (marqueeEl) {
+            startMarqueeAnimation(marqueeEl);
+        }
         
         // Actualizar avatar (solo si tenemos store)
         if (userHeaderAvatar && store) {
@@ -8299,6 +8374,39 @@ export const showCampaignVictoryModal = (store: GameStore) => {
         
         newMainMenuBtn.addEventListener('click', handleMainMenu);
     }
+};
+
+/**
+ * Inicia la animación de marquesina para el texto del usuario
+ */
+const startMarqueeAnimation = (marqueeEl: HTMLElement) => {
+    // Limpiar animación anterior si existe
+    marqueeEl.style.animation = 'none';
+    marqueeEl.style.transform = 'translateX(0)';
+    
+    // Obtener el contenedor padre (el botón)
+    const container = marqueeEl.parentElement;
+    if (!container) return;
+    
+    // Esperar un frame para que el DOM se actualice
+    requestAnimationFrame(() => {
+        const containerWidth = container.clientWidth;
+        const marqueeWidth = marqueeEl.scrollWidth;
+        
+        // Solo animar si el texto es más largo que el contenedor
+        if (marqueeWidth > containerWidth) {
+            // Calcular la distancia total que debe recorrer
+            // El texto debe moverse desde la derecha (100%) hasta que desaparezca completamente por la izquierda
+            const totalDistance = marqueeWidth + containerWidth;
+            // Velocidad: aproximadamente 50px por segundo
+            const duration = Math.max(8, totalDistance / 50);
+            
+            marqueeEl.style.animation = `marquee-scroll ${duration}s linear infinite`;
+        } else {
+            marqueeEl.style.animation = 'none';
+            marqueeEl.style.transform = 'translateX(0)';
+        }
+    });
 };
 
 /**

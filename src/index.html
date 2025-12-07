@@ -651,19 +651,14 @@
                     <!-- Usuario logueado (debajo del selector de idioma) -->
                     <div id="user-header-info" class="hidden mt-4" style="font-family: 'Press Start 2P', monospace;">
                         <button id="user-header-btn"
-                            class="flex flex-row items-center gap-2 cursor-pointer bg-gray-800 border-2 border-gray-600 rounded px-3 py-2 hover:bg-gray-700 transition-colors w-full">
-                            <canvas id="user-header-avatar" width="48" height="48" class="avatar-canvas"></canvas>
-                            <div class="flex  items-center gap-1">
-                                <span id="user-header-hello" class="text-xs text-gray-300">Bienvenido</span>
+                            class="flex flex-row items-center gap-2 cursor-pointer bg-gray-800 border-2 border-gray-600 rounded px-3 py-2 hover:bg-gray-700 transition-colors w-full overflow-hidden">
+                            <div id="user-header-marquee" class="flex items-center gap-1 whitespace-nowrap">
+                                <span id="user-header-hello" class="text-xs text-gray-300"></span>
                                 <span id="user-header-nickname" class="text-xs text-white uppercase"></span>
+                                <span id="user-header-area" class="text-xs text-gray-400"> - área personal</span>
                             </div>
                         </button>
                     </div>
-                    <button id="start-game-btn" class="old-button" type="button" ontouchstart>
-                        <div class="old-button-top">JUGAR</div>
-                        <div class="old-button-bottom"></div>
-                        <div class="old-button-base"></div>
-                    </button>
                     <button id="level-editor-btn" class="old-button" type="button" ontouchstart>
                         <div class="old-button-top">INGRESAR</div>
                         <div class="old-button-bottom"></div>
@@ -686,6 +681,11 @@
                     </button>
                     <button id="credits-btn" class="old-button" type="button" ontouchstart>
                         <div class="old-button-top">CRÉDITOS</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="start-game-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">JUGAR</div>
                         <div class="old-button-bottom"></div>
                         <div class="old-button-base"></div>
                     </button>
@@ -1071,7 +1071,7 @@
     <!-- Modal Mi Área de user -->
     <div id="profile-modal"
         class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center"
-        style="z-index: 60;">
+        style="z-index: 10050 !important;">
         <div class="nes-container with-title is-dark max-w-2xl mx-6"
             style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
             <p class="title text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI

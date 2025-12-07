@@ -342,7 +342,7 @@ const translations: Record<Language, Translations> = {
             profileTitle: 'MI ÁREA',
             save: 'Guardar',
             changeAvatar: 'Cambiar Avatar',
-            hello: 'HOLA',
+            hello: 'Bienvenido',
         },
         modals: {
             confirm: 'Confirmar',
@@ -800,7 +800,7 @@ const translations: Record<Language, Translations> = {
             profileTitle: 'LA MEVA ÀREA',
             save: 'Guardar',
             changeAvatar: 'Canviar Avatar',
-            hello: 'HOLA',
+            hello: 'Bienvenido',
         },
         modals: {
             confirm: 'Confirmar',
