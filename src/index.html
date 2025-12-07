@@ -736,12 +736,10 @@
         <!-- QR Code Modal Popup -->
         <div id="qr-code-modal"
             class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50">
-            <div class="bg-gray-800 border-4 border-white rounded-lg p-6"
+            <div class="bg-gray-800 border-4 border-white rounded-lg p-6 relative"
                 style="font-family: 'Press Start 2P', monospace;">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg">QR CODE</h2>
-                    <button id="close-qr-modal" class="text-2xl cursor-pointer text-white hover:text-red-500">✕</button>
-                </div>
+                <h2 class="text-lg mb-4">QR CODE</h2>
+                <button id="close-qr-modal" class="absolute top-4 right-4 text-2xl cursor-pointer text-white hover:text-red-500 z-10">✕</button>
 
                 <!-- QR Code Container -->
                 <div id="qr-code-container" class="flex flex-col items-center gap-4">
@@ -792,9 +790,11 @@
                 LEVEL COMPLETE
             </h1>
             <div class="flex flex-col gap-4">
-                <button id="level-complete-back-to-editor-btn" class="nes-btn is-primary"
-                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
-                    Volver al Editor
+                <button id="level-complete-back-to-editor-btn" class="old-button" type="button"
+                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem;">
+                    <div class="old-button-top">Volver al Editor</div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
                 </button>
                 <button id="level-complete-restart-btn" class="nes-btn is-warning"
                     style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
@@ -1046,11 +1046,10 @@
         style="z-index: 50;">
         <div class="nes-container with-title is-dark max-w-6xl mx-6 my-8"
             style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
-            <div class="flex justify-between items-center mb-6">
-                <p class="title text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">
-                    GALERÍA DE NIVELES</p>
-                <button id="gallery-close-btn" class="nes-btn">✕</button>
-            </div>
+            <p class="title text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">
+                GALERÍA DE NIVELES</p>
+            <button id="gallery-close-btn" class="nes-btn">✕</button>
+            <div class="mb-6">
 
             <!-- Filtros y ordenamiento -->
             <div class="mb-6 flex gap-4 items-center flex-wrap">
@@ -1075,11 +1074,10 @@
         style="z-index: 60;">
         <div class="nes-container with-title is-dark max-w-2xl mx-6"
             style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
-            <div class="flex justify-between items-center mb-6">
-                <p class="title text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI
-                    ÁREA</p>
-                <button id="profile-close-btn" class="nes-btn">✕</button>
-            </div>
+            <p class="title text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI
+                ÁREA</p>
+            <button id="profile-close-btn" class="nes-btn">✕</button>
+            <div class="mb-6">
 
             <div class="space-y-4">
                 <!-- Avatar -->

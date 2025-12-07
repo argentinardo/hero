@@ -1842,12 +1842,28 @@ export const startGame = (store: GameStore, levelOverride: string[] | null = nul
             if (levelsSectionMobile) (levelsSectionMobile as HTMLElement).style.display = 'none';
             
             // Crear o mostrar botón "Volver al Editor" en el panel de usuario
-            let resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel');
+            let resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel') as HTMLButtonElement | null;
             if (!resumeEditorBtnPanel) {
-                resumeEditorBtnPanel = document.createElement('button');
-                resumeEditorBtnPanel.id = 'resume-editor-btn-panel';
-                resumeEditorBtnPanel.className = 'nes-btn is-primary w-full mt-4 text-xs';
-                resumeEditorBtnPanel.textContent = t('editor.backToEditor');
+                const button = document.createElement('button');
+                button.id = 'resume-editor-btn-panel';
+                button.className = 'old-button old-button--small w-full mt-4';
+                button.type = 'button';
+                resumeEditorBtnPanel = button;
+                
+                const buttonTop = document.createElement('div');
+                buttonTop.className = 'old-button-top';
+                buttonTop.textContent = t('editor.backToEditor');
+                
+                const buttonBottom = document.createElement('div');
+                buttonBottom.className = 'old-button-bottom';
+                
+                const buttonBase = document.createElement('div');
+                buttonBase.className = 'old-button-base';
+                
+                resumeEditorBtnPanel.appendChild(buttonTop);
+                resumeEditorBtnPanel.appendChild(buttonBottom);
+                resumeEditorBtnPanel.appendChild(buttonBase);
+                
                 userPanel.appendChild(resumeEditorBtnPanel);
                 
                 // Agregar listener
@@ -5076,10 +5092,9 @@ const updateSettingsLabels = () => {
  */
 export const updateEditorTexts = (store: GameStore) => {
     // Botones de volver al editor
-    const resumeEditorBtnPanel = document.getElementById('resume-editor-btn-panel') as HTMLButtonElement | null;
-    const resumeEditorBtnMenu = document.getElementById('resume-editor-btn-menu') as HTMLButtonElement | null;
-    if (resumeEditorBtnPanel) resumeEditorBtnPanel.textContent = t('editor.backToEditor');
-    if (resumeEditorBtnMenu) resumeEditorBtnMenu.textContent = t('editor.backToEditor');
+    updateOldButtonTextById('resume-editor-btn-panel', t('editor.backToEditor'));
+    updateOldButtonTextById('hamburger-resume-editor-btn-menu', t('editor.backToEditor'));
+    updateOldButtonTextById('level-complete-back-to-editor-btn', t('editor.backToEditor'));
     
     // Título del panel del editor
     const editorPanelTitle = document.querySelector('#editor-panel-title span:last-child');

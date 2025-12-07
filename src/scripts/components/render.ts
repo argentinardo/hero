@@ -1472,45 +1472,10 @@ export const animateSplash = (store: GameStore) => {
     const splashSprite = store.sprites.splash;
     const splashFixed = store.sprites['splash-fixed'];
     
-    // Verificar si el sprite está completamente cargado
-    const isSpriteLoaded = splashSprite && splashSprite.complete && splashSprite.naturalWidth > 0;
-    
-    // Si el sprite no está completamente cargado, mostrar splash-fixed
-    if (!isSpriteLoaded) {
-        // Mostrar splash-fixed hasta que el sprite se cargue
-        if (splashFixed && (!activeContainer.style.backgroundImage || activeContainer.dataset.imageSet !== 'fixed')) {
-            const bgImage = `url(${splashFixed.src})`;
-            updateSplashContainer(activeContainer, bgImage, 'cover', 'center');
-            activeContainer.dataset.imageSet = 'fixed';
-            
-            // También actualizar el contenedor antiguo si existe y es diferente
-            if (splashContainer && splashContainer !== activeContainer) {
-                updateSplashContainer(splashContainer, bgImage, 'cover', 'center');
-                splashContainer.dataset.imageSet = 'fixed';
-            }
-        }
-        return; // No animar hasta que el sprite esté completamente cargado
-    }
-    
-    // El sprite está completamente cargado, cambiar a la animación
-    if (activeContainer.dataset.imageSet === 'fixed') {
-        // Cambiar de splash-fixed a splash animado
-        const bgImage = `url(${splashSprite.src})`;
-        updateSplashContainer(activeContainer, bgImage, '2000% 100%', '0% 0%');
-        activeContainer.dataset.imageSet = 'animated';
-        
-        // También actualizar el contenedor antiguo si existe y es diferente
-        if (splashContainer && splashContainer !== activeContainer) {
-            updateSplashContainer(splashContainer, bgImage, '2000% 100%', '0% 0%');
-            splashContainer.dataset.imageSet = 'animated';
-        }
-    }
-    
-    // En mobile, establecer el backgroundImage pero no animar - el CSS lo fija en 0% 0%
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                     (window.innerWidth <= 1024 && window.matchMedia('(orientation: landscape)').matches);
-    if (isMobile) {
-        // En mobile, solo establecer la imagen de fondo (splashSprite mobile ya está cargado en store.sprites.splash)
+    // Usar siempre el sprite animado si está disponible, incluso si aún se está cargando
+    // El navegador mostrará la imagen cuando esté lista
+    if (splashSprite && splashSprite.src) {
+        // Establecer la imagen de fondo del sprite animado si aún no está establecida
         if (activeContainer.dataset.imageSet !== 'animated') {
             const bgImage = `url(${splashSprite.src})`;
             updateSplashContainer(activeContainer, bgImage, '2000% 100%', '0% 0%');
@@ -1522,20 +1487,22 @@ export const animateSplash = (store: GameStore) => {
                 splashContainer.dataset.imageSet = 'animated';
             }
         }
-        return;
-    }
-    
-    // Establecer la imagen de fondo del sprite animado si aún no está establecida
-    if (activeContainer.dataset.imageSet !== 'animated') {
-        const bgImage = `url(${splashSprite.src})`;
-        updateSplashContainer(activeContainer, bgImage, '2000% 100%', '0% 0%');
-        activeContainer.dataset.imageSet = 'animated';
-        
-        // También actualizar el contenedor antiguo si existe y es diferente
-        if (splashContainer && splashContainer !== activeContainer) {
-            updateSplashContainer(splashContainer, bgImage, '2000% 100%', '0% 0%');
-            splashContainer.dataset.imageSet = 'animated';
+    } else if (splashFixed && splashFixed.src) {
+        // Solo usar splash-fixed como fallback si el sprite animado no está disponible
+        if (activeContainer.dataset.imageSet !== 'fixed') {
+            const bgImage = `url(${splashFixed.src})`;
+            updateSplashContainer(activeContainer, bgImage, 'cover', 'center');
+            activeContainer.dataset.imageSet = 'fixed';
+            
+            // También actualizar el contenedor antiguo si existe y es diferente
+            if (splashContainer && splashContainer !== activeContainer) {
+                updateSplashContainer(splashContainer, bgImage, 'cover', 'center');
+                splashContainer.dataset.imageSet = 'fixed';
+            }
         }
+        return; // No animar si solo tenemos splash-fixed
+    } else {
+        return; // No hay sprites disponibles
     }
     
     // Continuar con la animación incluso si el sprite aún se está cargando

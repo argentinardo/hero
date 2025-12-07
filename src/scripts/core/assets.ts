@@ -21,7 +21,6 @@ import lavaColSrc from '../../assets/sprites/lava_col.png';
 import lightSrc from '../../assets/sprites/luz.png';
 import backgroundSrc from '../../assets/sprites/background_small.png';
 import splashSrc from '../../assets/sprites/splashSprite.jpg';
-import splashMobileSrc from '../../assets/sprites/splashSprite_mobile.jpg';
 import splashFixedSrc from '../../assets/sprites/splash-fixed.jpg';
 import baseSrc from '../../assets/sprites/base.png';
 import heroLogoSrc from '../../assets/sprites/hero-logo.png';
@@ -58,7 +57,7 @@ export const SPRITE_SOURCES: Record<string, string> = {
     K: lavaColSrc,
     L: lightSrc,
     background: backgroundSrc,
-    splash: isMobile() ? splashMobileSrc : splashSrc,
+    splash: splashSrc,
     'splash-fixed': splashFixedSrc,
     base: baseSrc,
     heroLogo: heroLogoSrc,

@@ -334,15 +334,16 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     }
 
     /* Message Overlay */
-    /* Botones del menú inicial - reducir a 80% del tamaño en mobile */
+    /* Botones del menú inicial - todos del mismo tamaño en mobile */
     #start-game-btn,
     #gallery-btn,
     #level-editor-btn,
     #credits-btn,
+    #share-game-btn,
+    #mobile-qr-btn,
     #install-pwa-btn,
     #play-store-btn {
-        transform: scale(0.8) !important;
-        transform-origin: center center;
+        transform: none !important;
     }
     
     /* Eliminar todos los márgenes y espaciado entre botones del menú inicial en mobile */
@@ -373,11 +374,7 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         }
     }
     
-    /* Desactivar animación del background del splash en mobile - usar imagen estática */
-    #splash-container {
-        background-size: cover !important;
-        background-position: center center !important;
-    }
+
     
     /* Asegurar que el splash sea visible en móvil cuando está en el menú */
     body.state-menu {
@@ -389,9 +386,6 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            background-size: cover !important; /* Imagen estática mobile - cubrir todo el área */
-            background-repeat: no-repeat !important;
-            background-position: center center !important; /* Centrar imagen estática */
             /* Quitar pixelated en mobile */
             image-rendering: auto !important;
             -webkit-image-rendering: auto !important;
@@ -565,6 +559,201 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
         }
     }
     
+    .crt-tv-container {
+        width: 100vw;
+
+        display: flex;
+        .crt-tv-frame {
+            width: 75%;
+            .crt-tv-screen {
+                width: 100%;
+            }
+        }
+        .menu-buttons-panel  {
+            #user-header-btn {
+                display: flex  !important;
+                flex-direction: row !important;
+                padding: 4px !important;
+                font-size: 8px !important;
+            }
+            width: 25%;
+            #hero-logo-menu {
+                display: none !important;
+            }
+        }
+    }
+
+    .main-menu-layout {
+        position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+        flex-direction: row !important;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        align-items: flex-start;
+        width: 100%;
+        max-width: 100vw;
+        justify-content: flex-start;
+        .crt-tv-container {
+            width: auto;
+            flex-direction: row !important;
+            align-items: stretch;
+            gap: 0;
+            flex-shrink: 0;
+            #user-header-btn {
+                flex-direction: column;
+            }
+            .crt-tv-frame {
+                max-width: 70%;
+                padding: 5px;
+                border-width: 5px;
+                flex-shrink: 0;
+            }
+            
+            .menu-buttons-panel {
+                width: 35%;
+                gap: 0.4rem;
+                padding: 0.5rem;
+                margin: 0 !important;
+                flex-shrink: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-auto-rows: auto;
+                
+                /* Logo ocupa toda la fila y se ve completo */
+                #hero-logo-menu {
+                    display: none;
+                }
+                
+                /* User header ocupa toda la fila y se ve completo */
+                #user-header-info {
+                    grid-column: 1 / -1;
+                    width: 100% !important;
+                    display: block !important;
+                    white-space: nowrap;
+                    overflow: visible;
+                    
+                    #user-header-btn {
+                        width: 100% !important;
+                        padding: 4px;
+                    }
+                }
+                
+                /* JUGAR ocupa toda la fila */
+                #start-game-btn {
+                    grid-column: 1 / -1;
+                    width: 100% !important;
+                }
+                
+                /* Los demás botones en grid de 2 columnas */
+                #level-editor-btn,
+                #gallery-btn,
+                #share-game-btn,
+                #mobile-qr-btn,
+                #credits-btn {
+                    width: 100% !important;
+                }
+                
+                .old-button {
+                    width: 100% !important;
+                    margin: 0;
+                    min-width: auto !important;
+                    max-width: 100% !important;
+                    
+                    .old-button-top {
+                        font-size: 0.5rem !important;
+                        min-height: 32px !important;
+                        padding: 6px 10px !important;
+                        white-space: nowrap;
+                        overflow: visible;
+                    }
+                }
+                
+                /* Language selector también ocupa toda la fila y es visible */
+                #language-selector-container {
+                    grid-column: 1 / -1;
+                    width: 100% !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    
+                    p {
+                        font-size: 0.4rem !important;
+                        padding: 0.25rem 0.5rem !important;
+                        margin-bottom: 0.3rem !important;
+                        white-space: nowrap;
+                        overflow: visible;
+                        display: block !important;
+                    }
+                    
+                    .flex {
+                        display: flex !important;
+                        gap: 0.3rem;
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    
+    #hero-logo-menu {
+        display: none;
+    }
+    
+    /* Todos los botones del mismo tamaño */
+    .menu-buttons-panel .old-button {
+        width: 100%;
+        margin-bottom: 0.4rem;
+        
+        .old-button-top {
+            font-size: 0.55rem !important;
+            padding: 7px 12px !important;
+            min-height: 36px !important;
+        }
+    }
+    
+    /* Botones de idioma también del mismo tamaño base */
+    .menu-buttons-panel .old-button--small {
+        width: 100%;
+        
+        .old-button-top {
+            font-size: 0.55rem !important;
+            padding: 7px 12px !important;
+            min-height: 36px !important;
+        }
+    }
+    
+    #language-selector-container {
+        width: 100%;
+        
+        p {
+            font-size: 0.45rem !important;
+            padding: 0.25rem 0.5rem !important;
+            margin-bottom: 0.4rem !important;
+        }
+        
+        .flex {
+            gap: 0.4rem;
+        }
+        
+        .old-button--small {
+            flex: 1;
+            
+            .old-button-top {
+                font-size: 0.5rem !important;
+                padding: 5px 8px !important;
+                min-height: 32px !important;
+            }
+        }
+    }
+
+
+
+
+
     /* Panel de Usuario - Visible también en desktop */
 
     /* Controles móviles */

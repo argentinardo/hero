@@ -37,6 +37,11 @@
     &[style*="display: none"] {
       display: none !important;
     }
+    
+    // En mobile: una sola columna
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr !important;
+    }
   }
 }
 
