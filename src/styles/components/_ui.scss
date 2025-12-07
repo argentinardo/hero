@@ -2050,18 +2050,34 @@ textarea {
     justify-content: center !important;
     align-items: center !important;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%);
+    pointer-events: auto !important;
     
     &.hidden {
         display: none !important;
     }
     
-    h1 {
-        animation: pulse-welcome 2s ease-in-out infinite;
+    > div {
+        pointer-events: auto !important;
     }
     
-    .old-button {
+    h1 {
+        animation: pulse-welcome 2s ease-in-out infinite;
+        pointer-events: none !important;
+    }
+    
+    #welcome-start-btn {
         margin-top: 2rem;
         min-width: 200px;
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        position: relative !important;
+        z-index: 10061 !important;
+        
+        .old-button-top,
+        .old-button-bottom,
+        .old-button-base {
+            pointer-events: none !important;
+        }
     }
 }
 

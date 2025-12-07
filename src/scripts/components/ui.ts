@@ -377,16 +377,54 @@ const setupOrientationFullscreen = (store?: GameStore): void => {
         }, 500); // Delay de 500ms después del cambio a landscape
     };
     
-    // Configurar el botón "Comenzar"
-    const welcomeStartBtn = document.getElementById('welcome-start-btn');
-    if (welcomeStartBtn) {
-        welcomeStartBtn.addEventListener('click', () => {
-            console.log('[setupOrientationFullscreen] Botón Comenzar presionado, activando pantalla completa...');
-            // Activar pantalla completa (igual que botón Jugar)
-            requestFullscreen();
-            // Ocultar pantalla de bienvenida y mostrar menú
-            hideWelcomeScreen(store);
-            welcomeScreenShown = false;
+    // Configurar el botón "Comenzar" - usar delegación de eventos para asegurar que funcione
+    const setupWelcomeButton = () => {
+        const welcomeStartBtn = document.getElementById('welcome-start-btn');
+        if (welcomeStartBtn) {
+            // Remover listener anterior si existe para evitar duplicados
+            const newBtn = welcomeStartBtn.cloneNode(true) as HTMLButtonElement;
+            welcomeStartBtn.parentNode?.replaceChild(newBtn, welcomeStartBtn);
+            
+            // Asegurar que el botón sea clickeable
+            newBtn.style.pointerEvents = 'auto';
+            newBtn.style.cursor = 'pointer';
+            newBtn.style.position = 'relative';
+            newBtn.style.zIndex = '10061';
+            
+            const handleClick = (e: Event) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[setupOrientationFullscreen] Botón Comenzar presionado, activando pantalla completa...');
+                // Activar pantalla completa (igual que botón Jugar)
+                requestFullscreen();
+                // Ocultar pantalla de bienvenida y mostrar menú
+                hideWelcomeScreen(store);
+                welcomeScreenShown = false;
+            };
+            
+            newBtn.addEventListener('click', handleClick, { passive: false });
+            newBtn.addEventListener('touchstart', handleClick, { passive: false });
+            
+            console.log('[setupOrientationFullscreen] Botón Comenzar configurado correctamente');
+        } else {
+            console.warn('[setupOrientationFullscreen] Botón welcome-start-btn no encontrado');
+        }
+    };
+    
+    // Configurar el botón inmediatamente
+    setupWelcomeButton();
+    
+    // También configurar cuando se muestre la pantalla de bienvenida (por si se crea dinámicamente)
+    const welcomeScreen = document.getElementById('welcome-screen');
+    if (welcomeScreen) {
+        const observer = new MutationObserver(() => {
+            if (!welcomeScreen.classList.contains('hidden')) {
+                setupWelcomeButton();
+            }
+        });
+        observer.observe(welcomeScreen, {
+            attributes: true,
+            attributeFilter: ['class']
         });
     }
     
