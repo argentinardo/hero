@@ -103,6 +103,9 @@ let touchStartY2 = 0;
 let touchStartTime = 0;
 let isTwoFingerGesture = false;
 let lastTwoFingerY = 0;
+let initialPinchDistance = 0;
+let initialZoomScale = 1;
+let isPinching = false;
 
 export const bindEditorCanvas = (store: GameStore) => {
     const canvas = store.dom.canvas;
@@ -469,15 +472,21 @@ export const bindEditorCanvas = (store: GameStore) => {
 
         const touches = event.touches;
 
-        // Si hay dos dedos tocando, NO prevenir el comportamiento por defecto
-        // Esto permite el scroll nativo de dos dedos para generar más espacio
+        // Si hay dos dedos tocando, preparar para pinch zoom o pan
         if (touches.length === 2) {
             touchStartY1 = touches[0].clientY;
             touchStartY2 = touches[1].clientY;
             touchStartTime = Date.now();
             isTwoFingerGesture = true;
             lastTwoFingerY = (touchStartY1 + touchStartY2) / 2;
-            // NO hacer preventDefault para permitir scroll nativo
+            
+            // Inicializar variables de pinch
+            initialPinchDistance = 0;
+            initialZoomScale = store.dom.zoomScale ?? 1.0;
+            isPinching = false;
+            
+            // Prevenir comportamiento por defecto para controlar el zoom/pan manualmente
+            event.preventDefault();
             return; // No procesar como toque normal
         }
         
@@ -572,6 +581,8 @@ export const bindEditorCanvas = (store: GameStore) => {
             touchStartY2 = 0;
             touchStartTime = 0;
             lastTwoFingerY = 0;
+            initialPinchDistance = 0;
+            isPinching = false;
         }, 100);
     });
 

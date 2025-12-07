@@ -1595,9 +1595,8 @@ const setupPinchZoom = (store: GameStore) => {
             const isEditorMode = store.appState === 'editing';
             
             if (isEditorMode) {
-                // En editor: NO hacer zoom, solo permitir scroll de dos dedos
-                // No prevenir el comportamiento por defecto para permitir scroll nativo
-                return; // Dejar que el editor maneje el scroll de dos dedos
+                // En editor: el editor maneja su propio pinch zoom, no interferir
+                return; // Dejar que el editor maneje el pinch zoom
             }
             
             // En modo juego: zoom + pan

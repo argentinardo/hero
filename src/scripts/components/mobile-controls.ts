@@ -383,16 +383,45 @@ const setupDirectionalButton = (store: GameStore, buttonId: string, keys: string
         button.classList.remove('active');
     };
     
-    // Prevenir menú contextual (botón derecho del mouse) en móvil
+    // Prevenir menú contextual (botón derecho del mouse) y long press en móvil
     const preventContextMenu = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
+        return false;
     };
     
-    button.addEventListener('touchstart', handleStart, { passive: true });
-    button.addEventListener('touchend', handleEnd, { passive: true });
-    button.addEventListener('touchcancel', handleEnd, { passive: true });
-    button.addEventListener('contextmenu', preventContextMenu);
+    // Prevenir selección de texto
+    button.style.userSelect = 'none';
+    button.style.webkitUserSelect = 'none';
+    (button.style as any).webkitTouchCallout = 'none';
+    (button.style as any).webkitTapHighlightColor = 'transparent';
+    
+    // Prevenir long press (vibración y menú contextual)
+    button.addEventListener('contextmenu', preventContextMenu, { passive: false });
+    
+    // Prevenir comportamientos táctiles por defecto que causan long press
+    const preventTouchDefault = (e: TouchEvent) => {
+        e.preventDefault();
+    };
+    
+    button.addEventListener('touchstart', (e) => {
+        preventTouchDefault(e);
+        handleStart();
+    }, { passive: false });
+    
+    button.addEventListener('touchmove', preventTouchDefault, { passive: false });
+    
+    button.addEventListener('touchend', (e) => {
+        preventTouchDefault(e);
+        handleEnd();
+    }, { passive: false });
+    
+    button.addEventListener('touchcancel', (e) => {
+        preventTouchDefault(e);
+        handleEnd();
+    }, { passive: false });
+    
+    // Eventos de mouse para desktop
     button.addEventListener('mousedown', handleStart);
     button.addEventListener('mouseup', handleEnd);
     button.addEventListener('mouseleave', handleEnd);
