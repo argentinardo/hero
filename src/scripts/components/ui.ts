@@ -285,7 +285,7 @@ const setupMobileLongPressPrevention = (): void => {
 /**
  * Configura el listener para activar pantalla completa automáticamente
  * cuando el usuario gira el dispositivo de portrait a landscape en mobile
- * Emula el comportamiento de presionar F11 (como cuando se presiona "Jugar")
+ * Emula exactamente el comportamiento de presionar "Jugar" (llama directamente a requestFullscreen)
  */
 const setupOrientationFullscreen = (): void => {
     // Solo configurar en dispositivos móviles
@@ -294,21 +294,14 @@ const setupOrientationFullscreen = (): void => {
     }
     
     let wasPortrait = window.matchMedia('(orientation: portrait)').matches;
-    let fullscreenRequested = false;
     let orientationTimeout: number | null = null;
+    let resizeTimeout: number | null = null;
     
     const activateFullscreen = () => {
-        // Verificar si ya está en pantalla completa
-        const isFullscreen = !!(document.fullscreenElement || 
-                               (document as any).webkitFullscreenElement || 
-                               (document as any).mozFullScreenElement || 
-                               (document as any).msFullscreenElement);
-        
-        if (!isFullscreen) {
-            console.log('[setupOrientationFullscreen] Cambio a landscape detectado, activando pantalla completa (F11)...');
-            requestFullscreen();
-            fullscreenRequested = true;
-        }
+        // Llamar directamente a requestFullscreen() igual que cuando se presiona "Jugar"
+        // Sin verificaciones adicionales que puedan fallar
+        console.log('[setupOrientationFullscreen] Cambio a landscape detectado, activando pantalla completa (igual que botón Jugar)...');
+        requestFullscreen();
     };
     
     const handleOrientationChange = () => {
@@ -324,15 +317,11 @@ const setupOrientationFullscreen = (): void => {
             const isPortrait = window.matchMedia('(orientation: portrait)').matches;
             const isLandscape = window.matchMedia('(orientation: landscape)').matches;
             
-            // Si cambió de portrait a landscape y aún no se ha solicitado pantalla completa
-            if (wasPortrait && isLandscape && !fullscreenRequested) {
-                activateFullscreen();
-            }
+            console.log('[setupOrientationFullscreen] Estado - wasPortrait:', wasPortrait, 'isPortrait:', isPortrait, 'isLandscape:', isLandscape);
             
-            // Si vuelve a portrait, resetear el flag para permitir activar de nuevo
-            if (isPortrait && wasPortrait === false) {
-                fullscreenRequested = false;
-                console.log('[setupOrientationFullscreen] Vuelta a portrait, resetear flag de pantalla completa');
+            // Si cambió de portrait a landscape, activar pantalla completa
+            if (wasPortrait && isLandscape) {
+                activateFullscreen();
             }
             
             // Actualizar el estado de orientación
@@ -341,10 +330,12 @@ const setupOrientationFullscreen = (): void => {
     };
     
     // Listener para cambios de orientación
-    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('orientationchange', () => {
+        console.log('[setupOrientationFullscreen] Evento orientationchange disparado');
+        handleOrientationChange();
+    });
     
     // También escuchar cambios de resize (algunos navegadores no disparan orientationchange)
-    let resizeTimeout: number | null = null;
     window.addEventListener('resize', () => {
         if (resizeTimeout) {
             clearTimeout(resizeTimeout);
@@ -355,6 +346,7 @@ const setupOrientationFullscreen = (): void => {
             
             // Solo procesar si realmente cambió la orientación
             if ((wasPortrait && isLandscape) || (!wasPortrait && isPortrait)) {
+                console.log('[setupOrientationFullscreen] Cambio de orientación detectado en resize');
                 handleOrientationChange();
             }
         }, 300);
