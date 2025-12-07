@@ -2035,6 +2035,47 @@ textarea {
     }
 }
 
+/* Pantalla de bienvenida (se muestra al girar móvil a landscape) */
+#welcome-screen {
+    z-index: 10060 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%);
+    
+    &.hidden {
+        display: none !important;
+    }
+    
+    h1 {
+        animation: pulse-welcome 2s ease-in-out infinite;
+    }
+    
+    .old-button {
+        margin-top: 2rem;
+        min-width: 200px;
+    }
+}
+
+@keyframes pulse-welcome {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.05);
+    }
+}
+
 /* Modal de perfil - asegurar visibilidad */
 #profile-modal {
     z-index: 10050 !important;

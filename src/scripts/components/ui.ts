@@ -283,11 +283,58 @@ const setupMobileLongPressPrevention = (): void => {
 };
 
 /**
- * Configura el listener para activar pantalla completa automáticamente
- * cuando el usuario gira el dispositivo de portrait a landscape en mobile
- * Emula exactamente el comportamiento de presionar "Jugar" (llama directamente a requestFullscreen)
+ * Muestra la pantalla de bienvenida al girar el móvil a landscape
  */
-const setupOrientationFullscreen = (): void => {
+const showWelcomeScreen = (): void => {
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const mainContainer = document.getElementById('main-container');
+    
+    if (welcomeScreen) {
+        welcomeScreen.classList.remove('hidden');
+        console.log('[setupOrientationFullscreen] Mostrando pantalla de bienvenida');
+    }
+    
+    // Ocultar el menú principal mientras se muestra la pantalla de bienvenida
+    if (mainContainer) {
+        mainContainer.style.display = 'none';
+    }
+};
+
+/**
+ * Oculta la pantalla de bienvenida y muestra el menú principal
+ */
+const hideWelcomeScreen = (store?: GameStore): void => {
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const mainContainer = document.getElementById('main-container');
+    const messageOverlay = document.getElementById('message-overlay');
+    
+    if (welcomeScreen) {
+        welcomeScreen.classList.add('hidden');
+        console.log('[setupOrientationFullscreen] Ocultando pantalla de bienvenida');
+    }
+    
+    // Mostrar el menú principal
+    if (mainContainer) {
+        mainContainer.style.display = 'flex';
+    }
+    
+    // Asegurar que el message-overlay (que contiene el menú) esté visible
+    if (messageOverlay) {
+        messageOverlay.style.display = 'flex';
+    }
+    
+    // Si tenemos el store, asegurar que el estado del menú esté correcto
+    if (store && store.appState !== 'menu') {
+        // No cambiar el estado si ya estamos en otro estado (ej: jugando)
+        return;
+    }
+};
+
+/**
+ * Configura el listener para mostrar la pantalla de bienvenida
+ * cuando el usuario gira el dispositivo de portrait a landscape en mobile
+ */
+const setupOrientationFullscreen = (store?: GameStore): void => {
     // Solo configurar en dispositivos móviles
     if (!isMobileDevice()) {
         return;
@@ -296,13 +343,7 @@ const setupOrientationFullscreen = (): void => {
     let wasPortrait = window.matchMedia('(orientation: portrait)').matches;
     let orientationTimeout: number | null = null;
     let resizeTimeout: number | null = null;
-    
-    const activateFullscreen = () => {
-        // Llamar directamente a requestFullscreen() igual que cuando se presiona "Jugar"
-        // Sin verificaciones adicionales que puedan fallar
-        console.log('[setupOrientationFullscreen] Cambio a landscape detectado, activando pantalla completa (igual que botón Jugar)...');
-        requestFullscreen();
-    };
+    let welcomeScreenShown = false;
     
     const handleOrientationChange = () => {
         // Limpiar timeout anterior si existe
@@ -312,22 +353,42 @@ const setupOrientationFullscreen = (): void => {
         }
         
         // Esperar un momento para que el cambio de orientación se complete
-        // Usar un setTimeout como solicita el usuario
         orientationTimeout = window.setTimeout(() => {
             const isPortrait = window.matchMedia('(orientation: portrait)').matches;
             const isLandscape = window.matchMedia('(orientation: landscape)').matches;
             
             console.log('[setupOrientationFullscreen] Estado - wasPortrait:', wasPortrait, 'isPortrait:', isPortrait, 'isLandscape:', isLandscape);
             
-            // Si cambió de portrait a landscape, activar pantalla completa
-            if (wasPortrait && isLandscape) {
-                activateFullscreen();
+            // Si cambió de portrait a landscape y aún no se ha mostrado la pantalla de bienvenida
+            if (wasPortrait && isLandscape && !welcomeScreenShown) {
+                showWelcomeScreen();
+                welcomeScreenShown = true;
+            }
+            
+            // Si vuelve a portrait, ocultar la pantalla de bienvenida y resetear
+            if (isPortrait && wasPortrait === false) {
+                hideWelcomeScreen();
+                welcomeScreenShown = false;
+                console.log('[setupOrientationFullscreen] Vuelta a portrait, ocultando pantalla de bienvenida');
             }
             
             // Actualizar el estado de orientación
             wasPortrait = isPortrait;
         }, 500); // Delay de 500ms después del cambio a landscape
     };
+    
+    // Configurar el botón "Comenzar"
+    const welcomeStartBtn = document.getElementById('welcome-start-btn');
+    if (welcomeStartBtn) {
+        welcomeStartBtn.addEventListener('click', () => {
+            console.log('[setupOrientationFullscreen] Botón Comenzar presionado, activando pantalla completa...');
+            // Activar pantalla completa (igual que botón Jugar)
+            requestFullscreen();
+            // Ocultar pantalla de bienvenida y mostrar menú
+            hideWelcomeScreen(store);
+            welcomeScreenShown = false;
+        });
+    }
     
     // Listener para cambios de orientación
     window.addEventListener('orientationchange', () => {
@@ -354,13 +415,14 @@ const setupOrientationFullscreen = (): void => {
     
     // Verificar orientación inicial
     if (wasPortrait) {
-        // Si inicia en portrait, configurar para activar cuando cambie a landscape
+        // Si inicia en portrait, configurar para mostrar pantalla de bienvenida cuando cambie a landscape
         console.log('[setupOrientationFullscreen] Dispositivo en portrait, esperando cambio a landscape...');
     } else {
-        // Si inicia en landscape, activar pantalla completa después de un delay
-        console.log('[setupOrientationFullscreen] Dispositivo ya en landscape, activando pantalla completa...');
+        // Si inicia en landscape, mostrar pantalla de bienvenida después de un delay
+        console.log('[setupOrientationFullscreen] Dispositivo ya en landscape, mostrando pantalla de bienvenida...');
         setTimeout(() => {
-            activateFullscreen();
+            showWelcomeScreen();
+            welcomeScreenShown = true;
         }, 1000); // Delay inicial de 1 segundo
     }
 };
@@ -4274,8 +4336,12 @@ export const setupUI = (store: GameStore) => {
     syncLevelSelector(store);
     setupLevelData(store);
     
-    // Detectar cambio de orientación y activar pantalla completa automáticamente en mobile
-    setupOrientationFullscreen();
+    // Detectar cambio de orientación y mostrar pantalla de bienvenida en mobile
+    setupOrientationFullscreen(store);
+    
+    // Prevenir long press en todos los botones móviles
+    setupMobileLongPressPrevention();
+    
     setupMenuButtons(store);
     setupGallery(store);
     setupKeyboardShortcuts(store);
