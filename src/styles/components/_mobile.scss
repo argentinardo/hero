@@ -567,6 +567,10 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
             width: 75%;
             .crt-tv-screen {
                 width: 100%;
+                #splash-container {
+                    width: 134% !important;
+                    left: -13% !important;
+                }
             }
         }
         .menu-buttons-panel  {
@@ -1229,9 +1233,18 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     background-color: rgba(0, 0, 0, 0.4);
     border: 2px solid rgba(100, 100, 100, 0.6);
     border-radius: 8px;
+    
+    /* Prevenir selección de texto */
     user-select: none;
     -webkit-user-select: none;
+    -moz-user-select: none;
+    
+    /* Prevenir gestos táctiles del navegador */
     touch-action: none;
+    -webkit-touch-callout: none;
+    
+    /* Prevenir highlight al tocar */
+    -webkit-tap-highlight-color: transparent;
     
     &.dragging {
         cursor: grabbing;
@@ -1327,9 +1340,18 @@ $mobile-bg-hover: rgba(255, 255, 255, 0.4);
     transition: all 0.1s ease;
     box-shadow: inset 1px 1px 3px rgba(150, 150, 150, 0.3), 0 2px 8px rgba(0, 0, 0, 0.5);
     padding: 0;
+    
+    /* Prevenir selección de texto */
     user-select: none;
     -webkit-user-select: none;
+    -moz-user-select: none;
+    
+    /* Prevenir gestos táctiles del navegador */
     touch-action: none;
+    -webkit-touch-callout: none;
+    
+    /* Prevenir highlight al tocar */
+    -webkit-tap-highlight-color: transparent;
     
     &:hover {
         background: linear-gradient(135deg, rgba(120, 120, 120, 1) 0%, rgba(80, 80, 80, 1) 100%);

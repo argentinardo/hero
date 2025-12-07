@@ -8317,7 +8317,71 @@ const setupEditorDpad = (store: GameStore) => {
     const dpadEl = document.getElementById('editor-dpad');
     if (dpadEl) {
         dpadEl.style.display = 'block';
+        
+        // Prevenir selección de texto
+        dpadEl.style.userSelect = 'none';
+        dpadEl.style.webkitUserSelect = 'none';
+        
+        // Prevenir el menú contextual (long press)
+        dpadEl.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+        
+        // Prevenir el comportamiento táctil por defecto en el contenedor
+        // (los botones manejan sus propios eventos)
+        dpadEl.addEventListener('touchstart', (e) => {
+            // Solo prevenir en áreas vacías del contenedor, no en los botones
+            const target = e.target as HTMLElement;
+            if (target === dpadEl || target.classList.contains('dpad-container')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        dpadEl.addEventListener('touchmove', (e) => {
+            // Solo prevenir en áreas vacías del contenedor, no en los botones
+            const target = e.target as HTMLElement;
+            if (target === dpadEl || target.classList.contains('dpad-container')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        dpadEl.addEventListener('touchend', (e) => {
+            // Solo prevenir en áreas vacías del contenedor, no en los botones
+            const target = e.target as HTMLElement;
+            if (target === dpadEl || target.classList.contains('dpad-container')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
     }
+    
+    // Aplicar prevención de long press a todos los botones de la cruceta
+    const dpadDraw = document.getElementById('dpad-draw') as HTMLButtonElement | null;
+    const allDpadButtons = [dpadUp, dpadDown, dpadLeft, dpadRight, dpadDraw];
+    allDpadButtons.forEach(btn => {
+        if (btn) {
+            // Prevenir selección de texto
+            btn.style.userSelect = 'none';
+            btn.style.webkitUserSelect = 'none';
+            
+            // Prevenir el menú contextual (long press)
+            btn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+            
+            // Prevenir el comportamiento táctil por defecto
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            btn.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
+    });
     
     // Map para mantener track de qué botones están presionados
     const buttonStates: Record<string, boolean> = {
