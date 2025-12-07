@@ -125,15 +125,15 @@ export const updateUndoRedoButtons = (store: GameStore) => {
     if (undoBtn) {
         undoBtn.disabled = store.editorHistoryIndex <= 0;
         undoBtn.className = undoBtn.disabled 
-            ? 'w-full bg-gray-500 p-2 border-2 border-[#666] text-xs opacity-50 cursor-not-allowed'
-            : 'w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-[#666] text-xs';
+            ? ' opacity-25 cursor-not-allowed old-button old-button--small'
+            : 'opacity-100 old-button old-button--small';
     }
     
     if (redoBtn) {
         redoBtn.disabled = store.editorHistoryIndex >= store.editorHistory.length - 1;
         redoBtn.className = redoBtn.disabled 
-            ? 'w-full bg-gray-500 p-2 border-2 border-[#666] text-xs opacity-50 cursor-not-allowed'
-            : 'w-full bg-gray-600 hover:bg-gray-700 p-2 border-2 border-[#666] text-xs';
+        ? ' opacity-25 cursor-not-allowed old-button old-button--small'
+        : 'opacity-100 old-button old-button--small';
     }
 };
 

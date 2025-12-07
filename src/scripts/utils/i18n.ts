@@ -46,6 +46,7 @@ export interface Translations {
             tools: string;
             edition: string;
             levels: string;
+            actions: string;
             undo: string;
             redo: string;
             duplicateRow: string;
@@ -284,6 +285,7 @@ const translations: Record<Language, Translations> = {
             tools: 'TOOLS',
             edition: 'Edición',
             levels: 'Niveles',
+            actions: 'Acciones',
             undo: 'Deshacer',
             redo: 'Rehacer',
             duplicateRow: 'Duplicar Fila',
@@ -512,6 +514,7 @@ const translations: Record<Language, Translations> = {
             tools: 'TOOLS',
             edition: 'Edition',
             levels: 'Levels',
+            actions: 'Actions',
             undo: 'Undo',
             redo: 'Redo',
             duplicateRow: 'Duplicate Row',
@@ -740,6 +743,7 @@ const translations: Record<Language, Translations> = {
             tools: 'TOOLS',
             edition: 'Edició',
             levels: 'Nivells',
+            actions: 'Accions',
             undo: 'Desfer',
             redo: 'Refer',
             duplicateRow: 'Duplicar Fila',

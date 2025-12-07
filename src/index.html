@@ -1,89 +1,111 @@
 <!DOCTYPE html>
 <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>NEW H.E.R.O.</title>
-        
-        <!-- Favicon personalizado -->
-        <link rel="icon" type="image/png" sizes="192x192" href="/hero-logo.png">
-        <link rel="icon" type="image/png" sizes="512x512" href="/hero-logo.png">
-        <link rel="apple-touch-icon" sizes="180x180" href="/hero-logo.png">
-        <meta name="theme-color" content="#1f2937">
-        <meta name="description" content="Un juego retro de plataformas estilo arcade">
-        <meta name="keywords" content="game, retro, arcade, hero, plataforma">
-        <meta name="author" content="NEW H.E.R.O.">
-        
-        <!-- PWA Meta Tags -->
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        <meta name="apple-mobile-web-app-title" content="HERO">
-        <meta name="msapplication-navbutton-color" content="#1f2937">
-        <meta name="msapplication-TileColor" content="#1f2937">
-        
-        <!-- Manifest para PWA con orientación landscape -->
-        <link rel="manifest" href="/manifest.json">
-            
-        <!-- Auth0 Configuration (ahora se carga desde ui.ts) -->
-    
-        <!-- Preload de recursos críticos para carga más rápida -->
-        <link rel="preload" href="/vendor/press-start-2p.ttf" as="font" type="font/ttf" crossorigin>
-        <link rel="preload" href="/vendor/nes.min.css" as="style">
-        <link rel="preload" href="/vendor/press-start-2p.css" as="style">
-        
-        <!-- Estilos críticos inline para evitar FOUC (Flash of Unstyled Content) -->
-        <style>
-            /* Estilos mínimos críticos para renderizado inmediato */
-            body { 
-                margin: 0; 
-                padding: 0; 
-                background-color: #1f2937; 
-                color: #fff; 
-                font-family: monospace;
-                overflow: hidden;
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NEW H.E.R.O.</title>
+
+    <!-- Favicon personalizado -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/hero-logo.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/hero-logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/hero-logo.png">
+    <meta name="theme-color" content="#1f2937">
+    <meta name="description" content="Un juego retro de plataformas estilo arcade">
+    <meta name="keywords" content="game, retro, arcade, hero, plataforma">
+    <meta name="author" content="NEW H.E.R.O.">
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HERO">
+    <meta name="msapplication-navbutton-color" content="#1f2937">
+    <meta name="msapplication-TileColor" content="#1f2937">
+
+    <!-- Manifest para PWA con orientación landscape -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Auth0 Configuration (ahora se carga desde ui.ts) -->
+
+    <!-- Preload de recursos críticos para carga más rápida -->
+    <link rel="preload" href="/vendor/press-start-2p.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="/vendor/nes.min.css" as="style">
+    <link rel="preload" href="/vendor/press-start-2p.css" as="style">
+
+    <!-- Estilos críticos inline para evitar FOUC (Flash of Unstyled Content) -->
+    <style>
+        /* Estilos mínimos críticos para renderizado inmediato */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1f2937;
+            color: #fff;
+            font-family: monospace;
+            overflow: hidden;
+        }
+
+        #main-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Ocultar contenido hasta que los estilos carguen */
+        .loading-styles {
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+
+        .styles-loaded {
+            opacity: 1;
+        }
+
+        /* Animación para el spinner de carga */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
             }
-            #main-container {
-                width: 100%;
-                height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+
+            100% {
+                transform: rotate(360deg);
             }
-            /* Ocultar contenido hasta que los estilos carguen */
-            .loading-styles { opacity: 0; transition: opacity 0.3s ease-in; }
-            .styles-loaded { opacity: 1; }
-            
-            /* Animación para el spinner de carga */
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
-        
-        <!-- Recursos embebidos localmente (carga asíncrona) -->
-        <!-- Fuente Press Start 2P -->
-        <link rel="stylesheet" href="/vendor/press-start-2p.css" media="print" onload="this.media='all'; this.onload=null;" onerror="console.warn('[Index] No se pudo cargar fuente local')">
-        <noscript><link rel="stylesheet" href="/vendor/press-start-2p.css"></noscript>
-        
-        <!-- NES.css para estilos retro -->
-        <link rel="stylesheet" href="/vendor/nes.min.css" media="print" onload="this.media='all'; this.onload=null;" onerror="console.warn('[Index] No se pudo cargar NES.css local')">
-        <noscript><link rel="stylesheet" href="/vendor/nes.min.css"></noscript>
-    
-        <!-- Bloquear orientación a landscape -->
-        <script>
-            // Bloquear orientación vía JavaScript (si el navegador lo permite)
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock("landscape").catch(err => {
-                    // Ignorar error si no es compatible (común en desktop o iframes)
-                    if (err.name !== 'NotSupportedError') {
-                        console.log(err);
-                    }
-                });
-            }
-        </script>
-    </head>
-    <body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden loading-styles">
+        }
+    </style>
+
+    <!-- Recursos embebidos localmente (carga asíncrona) -->
+    <!-- Fuente Press Start 2P -->
+    <link rel="stylesheet" href="/vendor/press-start-2p.css" media="print" onload="this.media='all'; this.onload=null;"
+        onerror="console.warn('[Index] No se pudo cargar fuente local')">
+    <noscript>
+        <link rel="stylesheet" href="/vendor/press-start-2p.css">
+    </noscript>
+
+    <!-- NES.css para estilos retro -->
+    <link rel="stylesheet" href="/vendor/nes.min.css" media="print" onload="this.media='all'; this.onload=null;"
+        onerror="console.warn('[Index] No se pudo cargar NES.css local')">
+    <noscript>
+        <link rel="stylesheet" href="/vendor/nes.min.css">
+    </noscript>
+
+    <!-- Bloquear orientación a landscape -->
+    <script>
+        // Bloquear orientación vía JavaScript (si el navegador lo permite)
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock("landscape").catch(err => {
+                // Ignorar error si no es compatible (común en desktop o iframes)
+                if (err.name !== 'NotSupportedError') {
+                    console.log(err);
+                }
+            });
+        }
+    </script>
+</head>
+
+<body class="bg-gray-900 flex justify-center items-center h-screen overflow-hidden loading-styles">
 
     <div id="main-container">
         <div id="editor-dpad" class="editor-dpad mb-4" style="display: none;">
@@ -104,604 +126,794 @@
             </button>
         </div>
 
-            <!-- Contenedor Canvas con barras UI superpuestas -->
-            <div class="canvas-wrapper">
-                <!-- Barra Superior (superpuesta) -->
-                <div id="game-ui" class="text-base" style="display: none; background: rgba(0, 0, 0, 0.5); padding: 8px 12px; border-radius: 4px;">
-                    <div class="flex items-center justify-between w-full gap-2">
-                        <!-- Logo + Level (izquierda) -->
-                        <div class="flex items-center gap-2">
-                            <img id="hero-logo" alt="Hero" style="display: none; image-rendering: pixelated">
-                            <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
-                        </div>
-                        
-                        <!-- Score (centro) -->
-                        <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
-                        
-                        <!-- Menu (derecha) -->
-                        <button id="hamburger-btn" class="hamburger-btn" aria-label="MENU">
-                            <span class="hamburger-label">MENU</span>
-                        </button>
+        <!-- Contenedor Canvas con barras UI superpuestas -->
+        <div class="canvas-wrapper">
+            <!-- Barra Superior (superpuesta) -->
+            <div id="game-ui" class="text-base"
+                style="display: none; background: rgba(0, 0, 0, 0.5); padding: 8px 12px; border-radius: 4px;">
+                <div class="flex items-center justify-between w-full gap-2">
+                    <!-- Logo + Level (izquierda) -->
+                    <div class="flex items-center gap-2">
+                        <img id="hero-logo" alt="Hero" style="display: none; image-rendering: pixelated">
+                        <span class="text-lg font-bold">LEVEL: <span id="level-count">1</span></span>
                     </div>
-                </div>
 
-                <!-- Menú Hamburguesa Desplegable (ya no se usa, el hamburger abre pause-menu-modal) -->
-                <div id="hamburger-menu" class="hamburger-menu hidden">
-                    <button id="hamburger-pause-resume-btn" class="nes-btn is-success menu-item w-full">Pausar</button>
-                    <button id="hamburger-restart-game-btn" class="nes-btn is-warning menu-item w-full">Reiniciar</button>
-                    <button id="hamburger-back-to-menu-btn-game" class="nes-btn is-error menu-item w-full">Menú Inicial</button>
-                    <button id="hamburger-resume-editor-btn-menu" class="nes-btn is-primary menu-item w-full hidden">Volver a TOOLS</button>
-                    <button id="hamburger-settings-btn" class="nes-btn is-primary menu-item w-full">Configuración</button>
-                    <button id="hamburger-credits-btn" class="nes-btn menu-item w-full">Créditos</button>
-                </div>
-                        <!-- Botón Toggle del Panel de Usuario (siempre visible cuando el editor está activo) -->
-        <button id="user-panel-toggle" aria-label="Toggle User Panel" class="hidden fixed left-0 text-white cursor-pointer flex items-center justify-start gap-2" style="top:12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-right: none; border-radius: 0 8px 8px 0; z-index: 20; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
-            <span class="toggle-icon" style="font-size: 1.2rem;">&gt;</span>
-            <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">USUARIO</span>
-        </button>
-                <!-- Canvas del Juego / Editor -->
-                <canvas id="gameCanvas" width="1440" height="1000"></canvas>
-                
-                
-                        <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
-        <button id="editor-toggle" aria-label="Toggle Editor" class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2" style="top: 12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 20; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
-            <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">TOOLS</span>
-            <span class="toggle-icon" style="font-size: 1.2rem;">&lt;</span>
-        </button>
-        
+                    <!-- Score (centro) -->
+                    <span class="text-lg font-bold">SCORE: <span id="score-count">0</span></span>
 
-                
-                <!-- Contador de FPS (para debugging de rendimiento) -->
-                <div id="fps-counter" style="position: fixed; top: 70px; right: 10px; background: rgba(0, 0, 0, 0.7); color: #00ff00; padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; z-index: 1000; pointer-events: none; display: none;">
-                    <div>FPS: <span id="fps-value">--</span></div>
-                    <div style="font-size: 11px; color: #ffff00;">Target: <span id="fps-target">--</span></div>
-                    <div style="font-size: 11px; color: #00ffff;">Res: <span id="fps-resolution">--</span></div>
-                </div>
-                
-                <!-- Barra Inferior (superpuesta) -->
-                <div id="bottom-ui" class="text-base" style="display: none;">
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold hidden sm:inline">LIVES:</span>
-                        <div id="lives-count" class="flex gap-1"></div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold hidden sm:inline">POWER:</span>
-                        <div class="w-96 h-8 bg-gray-700 border-2 border-white energy-bar-container"><div id="energy-bar" class="h-full bg-yellow-400 transition-all duration-300 ease-in-out"></div></div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold hidden sm:inline">TNT:</span>
-                        <div id="bombs-count" class="flex gap-1"></div>
-                    </div>
+                    <!-- Menu (derecha) -->
+                    <button id="hamburger-btn" class="hamburger-btn" aria-label="MENU">
+                        <span class="hamburger-label">MENU</span>
+                    </button>
                 </div>
             </div>
+
+            <!-- Menú Hamburguesa Desplegable (ya no se usa, el hamburger abre pause-menu-modal) -->
+            <div id="hamburger-menu" class="hamburger-menu hidden">
+                <button id="hamburger-pause-resume-btn" class="nes-btn is-success menu-item w-full">Pausar</button>
+                <button id="hamburger-restart-game-btn" class="nes-btn is-warning menu-item w-full">Reiniciar</button>
+                <button id="hamburger-back-to-menu-btn-game" class="nes-btn is-error menu-item w-full">Menú
+                    Inicial</button>
+                <button id="hamburger-resume-editor-btn-menu" class="nes-btn is-primary menu-item w-full hidden">Volver
+                    a TOOLS</button>
+                <button id="hamburger-settings-btn" class="nes-btn is-primary menu-item w-full">Configuración</button>
+                <button id="hamburger-credits-btn" class="nes-btn menu-item w-full">Créditos</button>
+            </div>
+            <!-- Botón Toggle del Panel de Usuario (siempre visible cuando el editor está activo) -->
+            <button id="user-panel-toggle" aria-label="Toggle User Panel"
+                class="hidden fixed left-0 text-white cursor-pointer flex items-center justify-start gap-2"
+                style="top:12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-right: none; border-radius: 0 8px 8px 0; z-index: 20; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
+                <span class="toggle-icon" style="font-size: 1.2rem;">&gt;</span>
+                <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">USUARIO</span>
+            </button>
+            <!-- Canvas del Juego / Editor -->
+            <canvas id="gameCanvas" width="1440" height="1000"></canvas>
+
+
+            <!-- Botón Toggle del Editor (siempre visible cuando el editor está activo) -->
+            <button id="editor-toggle" aria-label="Toggle Editor"
+                class="hidden fixed right-0 text-white cursor-pointer flex items-center justify-end gap-2"
+                style="top: 12px; padding: 0 12px; min-width: 100px; height: 60px; font-size: 1rem; border-left: none; border-radius: 8px 0 0 8px; z-index: 20; font-family: 'Press Start 2P', monospace; background: rgba(0, 0, 0, 0.7); transition: all 0.3s ease;">
+                <span class="toggle-title" style="font-size: 0.7rem; white-space: nowrap; display: none;">TOOLS</span>
+                <span class="toggle-icon" style="font-size: 1.2rem;">&lt;</span>
+            </button>
+
+
+
+            <!-- Contador de FPS (para debugging de rendimiento) -->
+            <div id="fps-counter"
+                style="position: fixed; top: 70px; right: 10px; background: rgba(0, 0, 0, 0.7); color: #00ff00; padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; z-index: 1000; pointer-events: none; display: none;">
+                <div>FPS: <span id="fps-value">--</span></div>
+                <div style="font-size: 11px; color: #ffff00;">Target: <span id="fps-target">--</span></div>
+                <div style="font-size: 11px; color: #00ffff;">Res: <span id="fps-resolution">--</span></div>
+            </div>
+
+            <!-- Barra Inferior (superpuesta) -->
+            <div id="bottom-ui" class="text-base" style="display: none;">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-bold hidden sm:inline">LIVES:</span>
+                    <div id="lives-count" class="flex gap-1"></div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-bold hidden sm:inline">POWER:</span>
+                    <div class="w-96 h-8 bg-gray-700 border-2 border-white energy-bar-container">
+                        <div id="energy-bar" class="h-full bg-yellow-400 transition-all duration-300 ease-in-out"></div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-bold hidden sm:inline">TNT:</span>
+                    <div id="bombs-count" class="flex gap-1"></div>
+                </div>
+            </div>
+        </div>
 
 
 
         <!-- Panel de user para Mobile (izquierda del canvas) -->
         <div id="user-panel" class="user-panel flex-col gap-2 w-64 hidden bg-gray-800">
-            <h2 id="user-panel-title" class="text-center text-lg mb-2 flex items-center justify-center gap-2 cursor-pointer" style="font-family: 'Press Start 2P', monospace;">
+            <h2 id="user-panel-title"
+                class="text-center text-lg mb-2 flex items-center justify-center gap-2 cursor-pointer"
+                style="font-family: 'Press Start 2P', monospace;">
                 <canvas id="user-panel-avatar" width="40" height="40" class="avatar-canvas cursor-pointer"></canvas>
                 <span id="user-panel-nickname" class="cursor-pointer">user</span>
                 <span class="toggle-icon-title" style="font-size: 1.2rem; display: none;"></span>
             </h2>
             
-                <!-- Área de user (duplicada del editor para mobile) -->
-                <div id="user-area-mobile" class="mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
-                    <button id="user-profile-btn-mobile" class="nes-btn is-primary w-full text-xs mb-2">👤 Mi Área</button>
-                    <!-- Botón de cerrar sesión movido al modal de "Mi Área" -->
-                </div>
-            
+
+            <!-- Área de user (duplicada del editor para mobile) -->
+            <div id="user-area-mobile" class="" style="display: none;">
+                <button id="user-profile-btn-mobile" class="old-button old-button--small" type="button">
+                    <div class="old-button-top">👤 Mi Área</div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
+                <!-- Botón de cerrar sesión movido al modal de "Mi Área" -->
+            </div>
+
             <!-- Botón Jugar Nivel -->
-            
+
 
 
             <!-- Sección Niveles (completa) -->
             <div class="mt-4 border-t-2 border-gray-500 pt-4">
                 <div id="campaigns-section-label" class="w-full text-sm mb-2"> Campañas:</div>
-                <button id="campaign-title-btn" class="nes-btn is-primary w-full text-sm mb-3 campaign-title" style="font-family: 'Press Start 2P', monospace;">NIVELES</button>
+                <button id="campaign-title-btn" class="old-button old-button--small">
+                    <div class="old-button-top">
+                        NIVELES
+                    </div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
                 <div id="levels-section-mobile-content" class="mt-2">
-                    <select id="level-selector-mobile" class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
+                    <select id="level-selector-mobile"
+                        class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
                     <!-- <button id="generate-level-btn-mobile" class="nes-btn is-success w-full text-xs">Generar Nivel</button>  falta perfeccionar la funcion -->
-                    <button id="save-all-btn-mobile" class="nes-btn is-error w-full mt-2 text-xs">Guardar Nivel</button>
-                    <button id="play-test-btn-mobile" class="nes-btn is-success w-full mb-4 text-xs">Jugar Nivel</button>
-                    <button id="share-level-btn-mobile" class="nes-btn is-primary w-full mt-2 text-xs">Compartir Nivel</button>
+                    <button id="save-all-btn-mobile" class="old-button old-button--small">
+                        <div class="old-button-top">Guardar Nivel </div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="play-test-btn-mobile" class="old-button old-button--small">
+                        <div class="old-button-top">Jugar Nivel </div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="share-level-btn-mobile" class="old-button old-button--small">
+                        <div class="old-button-top">Compartir Nivel </div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
                 </div>
             </div>
-            
+
             <!-- Botón Volver al Menú -->
-            <button id="back-to-menu-btn-mobile" class="nes-btn w-full mt-4 text-xs">Menú Inicial</button>
+            <button id="back-to-menu-btn-mobile" class="old-button old-button--small" type="button">
+                <div class="old-button-top">Menú Inicial</div>
+                <div class="old-button-bottom"></div>
+                <div class="old-button-base"></div>
+            </button>
         </div>
 
         <!-- Panel del Editor (drawer derecho) -->
         <div id="editor-panel" class="editor-panel flex-col gap-2 w-72 hidden bg-gray-800">
-                <h2 id="editor-panel-title" class="text-center text-lg mb-2 cursor-pointer" style="font-family: 'Press Start 2P', monospace;">
-                    <span class="toggle-icon-title" style="font-size: 1.2rem; display: none;">&gt;</span>
-                    <span>TOOLS</span>
-                </h2>
-                
-                <!-- Área de user (oculta en mobile, visible en desktop) -->
-                <div id="user-area" class="user-area-desktop mb-4 p-2 border-2 border-gray-600 bg-gray-700" style="display: none;">
-                    <button id="user-profile-btn" class="nes-btn is-primary w-full text-xs mb-2">Mi Área</button>
-                    <p id="user-greeting" class="text-xs mb-2"><span id="username-display">user</span></p>
-                    <!-- Botón de cerrar sesión movido al modal de "Mi Área" -->
-                </div>
-                
-                <!-- Sección Campaña (colapsable) - Oculto en mobile -->
-                <div id="campaign-section-desktop" class="campaign-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="campaign-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+            <h2 id="editor-panel-title" class="text-center text-lg mb-2 cursor-pointer"
+                style="font-family: 'Press Start 2P', monospace;">
+                <span class="toggle-icon-title" style="font-size: 1.2rem; display: none;">&gt;</span>
+                <span>TOOLS</span>
+            </h2>
+
+            <!-- Área de user (oculta en mobile, visible en desktop) -->
+            <div id="user-area" class="user-area-desktop mb-4 p-2 border-2 border-gray-600 bg-gray-700"
+                style="display: none;">
+                <button id="user-profile-btn" class="old-button w-full text-xs mb-2" type="button">
+                    <div class="old-button-top">Mi Área</div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
+                <p id="user-greeting" class="text-xs mb-2"><span id="username-display">user</span></p>
+                <!-- Botón de cerrar sesión movido al modal de "Mi Área" -->
+            </div>
+
+            <!-- Sección Campaña (colapsable) - Oculto en mobile -->
+            <div id="campaign-section-desktop" class="campaign-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                <button id="campaign-section-toggle" type="button" class="old-button w-full text-xs">
+                    <div class="old-button-top flex items-center justify-between">
                         <span>Campaña</span>
                         <span id="campaign-section-arrow">▼</span>
-                    </button>
-                    <div id="campaign-section-content" class="mt-2">
-                        <button id="campaign-title-btn" class="nes-btn is-primary w-full text-xs mb-2">Legacy</button>
                     </div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
+                <div id="campaign-section-content" class="mt-2">
+                    <button id="campaign-title-btn" class="old-button w-full text-xs mb-2" type="button">
+                        <div class="old-button-top">Legacy</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
                 </div>
+            </div>
 
-                <!-- Sección Niveles (colapsable) - Oculto en mobile -->
-                <div id="levels-section-desktop" class="levels-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="levels-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+            <!-- Sección Niveles (colapsable) - Oculto en mobile -->
+            <div id="levels-section-desktop" class="levels-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                <button id="levels-section-toggle" type="button" class="old-button w-full text-xs">
+                    <div class="old-button-top flex items-center justify-between">
                         <span>Niveles</span>
                         <span id="levels-section-arrow">▼</span>
-                    </button>
-                    <div id="levels-section-content" class="mt-2">
-                        <select id="level-selector" class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <button id="add-level-btn" class="nes-btn is-primary w-full text-xs">➕ Nuevo</button>
-                            <button id="generate-level-btn" class="nes-btn is-success w-full text-xs">🎲 Generar</button>
-                        </div>
+                    </div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
+                <div id="levels-section-content" class="mt-2">
+                    <select id="level-selector"
+                        class="w-full bg-gray-700 border-2 border-[#666] p-1 text-sm mb-2"></select>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button id="add-level-btn" class="old-button w-full text-xs" type="button">
+                            <div class="old-button-top">➕ Nuevo</div>
+                            <div class="old-button-bottom"></div>
+                            <div class="old-button-base"></div>
+                        </button>
+                        <button id="generate-level-btn" class="old-button w-full text-xs" type="button">
+                            <div class="old-button-top">🎲 Generar</div>
+                            <div class="old-button-bottom"></div>
+                            <div class="old-button-base"></div>
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Sección Guardar (colapsable) - Oculto en mobile -->
-                <div id="save-section-desktop" class="save-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="save-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+            <!-- Sección Guardar (colapsable) - Oculto en mobile -->
+            <div id="save-section-desktop" class="save-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                <button id="save-section-toggle" type="button" class="old-button w-full text-xs">
+                    <div class="old-button-top flex items-center justify-between">
                         <span>Guardar</span>
                         <span id="save-section-arrow">▼</span>
-                    </button>
-                    <div id="save-section-content" class="mt-2">
-                        <button id="save-all-btn" class="nes-btn is-error w-full text-xs mb-2">💾 Guardar Nivel</button>
-                        <button id="share-level-btn" class="nes-btn is-primary w-full text-xs">📤 Compartir</button>
                     </div>
-                </div>
-
-                <!-- Sección Edición (colapsable) -->
-                <div class="mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="edit-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
-                        <span>Edición</span>
-                        <span id="edit-section-arrow">▼</span>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
+                <div id="save-section-content" class="mt-2">
+                    <button id="save-all-btn" class="old-button w-full text-xs mb-2" type="button">
+                        <div class="old-button-top">💾 Guardar Nivel</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
                     </button>
-                    <div id="edit-section-content" class="mt-2">
-                        <!-- Cruceta de direcciones para panear el canvas (Mobile) -->
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <button id="undo-btn" class="nes-btn w-full text-xs">↶ Deshacer</button>
-                            <button id="redo-btn" class="nes-btn w-full text-xs">↷ Rehacer</button>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button id="duplicate-row-btn" class="nes-btn is-primary w-full text-xs">📋 Duplicar</button>
-                            <button id="delete-row-btn" class="nes-btn is-error w-full text-xs">🗑️ Borrar</button>
-                        </div>
-                    </div>
+                    <button id="share-level-btn" class="old-button w-full text-xs" type="button">
+                        <div class="old-button-top">📤 Compartir</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
                 </div>
+            </div>
 
-                <div id="tile-palette" class="flex flex-col gap-4 mt-4">
-                    <!-- Tiles se agregarán dinámicamente aquí -->
+            <!-- Sección Edición (colapsable) -->
+            <div class="tile-category mt-4">
+                <button id="edit-section-toggle" type="button"
+                    class="flex flex-row items-center justify-between gap-2 cursor-pointer bg-[#5a2f22]  border-0 rounded px-3 py-2 hover:bg-[#4b251a] transition-colors w-full">
+                    <span>Edición</span>
+                    <span id="edit-section-arrow">▶</span>
+                </button>
+                <div id="edit-section-content"
+                    style="display: grid;border-radius: 0px 0px 5px 5px; box-shadow: rgba(0, 0, 0, 0.75) 0px 0px 10px inset, rgba(255, 255, 255, 0.6) 0px 0px 2px inset; padding:12px">
+                    <!-- Cruceta de direcciones para panear el canvas (Mobile) -->
+                    <button id="undo-btn" class="old-button old-button--small" type="button">
+                        <div class="old-button-top">↶ Deshacer</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="redo-btn" class="old-button old-button--small" type="button">
+                        <div class="old-button-top">↷ Rehacer</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+
+                    <button id="duplicate-row-btn" class="old-button old-button--small" type="button">
+                        <div class="old-button-top">📋 Duplicar</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="delete-row-btn" class="old-button old-button--small" type="button">
+                        <div class="old-button-top">🗑️ Borrar</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+
                 </div>
+            </div>
 
-                <!-- Sección Acciones (colapsable) - Oculto en mobile -->
-                <div id="actions-section-desktop" class="actions-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
-                    <button id="actions-section-toggle" type="button" class="w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700">
+            <div id="tile-palette" class="flex flex-col gap-4 mt-4">
+                <!-- Tiles se agregarán dinámicamente aquí -->
+            </div>
+
+            <!-- Sección Acciones (colapsable) - Oculto en mobile -->
+            <div id="actions-section-desktop" class="actions-section-desktop mt-4 border-t-2 border-gray-500 pt-4">
+                <button id="actions-section-toggle" type="button" class="old-button w-full text-xs">
+                    <div class="old-button-top flex items-center justify-between">
                         <span>Acciones</span>
                         <span id="actions-section-arrow">▼</span>
+                    </div>
+                    <div class="old-button-bottom"></div>
+                    <div class="old-button-base"></div>
+                </button>
+                <div id="actions-section-content" class="mt-2">
+                    <button id="play-test-btn" class="play-test-desktop old-button w-full text-xs mb-2" type="button">
+                        <div class="old-button-top">▶️ Probar Nivel</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
                     </button>
-                    <div id="actions-section-content" class="mt-2">
-                        <button id="play-test-btn" class="play-test-desktop nes-btn is-success w-full text-xs mb-2">▶️ Probar Nivel</button>
-                        <button id="back-to-menu-btn" class="back-to-menu-desktop nes-btn w-full text-xs">🏠 Menú</button>
+                    <button id="back-to-menu-btn" class="back-to-menu-desktop old-button w-full text-xs" type="button">
+                        <div class="old-button-top">🏠 Menú</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div id="confirmation-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 60;">
+        <div class="nes-container with-title is-dark">
+            <p class="title" id="modal-title">¿Estás seguro?</p>
+            <p id="modal-text" class="mb-8">Esto guardará el nivel actual y todos los cambios en el archivo JSON.</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-save-btn" class="nes-btn is-success">Confirmar</button>
+                <button id="cancel-save-btn" class="nes-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Salida -->
+    <div id="exit-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 60;">
+        <div class="nes-container with-title is-dark max-w-lg">
+            <p class="title" id="exit-title">Confirmar acción</p>
+            <p id="exit-text" class="mb-8 text-lg whitespace-pre-line">¿Seguro que deseas continuar?</p>
+            <div class="flex justify-center gap-4">
+                <button id="exit-confirm-btn" class="nes-btn is-error">Sí</button>
+                <button id="exit-cancel-btn" class="nes-btn">No</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menú flotante (pausa) -->
+    <div id="pause-menu-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 100;">
+        <div class="nes-container with-title is-dark max-w-sm w-80 overflow-visible"
+            style="max-height: 80vh; display: flex; flex-direction: column;">
+            <p class="title" style="background-color: #3a2d23;">Menú</p>
+            <div class="flex flex-col gap-3 overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
+                <button id="pause-resume-btn" class="nes-btn is-success">Continuar</button>
+                <button id="pause-settings-btn" class="nes-btn is-primary">Configuración</button>
+                <button id="pause-mainmenu-btn" class="nes-btn is-error">Menú Inicial</button>
+                <button id="pause-dynamic-btn" class="nes-btn">Iniciar sesión</button>
+                <button id="pause-credits-btn" class="nes-btn">Créditos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Notificación -->
+    <div id="notification-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 55;">
+        <div class="nes-container with-title is-dark max-w-lg">
+            <p class="title" id="notification-title">Notificación</p>
+            <p id="notification-message" class="mb-8 text-lg whitespace-pre-line"></p>
+            <div class="flex justify-center">
+                <button id="notification-ok-btn" class="nes-btn is-primary">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Prompt (para reemplazar prompt()) -->
+    <div id="prompt-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 60;">
+        <div class="nes-container with-title is-dark max-w-lg">
+            <p class="title" id="prompt-title">Entrada</p>
+            <p id="prompt-message" class="mb-4 text-lg"></p>
+            <input type="text" id="prompt-input" class="nes-input mb-4 w-full" placeholder="Escribe aquí...">
+            <div class="flex justify-center gap-4">
+                <button id="prompt-cancel-btn" class="nes-btn">Cancelar</button>
+                <button id="prompt-ok-btn" class="nes-btn is-primary">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Ingresando (mientras se procesa el login) -->
+    <div id="logging-in-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center"
+        style="z-index: 10001; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; overflow: auto;">
+        <div class="nes-container with-title is-dark max-w-sm" style="position: relative; z-index: 10002;">
+            <p class="title" style="font-family: 'Press Start 2P', monospace;">INGRESANDO...</p>
+            <div class="mb-6">
+                <div class="flex justify-center items-center gap-4 mb-4">
+                    <div class="loading-spinner"
+                        style="width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #fff; border-radius: 50%; animation: spin 1s linear infinite;">
                     </div>
                 </div>
+                <p class="text-sm" style="font-family: 'Press Start 2P', monospace; font-size: 0.7rem;">Procesando
+                    autenticación...</p>
             </div>
         </div>
+    </div>
 
-        <!-- Modal de Confirmación -->
-        <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 60;">
-            <div class="nes-container with-title is-dark">
-                <p class="title" id="modal-title">¿Estás seguro?</p>
-                <p id="modal-text" class="mb-8">Esto guardará el nivel actual y todos los cambios en el archivo JSON.</p>
-                <div class="flex justify-center gap-4">
-                    <button id="confirm-save-btn" class="nes-btn is-success">Confirmar</button>
-                    <button id="cancel-save-btn" class="nes-btn">Cancelar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Confirmación de Salida -->
-        <div id="exit-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 60;">
-            <div class="nes-container with-title is-dark max-w-lg">
-                <p class="title" id="exit-title">Confirmar acción</p>
-                <p id="exit-text" class="mb-8 text-lg whitespace-pre-line">¿Seguro que deseas continuar?</p>
-                <div class="flex justify-center gap-4">
-                    <button id="exit-confirm-btn" class="nes-btn is-error">Sí</button>
-                    <button id="exit-cancel-btn" class="nes-btn">No</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Menú flotante (pausa) -->
-        <div id="pause-menu-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 100;">
-            <div class="nes-container with-title is-dark max-w-sm w-80 overflow-visible" style="max-height: 80vh; display: flex; flex-direction: column;">
-                <p class="title" style="background-color: #3a2d23;">Menú</p>
-                <div class="flex flex-col gap-3 overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
-                    <button id="pause-resume-btn" class="nes-btn is-success">Continuar</button>
-                    <button id="pause-settings-btn" class="nes-btn is-primary">Configuración</button>
-                    <button id="pause-mainmenu-btn" class="nes-btn is-error">Menú Inicial</button>
-                    <button id="pause-dynamic-btn" class="nes-btn">Iniciar sesión</button>
-                    <button id="pause-credits-btn" class="nes-btn">Créditos</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Notificación -->
-        <div id="notification-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 55;">
-            <div class="nes-container with-title is-dark max-w-lg">
-                <p class="title" id="notification-title">Notificación</p>
-                <p id="notification-message" class="mb-8 text-lg whitespace-pre-line"></p>
-                <div class="flex justify-center">
-                    <button id="notification-ok-btn" class="nes-btn is-primary">Aceptar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Prompt (para reemplazar prompt()) -->
-        <div id="prompt-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 60;">
-            <div class="nes-container with-title is-dark max-w-lg">
-                <p class="title" id="prompt-title">Entrada</p>
-                <p id="prompt-message" class="mb-4 text-lg"></p>
-                <input type="text" id="prompt-input" class="nes-input mb-4 w-full" placeholder="Escribe aquí...">
-                <div class="flex justify-center gap-4">
-                    <button id="prompt-cancel-btn" class="nes-btn">Cancelar</button>
-                    <button id="prompt-ok-btn" class="nes-btn is-primary">Aceptar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Ingresando (mientras se procesa el login) -->
-        <div id="logging-in-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 10001; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; overflow: auto;">
-            <div class="nes-container with-title is-dark max-w-sm" style="position: relative; z-index: 10002;">
-                <p class="title" style="font-family: 'Press Start 2P', monospace;">INGRESANDO...</p>
-                <div class="mb-6">
-                    <div class="flex justify-center items-center gap-4 mb-4">
-                        <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #fff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    </div>
-                    <p class="text-sm" style="font-family: 'Press Start 2P', monospace; font-size: 0.7rem;">Procesando autenticación...</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Modal de Autenticación: elegir Entrar o Crear cuenta
+    <!-- Modal de Autenticación: elegir Entrar o Crear cuenta
              NOTA: Este modal tiene estilos inline y en main.css para asegurar visibilidad en todos los dispositivos,
              incluyendo APK/Capacitor donde el overflow del body puede causar que el contenido no sea visible.
              El z-index es 10000 para overlay y 10001 para el contenedor, superior a todos otros modales. -->
-        <div id="auth-choice-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 10000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; overflow: auto;">
-            <div class="nes-container with-title is-dark max-w-sm" style="position: relative; z-index: 10001;">
-                <p class="title">Autenticación</p>
-                <p class="mb-6 text-sm">Para poder editar niveles, inicia sesión con tu cuenta de Google.</p>
-                <div class="flex flex-col gap-3">
-                    <button id="auth-login-btn" class="nes-btn is-success" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        <span>Entrar con Google</span>
+    <div id="auth-choice-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 10000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; overflow: auto;">
+        <div class="nes-container with-title is-dark max-w-sm" style="position: relative; z-index: 10001;">
+            <p class="title">Autenticación</p>
+            <p class="mb-6 text-sm">Para poder editar niveles, inicia sesión con tu cuenta de Google.</p>
+            <div class="flex flex-col gap-3">
+                <button id="auth-login-btn" class="nes-btn is-success"
+                    style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#4285F4"
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34A853"
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05"
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                        <path fill="#EA4335"
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                    <span>Entrar con Google</span>
+                </button>
+                <button id="auth-signup-btn" class="nes-btn is-primary hidden" style="display: none;">Crear
+                    cuenta</button>
+                <button id="auth-cancel-btn" class="nes-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Campañas -->
+    <div id="campaigns-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center"
+        style="z-index: 50;">
+        <div class="nes-container with-title is-dark max-w-2xl mx-6 overflow-visible"
+            style="max-height: 90vh; display: flex; flex-direction: column;">
+            <h1 id="campaigns-modal-title" class="title text-2xl md:text-3xl font-bold mb-4"
+                style="font-family: 'Press Start 2P', monospace; background-color: #3a2d23;">
+                Gestionar Campañas
+            </h1>
+
+            <div class="overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
+                <!-- Lista de campañas -->
+                <div id="campaigns-list" class="mb-4">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+
+                <!-- Crear nueva campaña -->
+                <div class="mb-4 border-t-2 border-gray-600 pt-4">
+                    <input type="text" id="new-campaign-name" class="nes-input w-full mb-2"
+                        placeholder="Nombre de la campaña">
+                    <button id="create-campaign-btn" class="nes-btn is-primary w-full">Crear Campaña</button>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-4 mt-4">
+                <button id="campaigns-modal-close-btn" class="nes-btn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Agregar nivel a campaña -->
+    <div id="add-to-campaign-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center"
+        style="z-index: 60;">
+        <div class="nes-container with-title is-dark max-w-lg mx-6">
+            <h1 id="add-to-campaign-title" class="title text-xl md:text-2xl font-bold mb-4"
+                style="font-family: 'Press Start 2P', monospace;">
+                Agregar a Campaña
+            </h1>
+            <p id="add-to-campaign-message" class="mb-4">Selecciona una campaña para agregar este nivel:</p>
+
+            <!-- Opción: Crear nueva campaña -->
+            <div class="mb-4 p-3 border-2 border-gray-600 bg-gray-700">
+                <label class="block mb-2 text-sm font-bold" style="font-family: 'Press Start 2P', monospace;">Crear
+                    Nueva Campaña</label>
+                <input type="text" id="new-campaign-name-input" class="nes-input w-full mb-2"
+                    placeholder="Nombre de la nueva campaña">
+                <button id="create-campaign-and-add-btn" class="nes-btn is-success w-full">Crear y Agregar</button>
+            </div>
+
+            <div class="border-t-2 border-gray-600 pt-4 mb-4">
+                <label class="block mb-2 text-sm font-bold" style="font-family: 'Press Start 2P', monospace;">O Agregar
+                    a Campaña Existente</label>
+                <select id="add-to-campaign-selector" class="nes-select w-full mb-4 h-8"></select>
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button id="add-to-campaign-cancel-btn" class="nes-btn">Cancelar</button>
+                <button id="add-to-campaign-confirm-btn" class="nes-btn is-primary">Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center text-center"
+        style="z-index: 10000; background-size: cover; background-position: center; background-repeat: no-repeat;">
+        <div class="mb-8">
+            <div class="loading-spinner"
+                style="width: 60px; height: 60px; border: 6px solid rgba(255, 255, 255, 0.3); border-top: 6px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;">
+            </div>
+        </div>
+        <p id="loading-text" class="text-white text-xl font-bold"
+            style="font-family: 'Press Start 2P', monospace; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);">Cargando...
+        </p>
+    </div>
+
+
+    <!-- Pantalla de Mensajes (Inicio) -->
+    <div id="message-overlay" style="z-index: 10;">
+        <!-- Contenedor principal con TV y botones -->
+        <div class="main-menu-layout">
+            <!-- TV CRT -->
+            <div class="crt-tv-container">
+                <div class="crt-tv-frame">
+                    <div class="crt-tv-screen">
+                        <!-- Splash animado dentro de la pantalla del TV -->
+                        <div id="splash-container" class="crt-screen-content"></div>
+                        <!-- Efecto de brillo/reflejo del vidrio -->
+                        <div class="crt-screen-reflection"></div>
+                    </div>
+                </div>
+                <div class="menu-buttons-panel ">
+                    <img id="hero-logo-menu" alt="Hero" src="/hero-logo.png"
+                        style="image-rendering: pixelated; width: 100%; height: auto; margin: 0 auto 1rem; display: block;">
+                    <!-- Usuario logueado (debajo del selector de idioma) -->
+                    <div id="user-header-info" class="hidden mt-4" style="font-family: 'Press Start 2P', monospace;">
+                        <button id="user-header-btn"
+                            class="flex flex-row items-center gap-2 cursor-pointer bg-gray-800 border-2 border-gray-600 rounded px-3 py-2 hover:bg-gray-700 transition-colors w-full">
+                            <canvas id="user-header-avatar" width="48" height="48" class="avatar-canvas"></canvas>
+                            <div class="flex  items-center gap-1">
+                                <span id="user-header-hello" class="text-xs text-gray-300">Bienvenido</span>
+                                <span id="user-header-nickname" class="text-xs text-white uppercase"></span>
+                            </div>
+                        </button>
+                    </div>
+                    <button id="start-game-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">JUGAR</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
                     </button>
-                    <button id="auth-signup-btn" class="nes-btn is-primary hidden" style="display: none;">Crear cuenta</button>
-                    <button id="auth-cancel-btn" class="nes-btn">Cancelar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Campañas -->
-        <div id="campaigns-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-2xl mx-6 overflow-visible" style="max-height: 90vh; display: flex; flex-direction: column;">
-                <h1 id="campaigns-modal-title" class="title text-2xl md:text-3xl font-bold mb-4" style="font-family: 'Press Start 2P', monospace; background-color: #3a2d23;">
-                    Gestionar Campañas
-                </h1>
-                
-                <div class="overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
-                    <!-- Lista de campañas -->
-                    <div id="campaigns-list" class="mb-4">
-                        <!-- Se llenará dinámicamente -->
-                    </div>
-
-                    <!-- Crear nueva campaña -->
-                    <div class="mb-4 border-t-2 border-gray-600 pt-4">
-                        <input type="text" id="new-campaign-name" class="nes-input w-full mb-2" placeholder="Nombre de la campaña">
-                        <button id="create-campaign-btn" class="nes-btn is-primary w-full">Crear Campaña</button>
-                    </div>
-                </div>
-                
-                <div class="flex justify-center gap-4 mt-4">
-                    <button id="campaigns-modal-close-btn" class="nes-btn">Cerrar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal: Agregar nivel a campaña -->
-        <div id="add-to-campaign-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 60;">
-            <div class="nes-container with-title is-dark max-w-lg mx-6">
-                <h1 id="add-to-campaign-title" class="title text-xl md:text-2xl font-bold mb-4" style="font-family: 'Press Start 2P', monospace;">
-                    Agregar a Campaña
-                </h1>
-                <p id="add-to-campaign-message" class="mb-4">Selecciona una campaña para agregar este nivel:</p>
-                
-                <!-- Opción: Crear nueva campaña -->
-                <div class="mb-4 p-3 border-2 border-gray-600 bg-gray-700">
-                    <label class="block mb-2 text-sm font-bold" style="font-family: 'Press Start 2P', monospace;">Crear Nueva Campaña</label>
-                    <input type="text" id="new-campaign-name-input" class="nes-input w-full mb-2" placeholder="Nombre de la nueva campaña">
-                    <button id="create-campaign-and-add-btn" class="nes-btn is-success w-full">Crear y Agregar</button>
-                </div>
-                
-                <div class="border-t-2 border-gray-600 pt-4 mb-4">
-                    <label class="block mb-2 text-sm font-bold" style="font-family: 'Press Start 2P', monospace;">O Agregar a Campaña Existente</label>
-                    <select id="add-to-campaign-selector" class="nes-select w-full mb-4 h-8"></select>
-                </div>
-                
-                <div class="flex justify-center gap-4">
-                    <button id="add-to-campaign-cancel-btn" class="nes-btn">Cancelar</button>
-                    <button id="add-to-campaign-confirm-btn" class="nes-btn is-primary">Agregar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Loading Screen -->
-        <div id="loading-screen" class="fixed inset-0 flex flex-col justify-center items-center text-center" style="z-index: 10000; background-size: cover; background-position: center; background-repeat: no-repeat;">
-            <div class="mb-8">
-                <div class="loading-spinner" style="width: 60px; height: 60px; border: 6px solid rgba(255, 255, 255, 0.3); border-top: 6px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-            </div>
-            <p id="loading-text" class="text-white text-xl font-bold" style="font-family: 'Press Start 2P', monospace; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);">Cargando...</p>
-        </div>
-
-
-        <!-- Pantalla de Mensajes (Inicio) -->
-        <div id="message-overlay" style="z-index: 10;">
-            <!-- Contenedor principal con TV y botones -->
-            <div class="main-menu-layout">
-                <!-- TV CRT -->
-                <div class="crt-tv-container">
-                    <div class="crt-tv-frame">
-                        <div class="crt-tv-screen">
-                            <!-- Splash animado dentro de la pantalla del TV -->
-                            <div id="splash-container" class="crt-screen-content"></div>
-                            <!-- Efecto de brillo/reflejo del vidrio -->
-                            <div class="crt-screen-reflection"></div>
-                        </div>
-                    </div>
-                    <div class="menu-buttons-panel ">
-                        <img id="hero-logo-menu" alt="Hero" src="/hero-logo.png" style="image-rendering: pixelated; width: 100%; height: auto; margin: 0 auto 1rem; display: block;">
-                                <!-- Usuario logueado (debajo del selector de idioma) -->
-                                <div id="user-header-info" class="hidden mt-4" style="font-family: 'Press Start 2P', monospace;">
-                                    <button id="user-header-btn" class="flex flex-row items-center gap-2 cursor-pointer bg-gray-800 border-2 border-gray-600 rounded px-3 py-2 hover:bg-gray-700 transition-colors w-full">
-                                        <canvas id="user-header-avatar" width="48" height="48" class="avatar-canvas"></canvas>
-                                        <div class="flex  items-center gap-1">
-                                            <span id="user-header-hello" class="text-xs text-gray-300">Bienvenido</span>
-                                            <span id="user-header-nickname" class="text-xs text-white uppercase"></span>
-                                        </div>
-                                    </button>
-                                </div>
-                        <button id="start-game-btn"  class="old-button" type="button" ontouchstart>
-                            <div class="old-button-top">JUGAR</div>
-                            <div class="old-button-bottom"></div>
-                            <div class="old-button-base"></div>
-                          </button>                        
-                        <button id="level-editor-btn" class="old-button" type="button" ontouchstart>
-                            <div class="old-button-top">INGRESAR</div>
-                            <div class="old-button-bottom"></div>
-                            <div class="old-button-base"></div>
-                        </button>
-                        <button id="gallery-btn" class="old-button" type="button" ontouchstart>
-                            <div class="old-button-top">GALERÍA</div>
-                            <div class="old-button-bottom"></div>
-                            <div class="old-button-base"></div>
-                        </button>
-                        <button id="share-game-btn" class="old-button" type="button" ontouchstart>
-                            <div class="old-button-top">COMPARTIR</div>
-                            <div class="old-button-bottom"></div>
-                            <div class="old-button-base"></div>
-                        </button>
-                        <button id="mobile-qr-btn" class="old-button" type="button" ontouchstart>
-                            <div class="old-button-top">MOBILE</div>
-                            <div class="old-button-bottom"></div>
-                            <div class="old-button-base"></div>
-                        </button>
-                        <button id="credits-btn" class="old-button" type="button" ontouchstart>
-                            <div class="old-button-top">CRÉDITOS</div>
-                            <div class="old-button-bottom"></div>
-                            <div class="old-button-base"></div>
-                        </button>
-                        <div id="language-selector-container">
-                            <p style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 0.8rem;">LANGUAGE</p>
-                                <div class="flex gap-2">
-                                    <button id="lang-es-btn" class="old-button old-button--small active" data-lang="es" title="Español">
-                                        <div class="old-button-top">ESP</div>
-                                        <div class="old-button-bottom"></div>
-                                        <div class="old-button-base"></div>
-                                    </button>
-                                    <button id="lang-ca-btn" class="old-button old-button--small " data-lang="ca" title="Català">
-                                        <div class="old-button-top">CAT</div>
-                                        <div class="old-button-bottom"></div>
-                                        <div class="old-button-base"></div>
-                                    </button>
-                                    <button id="lang-en-btn" class="old-button old-button--small " data-lang="en" title="English">
-                                        <div class="old-button-top">ENG</div>
-                                        <div class="old-button-bottom"></div>
-                                        <div class="old-button-base"></div>
-                                    </button>
-                                </div>
-                                
-
-                        </div>
-                        <!-- Botones de Instalación -->
-                        <div class="menu-install-buttons hidden">
-                            <button id="install-pwa-btn" class="nes-btn is-success hidden text-xs" style="font-family: 'Press Start 2P', monospace;">
-                                📱 INSTALAR APP
+                    <button id="level-editor-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">INGRESAR</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="gallery-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">GALERÍA</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="share-game-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">COMPARTIR</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="mobile-qr-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">MOBILE</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <button id="credits-btn" class="old-button" type="button" ontouchstart>
+                        <div class="old-button-top">CRÉDITOS</div>
+                        <div class="old-button-bottom"></div>
+                        <div class="old-button-base"></div>
+                    </button>
+                    <div id="language-selector-container">
+                        <p style="font-family: 'Press Start 2P', monospace; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                            LANGUAGE</p>
+                        <div class="flex gap-2">
+                            <button id="lang-es-btn" class="old-button old-button--small active" data-lang="es"
+                                title="Español">
+                                <div class="old-button-top">ESP</div>
+                                <div class="old-button-bottom"></div>
+                                <div class="old-button-base"></div>
                             </button>
-                            <button id="play-store-btn" class="nes-btn is-disabled hidden text-xs opacity-50 cursor-not-allowed" style="font-family: 'Press Start 2P', monospace;">
-                                📲 PLAY STORE (PRÓXIMAMENTE)
+                            <button id="lang-ca-btn" class="old-button old-button--small " data-lang="ca"
+                                title="Català">
+                                <div class="old-button-top">CAT</div>
+                                <div class="old-button-bottom"></div>
+                                <div class="old-button-base"></div>
+                            </button>
+                            <button id="lang-en-btn" class="old-button old-button--small " data-lang="en"
+                                title="English">
+                                <div class="old-button-top">ENG</div>
+                                <div class="old-button-bottom"></div>
+                                <div class="old-button-base"></div>
                             </button>
                         </div>
-                        <!-- Botón Retry (hidden por defecto) -->
-                        <button id="retry-btn" class="nes-btn is-warning menu-btn-secondary hidden">Volver a jugar</button>
+
+
                     </div>
-                </div>
-            </div>
-            
-            <!-- QR Code Modal Popup -->
-            <div id="qr-code-modal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50">
-                <div class="bg-gray-800 border-4 border-white rounded-lg p-6" style="font-family: 'Press Start 2P', monospace;">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg">QR CODE</h2>
-                        <button id="close-qr-modal" class="text-2xl cursor-pointer text-white hover:text-red-500">✕</button>
+                    <!-- Botones de Instalación -->
+                    <div class="menu-install-buttons hidden">
+                        <button id="install-pwa-btn" class="nes-btn is-success hidden text-xs"
+                            style="font-family: 'Press Start 2P', monospace;">
+                            📱 INSTALAR APP
+                        </button>
+                        <button id="play-store-btn"
+                            class="nes-btn is-disabled hidden text-xs opacity-50 cursor-not-allowed"
+                            style="font-family: 'Press Start 2P', monospace;">
+                            📲 PLAY STORE (PRÓXIMAMENTE)
+                        </button>
                     </div>
-                    
-                    <!-- QR Code Container -->
-                    <div id="qr-code-container" class="flex flex-col items-center gap-4">
-                        <p id="qr-code-title" class="text-sm opacity-75">ESCANEA PARA JUGAR EN MÓVIL</p>
-                            <img id="qr-code-image" src="" alt="QR Code">
-                        <p id="qr-code-instructions" class="text-xs opacity-50" style="max-width: 250px; text-align: center;">
-                            Abre la cámara y escanea el código
-                        </p>
-                    </div>
+                    <!-- Botón Retry (hidden por defecto) -->
+                    <button id="retry-btn" class="nes-btn is-warning menu-btn-secondary hidden">Volver a jugar</button>
                 </div>
             </div>
         </div>
 
-        <!-- Modal Game Over -->
-        <div id="gameover-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-lg mx-6">
-                <h1 id="gameover-title" class="title text-6xl md:text-7xl font-bold mb-6 text-red-600" style="text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4); font-family: 'Press Start 2P', monospace;">
-                    GAME OVER
-                </h1>
-                <p id="gameover-score" class="text-xl mb-8 text-white font-bold" style="font-family: 'Press Start 2P', monospace;">
-                    Puntuación final: <span id="gameover-score-value" class="text-yellow-400">0</span>
-                </p>
-                <div class="flex flex-col gap-4">
-                    <button id="gameover-retry-btn" class="nes-btn is-warning" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
-                        Volver a Intentar
-                    </button>
-                    <button id="gameover-menu-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
-                        Menú Principal
-                    </button>
+        <!-- QR Code Modal Popup -->
+        <div id="qr-code-modal"
+            class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50">
+            <div class="bg-gray-800 border-4 border-white rounded-lg p-6"
+                style="font-family: 'Press Start 2P', monospace;">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg">QR CODE</h2>
+                    <button id="close-qr-modal" class="text-2xl cursor-pointer text-white hover:text-red-500">✕</button>
+                </div>
+
+                <!-- QR Code Container -->
+                <div id="qr-code-container" class="flex flex-col items-center gap-4">
+                    <p id="qr-code-title" class="text-sm opacity-75">ESCANEA PARA JUGAR EN MÓVIL</p>
+                    <img id="qr-code-image" src="" alt="QR Code">
+                    <p id="qr-code-instructions" class="text-xs opacity-50"
+                        style="max-width: 250px; text-align: center;">
+                        Abre la cámara y escanea el código
+                    </p>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Modal Level Complete (para editor) -->
-        <div id="level-complete-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-lg mx-6">
-                <h1 id="level-complete-title" class="title text-4xl md:text-5xl font-bold mb-6 text-green-400" style="text-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 0 40px rgba(0, 255, 0, 0.4); font-family: 'Press Start 2P', monospace;">
-                    LEVEL COMPLETE
-                </h1>
-                <div class="flex flex-col gap-4">
-                    <button id="level-complete-back-to-editor-btn" class="nes-btn is-primary" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
-                        Volver al Editor
-                    </button>
-                    <button id="level-complete-restart-btn" class="nes-btn is-warning" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
-                        Reiniciar
-                    </button>
-                </div>
+    <!-- Modal Game Over -->
+    <div id="gameover-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center"
+        style="z-index: 50;">
+        <div class="nes-container with-title is-dark max-w-lg mx-6">
+            <h1 id="gameover-title" class="title text-6xl md:text-7xl font-bold mb-6 text-red-600"
+                style="text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4); font-family: 'Press Start 2P', monospace;">
+                GAME OVER
+            </h1>
+            <p id="gameover-score" class="text-xl mb-8 text-white font-bold"
+                style="font-family: 'Press Start 2P', monospace;">
+                Puntuación final: <span id="gameover-score-value" class="text-yellow-400">0</span>
+            </p>
+            <div class="flex flex-col gap-4">
+                <button id="gameover-retry-btn" class="nes-btn is-warning"
+                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                    Volver a Intentar
+                </button>
+                <button id="gameover-menu-btn" class="nes-btn is-primary"
+                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                    Menú Principal
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Modal de Victoria de Campaña -->
-        <div id="campaign-victory-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <!-- Canvas para confetti/partículas -->
-            <canvas id="victory-confetti" class="absolute inset-0 w-full h-full" style="z-index: 0; pointer-events: none;"></canvas>
-            
-            <!-- Contenido del modal -->
-            <div class="nes-container with-title is-dark max-w-lg mx-6 relative victory-container" style="z-index: 10;">
-                <h1 id="campaign-victory-title" class="title text-4xl md:text-5xl font-bold mb-4 text-yellow-400 victory-title" style="text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4); font-family: 'Press Start 2P', monospace; animation: victoryPulse 1.5s ease-in-out infinite;">
-                    ¡CAMPAÑA COMPLETADA!
-                </h1>
-                <div id="campaign-victory-message" class="mb-6 text-lg text-green-400 victory-message" style="font-family: 'Press Start 2P', monospace; font-size: 0.8rem;">
-                    ¡Felicitaciones! Has completado la campaña.
-                </div>
-                <div id="campaign-victory-score" class="mb-6 text-2xl font-bold text-yellow-400 victory-score" style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">
-                    Puntuación: <span id="victory-score-value">0</span>
-                </div>
-                <div class="flex flex-col gap-4">
-                    <button id="campaign-victory-mainmenu-btn" class="nes-btn is-success" style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
-                        Menú Principal
-                    </button>
-                </div>
+    <!-- Modal Level Complete (para editor) -->
+    <div id="level-complete-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center"
+        style="z-index: 50;">
+        <div class="nes-container with-title is-dark max-w-lg mx-6">
+            <h1 id="level-complete-title" class="title text-4xl md:text-5xl font-bold mb-6 text-green-400"
+                style="text-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 0 40px rgba(0, 255, 0, 0.4); font-family: 'Press Start 2P', monospace;">
+                LEVEL COMPLETE
+            </h1>
+            <div class="flex flex-col gap-4">
+                <button id="level-complete-back-to-editor-btn" class="nes-btn is-primary"
+                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                    Volver al Editor
+                </button>
+                <button id="level-complete-restart-btn" class="nes-btn is-warning"
+                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                    Reiniciar
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Modal Créditos -->
-        <div id="credits-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <!-- Canvas para partículas animadas -->
-            <canvas id="credits-particles" class="absolute inset-0 w-full h-full" style="z-index: 0;"></canvas>
-            
-            <!-- Contenido del modal -->
-            <div class="nes-container with-title is-dark max-w-lg mx-6 relative" style="z-index: 10;">
-                <p class="title credits-title" style="font-family: 'Press Start 2P', monospace;">Créditos</p>
-                <p class="mb-6 text-sm leading-relaxed credits-text" style="font-family: 'Press Start 2P', monospace;">
-                    developed by: <strong class="credits-name">argentinardo</strong>
-                    <br>
-                    <a href="https://www.damiannardini.com" target="_blank" rel="noopener" class="credits-link underline text-yellow-400 hover:text-yellow-300">damiannardini.com</a>
-                    <br><br>
-                    <span class="credits-special">con la gran ayuda de mi hijo ❤️Paolo❤️</span>
-                </p>
-                <button id="credits-close-btn" class="nes-btn is-primary credits-btn" style="font-family: 'Press Start 2P', monospace;">Cerrar</button>
+    <!-- Modal de Victoria de Campaña -->
+    <div id="campaign-victory-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center text-center"
+        style="z-index: 50;">
+        <!-- Canvas para confetti/partículas -->
+        <canvas id="victory-confetti" class="absolute inset-0 w-full h-full"
+            style="z-index: 0; pointer-events: none;"></canvas>
+
+        <!-- Contenido del modal -->
+        <div class="nes-container with-title is-dark max-w-lg mx-6 relative victory-container" style="z-index: 10;">
+            <h1 id="campaign-victory-title"
+                class="title text-4xl md:text-5xl font-bold mb-4 text-yellow-400 victory-title"
+                style="text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4); font-family: 'Press Start 2P', monospace; animation: victoryPulse 1.5s ease-in-out infinite;">
+                ¡CAMPAÑA COMPLETADA!
+            </h1>
+            <div id="campaign-victory-message" class="mb-6 text-lg text-green-400 victory-message"
+                style="font-family: 'Press Start 2P', monospace; font-size: 0.8rem;">
+                ¡Felicitaciones! Has completado la campaña.
+            </div>
+            <div id="campaign-victory-score" class="mb-6 text-2xl font-bold text-yellow-400 victory-score"
+                style="font-family: 'Press Start 2P', monospace; font-size: 1.2rem; text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);">
+                Puntuación: <span id="victory-score-value">0</span>
+            </div>
+            <div class="flex flex-col gap-4">
+                <button id="campaign-victory-mainmenu-btn" class="nes-btn is-success"
+                    style="font-family: 'Press Start 2P', monospace; min-width: 200px; font-size: 1rem; padding: 1rem;">
+                    Menú Principal
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Modal de Configuración -->
-        <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-lg mx-6 overflow-visible" style="max-height: 90vh; display: flex; flex-direction: column;">
-                <p id="settings-modal-title" class="title" style="background-color: #3a2d23;">Configuración</p>
-                
-                <div class="overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
-                    <!-- Sección Audio -->
-                    <div class="mb-6 text-left">
+    <!-- Modal Créditos -->
+    <div id="credits-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 50;">
+        <!-- Canvas para partículas animadas -->
+        <canvas id="credits-particles" class="absolute inset-0 w-full h-full" style="z-index: 0;"></canvas>
+
+        <!-- Contenido del modal -->
+        <div class="nes-container with-title is-dark max-w-lg mx-6 relative" style="z-index: 10;">
+            <p class="title credits-title" style="font-family: 'Press Start 2P', monospace;">Créditos</p>
+            <p class="mb-6 text-sm leading-relaxed credits-text" style="font-family: 'Press Start 2P', monospace;">
+                developed by: <strong class="credits-name">argentinardo</strong>
+                <br>
+                <a href="https://www.damiannardini.com" target="_blank" rel="noopener"
+                    class="credits-link underline text-yellow-400 hover:text-yellow-300">damiannardini.com</a>
+                <br><br>
+                <span class="credits-special">con la gran ayuda de mi hijo ❤️Paolo❤️</span>
+            </p>
+            <button id="credits-close-btn" class="nes-btn is-primary credits-btn"
+                style="font-family: 'Press Start 2P', monospace;">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Modal de Configuración -->
+    <div id="settings-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center text-center"
+        style="z-index: 50;">
+        <div class="nes-container with-title is-dark max-w-lg mx-6 overflow-visible"
+            style="max-height: 90vh; display: flex; flex-direction: column;">
+            <p id="settings-modal-title" class="title" style="background-color: #3a2d23;">Configuración</p>
+
+            <div class="overflow-y-auto pr-2" style="flex: 1; min-height: 0;">
+                <!-- Sección Audio -->
+                <div class="mb-6 text-left">
                     <h3 id="settings-sound-title" class="text-xl mb-4 border-b-2 border-gray-600 pb-2">Sonido</h3>
-                    
+
                     <!-- Volumen Música -->
                     <div class="mb-4">
-                        <label id="settings-music-volume-label" for="music-volume-slider" class="block mb-2 text-sm">Volumen Música:</label>
+                        <label id="settings-music-volume-label" for="music-volume-slider"
+                            class="block mb-2 text-sm">Volumen Música:</label>
                         <div class="flex items-center gap-3">
-                            <input type="range" id="music-volume-slider" min="0" max="100" value="30" 
-                                   class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                            <input type="range" id="music-volume-slider" min="0" max="100" value="30"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
                             <span id="music-volume-value" class="text-sm font-bold min-w-[40px]">30%</span>
                         </div>
                     </div>
-                    
+
                     <!-- Volumen Efectos -->
                     <div class="mb-4">
-                        <label id="settings-sfx-volume-label" for="sfx-volume-slider" class="block mb-2 text-sm">Volumen Efectos:</label>
+                        <label id="settings-sfx-volume-label" for="sfx-volume-slider" class="block mb-2 text-sm">Volumen
+                            Efectos:</label>
                         <div class="flex items-center gap-3">
-                            <input type="range" id="sfx-volume-slider" min="0" max="100" value="50" 
-                                   class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
+                            <input type="range" id="sfx-volume-slider" min="0" max="100" value="50"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-400">
                             <span id="sfx-volume-value" class="text-sm font-bold min-w-[40px]">50%</span>
                         </div>
                     </div>
-                    
+
                     <!-- Toggle Mute -->
                     <div class="mb-3 flex items-center justify-between">
-                        <label id="settings-sound-status-label" for="mute-toggle" class="text-sm cursor-pointer flex-1">Sonido:</label>
-                        <input type="checkbox" id="mute-toggle" 
-                               class="w-5 h-5 cursor-pointer accent-yellow-400">
+                        <label id="settings-sound-status-label" for="mute-toggle"
+                            class="text-sm cursor-pointer flex-1">Sonido:</label>
+                        <input type="checkbox" id="mute-toggle" class="w-5 h-5 cursor-pointer accent-yellow-400">
                         <span id="mute-status" class="text-sm font-bold ml-2 min-w-[60px] text-left">ON</span>
                     </div>
                 </div>
-                
+
                 <!-- Sección Gráficos -->
                 <div class="mb-6 text-left">
                     <h3 id="settings-graphics-title" class="text-xl mb-4 border-b-2 border-gray-600 pb-2">Gráficos</h3>
-                    <p id="settings-graphics-desc" class="text-xs text-gray-400 mb-4">Desactiva efectos para mejorar el rendimiento en dispositivos móviles antiguos</p>
-                    
+                    <p id="settings-graphics-desc" class="text-xs text-gray-400 mb-4">Desactiva efectos para mejorar el
+                        rendimiento en dispositivos móviles antiguos</p>
+
                     <div class="mb-4">
-                        <label id="settings-graphics-style-label" for="graphics-style-selector" class="block text-sm mb-2">Estilo visual:</label>
-                        <select id="graphics-style-selector" class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
+                        <label id="settings-graphics-style-label" for="graphics-style-selector"
+                            class="block text-sm mb-2">Estilo visual:</label>
+                        <select id="graphics-style-selector"
+                            class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
                             <option value="modern">Moderno</option>
                             <option value="retro">Retro</option>
                             <option value="custom">Custom</option>
@@ -711,68 +923,75 @@
                     <div id="graphics-custom-options">
                         <!-- Scanline -->
                         <div class="mb-3 flex items-center justify-between">
-                            <label for="scanline-toggle" class="text-sm cursor-pointer flex-1">Scanline (efecto CRT):</label>
-                            <input type="checkbox" id="scanline-toggle" checked 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <label for="scanline-toggle" class="text-sm cursor-pointer flex-1">Scanline (efecto
+                                CRT):</label>
+                            <input type="checkbox" id="scanline-toggle" checked
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Glow -->
                         <div class="mb-3 flex items-center justify-between">
-                            <label for="glow-toggle" class="text-sm cursor-pointer flex-1">Efectos de Glow (brillo):</label>
-                            <input type="checkbox" id="glow-toggle" checked 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <label for="glow-toggle" class="text-sm cursor-pointer flex-1">Efectos de Glow
+                                (brillo):</label>
+                            <input type="checkbox" id="glow-toggle" checked
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Brightness -->
                         <div class="mb-3 flex items-center justify-between">
-                            <label for="brightness-toggle" class="text-sm cursor-pointer flex-1">Brillo del Canvas:</label>
-                            <input type="checkbox" id="brightness-toggle" checked 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <label for="brightness-toggle" class="text-sm cursor-pointer flex-1">Brillo del
+                                Canvas:</label>
+                            <input type="checkbox" id="brightness-toggle" checked
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Contrast -->
                         <div class="mb-3 flex items-center justify-between">
-                            <label for="contrast-toggle" class="text-sm cursor-pointer flex-1">Contraste del Canvas:</label>
-                            <input type="checkbox" id="contrast-toggle" checked 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <label for="contrast-toggle" class="text-sm cursor-pointer flex-1">Contraste del
+                                Canvas:</label>
+                            <input type="checkbox" id="contrast-toggle" checked
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Vignette -->
                         <div class="mb-3 flex items-center justify-between">
-                            <label for="vignette-toggle" class="text-sm cursor-pointer flex-1">Vignette (oscurecimiento bordes):</label>
-                            <input type="checkbox" id="vignette-toggle" checked 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <label for="vignette-toggle" class="text-sm cursor-pointer flex-1">Vignette (oscurecimiento
+                                bordes):</label>
+                            <input type="checkbox" id="vignette-toggle" checked
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Blur -->
                         <div class="mb-3 flex items-center justify-between">
                             <label for="blur-toggle" class="text-sm cursor-pointer flex-1">Blur (desenfoque):</label>
-                            <input type="checkbox" id="blur-toggle" checked 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <input type="checkbox" id="blur-toggle" checked
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Show FPS -->
                         <div class="mb-3 flex items-center justify-between">
                             <label for="fps-toggle" class="text-sm cursor-pointer flex-1">Mostrar Contador FPS:</label>
-                            <input type="checkbox" id="fps-toggle" 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <input type="checkbox" id="fps-toggle" class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
-                        
+
                         <!-- Mobile Full Width (solo visible en mobile) -->
                         <div id="mobile-fullwidth-option" class="mb-3 flex items-center justify-between hidden">
-                            <label for="mobile-fullwidth-toggle" class="text-sm cursor-pointer flex-1">Ancho Completo (Mobile):</label>
-                            <input type="checkbox" id="mobile-fullwidth-toggle" 
-                                   class="w-5 h-5 cursor-pointer accent-yellow-400">
+                            <label for="mobile-fullwidth-toggle" class="text-sm cursor-pointer flex-1">Ancho Completo
+                                (Mobile):</label>
+                            <input type="checkbox" id="mobile-fullwidth-toggle"
+                                class="w-5 h-5 cursor-pointer accent-yellow-400">
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Sección Controles (solo en móvil) -->
                 <div id="mobile-controls-settings" class="mb-6 text-left" style="display: none;">
                     <h3 class="text-xl mb-4 border-b-2 border-gray-600 pb-2" id="settings-controls-title">Controles</h3>
                     <div class="mb-3">
-                        <label for="control-mode-selector" class="block mb-2 text-sm" id="settings-control-mode-label">Modo de Control:</label>
-                        <select id="control-mode-selector" class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
+                        <label for="control-mode-selector" class="block mb-2 text-sm"
+                            id="settings-control-mode-label">Modo de Control:</label>
+                        <select id="control-mode-selector"
+                            class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
                             <option value="hybrid" id="control-mode-hybrid">Híbrido</option>
                             <option value="onehand" id="control-mode-onehand">Una Mano</option>
                             <option value="virtual" id="control-mode-virtual">Virtual</option>
@@ -780,12 +999,13 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- Sección Idioma -->
                 <div class="mb-6 text-left">
                     <h3 class="text-xl mb-4 border-b-2 border-gray-600 pb-2" id="settings-language-title">Idioma</h3>
                     <div class="mb-3">
-                        <label for="language-selector" class="block mb-2 text-sm" id="settings-language-label">Idioma:</label>
+                        <label for="language-selector" class="block mb-2 text-sm"
+                            id="settings-language-label">Idioma:</label>
                         <select id="language-selector" class="w-full bg-gray-700 border-2 border-[#666] p-2 text-sm">
                             <option value="es">Español</option>
                             <option value="en">English</option>
@@ -793,119 +1013,131 @@
                         </select>
                     </div>
                 </div>
-                </div> <!-- Cierre del div con scroll -->
-                
+            </div> <!-- Cierre del div con scroll -->
+
+        </div>
+    </div>
+
+    <!-- Controles Móviles -->
+    <div id="mobile-controls" class="hidden">
+        <div id="directional-buttons">
+            <div class="button-row">
+                <button id="btn-up-left" class="directional-btn">↖</button>
+                <button id="btn-up" class="directional-btn">↑</button>
+                <button id="btn-up-right" class="directional-btn">↗</button>
+            </div>
+            <div class="button-row">
+                <button id="btn-left" class="directional-btn">←</button>
+                <button id="btn-right" class="directional-btn">→</button>
             </div>
         </div>
+        <div id="joystick-zone">
 
-        <!-- Controles Móviles -->
-        <div id="mobile-controls" class="hidden">
-            <div id="directional-buttons">
-                <div class="button-row">
-                    <button id="btn-up-left" class="directional-btn">↖</button>
-                    <button id="btn-up" class="directional-btn">↑</button>
-                    <button id="btn-up-right" class="directional-btn">↗</button>
-                </div>
-                <div class="button-row">
-                    <button id="btn-left" class="directional-btn">←</button>
-                    <button id="btn-right" class="directional-btn">→</button>
-                </div>
-            </div>
-            <div id="joystick-zone">
-
-            </div>
-            <div id="action-zone">
-                <button id="shoot-btn" class="action-button">FIRE</button>
-                <button id="bomb-btn" class="action-button">TNT</button>
-            </div>
         </div>
-
-        <!-- Modal Galería de Niveles -->
-        <div id="gallery-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center overflow-y-auto" style="z-index: 50;">
-            <div class="nes-container with-title is-dark max-w-6xl mx-6 my-8" style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
-                <div class="flex justify-between items-center mb-6">
-                    <p class="title text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">GALERÍA DE NIVELES</p>
-                    <button id="gallery-close-btn" class="nes-btn">✕</button>
-                </div>
-                
-                <!-- Filtros y ordenamiento -->
-                <div class="mb-6 flex gap-4 items-center flex-wrap">
-                    <label class="text-sm">Ordenar por:</label>
-                    <button id="gallery-sort-likes" class="nes-btn is-primary">Más Votados</button>
-                    <button id="gallery-sort-newest" class="nes-btn">Más Nuevos</button>
-                </div>
-                
-                <!-- Grid de niveles -->
-                <div id="gallery-levels-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Los niveles se cargarán aquí dinámicamente -->
-                    <div class="col-span-full text-center text-gray-500 p-8">
-                        <p>Cargando niveles...</p>
-                    </div>
-                </div>
-            </div>
+        <div id="action-zone">
+            <button id="shoot-btn" class="action-button">FIRE</button>
+            <button id="bomb-btn" class="action-button">TNT</button>
         </div>
+    </div>
 
-        <!-- Modal Mi Área de user -->
-        <div id="profile-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center" style="z-index: 60;">
-            <div class="nes-container with-title is-dark max-w-2xl mx-6" style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
-                <div class="flex justify-between items-center mb-6">
-                    <p class="title text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI ÁREA</p>
-                    <button id="profile-close-btn" class="nes-btn">✕</button>
-                </div>
-                
-                <div class="space-y-4">
-                    <!-- Avatar -->
-                    <div class="mb-4">
-                        <label class="block text-sm mb-2">Avatar:</label>
-                        <div class="flex items-center gap-4">
-                            <canvas id="profile-avatar-preview" width="80" height="80" class="w-20 h-20 bg-gray-700 border-2 border-white rounded avatar-canvas"></canvas>
-                            <button id="profile-avatar-btn" class="nes-btn is-primary text-xs">Cambiar Avatar</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Nickname -->
-                    <div class="mb-4">
-                        <label class="block text-sm mb-2">Nickname:</label>
-                        <input type="text" id="profile-nickname-input" class="w-full bg-gray-800 border-2 border-white p-2 text-white" placeholder="Tu nickname" maxlength="10">
-                    </div>
-                    
-                    <!-- Email (solo lectura) -->
-                    <div class="mb-4">
-                        <label class="block text-sm mb-2">Email:</label>
-                        <input type="text" id="profile-email-display" class="w-full bg-gray-700 border-2 border-gray-600 p-2 text-gray-400" readonly>
-                    </div>
-                    
-                    <!-- Botones -->
-                    <div class="flex gap-4 justify-end mb-4">
-                        <button id="profile-cancel-btn" class="nes-btn">Cancelar</button>
-                        <button id="profile-save-btn" class="nes-btn is-success">Guardar</button>
-                    </div>
-                    
-                    <!-- Botón Cerrar Sesión dentro del modal -->
-                    <div class="border-t-2 border-gray-600 pt-4">
-                        <button id="profile-logout-btn" class="nes-btn is-error w-full">Cerrar sesión</button>
-                    </div>
+    <!-- Modal Galería de Niveles -->
+    <div id="gallery-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center overflow-y-auto"
+        style="z-index: 50;">
+        <div class="nes-container with-title is-dark max-w-6xl mx-6 my-8"
+            style="box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); max-height: 90vh; overflow-y: auto; overflow-x: hidden;">
+            <div class="flex justify-between items-center mb-6">
+                <p class="title text-3xl font-bold text-purple-400" style="font-family: 'Press Start 2P', monospace;">
+                    GALERÍA DE NIVELES</p>
+                <button id="gallery-close-btn" class="nes-btn">✕</button>
+            </div>
+
+            <!-- Filtros y ordenamiento -->
+            <div class="mb-6 flex gap-4 items-center flex-wrap">
+                <label class="text-sm">Ordenar por:</label>
+                <button id="gallery-sort-likes" class="nes-btn is-primary">Más Votados</button>
+                <button id="gallery-sort-newest" class="nes-btn">Más Nuevos</button>
+            </div>
+
+            <!-- Grid de niveles -->
+            <div id="gallery-levels-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Los niveles se cargarán aquí dinámicamente -->
+                <div class="col-span-full text-center text-gray-500 p-8">
+                    <p>Cargando niveles...</p>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Modal Mi Área de user -->
+    <div id="profile-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center"
+        style="z-index: 60;">
+        <div class="nes-container with-title is-dark max-w-2xl mx-6"
+            style="box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);">
+            <div class="flex justify-between items-center mb-6">
+                <p class="title text-2xl font-bold text-blue-400" style="font-family: 'Press Start 2P', monospace;">MI
+                    ÁREA</p>
+                <button id="profile-close-btn" class="nes-btn">✕</button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Avatar -->
+                <div class="mb-4">
+                    <label class="block text-sm mb-2">Avatar:</label>
+                    <div class="flex items-center gap-4">
+                        <canvas id="profile-avatar-preview" width="80" height="80"
+                            class="w-20 h-20 bg-gray-700 border-2 border-white rounded avatar-canvas"></canvas>
+                        <button id="profile-avatar-btn" class="nes-btn is-primary text-xs">Cambiar Avatar</button>
+                    </div>
+                </div>
+
+                <!-- Nickname -->
+                <div class="mb-4">
+                    <label class="block text-sm mb-2">Nickname:</label>
+                    <input type="text" id="profile-nickname-input"
+                        class="w-full bg-gray-800 border-2 border-white p-2 text-white" placeholder="Tu nickname"
+                        maxlength="10">
+                </div>
+
+                <!-- Email (solo lectura) -->
+                <div class="mb-4">
+                    <label class="block text-sm mb-2">Email:</label>
+                    <input type="text" id="profile-email-display"
+                        class="w-full bg-gray-700 border-2 border-gray-600 p-2 text-gray-400" readonly>
+                </div>
+
+                <!-- Botones -->
+                <div class="flex gap-4 justify-end mb-4">
+                    <button id="profile-cancel-btn" class="nes-btn">Cancelar</button>
+                    <button id="profile-save-btn" class="nes-btn is-success">Guardar</button>
+                </div>
+
+                <!-- Botón Cerrar Sesión dentro del modal -->
+                <div class="border-t-2 border-gray-600 pt-4">
+                    <button id="profile-logout-btn" class="nes-btn is-error w-full">Cerrar sesión</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
     <!-- Registrar Service Worker para PWA -->
     <script>
         // console.log('[PWA] Inicializando PWA...');
-        
+
         // Verificar soporte de Service Worker
         if ('serviceWorker' in navigator) {
             // console.log('[PWA] Service Workers soportados');
-            
+
             window.addEventListener('load', () => {
                 // console.log('[PWA] Registrando Service Worker desde: /sw.js');
-                
+
                 navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then((registration) => {
                         // console.log('[PWA] ✅ Service Worker registrado:', registration);
                         // console.log('[PWA] Scope:', registration.scope);
-                        
+
                         // Verificar si hay actualizaciones disponibles
                         registration.addEventListener('updatefound', () => {
                             // console.log('[PWA] Actualizando Service Worker...');
@@ -917,7 +1149,7 @@
                                 }
                             });
                         });
-                        
+
                         // Permitir instalación de PWA
                         window.addEventListener('beforeinstallprompt', (e) => {
                             // console.log('[PWA] beforeinstallprompt disparado - PWA puede ser instalada');
@@ -928,12 +1160,12 @@
                     .catch((error) => {
                         console.error('[PWA] ❌ Error registrando Service Worker:', error);
                     });
-                
+
                 // Verificar si hay un Service Worker activo
                 navigator.serviceWorker.ready.then(() => {
                     // console.log('[PWA] ✅ Service Worker está listo');
                 });
-                
+
                 if (navigator.serviceWorker.controller) {
                     // console.log('[PWA] ✅ Service Worker ya está activo');
                 }
@@ -941,7 +1173,7 @@
         } else {
             console.warn('[PWA] ⚠️ Service Workers NO soportados en este navegador');
         }
-        
+
         // Log de manifestación
         /*
         fetch('/manifest.json')
@@ -953,22 +1185,23 @@
                 console.error('[PWA] ❌ Error cargando manifest:', e);
             });
         */
-        
+
         // Marcar cuando los estilos están cargados
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             document.body.classList.add('styles-loaded');
             // console.log('[Index] ✅ Estilos cargados');
         });
-        
+
         // Fallback: si los estilos no cargan en 2 segundos, mostrar contenido de todas formas
-        setTimeout(function() {
+        setTimeout(function () {
             document.body.classList.add('styles-loaded');
         }, 2000);
     </script>
-    
+
     <!-- Scripts no críticos al final del body (carga asíncrona) -->
     <!-- Tailwind CSS (completamente embebido, sin CDN) -->
-    <script src="/vendor/tailwindcss-loader.js" async onerror="console.warn('[Index] No se pudo cargar Tailwind loader local')"></script>
+    <script src="/vendor/tailwindcss-loader.js" async
+        onerror="console.warn('[Index] No se pudo cargar Tailwind loader local')"></script>
 </body>
-</html>
 
+</html>

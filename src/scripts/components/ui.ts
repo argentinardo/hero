@@ -2611,7 +2611,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
             btn.addEventListener('click', () => {
                 const isHidden = content.style.display === 'none';
                 content.style.display = isHidden ? 'block' : 'none';
-                arrow.textContent = isHidden ? '▼' : '▶';
+                arrow.textContent = isHidden ?  '▶':'▼';
             });
         };
         bindSectionToggle('edit-section-toggle', 'edit-section-arrow', 'edit-section-content');
@@ -2640,7 +2640,7 @@ export const startEditor = async (store: GameStore, preserveCurrentLevel: boolea
                     if (levelsSectionContent && levelsSectionArrow) {
                         const isHidden = levelsSectionContent.style.display === 'none';
                         levelsSectionContent.style.display = isHidden ? 'block' : 'none';
-                        levelsSectionArrow.textContent = isHidden ? '▼' : '▶';
+                        levelsSectionArrow.textContent = isHidden ? '▶' : '▼';
                     }
                 }
             });
@@ -3649,7 +3649,7 @@ const populatePalette = (store: GameStore) => {
         // Crear encabezado con flecha (mismo estilo que sección Edición)
         const categoryHeader = document.createElement('button');
         categoryHeader.type = 'button';
-        categoryHeader.className = 'w-full text-left flex items-center justify-between px-2 py-1 border-2 border-[#666] bg-gray-700';
+        categoryHeader.className = 'flex flex-row items-center justify-between gap-2 cursor-pointer bg-[#5a2f22]  border-0 rounded px-3 py-2 hover:bg-[#4b251a] transition-colors w-full';
         const headerText = document.createElement('span');
         headerText.textContent = category.name;
         const headerArrow = document.createElement('span');
@@ -3661,7 +3661,7 @@ const populatePalette = (store: GameStore) => {
         // Crear grid de tiles
         const tilesGrid = document.createElement('div');
         tilesGrid.className = 'tile-category-grid';
-        tilesGrid.style.cssText = 'display:grid; grid-template-columns:repeat(2,1fr); gap:2px; padding:0px; border:1px solid #444;';
+        tilesGrid.style.cssText = 'grid grid-cols-1 gap-3 p-3 rounded-b-[5px] shadow-inner shadow-[inset_0_0_10px_rgba(0,0,0,0.75),inset_0_0_2px_rgba(255,255,255,0.6)]';
         
         // Agregar tiles
         category.tiles.forEach(({ key, nameKey }) => {
@@ -3679,7 +3679,7 @@ const populatePalette = (store: GameStore) => {
         if (category.nameKey === 'crushingWalls') {
             const configSection = document.createElement('div');
             configSection.className = 'crushing-wall-controls';
-            configSection.style.cssText = 'padding: 10px; border-top: 1px solid #444; margin-top: 8px;';
+            configSection.style.cssText = 'padding: 10px; border-top: 1px solid #444; margin-top: 8px; display:none';
             
             // Control de velocidad
             const speedLabel = document.createElement('label');
@@ -3729,7 +3729,7 @@ const populatePalette = (store: GameStore) => {
                 const isHidden = tilesGrid.style.display === 'none';
                 tilesGrid.style.display = isHidden ? 'grid' : 'none';
                 configSection.style.display = isHidden ? 'block' : 'none';
-                headerArrow.textContent = isHidden ? '▼' : '▶';
+                headerArrow.textContent = isHidden ? '▶' : '▼';
             });
         }
         
@@ -3738,7 +3738,7 @@ const populatePalette = (store: GameStore) => {
             categoryHeader.addEventListener('click', () => {
                 const isHidden = tilesGrid.style.display === 'none';
                 tilesGrid.style.display = isHidden ? 'grid' : 'none';
-                headerArrow.textContent = isHidden ? '▼' : '▶';
+                headerArrow.textContent = isHidden ? '▶' : '▼';
             });
         }
         
@@ -5090,22 +5090,18 @@ export const updateEditorTexts = (store: GameStore) => {
     if (editSectionToggle) editSectionToggle.textContent = t('editor.edition');
     
     // Botones de edición
-    const undoBtn = document.getElementById('undo-btn');
-    const redoBtn = document.getElementById('redo-btn');
-    const duplicateRowBtn = document.getElementById('duplicate-row-btn');
-    const deleteRowBtn = document.getElementById('delete-row-btn');
-    if (undoBtn) undoBtn.textContent = t('editor.undo');
-    if (redoBtn) redoBtn.textContent = t('editor.redo');
-    if (duplicateRowBtn) duplicateRowBtn.textContent = t('editor.duplicateRow');
-    if (deleteRowBtn) deleteRowBtn.textContent = t('editor.deleteRow');
+    updateOldButtonTextById('undo-btn', `↶ ${t('editor.undo')}`);
+    updateOldButtonTextById('redo-btn', `↷ ${t('editor.redo')}`);
+    updateOldButtonTextById('duplicate-row-btn', `📋 ${t('editor.duplicateRow')}`);
+    updateOldButtonTextById('delete-row-btn', `🗑️ ${t('editor.deleteRow')}`);
     
     // Label de sección Campañas
     const campaignsSectionLabel = document.getElementById('campaigns-section-label');
     if (campaignsSectionLabel) campaignsSectionLabel.textContent = `${t('campaigns.title')}:`;
     
     // Sección Campaña y Niveles - Mostrar nombre de la campaña actual
-    const campaignSectionToggle = document.querySelector('#campaign-section-toggle span:first-child');
-    const levelsSectionToggle = document.querySelector('#levels-section-toggle span:first-child');
+    const campaignSectionToggle = document.querySelector('#campaign-section-toggle .old-button-top span:first-child');
+    const levelsSectionToggle = document.querySelector('#levels-section-toggle .old-button-top span:first-child');
     const levelsSectionMobileTitle = document.querySelector('#user-panel h3.text-center');
     const campaignTitleBtn = document.getElementById('campaign-title-btn');
     
@@ -5117,46 +5113,40 @@ export const updateEditorTexts = (store: GameStore) => {
             : t('editor.levels');
         
         if (campaignSectionToggle) campaignSectionToggle.textContent = t('campaigns.title');
-        if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
+        if (levelsSectionToggle) {
+            const levelsToggleSpan = document.querySelector('#levels-section-toggle .old-button-top span:first-child');
+            if (levelsToggleSpan) levelsToggleSpan.textContent = t('editor.levels');
+        }
         if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = campaignName.toUpperCase();
         if (campaignTitleBtn) campaignTitleBtn.textContent = campaignName.toUpperCase();
     }).catch(() => {
         // Fallback si hay error
         if (campaignSectionToggle) campaignSectionToggle.textContent = t('campaigns.title');
-        if (levelsSectionToggle) levelsSectionToggle.textContent = t('editor.levels');
+        const levelsToggleSpan = document.querySelector('#levels-section-toggle .old-button-top span:first-child');
+        if (levelsToggleSpan) levelsToggleSpan.textContent = t('editor.levels');
         if (levelsSectionMobileTitle) levelsSectionMobileTitle.textContent = t('editor.levels').toUpperCase();
-        if (campaignTitleBtn) campaignTitleBtn.textContent = t('editor.levels').toUpperCase();
+        updateOldButtonTextById('campaign-title-btn', t('editor.levels').toUpperCase());
     });
     
-    // Botones de niveles (desktop)
-    const addLevelBtn = document.getElementById('add-level-btn');
-    const generateLevelBtn = document.getElementById('generate-level-btn');
-    const saveAllBtn = document.getElementById('save-all-btn');
-    const shareLevelBtn = document.getElementById('share-level-btn');
-    const playTestBtn = document.getElementById('play-test-btn');
-    const backToMenuBtn = document.getElementById('back-to-menu-btn');
+    // Botones de secciones acordeón
+    const saveSectionToggle = document.querySelector('#save-section-toggle .old-button-top span:first-child');
+    if (saveSectionToggle) saveSectionToggle.textContent = t('user.save');
+    const actionsSectionToggle = document.querySelector('#actions-section-toggle .old-button-top span:first-child');
+    if (actionsSectionToggle) actionsSectionToggle.textContent = t('editor.actions');
     
-    if (addLevelBtn) addLevelBtn.textContent = `➕ ${t('editor.newLevel')}`;
-    if (generateLevelBtn) generateLevelBtn.textContent = t('editor.generateLevel');
-    if (saveAllBtn) saveAllBtn.textContent = t('editor.saveToFile');
-    if (shareLevelBtn) shareLevelBtn.textContent = `📤 ${t('editor.shareLevel')}`;
-    if (playTestBtn) playTestBtn.textContent = t('editor.playTest');
-    if (backToMenuBtn) backToMenuBtn.textContent = t('editor.backToMenu');
+    // Botones de niveles (desktop)
+    updateOldButtonTextById('add-level-btn', `➕ ${t('editor.newLevel')}`);
+    updateOldButtonTextById('generate-level-btn', `🎲 ${t('editor.generateLevel')}`);
+    updateOldButtonTextById('save-all-btn', `💾 ${t('editor.saveToFile')}`);
+    updateOldButtonTextById('share-level-btn', `📤 ${t('editor.shareLevel')}`);
+    updateOldButtonTextById('play-test-btn', `▶️ ${t('editor.playTest')}`);
+    updateOldButtonTextById('back-to-menu-btn', `🏠 ${t('editor.backToMenu')}`);
     
     // Botones de niveles (mobile)
-    const addLevelBtnMobile = document.getElementById('add-level-btn-mobile');
-    const generateLevelBtnMobile = document.getElementById('generate-level-btn-mobile');
-    const saveAllBtnMobile = document.getElementById('save-all-btn-mobile');
-    const shareLevelBtnMobile = document.getElementById('share-level-btn-mobile');
-    const playTestBtnMobile = document.getElementById('play-test-btn-mobile');
-    const backToMenuBtnMobile = document.getElementById('back-to-menu-btn-mobile');
-    
-    if (addLevelBtnMobile) addLevelBtnMobile.textContent = t('editor.newLevel');
-    if (generateLevelBtnMobile) generateLevelBtnMobile.textContent = t('editor.generateLevel');
-    if (saveAllBtnMobile) saveAllBtnMobile.textContent = t('editor.saveLevel');
-    if (shareLevelBtnMobile) shareLevelBtnMobile.textContent = t('editor.shareLevel');
-    if (playTestBtnMobile) playTestBtnMobile.textContent = t('editor.playLevel');
-    if (backToMenuBtnMobile) backToMenuBtnMobile.textContent = t('modals.backToMainMenuTitle');
+    updateOldButtonTextById('save-all-btn-mobile', t('editor.saveLevel'));
+    updateOldButtonTextById('play-test-btn-mobile', t('editor.playLevel'));
+    updateOldButtonTextById('share-level-btn-mobile', t('editor.shareLevel'));
+    updateOldButtonTextById('back-to-menu-btn-mobile', t('modals.backToMainMenuTitle'));
 };
 
 /**
@@ -5170,10 +5160,8 @@ const updateUserTexts = () => {
     if (logoutBtnMobile) logoutBtnMobile.textContent = t('user.logout');
     
     // Botones de perfil
-    const userProfileBtn = document.getElementById('user-profile-btn') as HTMLButtonElement | null;
-    const userProfileBtnMobile = document.getElementById('user-profile-btn-mobile') as HTMLButtonElement | null;
-    if (userProfileBtn) userProfileBtn.textContent = t('user.myArea');
-    if (userProfileBtnMobile) userProfileBtnMobile.textContent = `👤 ${t('user.myArea')}`;
+    updateOldButtonTextById('user-profile-btn', t('user.myArea'));
+    updateOldButtonTextById('user-profile-btn-mobile', `👤 ${t('user.myArea')}`);
     
     // Título del panel de usuario cuando no hay login
     const userPanelNickname = document.getElementById('user-panel-nickname');

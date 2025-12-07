@@ -998,7 +998,7 @@ const updateCampaignsList = (store: GameStore) => {
         dropdownButton.addEventListener('click', () => {
             const isHidden = levelsList.style.display === 'none';
             levelsList.style.display = isHidden ? 'block' : 'none';
-            dropdownArrow.textContent = isHidden ? '▼' : '▶';
+            dropdownArrow.textContent = isHidden ? '▶' : '▼';
         });
         
         levelsDropdown.appendChild(dropdownButton);
