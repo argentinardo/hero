@@ -192,8 +192,100 @@ const requestFullscreen = (): void => {
 };
 
 /**
+ * Función global para prevenir long press en cualquier elemento móvil
+ */
+const preventLongPress = (element: HTMLElement): void => {
+    // Prevenir selección de texto
+    element.style.userSelect = 'none';
+    element.style.webkitUserSelect = 'none';
+    (element.style as any).webkitTouchCallout = 'none';
+    (element.style as any).webkitTapHighlightColor = 'transparent';
+    
+    // Prevenir el menú contextual (long press)
+    const preventContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    };
+    
+    // Remover listener anterior si existe para evitar duplicados
+    element.removeEventListener('contextmenu', preventContextMenu);
+    element.addEventListener('contextmenu', preventContextMenu, { passive: false });
+    
+    // Prevenir el comportamiento táctil por defecto
+    const preventTouch = (e: TouchEvent) => {
+        e.preventDefault();
+    };
+    
+    // Remover listeners anteriores si existen
+    element.removeEventListener('touchstart', preventTouch);
+    element.removeEventListener('touchmove', preventTouch);
+    element.removeEventListener('touchend', preventTouch);
+    
+    // Agregar nuevos listeners
+    element.addEventListener('touchstart', preventTouch, { passive: false });
+    element.addEventListener('touchmove', preventTouch, { passive: false });
+    element.addEventListener('touchend', preventTouch, { passive: false });
+};
+
+/**
+ * Configura la prevención de long press en todos los botones móviles
+ */
+const setupMobileLongPressPrevention = (): void => {
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    // Función para aplicar prevención a elementos
+    const applyPrevention = (selector: string) => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+            if (element instanceof HTMLElement) {
+                preventLongPress(element);
+            }
+        });
+    };
+    
+    // Aplicar a todos los botones móviles
+    applyPrevention('.action-button, .directional-btn');
+    applyPrevention('.old-button, .old-button--small, .old-button-top');
+    applyPrevention('#start-game-btn, #level-editor-btn, #gallery-btn, #share-game-btn, #mobile-qr-btn, #credits-btn');
+    applyPrevention('.dpad-btn, .dpad-draw, #editor-dpad');
+    applyPrevention('button[id*="btn"], button[class*="button"]');
+    
+    // Usar MutationObserver para aplicar prevención a elementos dinámicos
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node instanceof HTMLElement) {
+                    // Si es un botón o contiene botones
+                    if (node.tagName === 'BUTTON' || node.querySelector('button')) {
+                        if (node.tagName === 'BUTTON') {
+                            preventLongPress(node);
+                        }
+                        const buttons = node.querySelectorAll('button');
+                        buttons.forEach(btn => {
+                            if (btn instanceof HTMLElement) {
+                                preventLongPress(btn);
+                            }
+                        });
+                    }
+                }
+            });
+        });
+    });
+    
+    // Observar cambios en el DOM
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+};
+
+/**
  * Configura el listener para activar pantalla completa automáticamente
  * cuando el usuario gira el dispositivo de portrait a landscape en mobile
+ * Emula el comportamiento de presionar F11 (como cuando se presiona "Jugar")
  */
 const setupOrientationFullscreen = (): void => {
     // Solo configurar en dispositivos móviles
@@ -203,31 +295,49 @@ const setupOrientationFullscreen = (): void => {
     
     let wasPortrait = window.matchMedia('(orientation: portrait)').matches;
     let fullscreenRequested = false;
+    let orientationTimeout: number | null = null;
+    
+    const activateFullscreen = () => {
+        // Verificar si ya está en pantalla completa
+        const isFullscreen = !!(document.fullscreenElement || 
+                               (document as any).webkitFullscreenElement || 
+                               (document as any).mozFullScreenElement || 
+                               (document as any).msFullscreenElement);
+        
+        if (!isFullscreen) {
+            console.log('[setupOrientationFullscreen] Cambio a landscape detectado, activando pantalla completa (F11)...');
+            requestFullscreen();
+            fullscreenRequested = true;
+        }
+    };
     
     const handleOrientationChange = () => {
+        // Limpiar timeout anterior si existe
+        if (orientationTimeout) {
+            clearTimeout(orientationTimeout);
+            orientationTimeout = null;
+        }
+        
         // Esperar un momento para que el cambio de orientación se complete
-        setTimeout(() => {
+        // Usar un setTimeout como solicita el usuario
+        orientationTimeout = window.setTimeout(() => {
             const isPortrait = window.matchMedia('(orientation: portrait)').matches;
             const isLandscape = window.matchMedia('(orientation: landscape)').matches;
             
             // Si cambió de portrait a landscape y aún no se ha solicitado pantalla completa
             if (wasPortrait && isLandscape && !fullscreenRequested) {
-                // Verificar si ya está en pantalla completa
-                const isFullscreen = !!(document.fullscreenElement || 
-                                       (document as any).webkitFullscreenElement || 
-                                       (document as any).mozFullScreenElement || 
-                                       (document as any).msFullscreenElement);
-                
-                if (!isFullscreen) {
-                    console.log('[setupOrientationFullscreen] Cambio a landscape detectado, activando pantalla completa...');
-                    requestFullscreen();
-                    fullscreenRequested = true;
-                }
+                activateFullscreen();
+            }
+            
+            // Si vuelve a portrait, resetear el flag para permitir activar de nuevo
+            if (isPortrait && wasPortrait === false) {
+                fullscreenRequested = false;
+                console.log('[setupOrientationFullscreen] Vuelta a portrait, resetear flag de pantalla completa');
             }
             
             // Actualizar el estado de orientación
             wasPortrait = isPortrait;
-        }, 300); // Delay para asegurar que el cambio de orientación se complete
+        }, 500); // Delay de 500ms después del cambio a landscape
     };
     
     // Listener para cambios de orientación
@@ -240,14 +350,26 @@ const setupOrientationFullscreen = (): void => {
             clearTimeout(resizeTimeout);
         }
         resizeTimeout = window.setTimeout(() => {
-            handleOrientationChange();
-        }, 500);
+            const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+            const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+            
+            // Solo procesar si realmente cambió la orientación
+            if ((wasPortrait && isLandscape) || (!wasPortrait && isPortrait)) {
+                handleOrientationChange();
+            }
+        }, 300);
     });
     
     // Verificar orientación inicial
     if (wasPortrait) {
         // Si inicia en portrait, configurar para activar cuando cambie a landscape
         console.log('[setupOrientationFullscreen] Dispositivo en portrait, esperando cambio a landscape...');
+    } else {
+        // Si inicia en landscape, activar pantalla completa después de un delay
+        console.log('[setupOrientationFullscreen] Dispositivo ya en landscape, activando pantalla completa...');
+        setTimeout(() => {
+            activateFullscreen();
+        }, 1000); // Delay inicial de 1 segundo
     }
 };
 
@@ -8462,32 +8584,12 @@ const setupEditorDpad = (store: GameStore) => {
         }, { passive: false });
     }
     
-    // Aplicar prevención de long press a todos los botones de la cruceta
+    // Aplicar prevención de long press a todos los botones de la cruceta usando la función global
     const dpadDraw = document.getElementById('dpad-draw') as HTMLButtonElement | null;
     const allDpadButtons = [dpadUp, dpadDown, dpadLeft, dpadRight, dpadDraw];
     allDpadButtons.forEach(btn => {
         if (btn) {
-            // Prevenir selección de texto
-            btn.style.userSelect = 'none';
-            btn.style.webkitUserSelect = 'none';
-            
-            // Prevenir el menú contextual (long press)
-            btn.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-            });
-            
-            // Prevenir el comportamiento táctil por defecto
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-            
-            btn.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-            
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-            }, { passive: false });
+            preventLongPress(btn);
         }
     });
     
