@@ -739,8 +739,8 @@ const setupViewportAdjustment = (): void => {
 const registerServiceWorker = async (): Promise<void> => {
     if ('serviceWorker' in navigator) {
         try {
-            const registration = await navigator.serviceWorker.register('/sw.js', {
-                scope: '/'
+            const registration = await navigator.serviceWorker.register('./sw.js', {
+                scope: './'
             });
             
             // Escuchar actualizaciones del Service Worker

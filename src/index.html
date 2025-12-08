@@ -8,9 +8,9 @@
     <title>NEW H.E.R.O.</title>
 
     <!-- Favicon personalizado -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/hero-logo.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/hero-logo.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/hero-logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./hero-logo.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./hero-logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./hero-logo.png">
     <meta name="theme-color" content="#1f2937">
     <meta name="description" content="Un juego retro de plataformas estilo arcade">
     <meta name="keywords" content="game, retro, arcade, hero, plataforma">
@@ -25,14 +25,15 @@
     <meta name="msapplication-TileColor" content="#1f2937">
 
     <!-- Manifest para PWA con orientación landscape -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
 
     <!-- Auth0 Configuration (ahora se carga desde ui.ts) -->
 
     <!-- Preload de recursos críticos para carga más rápida -->
-    <link rel="preload" href="/vendor/press-start-2p.ttf" as="font" type="font/ttf" crossorigin>
-    <link rel="preload" href="/vendor/nes.min.css" as="style">
-    <link rel="preload" href="/vendor/press-start-2p.css" as="style">
+    <!-- Nota: Preload de fuente deshabilitado para evitar errores 403 en itch.io -->
+    <!-- <link rel="preload" href="./vendor/press-start-2p.ttf" as="font" type="font/ttf" crossorigin> -->
+    <link rel="preload" href="./vendor/nes.min.css" as="style">
+    <link rel="preload" href="./vendor/press-start-2p.css" as="style">
 
     <!-- Estilos críticos inline para evitar FOUC (Flash of Unstyled Content) -->
     <style>
@@ -78,17 +79,17 @@
 
     <!-- Recursos embebidos localmente (carga asíncrona) -->
     <!-- Fuente Press Start 2P -->
-    <link rel="stylesheet" href="/vendor/press-start-2p.css" media="print" onload="this.media='all'; this.onload=null;"
+    <link rel="stylesheet" href="./vendor/press-start-2p.css" media="print" onload="this.media='all'; this.onload=null;"
         onerror="console.warn('[Index] No se pudo cargar fuente local')">
     <noscript>
-        <link rel="stylesheet" href="/vendor/press-start-2p.css">
+        <link rel="stylesheet" href="./vendor/press-start-2p.css">
     </noscript>
 
     <!-- NES.css para estilos retro -->
-    <link rel="stylesheet" href="/vendor/nes.min.css" media="print" onload="this.media='all'; this.onload=null;"
+    <link rel="stylesheet" href="./vendor/nes.min.css" media="print" onload="this.media='all'; this.onload=null;"
         onerror="console.warn('[Index] No se pudo cargar NES.css local')">
     <noscript>
-        <link rel="stylesheet" href="/vendor/nes.min.css">
+        <link rel="stylesheet" href="./vendor/nes.min.css">
     </noscript>
 
     <!-- Bloquear orientación a landscape -->
@@ -646,7 +647,7 @@
                     </div>
                 </div>
                 <div class="menu-buttons-panel ">
-                    <img id="hero-logo-menu" alt="Hero" src="/hero-logo.png"
+                    <img id="hero-logo-menu" alt="Hero" src="./hero-logo.png"
                         style="image-rendering: pixelated; width: 100%; height: auto; margin: 0 auto 1rem; display: block;">
                     <!-- Usuario logueado (debajo del selector de idioma) -->
                     <div id="user-header-info" class="hidden mt-4" style="font-family: 'Press Start 2P', monospace;">
@@ -1146,7 +1147,7 @@
             window.addEventListener('load', () => {
                 // console.log('[PWA] Registrando Service Worker desde: /sw.js');
 
-                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                navigator.serviceWorker.register('./sw.js', { scope: './' })
                     .then((registration) => {
                         // console.log('[PWA] ✅ Service Worker registrado:', registration);
                         // console.log('[PWA] Scope:', registration.scope);
@@ -1189,7 +1190,7 @@
 
         // Log de manifestación
         /*
-        fetch('/manifest.json')
+        fetch('./manifest.json')
             .then(r => r.json())
             .then(manifest => {
                 console.log('[PWA] ✅ Manifest cargado:', manifest);
@@ -1213,7 +1214,7 @@
 
     <!-- Scripts no críticos al final del body (carga asíncrona) -->
     <!-- Tailwind CSS (completamente embebido, sin CDN) -->
-    <script src="/vendor/tailwindcss-loader.js" async
+    <script src="./vendor/tailwindcss-loader.js" async
         onerror="console.warn('[Index] No se pudo cargar Tailwind loader local')"></script>
 </body>
 

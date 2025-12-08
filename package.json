@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm run docs:generate && webpack --mode=production && npm run docs:copy-to-dist && npm run copy:assets",
     "build:web": "npm run docs:generate && webpack --mode=production && npm run docs:copy-to-dist && npm run copy:assets",
+    "build:itch": "node build-itch.js",
     "copy:assets": "node copy-assets.js",
     "docs:copy-to-dist": "node scripts/copy-docs.js",
     "build:android": "npm run build:web && npx cap sync android && npx cap open android",

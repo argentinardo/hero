@@ -10,7 +10,7 @@ module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
 
   return {
-    mode: 'development', // Fallback default if not specified
+    mode: isProduction ? 'production' : 'development',
     entry: './src/scripts/main.ts',
     devtool: isProduction ? false : 'inline-source-map', // Disable source maps in production
     devServer: {
@@ -128,6 +128,7 @@ module.exports = (env, argv) => {
     filename: '[name].[contenthash].js',
     path: path.resolve(__dirname, 'dist'),
     clean: true,
+    publicPath: './', // Rutas relativas para compatibilidad con itch.io
   },
         optimization: {
             usedExports: true,

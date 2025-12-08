@@ -9,7 +9,7 @@
 
   // Intentar cargar desde archivo local embebido
   const script = document.createElement('script');
-  script.src = '/vendor/tailwindcss-full.js';
+  script.src = './vendor/tailwindcss-full.js';
   script.async = true;
   script.onerror = function() {
     console.warn('[Tailwind] No se pudo cargar Tailwind local, continuando sin Tailwind');

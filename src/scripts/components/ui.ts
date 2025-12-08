@@ -726,7 +726,7 @@ export const attachDomReferences = (store: GameStore) => {
     ui.heroLogoEl = document.getElementById('hero-logo');
     // Establecer la URL del logo usando ruta estática
     if (ui.heroLogoEl) {
-        (ui.heroLogoEl as HTMLImageElement).src = '/hero-logo.png';
+        (ui.heroLogoEl as HTMLImageElement).src = './hero-logo.png';
     }
     ui.rightUiEl = document.getElementById('right-ui');
     ui.bottomUiEl = document.getElementById('bottom-ui');
@@ -1321,6 +1321,7 @@ export const showMenu = (store: GameStore) => {
                         const displayName = nicknameManager.currentNickname || getUserStorage('nickname') || 'Usuario';
                         const userHeaderNickname = document.getElementById('user-header-nickname');
                         const userHeaderHello = document.getElementById('user-header-hello');
+                        const userHeaderArea = document.getElementById('user-header-area');
                         const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
                         if (userHeaderHello) {
                             userHeaderHello.textContent = t('user.hello');
@@ -1328,6 +1329,11 @@ export const showMenu = (store: GameStore) => {
                         if (userHeaderNickname) {
                             userHeaderNickname.textContent = displayName.toUpperCase();
                             userHeaderInfo.classList.remove('hidden');
+                            
+                            // Mostrar "área personal" solo si el usuario está logueado
+                            if (userHeaderArea) {
+                                userHeaderArea.style.display = '';
+                            }
                             
                             // Iniciar animación de marquesina si el texto es más largo que el contenedor
                             const marqueeEl = document.getElementById('user-header-marquee');
@@ -2458,6 +2464,9 @@ const authManager = {
             if (store) {
                 updateHamburgerButtonLabel(store);
             }
+            
+            // Actualizar header del usuario (ocultar "área personal")
+            await updateUserHeaderInfo(store);
             
             console.log('[AuthManager] ✅ Logout completado');
         } catch (error) {
@@ -4285,8 +4294,8 @@ export async function initializeAuth0() {
         try {
             auth0ManagerInstance = Auth0Manager; // Use the imported manager
 
-            console.log('[Auth0 Init] Cargando configuración desde /auth0-config.json...');
-            const response = await fetch('/auth0-config.json');
+            console.log('[Auth0 Init] Cargando configuración desde ./auth0-config.json...');
+            const response = await fetch('./auth0-config.json');
             if (!response.ok) {
                 throw new Error(`No se pudo cargar auth0-config.json: ${response.statusText}`);
             }
@@ -5076,6 +5085,7 @@ const updateUserHeaderInfo = async (store?: GameStore) => {
     const userHeaderInfo = document.getElementById('user-header-info');
     const userHeaderNickname = document.getElementById('user-header-nickname');
     const userHeaderHello = document.getElementById('user-header-hello');
+    const userHeaderArea = document.getElementById('user-header-area');
     const userHeaderAvatar = document.getElementById('user-header-avatar') as HTMLCanvasElement | null;
     
     if (!userHeaderInfo || !userHeaderNickname) return;
@@ -5098,6 +5108,11 @@ const updateUserHeaderInfo = async (store?: GameStore) => {
         userHeaderNickname.textContent = displayName.toUpperCase();
         userHeaderInfo.classList.remove('hidden');
         
+        // Mostrar "área personal" solo si el usuario está logueado
+        if (userHeaderArea) {
+            userHeaderArea.style.display = '';
+        }
+        
         // Iniciar animación de marquesina si el texto es más largo que el contenedor
         const marqueeEl = document.getElementById('user-header-marquee');
         if (marqueeEl) {
@@ -5118,6 +5133,10 @@ const updateUserHeaderInfo = async (store?: GameStore) => {
         }
     } else {
         userHeaderInfo.classList.add('hidden');
+        // Ocultar "área personal" cuando el usuario no está logueado
+        if (userHeaderArea) {
+            userHeaderArea.style.display = 'none';
+        }
     }
 };
 

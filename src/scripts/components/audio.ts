@@ -28,9 +28,9 @@ const getAudioPath = (filename: string): string => {
             // Fallback: usar ruta relativa simple
             return relativePath;
         } else {
-            // En web, usar ruta absoluta desde la raíz
-            // Webpack copia los archivos a /audio/ en dist
-            return `/audio/${filename}`;
+            // En web, usar ruta relativa para compatibilidad con itch.io
+            // Webpack copia los archivos a ./audio/ en dist
+            return `./audio/${filename}`;
         }
     } catch (error) {
         console.warn('[Audio] Error obteniendo ruta de audio, usando fallback:', error);

@@ -196,7 +196,7 @@ export const Auth0Manager = {
             const isApk = Capacitor.isNativePlatform();
             
             // Obtener configuración para el returnTo correcto
-            const config = await fetch('/auth0-config.json').then(r => r.json());
+            const config = await fetch('./auth0-config.json').then(r => r.json());
             const logoutUri = isApk ? config.redirectUriApk : window.location.origin;
             
             const logoutOptions: any = {
@@ -386,7 +386,7 @@ export const Auth0Manager = {
             }
             
             // Obtener configuración
-            const config = await fetch('/auth0-config.json').then(r => r.json());
+            const config = await fetch('./auth0-config.json').then(r => r.json());
             const domain = config.domain;
             const clientId = config.clientId;
             const redirectUri = config.redirectUriApk;
@@ -523,7 +523,7 @@ export const Auth0Manager = {
             console.log('[Auth0] ✅ Code y state encontrados');
             
             // Obtener configuración
-            const config = await fetch('/auth0-config.json').then(r => r.json());
+            const config = await fetch('./auth0-config.json').then(r => r.json());
             const domain = config.domain;
             const clientId = config.clientId;
             const redirectUri = config.redirectUriApk; // El que usamos en la APK

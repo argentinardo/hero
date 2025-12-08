@@ -14,8 +14,8 @@ const RUNTIME_CACHE = 'new-hero-runtime-v1';
 // Nota: No cachear todos los recursos aquí para evitar problemas si algunos no existen
 // El Service Worker usará estrategia Network First
 const PRECACHE_RESOURCES = [
-  '/',
-  '/index.html'
+  './',
+  './index.html'
 ];
 
 // Instalación del Service Worker
@@ -102,7 +102,7 @@ self.addEventListener('fetch', (event) => {
           }
           // Si no hay cache, devolver respuesta básica para HTML
           if (event.request.destination === 'document') {
-            return caches.match('/index.html');
+            return caches.match('./index.html');
           }
         });
       })
