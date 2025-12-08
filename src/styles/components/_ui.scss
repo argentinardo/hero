@@ -579,6 +579,48 @@ body {
         outline-offset: 2px;
     }
 }
+
+/* Botón JUGAR - con animación de pulso suave */
+#start-game-btn {
+    .old-button-top {
+        color: #fff !important;
+        text-shadow: 0 -1px rgba(0, 0, 0, 0.3) !important;
+        
+        &::after {
+            /* Usar filter para animación suave del brillo */
+            animation: button-pulse-smooth 1.5s ease-in-out infinite !important;
+        }
+    }
+}
+
+@keyframes button-pulse-smooth {
+    0%, 100% {
+        /* Brillo normal */
+        filter: brightness(1);
+    }
+    50% {
+        /* Brillo aumentado más intenso */
+        filter: brightness(1.5);
+    }
+}
+
+/* Modal QR Code */
+#qr-code-modal {
+    z-index: 10000 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    
+    &.hidden {
+        display: none !important;
+    }
+    
+    &:not(.hidden) {
+        display: flex !important;
+    }
+}
 .old-button--small {
     padding: 0 4px 6px;
     min-width: 5em;

@@ -108,10 +108,16 @@ const setupQRCodeModal = (): void => {
     });
 
     // Abrir modal cuando se presiona el botón mobile
-    mobileQrBtn.addEventListener('click', () => {
+    // Usar tanto click como touchstart para mejor compatibilidad mobile
+    const openQRModal = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
         requestFullscreen();
         qrModal.classList.remove('hidden');
-    });
+    };
+    
+    mobileQrBtn.addEventListener('click', openQRModal);
+    mobileQrBtn.addEventListener('touchstart', openQRModal, { passive: false });
 };
 
 import { 
